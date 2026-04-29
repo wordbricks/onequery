@@ -386,3 +386,118 @@ export const auditListResponseSchema = z
 
 export type AuditListItem = z.infer<typeof auditListItemSchema>;
 export type AuditListResponse = z.infer<typeof auditListResponseSchema>;
+
+const auditPayloadBytesSchema = z
+  .object({
+    base64: z.string(),
+    byteLength: z.number().int().nonnegative(),
+  })
+  .strict();
+export type AuditPayloadBytes = z.infer<typeof auditPayloadBytesSchema>;
+
+export const auditWorkflowCommandTraceSchema = z
+  .object({
+    actor: auditOriginActorSchema,
+    causedByEventId: z.string().nullable(),
+    commandInvocationId: z.string(),
+    commandPayload: auditPayloadBytesSchema,
+    commandType: z.string(),
+    createdAt: z.iso.datetime(),
+    decodedPayload: z.unknown().nullable(),
+    decisionKind: z.string(),
+    id: z.string(),
+    rejectCode: z.string().nullable(),
+    rejectDetail: z.string().nullable(),
+    requestId: z.string(),
+    surface: z.string(),
+  })
+  .strict();
+export type AuditWorkflowCommandTrace = z.infer<
+  typeof auditWorkflowCommandTraceSchema
+>;
+
+export const auditWorkflowEventTraceSchema = z
+  .object({
+    commandId: z.string(),
+    commitPosition: z.string(),
+    eventType: z.string(),
+    id: z.string(),
+    occurredAt: z.iso.datetime(),
+    payload: auditPayloadBytesSchema,
+    decodedPayload: z.unknown().nullable(),
+    sequence: z.number().int().positive(),
+  })
+  .strict();
+export type AuditWorkflowEventTrace = z.infer<
+  typeof auditWorkflowEventTraceSchema
+>;
+
+const auditDetailBaseSchema = z
+  .object({
+    commands: z.array(auditWorkflowCommandTraceSchema),
+    events: z.array(auditWorkflowEventTraceSchema),
+    feedEntry: auditListItemSchema,
+  })
+  .strict();
+
+export const auditQueryActionDetailSchema = auditDetailBaseSchema
+  .extend({
+    action: z
+      .object({
+        completedAt: z.iso.datetime().nullable(),
+        failureCode: z.enum(AUDIT_QUERY_ACTION_FAILURE_CODES).nullable(),
+        id: z.string(),
+        lastEventId: z.string(),
+        lastEventSequence: z.number().int().positive(),
+        outcome: z.enum(AUDIT_OUTCOMES),
+        phase: z.enum(AUDIT_QUERY_ACTION_PHASES),
+        queryMode: z.string(),
+        queryText: z.string(),
+        sourceDescriptor: z.unknown().nullable(),
+        startedAt: z.iso.datetime(),
+        usageRecordingStatus: z.enum(
+          AUDIT_QUERY_ACTION_USAGE_RECORDING_STATUSES
+        ),
+        validatedQuery: z.string().nullable(),
+      })
+      .strict(),
+    family: z.literal("query_action"),
+  })
+  .strict();
+export type AuditQueryActionDetail = z.infer<
+  typeof auditQueryActionDetailSchema
+>;
+
+export const auditSourceApiActionDetailSchema = auditDetailBaseSchema
+  .extend({
+    action: z
+      .object({
+        attemptNumber: z.number().int().nullable(),
+        completedAt: z.iso.datetime().nullable(),
+        failureCode: z.enum(AUDIT_SOURCE_API_ACTION_FAILURE_CODES).nullable(),
+        id: z.string(),
+        invokeMode: z.enum(AUDIT_SOURCE_API_ACTION_INVOKE_MODES).nullable(),
+        lastEventId: z.string(),
+        lastEventSequence: z.number().int().positive(),
+        outcome: z.enum(AUDIT_OUTCOMES),
+        pageProgress: z.unknown().nullable(),
+        phase: z.enum(AUDIT_SOURCE_API_ACTION_PHASES),
+        preparedRequestFingerprint: z.string().nullable(),
+        requestDescriptor: z.unknown().nullable(),
+        requestKind: z.string(),
+        sourceDescriptor: z.unknown().nullable(),
+        startedAt: z.iso.datetime(),
+      })
+      .strict(),
+    family: z.literal("source_api_action"),
+  })
+  .strict();
+export type AuditSourceApiActionDetail = z.infer<
+  typeof auditSourceApiActionDetailSchema
+>;
+
+export const auditActionDetailSchema = z.discriminatedUnion("family", [
+  auditQueryActionDetailSchema,
+  auditSourceApiActionDetailSchema,
+]);
+export type AuditActionDetail = z.infer<typeof auditActionDetailSchema>;

@@ -1,9 +1,12 @@
 import {
+  auditActionDetailSchema,
   auditListResponseSchema,
   auditSearchSchema,
   sanitizeAuditSearch,
 } from "@onequery/audit-contracts/audit";
 import type {
+  AuditActionDetail,
+  AuditFamily,
   AuditListItem,
   AuditListResponse,
   AuditSearch,
@@ -16,7 +19,7 @@ import { organizationQueryKeys } from "@/queries/organization-query-keys";
 import type { UserScope } from "@/queries/organization-query-keys";
 
 export { auditSearchSchema };
-export type { AuditListItem, AuditSearch };
+export type { AuditActionDetail, AuditFamily, AuditListItem, AuditSearch };
 
 const client = createApiClient();
 export const AUDIT_LIVE_REFETCH_INTERVAL_MS = 5 * 1000;
@@ -92,6 +95,41 @@ export function auditListQueryOptions(
         data: query.state.data,
         search: normalizedSearch,
       }),
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
+    staleTime: 0,
+  });
+}
+
+async function fetchAuditActionDetail(
+  slug: string,
+  family: AuditFamily,
+  actionId: string
+): Promise<AuditActionDetail> {
+  const response = await client.api.organizations[":slug"].audit[":family"][
+    ":actionId"
+  ].$get({
+    param: { actionId, family, slug },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(getApiErrorMessage(error, "Failed to fetch audit trace"));
+  }
+
+  return auditActionDetailSchema.parse(await response.json());
+}
+
+export function auditActionDetailQueryOptions(
+  userId: UserScope,
+  slug: string,
+  family: AuditFamily,
+  actionId: string
+) {
+  return queryOptions({
+    queryFn: async () => fetchAuditActionDetail(slug, family, actionId),
+    queryKey: organizationQueryKeys.auditDetail(userId, slug, family, actionId),
     refetchOnMount: "always",
     refetchOnReconnect: "always",
     refetchOnWindowFocus: "always",
