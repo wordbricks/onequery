@@ -1,24 +1,49 @@
 # Blog Image Prompt
 
-Use this prompt as the shared base for OneQuery blog list thumbnail images. Replace the bracketed fields for each article.
+Use this prompt as the shared base for OneQuery blog list thumbnail images.
+Replace the bracketed fields for each article.
+
+Use `diagram-system/diagram-system-reference.png` as the visual reference.
 
 ```text
-Create a minimal dreamy SaaS blog thumbnail image for an article titled "[ARTICLE_TITLE]".
+Create a square 1:1 blog thumbnail using the OneQuery blog diagram system.
 
-Reflect this article idea in the simplest possible visual metaphor: [ARTICLE_IDEA].
+Article title:
+"[ARTICLE_TITLE]"
 
-Format:
-square 1:1 image, designed for a blog list thumbnail.
+Article idea:
+[ARTICLE_IDEA]
 
-Visual style:
-minimal pastel gradient background, soft blue lavender blush pink and pale peach tones, subtle grain texture, lots of negative space, one simple centered translucent frosted glass card, matte glass surface, low-contrast milky blur, soft diffused lighting, thin white line art, sparse dotted grid.
+Canvas:
+soft pastel background, generous margins, no logo, no wordmark, no watermark.
+Use a calm low-contrast pastel field behind the diagram. The background may be
+a subtle blurred gradient or soft color wash, but the diagram components should
+remain crisp and readable.
+
+Style:
+minimal technical architecture diagram, thin charcoal outlines, pale gray and
+translucent gray fills, rounded rectangles and pills, subtle gray halftone dot
+texture in grouped containers, thin black arrows with small arrowheads.
 
 Composition:
-use only one primary concept, one or two simple icons, and one clear relationship between them. Keep the image calm, spacious, and uncluttered.
+use one simple icon-first diagrammatic metaphor. All visual elements must be
+center-aligned inside the square. Prefer 2 to 4 outlined icon tiles, one central
+rounded group, and a clear arrow relationship. Keep it calm, spacious, and
+legible at thumbnail size.
 
 Text:
-avoid readable UI text. If text is absolutely necessary, use at most one tiny label of one or two words.
+avoid readable text inside the image. Prefer icons, simple line symbols, arrows,
+and containers. Do not use module labels unless absolutely necessary.
+
+Color:
+use the Diagram System neutrals for lines and components: white, black,
+charcoal gray, pale gray, cool gray, and translucent gray. For thumbnail
+backgrounds only, allow one soft pastel palette such as mist blue, lavender,
+blush, peach, sage, or mint. Keep it low contrast and quiet.
 
 Avoid:
-complex dashboards, multi-step workflows, side panels, charts, many icons, dense labels, connecting cables everywhere, data waves, photorealistic people, brand names, logos, watermarks, harsh contrast, dark heavy colors, glossy glass, shiny reflections, lens flares, bright specular highlights, metallic surfaces.
+bright saturated colors, colorful icons, logos, watermarks, harsh gradients,
+photorealism, 3D, glossy glass, heavy shadows, decorative blobs, dense
+dashboards, long labels, off-center compositions, and complex multi-step
+workflows.
 ```

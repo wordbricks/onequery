@@ -12,7 +12,7 @@ export const howStartupsCanBuildAnInHouseDataAgentPost: BlogPost = {
     "A practical startup playbook for turning an AI data agent from a risky demo into a safe, auditable workflow.",
   icon: ShieldIcon,
   imageSrc:
-    "/images/blog/how-startups-can-build-an-in-house-data-agent-dark.png",
+    "/images/blog/how-startups-can-build-an-in-house-data-agent-icon.png",
   readTime: "8 min read",
   sections: [
     {
