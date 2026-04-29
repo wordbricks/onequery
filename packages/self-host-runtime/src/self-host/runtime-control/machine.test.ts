@@ -6,9 +6,27 @@ import {
 } from "./machine";
 import type {
   RuntimeControlFailure,
+  RuntimeControlIdentity,
   RuntimeControlStopOperationConflict,
   RuntimeControlStopRequest,
 } from "./machine";
+
+const testSupervisorIdentity = {
+  generation: 7n,
+  pid: 1001,
+  supervisorId: "gateway-supervisor:1001",
+};
+
+function runtimeControlIdentity(
+  overrides: Partial<RuntimeControlIdentity> = {}
+): RuntimeControlIdentity {
+  return {
+    dataDir: overrides.dataDir ?? "/tmp/onequery-data",
+    launchId: overrides.launchId ?? "launch-a",
+    pid: overrides.pid ?? 123,
+    supervisor: overrides.supervisor ?? testSupervisorIdentity,
+  };
+}
 
 function stopRequest(
   overrides: Partial<RuntimeControlStopRequest> = {}
@@ -24,6 +42,7 @@ function stopRequest(
       dataDir: "/tmp/onequery-data",
       launchId: "launch-a",
       pid: 123,
+      supervisor: testSupervisorIdentity,
     },
     ...overrides,
   };
@@ -33,20 +52,12 @@ describe("runtime control machine", () => {
   it("keeps watcher registry out of lifecycle machine state", () => {
     const startedAt = new Date("2026-04-27T00:00:00.000Z");
     const state = createInitialRuntimeControlState({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       now: startedAt,
     });
 
     expect(state).toEqual({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       phase: "starting",
       recentStopOperationOutcomes: [],
       runtimeSequence: 1n,
@@ -60,11 +71,7 @@ describe("runtime control machine", () => {
     const stoppedAt = new Date("2026-04-27T00:00:01.000Z");
     const failedAt = new Date("2026-04-27T00:00:02.000Z");
     const initialState = createInitialRuntimeControlState({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       now: startedAt,
     });
     const stopping = reduceRuntimeControlMachine(initialState, {
@@ -115,11 +122,7 @@ describe("runtime control machine", () => {
       const stoppedAt = new Date("2026-04-27T00:00:01.000Z");
       const failedAt = new Date("2026-04-27T00:00:02.000Z");
       const initialState = createInitialRuntimeControlState({
-        identity: {
-          dataDir: "/tmp/onequery-data",
-          launchId: "launch-a",
-          pid: 123,
-        },
+        identity: runtimeControlIdentity(),
         now: startedAt,
       });
       const stopping = reduceRuntimeControlMachine(initialState, {
@@ -167,11 +170,7 @@ describe("runtime control machine", () => {
     const stoppingAt = new Date("2026-04-27T00:00:01.000Z");
     const failedAt = new Date("2026-04-27T00:00:02.000Z");
     const initialState = createInitialRuntimeControlState({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       now: startedAt,
     });
     const stopping = reduceRuntimeControlMachine(initialState, {
@@ -225,11 +224,7 @@ describe("runtime control machine", () => {
       seconds: 30n,
     };
     const initialState = createInitialRuntimeControlState({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       now: startedAt,
     });
     const stopping = reduceRuntimeControlMachine(initialState, {
@@ -303,11 +298,7 @@ describe("runtime control machine", () => {
     const retryAt = new Date("2026-04-27T00:00:02.000Z");
     const operationId = "018f0789-cc38-7d46-9a6b-83a2c8f0a003";
     const initialState = createInitialRuntimeControlState({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       now: startedAt,
     });
     const failed = reduceRuntimeControlMachine(initialState, {
@@ -364,11 +355,7 @@ describe("runtime control machine", () => {
     const retryAt = new Date("2026-04-27T00:00:03.000Z");
     const operationId = "018f0789-cc38-7d46-9a6b-83a2c8f0a004";
     const initialState = createInitialRuntimeControlState({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       now: startedAt,
     });
     const accepted = reduceRuntimeControlMachine(initialState, {
@@ -425,6 +412,8 @@ describe("runtime control machine", () => {
         target: {
           dataDir: "/tmp/onequery-data",
           launchId: "launch-a",
+          pid: undefined as unknown as number,
+          supervisor: testSupervisorIdentity,
         },
       }),
       field: "target.pid",
@@ -476,11 +465,7 @@ describe("runtime control machine", () => {
       const retryAt = new Date("2026-04-27T00:00:02.000Z");
       const operationId = "018f0789-cc38-7d46-9a6b-83a2c8f0a005";
       const initialState = createInitialRuntimeControlState({
-        identity: {
-          dataDir: "/tmp/onequery-data",
-          launchId: "launch-a",
-          pid: 123,
-        },
+        identity: runtimeControlIdentity(),
         now: startedAt,
       });
       const accepted = reduceRuntimeControlMachine(initialState, {

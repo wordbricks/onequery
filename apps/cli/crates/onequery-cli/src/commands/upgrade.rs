@@ -333,7 +333,6 @@ mod tests {
                     release_dir: PathBuf::from(
                         "/Users/alice/.onequery/packages/standalone/releases/1",
                     ),
-                    resources_dir: None,
                     platform: StandalonePlatform::Unix,
                 },
                 UpgradeAction::StandaloneUnix,
@@ -436,7 +435,6 @@ mod tests {
                 release_dir: PathBuf::from(
                     r"C:\Users\alice\.onequery\packages\standalone\releases\1"
                 ),
-                resources_dir: None,
                 platform: StandalonePlatform::Windows,
             }),
             None
@@ -454,7 +452,6 @@ mod tests {
                 release_dir: PathBuf::from(
                     r"C:\Users\alice\.onequery\packages\standalone\releases\1"
                 ),
-                resources_dir: None,
                 platform: StandalonePlatform::Windows,
             }),
             "standalone Windows installs are not supported by `onequery upgrade`"

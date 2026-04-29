@@ -37,10 +37,7 @@ use crate::self_host::self_host_launch_config_path_for_launch;
 use crate::self_host::write_self_host_launch_config;
 
 fn sample_paths() -> SelfHostRuntimePaths {
-    SelfHostRuntimePaths::from_dirs(
-        "/tmp/onequery/config/self-host".into(),
-        "/tmp/onequery/data".into(),
-    )
+    SelfHostRuntimePaths::from_dirs("/tmp/onequery/self-host".into(), "/tmp/onequery".into())
 }
 
 fn sample_state() -> GatewayRuntimeState {
@@ -156,10 +153,7 @@ fn runtime_status_snapshot_json(paths: &SelfHostRuntimePaths, pid: u32, launch_i
 fn render_gateway_status_output_reports_running_from_lease_without_status_snapshot() {
     let test_dir =
         std::env::temp_dir().join(format!("onequery-gateway-lease-status-{}", Uuid::new_v4()));
-    let paths = SelfHostRuntimePaths::from_dirs(
-        test_dir.join("config").join("self-host"),
-        test_dir.join("data"),
-    );
+    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
 
     resolve_runtime_state_with_paths_for_test(
         paths.clone(),
@@ -190,10 +184,7 @@ fn render_gateway_status_output_reports_running_from_lease_without_status_snapsh
 fn render_gateway_status_output_reports_running_from_lease_and_runtime_status_snapshot() {
     let test_dir =
         std::env::temp_dir().join(format!("onequery-gateway-lease-status-{}", Uuid::new_v4()));
-    let paths = SelfHostRuntimePaths::from_dirs(
-        test_dir.join("config").join("self-host"),
-        test_dir.join("data"),
-    );
+    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
 
     resolve_runtime_state_with_paths_for_test(
         paths.clone(),
@@ -357,10 +348,7 @@ fn packaged_server_bundle_uses_single_cross_platform_filename() {
 #[test]
 fn gateway_bootstrap_creates_self_host_foundation_and_reports_it() {
     let test_dir = std::env::temp_dir().join(format!("onequery-gateway-proof-{}", Uuid::new_v4()));
-    let paths = SelfHostRuntimePaths::from_dirs(
-        test_dir.join("config").join("self-host"),
-        test_dir.join("data"),
-    );
+    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
 
     let state = resolve_runtime_state_with_paths_for_test(
         paths.clone(),
@@ -411,10 +399,7 @@ fn gateway_bootstrap_creates_self_host_foundation_and_reports_it() {
 #[test]
 fn gateway_writes_launch_contract_with_default_self_host_port() {
     let test_dir = std::env::temp_dir().join(format!("onequery-gateway-launch-{}", Uuid::new_v4()));
-    let paths = SelfHostRuntimePaths::from_dirs(
-        test_dir.join("config").join("self-host"),
-        test_dir.join("data"),
-    );
+    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
     let asset_dir = test_dir.join("runtime").join("web");
     let migrations_dir = test_dir.join("runtime").join("migrations");
 

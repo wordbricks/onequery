@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn launch_config_path_is_scoped_by_launch_id() {
-        let run_dir = Path::new("/data/onequery/run");
+        let run_dir = Path::new("/home/alice/.onequery/run");
 
         assert_ne!(
             launch_config_path_for_launch(run_dir, "launch-a"),
@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn unix_runtime_control_socket_path_is_bounded_for_long_data_dirs() {
         let long_prefix = "x".repeat(240);
-        let data_dir = PathBuf::from(format!("/tmp/{long_prefix}/data"));
+        let data_dir = PathBuf::from(format!("/tmp/{long_prefix}/.onequery"));
         let run_dir = data_dir.join("run");
         let socket_path =
             runtime_control_socket_path_for_runtime(data_dir.as_path(), run_dir.as_path());

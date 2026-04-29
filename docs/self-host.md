@@ -102,21 +102,15 @@ For provider-specific setup steps and example JSON, run `onequery source connect
 
 ## Config Files
 
-Roots on supported hosts:
+The OneQuery home defaults to `~/.onequery`. Set `ONEQUERY_HOME` to use a
+different root.
 
-- with `ONEQUERY_HOME` set:
-  - config root: `$ONEQUERY_HOME/config`
-  - data root: `$ONEQUERY_HOME/data`
-- without `ONEQUERY_HOME`:
-  - Unix config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
-  - Unix data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
+- default self-host secrets path:
+  `~/.onequery/self-host/secrets.toml`
+- self-host secrets path with `ONEQUERY_HOME`:
+  `$ONEQUERY_HOME/self-host/secrets.toml`
 
-- default self-host secrets path on Unix:
-  `${XDG_CONFIG_HOME:-~/.config}/onequery/self-host/secrets.toml`
-- self-host secrets path with override:
-  `$ONEQUERY_HOME/config/self-host/secrets.toml`
-
-Files under those roots:
+Files under that root:
 
 - `self-host/config.toml`
 - `self-host/secrets.toml`

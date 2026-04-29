@@ -20,7 +20,6 @@
 //! | any non-terminal state | `child_exited` | runtime pid is valid and expected exit | `exited` | write status snapshot | `SupervisorStatusSnapshot(exited)` | terminal states reject; runtime pid mismatch rejects |
 //! | any non-terminal state | `child_exited` | runtime pid is valid and unexpected exit | `failed` | write status snapshot, write terminal runtime status snapshot, write process exit event | `SupervisorStatusSnapshot(failed)`, `RuntimeStatusSnapshot(failed)`, `LifecycleProcessExit` | terminal states reject; runtime pid mismatch rejects |
 //! | `failed` | `restart_scheduled` | failure came from a retryable unexpected child exit and attempt advances | `starting` | write status snapshot, schedule restart backoff | `SupervisorStatusSnapshot(starting)` | disabled/exhausted policy does not dispatch; stale attempts reject |
-//! | any non-terminal state | `artifact_recovery_completed` | recovery found active launch | current state | none | none | terminal states reject |
 //!
 //! Every accepted transition, including self-transitions without status
 //! snapshot effects, also emits one supervisor transition event-log effect.
@@ -61,6 +60,12 @@ pub(super) struct SupervisorMachineReduction {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+struct SupervisorReduction {
+    machine: SupervisorMachine,
+    effects: Vec<SupervisorEffect>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct SupervisorTransitionEffect {
     pub(super) event: SupervisorEventKind,
     pub(super) previous_phase: types::SupervisorPhase,
@@ -90,10 +95,15 @@ pub(super) enum SupervisorEffect {
         signal: Option<String>,
     },
     RequestRuntimeStop {
+        runtime_pid: u32,
         operation_id: String,
     },
-    SignalRuntimeTerminate,
-    SignalRuntimeKill,
+    SignalRuntimeTerminate {
+        runtime_pid: u32,
+    },
+    SignalRuntimeKill {
+        runtime_pid: u32,
+    },
     ScheduleGraceDeadline,
     ScheduleTerminateDeadline,
     ScheduleEscalationDeadline,
@@ -102,7 +112,6 @@ pub(super) enum SupervisorEffect {
     },
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) enum SupervisorEvent {
     LaunchRequested,
@@ -144,7 +153,6 @@ pub(super) enum SupervisorEvent {
         restart_attempt: u32,
         backoff: Duration,
     },
-    ArtifactRecoveryCompleted,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -163,7 +171,6 @@ pub(super) enum SupervisorEventKind {
     ChildExited,
     StartupDeadlineElapsed,
     RestartScheduled,
-    ArtifactRecoveryCompleted,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -273,7 +280,6 @@ impl SupervisorEvent {
             Self::ChildExited { .. } => SupervisorEventKind::ChildExited,
             Self::StartupDeadlineElapsed { .. } => SupervisorEventKind::StartupDeadlineElapsed,
             Self::RestartScheduled { .. } => SupervisorEventKind::RestartScheduled,
-            Self::ArtifactRecoveryCompleted => SupervisorEventKind::ArtifactRecoveryCompleted,
         }
     }
 
@@ -286,8 +292,7 @@ impl SupervisorEvent {
             | Self::StopIntentReceived { .. }
             | Self::StopRpcAccepted { .. }
             | Self::GraceDeadlineElapsed
-            | Self::TerminateDeadlineElapsed
-            | Self::ArtifactRecoveryCompleted => self.kind().label().to_owned(),
+            | Self::TerminateDeadlineElapsed => self.kind().label().to_owned(),
             Self::RestartScheduled {
                 restart_attempt,
                 backoff,
@@ -341,7 +346,6 @@ impl SupervisorEventKind {
             Self::ChildExited => "child_exited",
             Self::StartupDeadlineElapsed => "startup_deadline_elapsed",
             Self::RestartScheduled => "restart_scheduled",
-            Self::ArtifactRecoveryCompleted => "artifact_recovery_completed",
         }
     }
 }
@@ -362,7 +366,7 @@ pub(super) fn reduce_supervisor_machine(
     let event_kind = event.kind();
     let previous = machine.clone();
 
-    let mut reduction = match (machine.state, event.clone()) {
+    let reduction = match (machine.state, event.clone()) {
         (SupervisorMachineState::Starting, SupervisorEvent::LaunchRequested) => {
             if machine.launch_requested {
                 return Err(rejected(
@@ -427,13 +431,7 @@ pub(super) fn reduce_supervisor_machine(
             Ok(self_transition(machine))
         }
         (SupervisorMachineState::Handshaking, SupervisorEvent::WatchReady) => {
-            if machine.runtime_pid.is_none() {
-                return Err(rejected(
-                    machine.state,
-                    event_kind,
-                    "runtime pid is required before ready",
-                ));
-            }
+            require_runtime_pid(machine, event_kind, "runtime pid is required before ready")?;
 
             Ok(snapshot_transition(machine, SupervisorMachineState::Ready))
         }
@@ -441,19 +439,17 @@ pub(super) fn reduce_supervisor_machine(
             SupervisorMachineState::Ready,
             SupervisorEvent::StopIntentReceived { operation_id },
         ) => {
-            if machine.runtime_pid.is_none() {
-                return Err(rejected(
-                    machine.state,
-                    event_kind,
-                    "runtime pid is required before stop",
-                ));
-            }
+            let runtime_pid =
+                require_runtime_pid(machine, event_kind, "runtime pid is required before stop")?;
 
             let next = next_machine(machine, SupervisorMachineState::StopRequested);
             let mut reduction = snapshot_reduction(next);
             reduction
                 .effects
-                .push(SupervisorEffect::RequestRuntimeStop { operation_id });
+                .push(SupervisorEffect::RequestRuntimeStop {
+                    runtime_pid,
+                    operation_id,
+                });
             Ok(reduction)
         }
         (
@@ -473,19 +469,17 @@ pub(super) fn reduce_supervisor_machine(
             },
         )
         | (SupervisorMachineState::StopRequested, SupervisorEvent::GraceDeadlineElapsed) => {
-            if machine.runtime_pid.is_none() {
-                return Err(rejected(
-                    machine.state,
-                    event_kind,
-                    "runtime pid is required before termination",
-                ));
-            }
+            let runtime_pid = require_runtime_pid(
+                machine,
+                event_kind,
+                "runtime pid is required before termination",
+            )?;
 
             let next = next_machine(machine, SupervisorMachineState::Terminating);
             let mut reduction = snapshot_reduction(next);
             reduction
                 .effects
-                .push(SupervisorEffect::SignalRuntimeTerminate);
+                .push(SupervisorEffect::SignalRuntimeTerminate { runtime_pid });
             reduction
                 .effects
                 .push(SupervisorEffect::ScheduleTerminateDeadline);
@@ -505,17 +499,17 @@ pub(super) fn reduce_supervisor_machine(
             SupervisorFailureRetryability::Retryable,
         )),
         (SupervisorMachineState::Terminating, SupervisorEvent::TerminateDeadlineElapsed) => {
-            if machine.runtime_pid.is_none() {
-                return Err(rejected(
-                    machine.state,
-                    event_kind,
-                    "runtime pid is required before escalation",
-                ));
-            }
+            let runtime_pid = require_runtime_pid(
+                machine,
+                event_kind,
+                "runtime pid is required before escalation",
+            )?;
 
             let next = next_machine(machine, SupervisorMachineState::Escalating);
             let mut reduction = snapshot_reduction(next);
-            reduction.effects.push(SupervisorEffect::SignalRuntimeKill);
+            reduction
+                .effects
+                .push(SupervisorEffect::SignalRuntimeKill { runtime_pid });
             reduction
                 .effects
                 .push(SupervisorEffect::ScheduleEscalationDeadline);
@@ -575,19 +569,6 @@ pub(super) fn reduce_supervisor_machine(
                 )
             }
         },
-        (
-            SupervisorMachineState::Starting
-            | SupervisorMachineState::Handshaking
-            | SupervisorMachineState::Ready
-            | SupervisorMachineState::StopRequested
-            | SupervisorMachineState::Terminating
-            | SupervisorMachineState::Escalating,
-            SupervisorEvent::ArtifactRecoveryCompleted,
-        ) => Ok(SupervisorMachineReduction {
-            machine: next_machine(machine, machine.state),
-            transition: pending_transition(),
-            effects: Vec::new(),
-        }),
         (
             SupervisorMachineState::Failed,
             SupervisorEvent::RestartScheduled {
@@ -661,8 +642,7 @@ pub(super) fn reduce_supervisor_machine(
             | SupervisorEvent::EscalationDeadlineElapsed { .. }
             | SupervisorEvent::ChildExited { .. }
             | SupervisorEvent::StartupDeadlineElapsed { .. }
-            | SupervisorEvent::RestartScheduled { .. }
-            | SupervisorEvent::ArtifactRecoveryCompleted,
+            | SupervisorEvent::RestartScheduled { .. },
         ) => Err(rejected(
             machine.state,
             event_kind,
@@ -670,8 +650,12 @@ pub(super) fn reduce_supervisor_machine(
         )),
     }?;
 
-    reduction.transition = supervisor_transition_effect(&previous, &reduction.machine, &event);
-    Ok(reduction)
+    let transition = supervisor_transition_effect(&previous, &reduction.machine, &event);
+    Ok(SupervisorMachineReduction {
+        machine: reduction.machine,
+        transition,
+        effects: reduction.effects,
+    })
 }
 
 fn failed_transition(
@@ -679,7 +663,7 @@ fn failed_transition(
     code: types::SupervisorFailureCode,
     message: String,
     retryability: SupervisorFailureRetryability,
-) -> SupervisorMachineReduction {
+) -> SupervisorReduction {
     let mut next = next_machine(machine, SupervisorMachineState::Failed);
     next.failure = Some(SupervisorFailureInfo {
         code,
@@ -702,7 +686,7 @@ fn child_exited_transition(
     runtime_pid: u32,
     state: SupervisorMachineState,
     failure: Option<ChildExitedUnexpectedFailure>,
-) -> Result<SupervisorMachineReduction, SupervisorTransitionRejected> {
+) -> Result<SupervisorReduction, SupervisorTransitionRejected> {
     if runtime_pid == 0 {
         return Err(rejected(
             machine.state,
@@ -746,14 +730,13 @@ fn child_exited_transition(
 fn snapshot_transition(
     machine: &SupervisorMachine,
     state: SupervisorMachineState,
-) -> SupervisorMachineReduction {
+) -> SupervisorReduction {
     snapshot_reduction(next_machine(machine, state))
 }
 
-fn self_transition(machine: &SupervisorMachine) -> SupervisorMachineReduction {
-    SupervisorMachineReduction {
+fn self_transition(machine: &SupervisorMachine) -> SupervisorReduction {
+    SupervisorReduction {
         machine: next_machine(machine, machine.state),
-        transition: pending_transition(),
         effects: Vec::new(),
     }
 }
@@ -769,9 +752,8 @@ fn next_machine(machine: &SupervisorMachine, state: SupervisorMachineState) -> S
     }
 }
 
-fn snapshot_reduction(machine: SupervisorMachine) -> SupervisorMachineReduction {
-    SupervisorMachineReduction {
-        transition: pending_transition(),
+fn snapshot_reduction(machine: SupervisorMachine) -> SupervisorReduction {
+    SupervisorReduction {
         effects: vec![SupervisorEffect::WriteStatusSnapshot {
             phase: machine.state.phase(),
             supervisor_sequence: machine.supervisor_sequence,
@@ -780,6 +762,16 @@ fn snapshot_reduction(machine: SupervisorMachine) -> SupervisorMachineReduction 
         }],
         machine,
     }
+}
+
+fn require_runtime_pid(
+    machine: &SupervisorMachine,
+    event: SupervisorEventKind,
+    reason: &'static str,
+) -> Result<u32, SupervisorTransitionRejected> {
+    machine
+        .runtime_pid
+        .ok_or_else(|| rejected(machine.state, event, reason))
 }
 
 fn supervisor_transition_effect(
@@ -800,21 +792,6 @@ fn supervisor_transition_effect(
         failure: current.failure.clone(),
         exit_code,
         signal,
-    }
-}
-
-fn pending_transition() -> SupervisorTransitionEffect {
-    SupervisorTransitionEffect {
-        event: SupervisorEventKind::LaunchRequested,
-        previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_UNSPECIFIED,
-        current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_UNSPECIFIED,
-        supervisor_sequence: 0,
-        runtime_pid: None,
-        reason: String::new(),
-        caller_operation_id: None,
-        failure: None,
-        exit_code: None,
-        signal: None,
     }
 }
 

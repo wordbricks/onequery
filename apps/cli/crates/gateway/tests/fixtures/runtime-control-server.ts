@@ -38,6 +38,11 @@ const actor = createRuntimeControlActor({
     dataDir: "/tmp/onequery-data",
     launchId: "launch-rust-connect-unix",
     pid: 4242,
+    supervisor: {
+      generation: 7n,
+      pid: 1001,
+      supervisorId: "gateway-supervisor-test",
+    },
   },
   lease,
   now: () => new Date("2026-04-27T00:00:00.000Z"),

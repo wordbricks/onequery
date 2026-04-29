@@ -3,8 +3,8 @@ source: crates/onequery-gateway/src/tests.rs
 expression: "output.lines.join(\"\\n\")"
 ---
 Gateway foundation ready.
-Config dir: /tmp/onequery/config/self-host
-Data dir: /tmp/onequery/data
+Config dir: /tmp/onequery/self-host
+Data dir: /tmp/onequery
 Listen: 127.0.0.1:5656
 Created self-host config.toml: yes
 Created secrets.toml: yes

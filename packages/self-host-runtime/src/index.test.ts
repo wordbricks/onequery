@@ -324,6 +324,11 @@ describe("startServer", () => {
         logWriter: expect.objectContaining({
           append: expect.any(Function),
         }),
+        supervisor: expect.objectContaining({
+          generation: 7n,
+          pid: 1001,
+          supervisorId: "gateway-supervisor:1001",
+        }),
       })
     );
     expect(mocks.attachGracefulShutdownHandlers).toHaveBeenCalledWith(
@@ -345,11 +350,16 @@ describe("startServer", () => {
     );
     expect(mocks.createRuntimeControlActor).toHaveBeenCalledWith(
       expect.objectContaining({
-        identity: {
+        identity: expect.objectContaining({
           dataDir: runtimePaths.dataDir,
           launchId: "launch-a",
           pid: process.pid,
-        },
+          supervisor: expect.objectContaining({
+            generation: 7n,
+            pid: 1001,
+            supervisorId: "gateway-supervisor:1001",
+          }),
+        }),
       })
     );
     expect(mocks.attachRuntimeControlShutdownController).toHaveBeenCalledWith(

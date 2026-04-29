@@ -1,6 +1,11 @@
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 import type { SupervisorIdentity } from "@onequery/proto-runtime/runtime/v1/common_pb";
 
+export type RuntimeSupervisorIdentity = Pick<
+  SupervisorIdentity,
+  "generation" | "pid" | "supervisorId"
+>;
+
 export type RuntimeControlEndpoint = NonNullable<
   ServerLaunchConfig["runtimeControl"]
 >;
@@ -55,9 +60,8 @@ export interface RuntimeShutdownGraceTimeout {
 export interface RuntimeShutdownTarget {
   dataDir: string;
   launchId: string;
-  pid?: number;
-  supervisorGeneration?: bigint;
-  supervisorPid?: number;
+  pid: number;
+  supervisor: RuntimeSupervisorIdentity;
 }
 
 export interface RuntimeShutdownRequest {
@@ -74,7 +78,7 @@ export interface LifecycleOptions {
   logWriter?: LifecycleLogWriter;
   now?: () => Date;
   pid?: number;
-  supervisor?: SupervisorIdentity;
+  supervisor: SupervisorIdentity;
 }
 
 export interface CleanupOptions {

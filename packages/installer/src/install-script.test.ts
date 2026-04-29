@@ -63,9 +63,19 @@ describe("install script surface", () => {
 
   it("builds an installer that links the packaged runtime and provisions pinned managed Node.js 24 when needed", () => {
     const script = createInstallScript();
+    const dollar = "$";
 
     expect(script).toContain(
       'install_bundle_url="$RELEASE_BASE_URL/onequery-install-$platform_tag.tgz"'
+    );
+    expect(script).toContain(
+      `ONEQUERY_HOME="${dollar}{ONEQUERY_HOME:-$HOME/.onequery}"`
+    );
+    expect(script).toContain(
+      `INSTALL_ROOT="${dollar}{ONEQUERY_INSTALL_ROOT:-$ONEQUERY_HOME/packages/standalone}"`
+    );
+    expect(script).toContain(
+      'install_dir="$INSTALL_ROOT/releases/$release_name"'
     );
     expect(script).toContain(
       'ln -sfn "$install_dir/bin/onequery" "$BIN_DIR/onequery"'
@@ -269,8 +279,8 @@ esac
 
       const launcherPath = join(
         installRoot,
-        "versions",
-        "0.1.22",
+        "releases",
+        "0.1.22-aarch64-apple-darwin",
         "bin",
         "onequery"
       );
@@ -298,8 +308,8 @@ esac
       expect(symlinkRun.stdout).toContain(
         join(
           installRoot,
-          "versions",
-          "0.1.22",
+          "releases",
+          "0.1.22-aarch64-apple-darwin",
           "vendor",
           "aarch64-apple-darwin"
         )
@@ -307,8 +317,8 @@ esac
       expect(symlinkRun.stdout).toContain(
         join(
           installRoot,
-          "versions",
-          "0.1.22",
+          "releases",
+          "0.1.22-aarch64-apple-darwin",
           "runtime",
           "node",
           "bin",
@@ -318,8 +328,8 @@ esac
 
       const managedNodePath = join(
         installRoot,
-        "versions",
-        "0.1.22",
+        "releases",
+        "0.1.22-aarch64-apple-darwin",
         "runtime",
         "node",
         "bin",

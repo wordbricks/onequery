@@ -8,17 +8,11 @@ import {
   serveRuntimeControl,
 } from "../../../../../../packages/self-host-runtime/src/self-host/runtime-control";
 
-const [
-  launchConfigPath,
-  supervisorPidRaw,
-  supervisorIdRaw,
-  supervisorGenerationRaw,
-  ...argvModes
-] = process.argv.slice(2);
+const [launchConfigPath, ...argvModes] = process.argv.slice(2);
 
 if (!launchConfigPath) {
   throw new Error(
-    "usage: supervisor-escalation-runtime.ts <launch-config-path> [<supervisor-pid> <supervisor-id> <supervisor-generation>] [modes...]"
+    "usage: supervisor-escalation-runtime.ts <launch-config-path> [modes...]"
   );
 }
 
@@ -35,15 +29,6 @@ if (launchConfig.runtimeControl?.transport?.kind !== "unix" || !socketPath) {
   throw new Error("supervisor escalation fixture requires unix runtimeControl");
 }
 
-if (
-  (supervisorPidRaw || supervisorIdRaw || supervisorGenerationRaw) &&
-  (!supervisorPidRaw || !supervisorIdRaw || !supervisorGenerationRaw)
-) {
-  throw new Error(
-    "supervisor escalation fixture requires supervisor pid, id, and generation when supervisor identity arguments are provided"
-  );
-}
-
 const lifecyclePaths: SelfHostLifecyclePaths = {
   controlEndpoint: launchConfig.runtimeControl,
   dataDir: launchConfig.runtimePaths.dataDir,
@@ -53,11 +38,16 @@ const lifecyclePaths: SelfHostLifecyclePaths = {
   runtimeStatusSnapshotPath:
     launchConfig.runtimePaths.runtimeStatusSnapshotPath,
 };
-const supervisorPid = supervisorPidRaw
-  ? Number(supervisorPidRaw)
-  : process.ppid;
-const supervisorId = supervisorIdRaw ?? `gateway-supervisor:${supervisorPid}`;
-const supervisorGeneration = BigInt(supervisorGenerationRaw ?? "1");
+const launchSupervisor = launchConfig.supervisor;
+if (!launchSupervisor) {
+  throw new Error(
+    "supervisor escalation fixture requires a launchConfig.supervisor block"
+  );
+}
+
+const supervisorPid = Number(launchSupervisor.pid);
+const supervisorId = launchSupervisor.supervisorId;
+const supervisorGeneration = BigInt(launchSupervisor.generation);
 
 await mkdir(dirname(socketPath), { mode: 0o700, recursive: true });
 
@@ -75,8 +65,11 @@ const actor = createRuntimeControlActor({
     dataDir: lifecyclePaths.dataDir,
     launchId: launchConfig.launchId,
     pid: process.pid,
-    supervisorGeneration,
-    supervisorPid,
+    supervisor: {
+      generation: supervisorGeneration,
+      pid: supervisorPid,
+      supervisorId,
+    },
   },
   lease,
 });

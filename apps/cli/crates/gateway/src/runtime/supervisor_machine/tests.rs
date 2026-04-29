@@ -83,6 +83,7 @@ fn graceful_stop_emits_deferred_rpc_and_deadline_effects() {
                 failure: None,
             },
             SupervisorEffect::RequestRuntimeStop {
+                runtime_pid: 4242,
                 operation_id: "stop-operation-a".to_owned(),
             },
         ]
@@ -122,7 +123,7 @@ fn stop_rpc_fallback_enters_terminating_with_process_effects() {
                 runtime_pid: Some(4242),
                 failure: None,
             },
-            SupervisorEffect::SignalRuntimeTerminate,
+            SupervisorEffect::SignalRuntimeTerminate { runtime_pid: 4242 },
             SupervisorEffect::ScheduleTerminateDeadline,
         ]
     );
@@ -496,11 +497,10 @@ enum SupervisorEventSample {
     ChildExitedUnexpected,
     StartupDeadlineElapsed,
     RestartScheduled,
-    ArtifactRecoveryCompleted,
 }
 
 impl SupervisorEventSample {
-    const ALL: [Self; 16] = [
+    const ALL: [Self; 15] = [
         Self::LaunchRequested,
         Self::LaunchFailed,
         Self::ChildSpawned,
@@ -516,7 +516,6 @@ impl SupervisorEventSample {
         Self::ChildExitedUnexpected,
         Self::StartupDeadlineElapsed,
         Self::RestartScheduled,
-        Self::ArtifactRecoveryCompleted,
     ];
 
     fn event(self) -> SupervisorEvent {
@@ -536,7 +535,6 @@ impl SupervisorEventSample {
             Self::ChildExitedUnexpected => unexpected_child_exited_event(4242),
             Self::StartupDeadlineElapsed => startup_deadline_elapsed_event(),
             Self::RestartScheduled => restart_scheduled_event(),
-            Self::ArtifactRecoveryCompleted => SupervisorEvent::ArtifactRecoveryCompleted,
         }
     }
 }
@@ -591,7 +589,6 @@ impl SupervisorMachineFixture {
                 SupervisorEventKind::LaunchRequested
                     | SupervisorEventKind::ChildExited
                     | SupervisorEventKind::StartupDeadlineElapsed
-                    | SupervisorEventKind::ArtifactRecoveryCompleted
             ),
             Self::StartingAfterLaunch => matches!(
                 event,
@@ -599,7 +596,6 @@ impl SupervisorMachineFixture {
                     | SupervisorEventKind::ChildSpawned
                     | SupervisorEventKind::ChildExited
                     | SupervisorEventKind::StartupDeadlineElapsed
-                    | SupervisorEventKind::ArtifactRecoveryCompleted
             ),
             Self::Handshaking => matches!(
                 event,
@@ -607,13 +603,10 @@ impl SupervisorMachineFixture {
                     | SupervisorEventKind::WatchReady
                     | SupervisorEventKind::ChildExited
                     | SupervisorEventKind::StartupDeadlineElapsed
-                    | SupervisorEventKind::ArtifactRecoveryCompleted
             ),
             Self::Ready => matches!(
                 event,
-                SupervisorEventKind::StopIntentReceived
-                    | SupervisorEventKind::ChildExited
-                    | SupervisorEventKind::ArtifactRecoveryCompleted
+                SupervisorEventKind::StopIntentReceived | SupervisorEventKind::ChildExited
             ),
             Self::StopRequested => matches!(
                 event,
@@ -621,19 +614,14 @@ impl SupervisorMachineFixture {
                     | SupervisorEventKind::StopRpcFailed
                     | SupervisorEventKind::GraceDeadlineElapsed
                     | SupervisorEventKind::ChildExited
-                    | SupervisorEventKind::ArtifactRecoveryCompleted
             ),
             Self::Terminating => matches!(
                 event,
-                SupervisorEventKind::TerminateDeadlineElapsed
-                    | SupervisorEventKind::ChildExited
-                    | SupervisorEventKind::ArtifactRecoveryCompleted
+                SupervisorEventKind::TerminateDeadlineElapsed | SupervisorEventKind::ChildExited
             ),
             Self::Escalating => matches!(
                 event,
-                SupervisorEventKind::EscalationDeadlineElapsed
-                    | SupervisorEventKind::ChildExited
-                    | SupervisorEventKind::ArtifactRecoveryCompleted
+                SupervisorEventKind::EscalationDeadlineElapsed | SupervisorEventKind::ChildExited
             ),
             Self::Exited => false,
             Self::FailedAfterUnexpectedChildExit => {

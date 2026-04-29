@@ -69,7 +69,7 @@ describe("packaged server startup", () => {
       mode: "self-host",
       publicOrigin: "http://127.0.0.1:5656",
       runtimePaths: {
-        dataDir: "/tmp/onequery/data",
+        dataDir: "/tmp/onequery",
       },
     });
   });

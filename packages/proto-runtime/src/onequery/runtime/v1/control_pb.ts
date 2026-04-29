@@ -24,6 +24,7 @@ import type {
   RuntimeStopCompletion,
   RuntimeStopDisposition,
   RuntimeTransition,
+  SupervisorIdentity,
 } from "./common_pb.js";
 import { file_onequery_runtime_v1_common } from "./common_pb.js";
 
@@ -31,7 +32,7 @@ import { file_onequery_runtime_v1_common } from "./common_pb.js";
  * Describes the file onequery/runtime/v1/control.proto.
  */
 export const file_onequery_runtime_v1_control: GenFile /*@__PURE__*/ = fileDesc(
-  "CiFvbmVxdWVyeS9ydW50aW1lL3YxL2NvbnRyb2wucHJvdG8SE29uZXF1ZXJ5LnJ1bnRpbWUudjEiwAEKDVJ1bnRpbWVUYXJnZXQSIAoJbGF1bmNoX2lkGAEgASgJQg26SArIAQFyBRABGIABEh8KCGRhdGFfZGlyGAIgASgJQg26SArIAQFyBRABGIAgEhkKA3BpZBgDIAEoDUIMqgECCAG6SAQqAigAEiQKDnN1cGVydmlzb3JfcGlkGAQgASgNQgyqAQIIAbpIBCoCKAASKwoVc3VwZXJ2aXNvcl9nZW5lcmF0aW9uGAUgASgEQgyqAQIIAbpIBDICKAAiRgoQR2V0U3RhdHVzUmVxdWVzdBIyCgZ0YXJnZXQYASABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVUYXJnZXQiTwoRR2V0U3RhdHVzUmVzcG9uc2USOgoGc3RhdHVzGAEgASgLMiIub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU3RhdHVzQga6SAPIAQEingIKC1N0b3BSZXF1ZXN0EiEKDG9wZXJhdGlvbl9pZBgBIAEoCUILukgIyAEBcgOwAQESHQoGcmVhc29uGAIgASgJQg26SArIAQFyBRABGIAEEk0KCmNvbXBsZXRpb24YAyABKA4yKi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdG9wQ29tcGxldGlvbkINukgKyAEBggEEEAEgABJCCg1ncmFjZV90aW1lb3V0GAQgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uQhC6SA3IAQGqAQciAwisAioAEjoKBnRhcmdldBgFIAEoCzIiLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVRhcmdldEIGukgDyAEBItcBCgxTdG9wUmVzcG9uc2USTwoLZGlzcG9zaXRpb24YASABKA4yKy5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdG9wRGlzcG9zaXRpb25CDbpICsgBAYIBBBABIAASOgoGc3RhdHVzGAIgASgLMiIub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU3RhdHVzQga6SAPIAQESOgoKdHJhbnNpdGlvbhgDIAEoCzImLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVRyYW5zaXRpb24imwEKEldhdGNoU3RhdHVzUmVxdWVzdBInChZhZnRlcl9ydW50aW1lX3NlcXVlbmNlGAEgASgEQge6SAQyAigAEiAKEGluY2x1ZGVfc25hcHNob3QYAiABKAhCBrpIA8gBARI6CgZ0YXJnZXQYAyABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVUYXJnZXRCBrpIA8gBASKbAQoTV2F0Y2hTdGF0dXNSZXNwb25zZRI2CghzbmFwc2hvdBgBIAEoCzIiLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVN0YXR1c0gAEjwKCnRyYW5zaXRpb24YAiABKAsyJi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVUcmFuc2l0aW9uSABCDgoFZXZlbnQSBbpIAggBMq4CChVSdW50aW1lQ29udHJvbFNlcnZpY2USXwoJR2V0U3RhdHVzEiUub25lcXVlcnkucnVudGltZS52MS5HZXRTdGF0dXNSZXF1ZXN0GiYub25lcXVlcnkucnVudGltZS52MS5HZXRTdGF0dXNSZXNwb25zZSIDkAIBEksKBFN0b3ASIC5vbmVxdWVyeS5ydW50aW1lLnYxLlN0b3BSZXF1ZXN0GiEub25lcXVlcnkucnVudGltZS52MS5TdG9wUmVzcG9uc2USZwoLV2F0Y2hTdGF0dXMSJy5vbmVxdWVyeS5ydW50aW1lLnYxLldhdGNoU3RhdHVzUmVxdWVzdBooLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuV2F0Y2hTdGF0dXNSZXNwb25zZSIDkAIBMAFiCGVkaXRpb25zcOgH",
+  "CiFvbmVxdWVyeS9ydW50aW1lL3YxL2NvbnRyb2wucHJvdG8SE29uZXF1ZXJ5LnJ1bnRpbWUudjEibQoNUnVudGltZVRhcmdldBIgCglsYXVuY2hfaWQYASABKAlCDbpICsgBAXIFEAEYgAESHwoIZGF0YV9kaXIYAiABKAlCDbpICsgBAXIFEAEYgCASGQoDcGlkGAMgASgNQgyqAQIIAbpIBCoCKAAitAEKEVJ1bnRpbWVTdG9wVGFyZ2V0EiAKCWxhdW5jaF9pZBgBIAEoCUINukgKyAEBcgUQARiAARIfCghkYXRhX2RpchgCIAEoCUINukgKyAEBcgUQARiAIBIXCgNwaWQYAyABKA1CCrpIB8gBASoCIAASQwoKc3VwZXJ2aXNvchgEIAEoCzInLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3VwZXJ2aXNvcklkZW50aXR5Qga6SAPIAQEiRgoQR2V0U3RhdHVzUmVxdWVzdBIyCgZ0YXJnZXQYASABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVUYXJnZXQiTwoRR2V0U3RhdHVzUmVzcG9uc2USOgoGc3RhdHVzGAEgASgLMiIub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU3RhdHVzQga6SAPIAQEiogIKC1N0b3BSZXF1ZXN0EiEKDG9wZXJhdGlvbl9pZBgBIAEoCUILukgIyAEBcgOwAQESHQoGcmVhc29uGAIgASgJQg26SArIAQFyBRABGIAEEk0KCmNvbXBsZXRpb24YAyABKA4yKi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdG9wQ29tcGxldGlvbkINukgKyAEBggEEEAEgABJCCg1ncmFjZV90aW1lb3V0GAQgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uQhC6SA3IAQGqAQciAwisAioAEj4KBnRhcmdldBgFIAEoCzImLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVN0b3BUYXJnZXRCBrpIA8gBASLXAQoMU3RvcFJlc3BvbnNlEk8KC2Rpc3Bvc2l0aW9uGAEgASgOMisub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lU3RvcERpc3Bvc2l0aW9uQg26SArIAQGCAQQQASAAEjoKBnN0YXR1cxgCIAEoCzIiLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuUnVudGltZVN0YXR1c0IGukgDyAEBEjoKCnRyYW5zaXRpb24YAyABKAsyJi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVUcmFuc2l0aW9uIpsBChJXYXRjaFN0YXR1c1JlcXVlc3QSJwoWYWZ0ZXJfcnVudGltZV9zZXF1ZW5jZRgBIAEoBEIHukgEMgIoABIgChBpbmNsdWRlX3NuYXBzaG90GAIgASgIQga6SAPIAQESOgoGdGFyZ2V0GAMgASgLMiIub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lVGFyZ2V0Qga6SAPIAQEimwEKE1dhdGNoU3RhdHVzUmVzcG9uc2USNgoIc25hcHNob3QYASABKAsyIi5vbmVxdWVyeS5ydW50aW1lLnYxLlJ1bnRpbWVTdGF0dXNIABI8Cgp0cmFuc2l0aW9uGAIgASgLMiYub25lcXVlcnkucnVudGltZS52MS5SdW50aW1lVHJhbnNpdGlvbkgAQg4KBWV2ZW50EgW6SAIIATKuAgoVUnVudGltZUNvbnRyb2xTZXJ2aWNlEl8KCUdldFN0YXR1cxIlLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuR2V0U3RhdHVzUmVxdWVzdBomLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuR2V0U3RhdHVzUmVzcG9uc2UiA5ACARJLCgRTdG9wEiAub25lcXVlcnkucnVudGltZS52MS5TdG9wUmVxdWVzdBohLm9uZXF1ZXJ5LnJ1bnRpbWUudjEuU3RvcFJlc3BvbnNlEmcKC1dhdGNoU3RhdHVzEicub25lcXVlcnkucnVudGltZS52MS5XYXRjaFN0YXR1c1JlcXVlc3QaKC5vbmVxdWVyeS5ydW50aW1lLnYxLldhdGNoU3RhdHVzUmVzcG9uc2UiA5ACATABYghlZGl0aW9uc3DoBw",
   [
     file_buf_validate_validate,
     file_google_protobuf_duration,
@@ -57,16 +58,6 @@ export type RuntimeTarget = Message<"onequery.runtime.v1.RuntimeTarget"> & {
    * @generated from field: uint32 pid = 3 [features.field_presence = EXPLICIT];
    */
   pid: number;
-
-  /**
-   * @generated from field: uint32 supervisor_pid = 4 [features.field_presence = EXPLICIT];
-   */
-  supervisorPid: number;
-
-  /**
-   * @generated from field: uint64 supervisor_generation = 5 [features.field_presence = EXPLICIT];
-   */
-  supervisorGeneration: bigint;
 };
 
 /**
@@ -75,6 +66,39 @@ export type RuntimeTarget = Message<"onequery.runtime.v1.RuntimeTarget"> & {
  */
 export const RuntimeTargetSchema: GenMessage<RuntimeTarget> /*@__PURE__*/ =
   messageDesc(file_onequery_runtime_v1_control, 0);
+
+/**
+ * @generated from message onequery.runtime.v1.RuntimeStopTarget
+ */
+export type RuntimeStopTarget =
+  Message<"onequery.runtime.v1.RuntimeStopTarget"> & {
+    /**
+     * @generated from field: string launch_id = 1;
+     */
+    launchId: string;
+
+    /**
+     * @generated from field: string data_dir = 2;
+     */
+    dataDir: string;
+
+    /**
+     * @generated from field: uint32 pid = 3;
+     */
+    pid: number;
+
+    /**
+     * @generated from field: onequery.runtime.v1.SupervisorIdentity supervisor = 4;
+     */
+    supervisor?: SupervisorIdentity;
+  };
+
+/**
+ * Describes the message onequery.runtime.v1.RuntimeStopTarget.
+ * Use `create(RuntimeStopTargetSchema)` to create a new message.
+ */
+export const RuntimeStopTargetSchema: GenMessage<RuntimeStopTarget> /*@__PURE__*/ =
+  messageDesc(file_onequery_runtime_v1_control, 1);
 
 /**
  * @generated from message onequery.runtime.v1.GetStatusRequest
@@ -92,7 +116,7 @@ export type GetStatusRequest =
  * Use `create(GetStatusRequestSchema)` to create a new message.
  */
 export const GetStatusRequestSchema: GenMessage<GetStatusRequest> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 1);
+  messageDesc(file_onequery_runtime_v1_control, 2);
 
 /**
  * @generated from message onequery.runtime.v1.GetStatusResponse
@@ -110,7 +134,7 @@ export type GetStatusResponse =
  * Use `create(GetStatusResponseSchema)` to create a new message.
  */
 export const GetStatusResponseSchema: GenMessage<GetStatusResponse> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 2);
+  messageDesc(file_onequery_runtime_v1_control, 3);
 
 /**
  * @generated from message onequery.runtime.v1.StopRequest
@@ -137,9 +161,9 @@ export type StopRequest = Message<"onequery.runtime.v1.StopRequest"> & {
   graceTimeout?: Duration;
 
   /**
-   * @generated from field: onequery.runtime.v1.RuntimeTarget target = 5;
+   * @generated from field: onequery.runtime.v1.RuntimeStopTarget target = 5;
    */
-  target?: RuntimeTarget;
+  target?: RuntimeStopTarget;
 };
 
 /**
@@ -147,7 +171,7 @@ export type StopRequest = Message<"onequery.runtime.v1.StopRequest"> & {
  * Use `create(StopRequestSchema)` to create a new message.
  */
 export const StopRequestSchema: GenMessage<StopRequest> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 3);
+  messageDesc(file_onequery_runtime_v1_control, 4);
 
 /**
  * @generated from message onequery.runtime.v1.StopResponse
@@ -174,7 +198,7 @@ export type StopResponse = Message<"onequery.runtime.v1.StopResponse"> & {
  * Use `create(StopResponseSchema)` to create a new message.
  */
 export const StopResponseSchema: GenMessage<StopResponse> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 4);
+  messageDesc(file_onequery_runtime_v1_control, 5);
 
 /**
  * @generated from message onequery.runtime.v1.WatchStatusRequest
@@ -202,7 +226,7 @@ export type WatchStatusRequest =
  * Use `create(WatchStatusRequestSchema)` to create a new message.
  */
 export const WatchStatusRequestSchema: GenMessage<WatchStatusRequest> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 5);
+  messageDesc(file_onequery_runtime_v1_control, 6);
 
 /**
  * @generated from message onequery.runtime.v1.WatchStatusResponse
@@ -235,7 +259,7 @@ export type WatchStatusResponse =
  * Use `create(WatchStatusResponseSchema)` to create a new message.
  */
 export const WatchStatusResponseSchema: GenMessage<WatchStatusResponse> /*@__PURE__*/ =
-  messageDesc(file_onequery_runtime_v1_control, 6);
+  messageDesc(file_onequery_runtime_v1_control, 7);
 
 /**
  * @generated from service onequery.runtime.v1.RuntimeControlService

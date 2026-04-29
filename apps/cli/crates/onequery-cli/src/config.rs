@@ -870,7 +870,7 @@ port = 4545
     fn load_merges_user_file_layer_over_defaults() {
         let home_dir =
             std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
-        let config_dir = home_dir.join(".config").join("onequery");
+        let config_dir = home_dir.join(".onequery");
         fs::create_dir_all(&config_dir).unwrap_or_else(|error| {
             panic!("expected config directory creation to succeed: {error}");
         });
@@ -951,7 +951,7 @@ active = "acme"
     fn load_records_default_and_user_config_layers() {
         let home_dir =
             std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
-        let config_dir = home_dir.join(".config").join("onequery");
+        let config_dir = home_dir.join(".onequery");
         fs::create_dir_all(&config_dir).unwrap_or_else(|error| {
             panic!("expected config directory creation to succeed: {error}");
         });
@@ -1010,7 +1010,7 @@ active = "acme"
         let _subscriber_lock = crate::test_support::lock_tracing_subscriber();
         let home_dir =
             std::env::temp_dir().join(format!("onequery-config-test-{}", Uuid::new_v4()));
-        let config_dir = home_dir.join(".config").join("onequery");
+        let config_dir = home_dir.join(".onequery");
         fs::create_dir_all(&config_dir).unwrap_or_else(|error| {
             panic!("expected config directory creation to succeed: {error}");
         });

@@ -42,6 +42,25 @@ const serverLaunchRuntimeControlFencingSchema = z
   })
   .strict();
 
+const positiveUint64StringSchema = z
+  .string()
+  .regex(/^(?:[1-9][0-9]*)$/, "Expected a positive uint64 decimal string.")
+  .refine((value) => {
+    try {
+      return BigInt(value) <= 18_446_744_073_709_551_615n;
+    } catch {
+      return false;
+    }
+  }, "Expected a uint64 decimal string.");
+
+export const serverLaunchSupervisorSchema = z
+  .object({
+    generation: positiveUint64StringSchema,
+    pid: z.number().int().min(1).max(4_294_967_295),
+    supervisorId: nonEmptyStringSchema,
+  })
+  .strict();
+
 export const serverLaunchRuntimeControlTransportSchema = z.discriminatedUnion(
   "kind",
   [
@@ -156,6 +175,7 @@ export const serverLaunchConfigSchema = z
     runtimePaths: serverLaunchRuntimePathsSchema.optional(),
     smtp: serverLaunchSmtpSchema.optional(),
     storage: serverLaunchStorageSchema,
+    supervisor: serverLaunchSupervisorSchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -188,6 +208,14 @@ export const serverLaunchConfigSchema = z
         code: "custom",
         message: "Self-host launch config requires launchId.",
         path: ["launchId"],
+      });
+    }
+
+    if (value.mode === "self-host" && !value.supervisor) {
+      context.addIssue({
+        code: "custom",
+        message: "Self-host launch config requires supervisor.",
+        path: ["supervisor"],
       });
     }
 
@@ -238,6 +266,9 @@ export type ServerLaunchRuntimeControlTransportConfig = z.infer<
   typeof serverLaunchRuntimeControlTransportSchema
 >;
 export type ServerLaunchSmtpConfig = z.infer<typeof serverLaunchSmtpSchema>;
+export type ServerLaunchSupervisorConfig = z.infer<
+  typeof serverLaunchSupervisorSchema
+>;
 
 function buildServerLaunchConfigError(
   source: string,

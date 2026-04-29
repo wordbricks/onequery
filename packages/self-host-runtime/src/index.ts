@@ -1,6 +1,9 @@
 import { join } from "node:path";
 
+import { create } from "@bufbuild/protobuf";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
+import { SupervisorIdentitySchema } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import type { SupervisorIdentity } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import { createMemoryApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import type { ApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import { createServerRuntimeConfig } from "@onequery/server/runtime";
@@ -89,6 +92,7 @@ type SelfHostLaunchConfig = ServerLaunchConfig & {
   mode: "self-host";
   runtimeControl: NonNullable<ServerLaunchConfig["runtimeControl"]>;
   runtimePaths: NonNullable<ServerLaunchConfig["runtimePaths"]>;
+  supervisor: NonNullable<ServerLaunchConfig["supervisor"]>;
 };
 
 type LaunchLifecycleMode =
@@ -267,8 +271,19 @@ function isSelfHostLaunchConfig(
     launchConfig.mode === "self-host" &&
     launchConfig.runtimeControl !== undefined &&
     launchConfig.runtimePaths !== undefined &&
-    typeof launchConfig.launchId === "string"
+    typeof launchConfig.launchId === "string" &&
+    launchConfig.supervisor !== undefined
   );
+}
+
+function createSupervisorIdentity(
+  supervisor: SelfHostLaunchConfig["supervisor"]
+): SupervisorIdentity {
+  return create(SupervisorIdentitySchema, {
+    generation: BigInt(supervisor.generation),
+    pid: supervisor.pid,
+    supervisorId: supervisor.supervisorId,
+  });
 }
 
 function resolveLaunchLifecycleModeResult(
@@ -284,7 +299,7 @@ function resolveLaunchLifecycleModeResult(
     return Result.err(
       createWorkflowError(
         "resolve_lifecycle_paths",
-        "self-host launch config requires runtimePaths, runtimeControl, and launchId",
+        "self-host launch config requires runtimePaths, runtimeControl, launchId, and supervisor",
         launchConfig
       )
     );
@@ -412,11 +427,15 @@ async function resolveLifecycleContextResult(
           lifecyclePaths,
           dependencies.appendLifecycleLog
         );
+        const supervisor = createSupervisorIdentity(
+          launchLifecycleMode.launchConfig.supervisor
+        );
         const lease = yield* Result.await(
           dependencies
             .acquireRuntimeLifecycleLeaseResult(lifecyclePaths, {
               launchId: launchLifecycleMode.launchConfig.launchId,
               logWriter,
+              supervisor,
             })
             .then((result) =>
               result.mapError((cause) =>
@@ -433,6 +452,7 @@ async function resolveLifecycleContextResult(
             dataDir: lifecyclePaths.dataDir,
             launchId: launchLifecycleMode.launchConfig.launchId,
             pid: process.pid,
+            supervisor,
           },
           lease,
         });

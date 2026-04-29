@@ -21,7 +21,9 @@ use super::launch_config::ServerLaunchMigrationsConfig;
 use super::launch_config::ServerLaunchRateLimitConfig;
 use super::launch_config::ServerLaunchSmtpConfig;
 use super::launch_config::ServerLaunchStorageConfig;
+use super::launch_config::ServerLaunchSupervisorConfig;
 use super::launch_config::write_self_host_launch_config;
+use super::launch_config::write_self_host_launch_supervisor_identity;
 use super::paths::SelfHostRuntimePaths;
 use super::paths::self_host_launch_config_path_for_launch;
 use super::secrets::AuthSecrets;
@@ -36,10 +38,7 @@ const TEST_MASTER_ENCRYPTION_KEY: &str = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ
 
 fn create_test_paths(label: &str) -> (PathBuf, SelfHostRuntimePaths) {
     let test_dir = std::env::temp_dir().join(format!("onequery-{label}-{}", Uuid::new_v4()));
-    let paths = SelfHostRuntimePaths::from_dirs(
-        test_dir.join("config").join("self-host"),
-        test_dir.join("data"),
-    );
+    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
 
     (test_dir, paths)
 }
@@ -69,32 +68,38 @@ fn valid_self_host_secrets_toml() -> String {
 #[test]
 fn runtime_paths_follow_self_host_layout_contract() {
     let paths = SelfHostRuntimePaths::from_dirs(
-        PathBuf::from("/config/onequery/self-host"),
-        PathBuf::from("/data/onequery"),
+        PathBuf::from("/home/alice/.onequery/self-host"),
+        PathBuf::from("/home/alice/.onequery"),
     );
 
     let expected = SelfHostRuntimePaths {
-        config_dir: PathBuf::from("/config/onequery/self-host"),
-        data_dir: PathBuf::from("/data/onequery"),
-        config_path: PathBuf::from("/config/onequery/self-host/config.toml"),
-        secrets_path: PathBuf::from("/config/onequery/self-host/secrets.toml"),
-        pglite_dir: PathBuf::from("/data/onequery/pglite/onequery"),
-        logs_dir: PathBuf::from("/data/onequery/logs"),
-        server_log_path: PathBuf::from("/data/onequery/logs/server.log"),
-        backups_dir: PathBuf::from("/data/onequery/backups"),
-        run_dir: PathBuf::from("/data/onequery/run"),
+        config_dir: PathBuf::from("/home/alice/.onequery/self-host"),
+        data_dir: PathBuf::from("/home/alice/.onequery"),
+        config_path: PathBuf::from("/home/alice/.onequery/self-host/config.toml"),
+        secrets_path: PathBuf::from("/home/alice/.onequery/self-host/secrets.toml"),
+        pglite_dir: PathBuf::from("/home/alice/.onequery/pglite/onequery"),
+        logs_dir: PathBuf::from("/home/alice/.onequery/logs"),
+        server_log_path: PathBuf::from("/home/alice/.onequery/logs/server.log"),
+        backups_dir: PathBuf::from("/home/alice/.onequery/backups"),
+        run_dir: PathBuf::from("/home/alice/.onequery/run"),
         runtime_control_socket_path: runtime_control_socket_path_for_runtime(
-            Path::new("/data/onequery"),
-            Path::new("/data/onequery/run"),
+            Path::new("/home/alice/.onequery"),
+            Path::new("/home/alice/.onequery/run"),
         ),
-        runtime_lease_path: PathBuf::from("/data/onequery/run/runtime.lease.json"),
-        runtime_status_snapshot_path: PathBuf::from("/data/onequery/run/runtime.status.json"),
-        supervisor_status_snapshot_path: PathBuf::from("/data/onequery/run/supervisor.status.json"),
-        lifecycle_event_log_path: PathBuf::from("/data/onequery/run/lifecycle.events.pb"),
-        releases_dir: PathBuf::from("/data/onequery/releases"),
-        active_release_path: PathBuf::from("/data/onequery/releases/active.json"),
-        recovery_points_dir: PathBuf::from("/data/onequery/recovery-points"),
-        upgrade_transaction_path: PathBuf::from("/data/onequery/run/upgrade-transaction.json"),
+        runtime_lease_path: PathBuf::from("/home/alice/.onequery/run/runtime.lease.json"),
+        runtime_status_snapshot_path: PathBuf::from(
+            "/home/alice/.onequery/run/runtime.status.json",
+        ),
+        supervisor_status_snapshot_path: PathBuf::from(
+            "/home/alice/.onequery/run/supervisor.status.json",
+        ),
+        lifecycle_event_log_path: PathBuf::from("/home/alice/.onequery/run/lifecycle.events.pb"),
+        releases_dir: PathBuf::from("/home/alice/.onequery/releases"),
+        active_release_path: PathBuf::from("/home/alice/.onequery/releases/active.json"),
+        recovery_points_dir: PathBuf::from("/home/alice/.onequery/recovery-points"),
+        upgrade_transaction_path: PathBuf::from(
+            "/home/alice/.onequery/run/upgrade-transaction.json",
+        ),
     };
 
     assert_eq!(paths, expected);
@@ -104,10 +109,7 @@ fn runtime_paths_follow_self_host_layout_contract() {
 fn bootstrap_creates_self_host_config_files_and_runtime_directories() {
     let test_dir =
         std::env::temp_dir().join(format!("onequery-self-host-bootstrap-{}", Uuid::new_v4()));
-    let paths = SelfHostRuntimePaths::from_dirs(
-        test_dir.join("config").join("self-host"),
-        test_dir.join("data"),
-    );
+    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
 
     let bootstrap = bootstrap_self_host_foundation(&paths, "onequery gateway")
         .unwrap_or_else(|error| panic!("expected bootstrap to succeed: {error}"));
@@ -161,10 +163,7 @@ fn bootstrap_creates_self_host_config_files_and_runtime_directories() {
 fn bootstrap_preserves_existing_server_and_secrets_files() {
     let test_dir =
         std::env::temp_dir().join(format!("onequery-self-host-preserve-{}", Uuid::new_v4()));
-    let paths = SelfHostRuntimePaths::from_dirs(
-        test_dir.join("config").join("self-host"),
-        test_dir.join("data"),
-    );
+    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
 
     fs::create_dir_all(&paths.config_dir)
         .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
@@ -353,10 +352,7 @@ fn rejects_config_keys_in_self_host_secrets_file() {
 fn write_self_host_launch_config_serializes_runtime_contract() {
     let test_dir =
         std::env::temp_dir().join(format!("onequery-self-host-launch-{}", Uuid::new_v4()));
-    let paths = SelfHostRuntimePaths::from_dirs(
-        test_dir.join("config").join("self-host"),
-        test_dir.join("data"),
-    );
+    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
     let asset_dir = test_dir.join("runtime").join("web");
 
     fs::create_dir_all(&paths.config_dir)
@@ -420,6 +416,7 @@ secure = false
         }
     );
     assert_eq!(launch_config.launch_id, "launch-a".to_owned());
+    assert_eq!(launch_config.supervisor, None);
     assert_eq!(
         launch_config.public_origin,
         "http://127.0.0.1:7777".to_owned()
@@ -455,6 +452,57 @@ secure = false
             username: Some("smtp-user".to_owned()),
         })
     );
+
+    fs::remove_dir_all(test_dir)
+        .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));
+}
+
+#[test]
+fn write_self_host_launch_supervisor_identity_stamps_runtime_launch_config() {
+    let (test_dir, paths) = create_test_paths("self-host-launch-supervisor");
+    let asset_dir = test_dir.join("runtime").join("web");
+    let migrations_dir = test_dir.join("runtime").join("migrations");
+
+    write_valid_self_host_files(&paths);
+    fs::create_dir_all(&paths.run_dir)
+        .unwrap_or_else(|error| panic!("expected run dir creation to succeed: {error}"));
+    fs::create_dir_all(&asset_dir)
+        .unwrap_or_else(|error| panic!("expected asset dir creation to succeed: {error}"));
+
+    let launch_config_path = write_self_host_launch_config(
+        &paths,
+        "onequery gateway",
+        &asset_dir,
+        &migrations_dir,
+        "launch-a",
+    )
+    .unwrap_or_else(|error| panic!("expected launch config write to succeed: {error}"));
+
+    write_self_host_launch_supervisor_identity(
+        launch_config_path.as_path(),
+        "onequery gateway",
+        ServerLaunchSupervisorConfig {
+            generation: "42".to_owned(),
+            pid: 1001,
+            supervisor_id: "gateway-supervisor:1001".to_owned(),
+        },
+    )
+    .unwrap_or_else(|error| panic!("expected supervisor identity stamp to succeed: {error}"));
+
+    let launch_config_contents = fs::read_to_string(&launch_config_path)
+        .unwrap_or_else(|error| panic!("expected launch config read to succeed: {error}"));
+    let launch_config: ServerLaunchConfig = serde_json::from_str(&launch_config_contents)
+        .unwrap_or_else(|error| panic!("expected launch config JSON to parse: {error}"));
+
+    assert_eq!(
+        launch_config.supervisor,
+        Some(ServerLaunchSupervisorConfig {
+            generation: "42".to_owned(),
+            pid: 1001,
+            supervisor_id: "gateway-supervisor:1001".to_owned(),
+        })
+    );
+    assert_eq!(launch_config.launch_id, "launch-a".to_owned());
 
     fs::remove_dir_all(test_dir)
         .unwrap_or_else(|error| panic!("expected temp self-host directory cleanup: {error}"));

@@ -149,22 +149,16 @@ fn submit_supervisor_stop_intent(
 }
 
 fn supervisor_identity_error(identity: &ManagedRuntimeIdentity, command_line: &str) -> CliError {
-    let supervisor = match (identity.supervisor_pid, identity.supervisor_generation) {
-        (Some(pid), Some(generation)) => {
-            format!("supervisor pid {pid} generation {generation}")
-        }
-        (Some(pid), None) => format!("supervisor pid {pid} without generation"),
-        (None, Some(generation)) => format!("supervisor generation {generation} without pid"),
-        (None, None) => "no supervisor identity".to_owned(),
-    };
-
     CliError::new(
         "failed to stop self-host runtime",
         command_line,
         ErrorStage::Internal,
         format!(
-            "runtime pid {} launch {} does not have a matching live supervisor status snapshot ({supervisor})",
-            identity.pid, identity.launch_id
+            "runtime pid {} launch {} does not have a matching live supervisor status snapshot (supervisor pid {} generation {})",
+            identity.pid,
+            identity.launch_id,
+            identity.supervisor_pid,
+            identity.supervisor_generation
         ),
         vec![CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP.to_owned()],
     )

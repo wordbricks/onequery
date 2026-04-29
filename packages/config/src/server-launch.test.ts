@@ -5,6 +5,7 @@ import {
   createSelfHostLaunchConfig,
   createSelfHostRuntimePaths,
   createSelfHostSmtpConfig,
+  createSelfHostSupervisor,
   createWorkspaceDevLaunchConfig,
 } from "./testing";
 
@@ -20,13 +21,13 @@ describe("server launch contract", () => {
   it("accepts a self-host launch config sample with runtime-only fields", () => {
     const launchConfig = createSelfHostLaunchConfig({
       runtimePaths: createSelfHostRuntimePaths({
-        backupsDir: "/tmp/onequery/data/backups",
-        dataDir: "/tmp/onequery/data",
-        lifecycleEventLogPath: "/tmp/onequery/data/run/lifecycle.events.pb",
-        logsDir: "/tmp/onequery/data/logs",
-        runDir: "/tmp/onequery/data/run",
-        runtimeLeasePath: "/tmp/onequery/data/run/runtime.lease.json",
-        runtimeStatusSnapshotPath: "/tmp/onequery/data/run/runtime.status.json",
+        backupsDir: "/tmp/onequery/backups",
+        dataDir: "/tmp/onequery",
+        lifecycleEventLogPath: "/tmp/onequery/run/lifecycle.events.pb",
+        logsDir: "/tmp/onequery/logs",
+        runDir: "/tmp/onequery/run",
+        runtimeLeasePath: "/tmp/onequery/run/runtime.lease.json",
+        runtimeStatusSnapshotPath: "/tmp/onequery/run/runtime.status.json",
       }),
       smtp: createSelfHostSmtpConfig({
         fromName: "OneQuery OSS",
@@ -34,7 +35,7 @@ describe("server launch contract", () => {
         secure: false,
         username: "smtp-user",
       }),
-      storageDir: "/tmp/onequery/data/pglite/onequery",
+      storageDir: "/tmp/onequery/pglite/onequery",
     });
 
     expect(validateServerLaunchConfig(launchConfig, "test")).toEqual(
@@ -122,6 +123,39 @@ describe("server launch contract", () => {
     );
   });
 
+  it("requires Rust-stamped supervisor identity for self-host launch configs", () => {
+    const { supervisor: _supervisor, ...launchConfig } =
+      createSelfHostLaunchConfig();
+
+    expect(() => validateServerLaunchConfig(launchConfig, "test")).toThrow(
+      "supervisor"
+    );
+  });
+
+  it("validates supervisor generation as a uint64 decimal string", () => {
+    expect(() =>
+      validateServerLaunchConfig(
+        createSelfHostLaunchConfig({
+          supervisor: createSelfHostSupervisor({
+            generation: "0",
+          }),
+        }),
+        "test"
+      )
+    ).toThrow("supervisor.generation");
+
+    expect(() =>
+      validateServerLaunchConfig(
+        createSelfHostLaunchConfig({
+          supervisor: createSelfHostSupervisor({
+            generation: "18446744073709551616",
+          }),
+        }),
+        "test"
+      )
+    ).toThrow("supervisor.generation");
+  });
+
   it("requires runtimeControl for self-host launch configs", () => {
     const { runtimeControl: _runtimeControl, ...launchConfig } =
       createSelfHostLaunchConfig();
@@ -194,7 +228,7 @@ describe("server launch contract", () => {
                 token: "launch-token",
               },
               fencing: {
-                dataDir: "/tmp/onequery/data",
+                dataDir: "/tmp/onequery",
                 launchId: "launch-a",
               },
               host: "127.0.0.1",
@@ -216,7 +250,7 @@ describe("server launch contract", () => {
             token: "launch-token",
           },
           fencing: {
-            dataDir: "/tmp/onequery/data",
+            dataDir: "/tmp/onequery",
             launchId: "launch-a",
           },
           host: "127.0.0.1",
@@ -241,7 +275,7 @@ describe("server launch contract", () => {
                 token: "launch-token",
               },
               fencing: {
-                dataDir: "/tmp/onequery/data",
+                dataDir: "/tmp/onequery",
                 launchId: "launch-b",
               },
               host: "127.0.0.1",
@@ -265,7 +299,7 @@ describe("server launch contract", () => {
                 token: "launch-token",
               },
               fencing: {
-                dataDir: "/tmp/other-onequery/data",
+                dataDir: "/tmp/other-onequery",
                 launchId: "launch-a",
               },
               host: "127.0.0.1",

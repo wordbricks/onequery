@@ -6,6 +6,7 @@ import type {
   RuntimeShutdownCompletion,
   RuntimeShutdownGraceTimeout,
   RuntimeShutdownTarget,
+  RuntimeSupervisorIdentity,
 } from "../lifecycle/types";
 
 // Internal actor state extends lifecycle shutdown phases with terminal states
@@ -19,8 +20,7 @@ export interface RuntimeControlIdentity {
   dataDir: string;
   launchId: string;
   pid: number;
-  supervisorGeneration?: bigint;
-  supervisorPid?: number;
+  supervisor: RuntimeSupervisorIdentity;
 }
 
 export interface RuntimeControlFailure {
@@ -67,8 +67,9 @@ export type RuntimeControlStopOperationConflictField =
   | "target.data_dir"
   | "target.launch_id"
   | "target.pid"
-  | "target.supervisor_generation"
-  | "target.supervisor_pid";
+  | "target.supervisor.generation"
+  | "target.supervisor.pid"
+  | "target.supervisor.supervisor_id";
 
 export interface RuntimeControlStopOperationConflict {
   actual: string;
@@ -453,26 +454,35 @@ function findStopTargetConflict(input: {
       operationId: input.operationId,
     }) ??
     findOptionalStopTargetFieldConflict({
-      actual: input.actual.supervisorPid,
-      expected: input.expected.supervisorPid,
-      field: "target.supervisor_pid",
+      actual: input.actual.supervisor.supervisorId,
+      expected: input.expected.supervisor.supervisorId,
+      field: "target.supervisor.supervisor_id",
       operationId: input.operationId,
     }) ??
     findOptionalStopTargetFieldConflict({
-      actual: input.actual.supervisorGeneration,
-      expected: input.expected.supervisorGeneration,
-      field: "target.supervisor_generation",
+      actual: input.actual.supervisor.pid,
+      expected: input.expected.supervisor.pid,
+      field: "target.supervisor.pid",
+      operationId: input.operationId,
+    }) ??
+    findOptionalStopTargetFieldConflict({
+      actual: input.actual.supervisor.generation,
+      expected: input.expected.supervisor.generation,
+      field: "target.supervisor.generation",
       operationId: input.operationId,
     })
   );
 }
 
 function findOptionalStopTargetFieldConflict(input: {
-  actual?: bigint | number;
-  expected?: bigint | number;
+  actual?: bigint | number | string;
+  expected?: bigint | number | string;
   field: Extract<
     RuntimeControlStopOperationConflictField,
-    "target.pid" | "target.supervisor_generation" | "target.supervisor_pid"
+    | "target.pid"
+    | "target.supervisor.generation"
+    | "target.supervisor.pid"
+    | "target.supervisor.supervisor_id"
   >;
   operationId: string;
 }): RuntimeControlStopOperationConflict | undefined {
@@ -505,7 +515,9 @@ function formatStopGraceTimeout(
   return value ? `${value.seconds.toString()}s/${value.nanos}ns` : "unset";
 }
 
-function formatOptionalStopRequestValue(value: bigint | number | undefined) {
+function formatOptionalStopRequestValue(
+  value: bigint | number | string | undefined
+) {
   return value === undefined ? "unset" : value.toString();
 }
 

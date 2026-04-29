@@ -31,16 +31,10 @@ parity workflow becomes painful enough to justify extra machinery.
 
 ## Filesystem Layout
 
-Roots on supported hosts:
+The OneQuery home defaults to `~/.onequery`. Set `ONEQUERY_HOME` to use a
+different root.
 
-- with `ONEQUERY_HOME` set:
-  - config root: `$ONEQUERY_HOME/config`
-  - data root: `$ONEQUERY_HOME/data`
-- without `ONEQUERY_HOME`:
-  - config root: `${XDG_CONFIG_HOME:-~/.config}/onequery`
-  - data root: `${XDG_DATA_HOME:-~/.local/share}/onequery`
-
-The runtime-managed files under those roots are:
+The runtime-managed files under that root are:
 
 - `self-host/config.toml`
 - `self-host/secrets.toml`
@@ -55,9 +49,8 @@ The runtime-managed files under those roots are:
 
 The self-host secrets file is therefore resolved at:
 
-- `${XDG_CONFIG_HOME:-~/.config}/onequery/self-host/secrets.toml` on default
-  Unix roots
-- `$ONEQUERY_HOME/config/self-host/secrets.toml` when `ONEQUERY_HOME` is set
+- `~/.onequery/self-host/secrets.toml` by default
+- `$ONEQUERY_HOME/self-host/secrets.toml` when `ONEQUERY_HOME` is set
 
 The bundled self-host runtime is discovered from one fixed executable-relative
 layout:

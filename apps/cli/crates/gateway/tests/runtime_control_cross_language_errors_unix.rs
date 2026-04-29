@@ -38,7 +38,7 @@ async fn rust_generated_client_receives_stale_launch_fencing_details() {
     let error = stop_error(
         &client,
         runtime::StopRequest {
-            target: MessageField::some(runtime_target_with_launch("launch-stale")),
+            target: MessageField::some(runtime_stop_target_with_launch("launch-stale")),
             ..runtime_stop_request("018f0789-cc38-7d46-9a6b-83a2c8f0a201")
         },
     )
@@ -337,20 +337,26 @@ fn runtime_stop_request(operation_id: &str) -> runtime::StopRequest {
         }),
         operation_id: Some(operation_id.to_owned()),
         reason: Some("gateway_stop".to_owned()),
-        target: MessageField::some(matching_runtime_target()),
+        target: MessageField::some(matching_runtime_stop_target()),
         ..Default::default()
     }
 }
 
-fn matching_runtime_target() -> runtime::RuntimeTarget {
-    runtime_target_with_launch("launch-rust-connect-unix")
+fn matching_runtime_stop_target() -> runtime::RuntimeStopTarget {
+    runtime_stop_target_with_launch("launch-rust-connect-unix")
 }
 
-fn runtime_target_with_launch(launch_id: &str) -> runtime::RuntimeTarget {
-    runtime::RuntimeTarget {
+fn runtime_stop_target_with_launch(launch_id: &str) -> runtime::RuntimeStopTarget {
+    runtime::RuntimeStopTarget {
         launch_id: Some(launch_id.to_owned()),
         data_dir: Some("/tmp/onequery-data".to_owned()),
         pid: Some(4242),
+        supervisor: MessageField::some(runtime::SupervisorIdentity {
+            supervisor_id: Some("gateway-supervisor-test".to_owned()),
+            pid: Some(1001),
+            generation: Some(7),
+            ..Default::default()
+        }),
         ..Default::default()
     }
 }

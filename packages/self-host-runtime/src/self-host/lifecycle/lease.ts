@@ -1,11 +1,6 @@
 import { open } from "node:fs/promises";
 
-import { create } from "@bufbuild/protobuf";
-import { SupervisorIdentitySchema } from "@onequery/proto-runtime/runtime/v1/common_pb";
-import type {
-  RuntimeLeaseRecord,
-  SupervisorIdentity,
-} from "@onequery/proto-runtime/runtime/v1/common_pb";
+import type { RuntimeLeaseRecord } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import { Result } from "better-result";
 import type { Result as ResultType } from "better-result";
 
@@ -59,12 +54,13 @@ type ActiveRuntimeLeaseRecord = {
 
 const initialRuntimeSequence = 1n;
 
-const defaultLifecycleOptions: Required<Omit<LifecycleOptions, "launchId">> = {
+const defaultLifecycleOptions: Required<
+  Omit<LifecycleOptions, "launchId" | "supervisor">
+> = {
   isProcessRunning: defaultIsProcessRunning,
   logWriter: { append: async () => {} },
   now: () => new Date(),
   pid: process.pid,
-  supervisor: defaultSupervisorIdentity(process.pid, "unspecified"),
 };
 
 export async function acquireRuntimeLifecycleLeaseResult(
@@ -404,6 +400,14 @@ function resolveLifecycleOptions(
   }
 
   const pid = options.pid ?? defaultLifecycleOptions.pid;
+  if (!options.supervisor) {
+    return Result.err(
+      new RuntimeLifecycleOptionsError({
+        cause: null,
+        message: "runtime lifecycle supervisor identity is required",
+      })
+    );
+  }
 
   return Result.ok({
     isProcessRunning:
@@ -412,8 +416,7 @@ function resolveLifecycleOptions(
     logWriter: options.logWriter ?? defaultLifecycleOptions.logWriter,
     now: options.now ?? defaultLifecycleOptions.now,
     pid,
-    supervisor:
-      options.supervisor ?? defaultSupervisorIdentity(pid, launchId.data),
+    supervisor: options.supervisor,
   });
 }
 
@@ -495,21 +498,6 @@ async function readLeaseRecord(
     );
 
     return decodeRuntimeLeaseRecord(contents, path);
-  });
-}
-
-function defaultSupervisorIdentity(
-  runtimePid: number,
-  launchId: string
-): SupervisorIdentity {
-  const supervisorPid = process.ppid > 0 ? process.ppid : runtimePid;
-
-  return create(SupervisorIdentitySchema, {
-    generation: 1n,
-    pid: supervisorPid,
-    // Comment: supervisor generation is fixed until the Rust supervisor state
-    // machine owns durable generation allocation.
-    supervisorId: `runtime-parent:${launchId}:${supervisorPid}`,
   });
 }
 

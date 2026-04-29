@@ -16,7 +16,6 @@ const CLI_LAUNCHER_RELATIVE_PATH: &str = "bin/onequery.js";
 const NODE_MODULES_DIR_NAME: &str = "node_modules";
 const PLATFORM_ALIAS_PACKAGE_PREFIX: &str = "onequery-";
 const RELEASES_DIRNAME: &str = "releases";
-const RESOURCES_DIRNAME: &str = "onequery-resources";
 const STANDALONE_PACKAGES_DIRNAME: &str = "standalone";
 static INSTALL_CONTEXT: OnceLock<InstallContext> = OnceLock::new();
 
@@ -32,9 +31,6 @@ pub enum InstallContext {
         /// The managed standalone release directory, for example
         /// `~/.onequery/packages/standalone/releases/0.111.0-x86_64-unknown-linux-musl`.
         release_dir: PathBuf,
-        /// The bundled resource directory that sits next to the executable when
-        /// this install ships managed dependencies.
-        resources_dir: Option<PathBuf>,
         /// The platform of the standalone release, either `Unix` or `Windows`.
         platform: StandalonePlatform,
     },
@@ -44,7 +40,7 @@ pub enum InstallContext {
     Bun { package_root: PathBuf },
     /// A OneQuery binary that appears to come from a Homebrew install prefix.
     Brew { launcher_path: PathBuf },
-    /// A OneQuery binary installed by the public install.sh script.
+    /// A OneQuery binary installed by an older or custom install.sh layout.
     InstallScript { launcher_path: PathBuf },
     /// Any other execution environment.
     ///
@@ -128,36 +124,15 @@ impl InstallContext {
             Self::Npm { package_root } | Self::Bun { package_root } => {
                 read_package_version(package_root.join("package.json").as_path())
             }
-            Self::Standalone { release_dir, .. } => release_dir
-                .file_name()
-                .and_then(OsStr::to_str)
-                .map(ToOwned::to_owned),
+            Self::Standalone { release_dir, .. } => {
+                read_package_version(release_dir.join("package.json").as_path()).or_else(|| {
+                    release_dir
+                        .file_name()
+                        .and_then(OsStr::to_str)
+                        .map(ToOwned::to_owned)
+                })
+            }
             Self::Other => None,
-        }
-    }
-
-    pub fn rg_command(&self) -> PathBuf {
-        match self {
-            Self::Standalone {
-                resources_dir: Some(resources_dir),
-                ..
-            } => {
-                let bundled_rg = resources_dir.join(default_rg_command());
-                if bundled_rg.exists() {
-                    bundled_rg
-                } else {
-                    default_rg_command()
-                }
-            }
-            Self::Standalone {
-                resources_dir: None,
-                ..
-            }
-            | Self::Npm { .. }
-            | Self::Bun { .. }
-            | Self::Brew { .. }
-            | Self::InstallScript { .. }
-            | Self::Other => default_rg_command(),
         }
     }
 }
@@ -188,21 +163,27 @@ fn standalone_install_context(
     exe_path: &Path,
     onequery_home: Option<&Path>,
 ) -> Option<InstallContext> {
-    let canonical_exe = std::fs::canonicalize(exe_path).ok()?;
+    let CurrentExecutableLocation::Packaged(packaged_layout) =
+        classify_current_executable(exe_path)
+    else {
+        return None;
+    };
+
     let canonical_onequery_home = std::fs::canonicalize(onequery_home?).ok()?;
-    let release_dir = canonical_exe.parent()?.to_path_buf();
-    let releases_root = canonical_onequery_home
-        .join("packages")
-        .join(STANDALONE_PACKAGES_DIRNAME)
-        .join(RELEASES_DIRNAME);
-    if !release_dir.starts_with(releases_root) {
+    let release_dir = std::fs::canonicalize(packaged_layout.install_root).ok()?;
+    let releases_root = std::fs::canonicalize(
+        canonical_onequery_home
+            .join("packages")
+            .join(STANDALONE_PACKAGES_DIRNAME)
+            .join(RELEASES_DIRNAME),
+    )
+    .ok()?;
+    if release_dir.parent()? != releases_root {
         return None;
     }
 
-    let resources_dir = release_dir.join(RESOURCES_DIRNAME);
     Some(InstallContext::Standalone {
         release_dir,
-        resources_dir: resources_dir.is_dir().then_some(resources_dir),
         platform: standalone_platform(),
     })
 }
@@ -399,14 +380,6 @@ fn standalone_platform() -> StandalonePlatform {
     }
 }
 
-fn default_rg_command() -> PathBuf {
-    if cfg!(windows) {
-        PathBuf::from("rg.exe")
-    } else {
-        PathBuf::from("rg")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -444,17 +417,16 @@ mod tests {
         let release_dir = onequery_home
             .path()
             .join("packages/standalone/releases/1.2.3-x86_64-unknown-linux-musl");
-        let resources_dir = release_dir.join(RESOURCES_DIRNAME);
-        fs::create_dir_all(&resources_dir)?;
-        let exe_path = release_dir.join(if cfg!(windows) {
-            "onequery.exe"
-        } else {
-            "onequery"
-        });
-        fs::write(&exe_path, "")?;
-        fs::write(resources_dir.join(default_rg_command()), "")?;
+        let exe_path = release_dir
+            .join("vendor/x86_64-unknown-linux-musl/onequery")
+            .join(if cfg!(windows) {
+                "onequery.exe"
+            } else {
+                "onequery"
+            });
+        write_package_manifest(release_dir.as_path(), "1.2.3");
+        write_packaged_binary(exe_path.as_path());
         let canonical_release_dir = release_dir.canonicalize()?;
-        let canonical_resources_dir = resources_dir.canonicalize()?;
 
         let context = InstallContext::from_exe_with_onequery_home(
             /*is_macos*/ false,
@@ -467,15 +439,15 @@ mod tests {
             context,
             InstallContext::Standalone {
                 release_dir: canonical_release_dir,
-                resources_dir: Some(canonical_resources_dir),
                 platform: standalone_platform(),
             }
         );
+        assert_eq!(context.installed_version(), Some("1.2.3".to_owned()));
         Ok(())
     }
 
     #[test]
-    fn standalone_rg_falls_back_when_resources_are_missing() -> std::io::Result<()> {
+    fn rejects_unbundled_standalone_release_layouts() -> std::io::Result<()> {
         let onequery_home = tempfile::tempdir()?;
         let release_dir = onequery_home
             .path()
@@ -495,7 +467,7 @@ mod tests {
             /*managed_by_bun*/ false,
             /*onequery_home*/ Some(onequery_home.path()),
         );
-        assert_eq!(context.rg_command(), default_rg_command());
+        assert_eq!(context, InstallContext::Other);
         Ok(())
     }
 

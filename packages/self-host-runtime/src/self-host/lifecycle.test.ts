@@ -10,6 +10,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { create } from "@bufbuild/protobuf";
+import { SupervisorIdentitySchema } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import type { SupervisorIdentity } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -53,6 +56,22 @@ function createPaths(root: string): SelfHostLifecyclePaths & {
   };
 }
 
+function createTestSupervisorIdentity(
+  input: {
+    generation?: bigint;
+    pid?: number;
+    supervisorId?: string;
+  } = {}
+): SupervisorIdentity {
+  const pid = input.pid ?? 1001;
+
+  return create(SupervisorIdentitySchema, {
+    generation: input.generation ?? 7n,
+    pid,
+    supervisorId: input.supervisorId ?? `gateway-supervisor:${pid}`,
+  });
+}
+
 describe("self-host lifecycle lease", () => {
   const tempRoots: string[] = [];
 
@@ -80,6 +99,7 @@ describe("self-host lifecycle lease", () => {
       launchId: "launch-a",
       logWriter,
       pid: 111,
+      supervisor: createTestSupervisorIdentity(),
     });
 
     await expect(
@@ -88,6 +108,10 @@ describe("self-host lifecycle lease", () => {
         launchId: "launch-b",
         logWriter,
         pid: 222,
+        supervisor: createTestSupervisorIdentity({
+          generation: 8n,
+          pid: 1002,
+        }),
       })
     ).rejects.toBeInstanceOf(DuplicateRuntimeStartError);
 
@@ -113,6 +137,7 @@ describe("self-host lifecycle lease", () => {
       isProcessRunning: () => false,
       launchId: "launch-a",
       pid: 222,
+      supervisor: createTestSupervisorIdentity(),
     });
     const leaseContents = await readFile(paths.leasePath, "utf8");
 
@@ -134,11 +159,34 @@ describe("self-host lifecycle lease", () => {
     const result = await acquireRuntimeLifecycleLeaseResult(paths, {
       launchId: " ",
       pid: 222,
+      supervisor: createTestSupervisorIdentity(),
     });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(RuntimeLifecycleOptionsError);
+    }
+    await expect(access(paths.runDir)).rejects.toBeDefined();
+  });
+
+  it("rejects lifecycle acquisition without an explicit supervisor identity", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-missing-supervisor-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+
+    const result = await acquireRuntimeLifecycleLeaseResult(paths, {
+      launchId: "launch-a",
+      pid: 222,
+    } as unknown as Parameters<typeof acquireRuntimeLifecycleLeaseResult>[1]);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(RuntimeLifecycleOptionsError);
+      expect(result.error.message).toBe(
+        "runtime lifecycle supervisor identity is required"
+      );
     }
     await expect(access(paths.runDir)).rejects.toBeDefined();
   });
@@ -152,6 +200,7 @@ describe("self-host lifecycle lease", () => {
       launchId: "launch-a",
       now: () => new Date("2026-03-25T00:00:00.000Z"),
       pid: 333,
+      supervisor: createTestSupervisorIdentity(),
     });
 
     await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
@@ -183,6 +232,7 @@ describe("self-host lifecycle lease", () => {
       isProcessRunning: () => false,
       launchId: "launch-a",
       pid: 333,
+      supervisor: createTestSupervisorIdentity(),
     });
     const processSignals = new EventEmitter();
     let resolveServerStop = () => {};
@@ -274,6 +324,7 @@ describe("self-host lifecycle lease", () => {
       isProcessRunning: () => false,
       launchId: "launch-a",
       pid: 444,
+      supervisor: createTestSupervisorIdentity(),
     });
     const processSignals = new EventEmitter();
     const stopError = new Error("server close failed");
@@ -323,6 +374,7 @@ describe("self-host lifecycle lease", () => {
       isProcessRunning: () => false,
       launchId: "launch-a",
       pid: 445,
+      supervisor: createTestSupervisorIdentity(),
     });
     const processSignals = new EventEmitter();
     const storageError = new Error("storage close failed");
@@ -373,6 +425,7 @@ describe("self-host lifecycle lease", () => {
       isProcessRunning: () => false,
       launchId: "launch-a",
       pid: 446,
+      supervisor: createTestSupervisorIdentity(),
     });
     const processSignals = new EventEmitter();
     const resourceError = new Error("runtime control close failed");
@@ -422,6 +475,7 @@ describe("self-host lifecycle lease", () => {
       isProcessRunning: () => false,
       launchId: "launch-a",
       pid: 446,
+      supervisor: createTestSupervisorIdentity(),
     });
     const processSignals = new EventEmitter();
     const server = {
@@ -461,6 +515,7 @@ describe("self-host lifecycle lease", () => {
       isProcessRunning: () => false,
       launchId: "launch-a",
       pid: 447,
+      supervisor: createTestSupervisorIdentity(),
     });
     const processSignals = new EventEmitter();
     let resolveServerStop = () => {};
@@ -588,6 +643,7 @@ describe("self-host lifecycle lease", () => {
       isProcessRunning: () => false,
       launchId: "launch-a",
       pid: 555,
+      supervisor: createTestSupervisorIdentity(),
     });
 
     await expect(readFile(paths.leasePath, "utf8")).resolves.toContain(

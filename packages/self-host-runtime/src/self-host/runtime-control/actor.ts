@@ -11,6 +11,7 @@ import {
 } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import {
   GetStatusRequestSchema,
+  RuntimeStopTargetSchema,
   RuntimeTargetSchema,
   StopRequestSchema,
   WatchStatusRequestSchema,
@@ -87,6 +88,7 @@ export class RuntimeControlOperationConflictError extends TaggedError(
 type RuntimeStatusInit = MessageInitShape<typeof RuntimeStatusSchema>;
 type RuntimeTransitionInit = MessageInitShape<typeof RuntimeTransitionSchema>;
 type GetStatusRequestInit = MessageInitShape<typeof GetStatusRequestSchema>;
+type RuntimeStopTargetInit = MessageInitShape<typeof RuntimeStopTargetSchema>;
 type RuntimeTargetInit = MessageInitShape<typeof RuntimeTargetSchema>;
 type StopRequestInit = MessageInitShape<typeof StopRequestSchema>;
 type StopResponseInit = {
@@ -655,9 +657,8 @@ async function stopRuntime(args: {
   reduction?: RuntimeControlMachineReduction;
   result: RuntimeControlActorResult<StopResponseInit>;
 }> {
-  const targetResult = validateRuntimeTarget({
+  const targetResult = validateRuntimeStopTarget({
     operation: "stop",
-    required: true,
     state: args.state,
     target: args.message.request.target,
   });
@@ -818,7 +819,7 @@ function createRuntimeControlStopRequest(input: {
   completion: RuntimeShutdownCompletion;
   graceTimeout: StopRequestInit["graceTimeout"];
   reason: string;
-  target: RuntimeTargetInit;
+  target: RuntimeStopTargetInit;
 }): RuntimeControlStopRequest {
   return {
     completion: input.completion,
@@ -856,24 +857,24 @@ function toRuntimeShutdownRequest(input: {
 }
 
 function createRuntimeControlStopRequestTarget(
-  target: RuntimeTargetInit
+  target: RuntimeStopTargetInit
 ): RuntimeControlStopRequest["target"] {
-  const requestTarget: RuntimeControlStopRequest["target"] = {
-    dataDir: target.dataDir ?? "",
-    launchId: target.launchId ?? "",
+  const supervisor = target.supervisor ?? {
+    generation: 0n,
+    pid: 0,
+    supervisorId: "",
   };
 
-  if (runtimeTargetFieldIsSet(target, "pid")) {
-    requestTarget.pid = target.pid ?? 0;
-  }
-  if (runtimeTargetFieldIsSet(target, "supervisorPid")) {
-    requestTarget.supervisorPid = target.supervisorPid ?? 0;
-  }
-  if (runtimeTargetFieldIsSet(target, "supervisorGeneration")) {
-    requestTarget.supervisorGeneration = target.supervisorGeneration ?? 0n;
-  }
-
-  return requestTarget;
+  return {
+    dataDir: target.dataDir ?? "",
+    launchId: target.launchId ?? "",
+    pid: target.pid ?? 0,
+    supervisor: {
+      generation: supervisor.generation ?? 0n,
+      pid: supervisor.pid ?? 0,
+      supervisorId: supervisor.supervisorId ?? "",
+    },
+  };
 }
 
 function toRuntimeControlOperationConflictError(
@@ -931,10 +932,48 @@ function validateRuntimeTarget(args: {
     dataDir: args.state.identity.dataDir,
     launchId: args.state.identity.launchId,
     pid: args.state.identity.pid,
-    supervisorGeneration: args.state.identity.supervisorGeneration,
-    supervisorPid: args.state.identity.supervisorPid,
   };
   const mismatchedField = findRuntimeTargetMismatch(args.target, expected);
+
+  if (mismatchedField === undefined) {
+    return Result.ok(args.target);
+  }
+
+  return Result.err(
+    new RuntimeControlTargetPreconditionError({
+      actual: mismatchedField.actual,
+      expected: mismatchedField.expected,
+      field: mismatchedField.field,
+      message: `runtime control ${args.operation} target ${mismatchedField.field} mismatch: expected ${mismatchedField.expected}, got ${mismatchedField.actual}`,
+      operation: args.operation,
+    })
+  );
+}
+
+function validateRuntimeStopTarget(args: {
+  operation: string;
+  state: RuntimeControlMachineState;
+  target?: RuntimeStopTargetInit;
+}): ResultType<RuntimeStopTargetInit, RuntimeControlTargetPreconditionError> {
+  if (args.target === undefined) {
+    return Result.err(
+      new RuntimeControlTargetPreconditionError({
+        actual: "missing",
+        expected: "present",
+        field: "target",
+        message: `runtime control ${args.operation} request target is required`,
+        operation: args.operation,
+      })
+    );
+  }
+
+  const expected = {
+    dataDir: args.state.identity.dataDir,
+    launchId: args.state.identity.launchId,
+    pid: args.state.identity.pid,
+    supervisor: args.state.identity.supervisor,
+  };
+  const mismatchedField = findRuntimeStopTargetMismatch(args.target, expected);
 
   if (mismatchedField === undefined) {
     return Result.ok(args.target);
@@ -957,8 +996,6 @@ function findRuntimeTargetMismatch(
     dataDir: string;
     launchId: string;
     pid: number;
-    supervisorGeneration?: bigint;
-    supervisorPid?: number;
   }
 ):
   | {
@@ -994,27 +1031,84 @@ function findRuntimeTargetMismatch(
     };
   }
 
-  const actualSupervisorPid = target.supervisorPid;
-  if (
-    runtimeTargetFieldIsSet(target, "supervisorPid") &&
-    actualSupervisorPid !== expected.supervisorPid
-  ) {
+  return undefined;
+}
+
+function findRuntimeStopTargetMismatch(
+  target: RuntimeStopTargetInit,
+  expected: {
+    dataDir: string;
+    launchId: string;
+    pid: number;
+    supervisor: RuntimeControlIdentity["supervisor"];
+  }
+):
+  | {
+      actual: string;
+      expected: string;
+      field: string;
+    }
+  | undefined {
+  const actualLaunchId = target.launchId ?? "";
+  if (actualLaunchId !== expected.launchId) {
     return {
-      actual: actualSupervisorPid?.toString() ?? "unset",
-      expected: expected.supervisorPid?.toString() ?? "unset",
-      field: "supervisor_pid",
+      actual: actualLaunchId,
+      expected: expected.launchId,
+      field: "launch_id",
     };
   }
 
-  const actualSupervisorGeneration = target.supervisorGeneration;
-  if (
-    runtimeTargetFieldIsSet(target, "supervisorGeneration") &&
-    actualSupervisorGeneration !== expected.supervisorGeneration
-  ) {
+  const actualDataDir = target.dataDir ?? "";
+  if (actualDataDir !== expected.dataDir) {
     return {
-      actual: actualSupervisorGeneration?.toString() ?? "unset",
-      expected: expected.supervisorGeneration?.toString() ?? "unset",
-      field: "supervisor_generation",
+      actual: actualDataDir,
+      expected: expected.dataDir,
+      field: "data_dir",
+    };
+  }
+
+  const actualPid = target.pid ?? 0;
+  if (actualPid !== expected.pid) {
+    return {
+      actual: actualPid.toString(),
+      expected: expected.pid.toString(),
+      field: "pid",
+    };
+  }
+
+  const actualSupervisor = target.supervisor;
+  if (actualSupervisor === undefined) {
+    return {
+      actual: "missing",
+      expected: "present",
+      field: "supervisor",
+    };
+  }
+
+  const actualSupervisorId = actualSupervisor.supervisorId ?? "";
+  if (actualSupervisorId !== expected.supervisor.supervisorId) {
+    return {
+      actual: actualSupervisorId,
+      expected: expected.supervisor.supervisorId,
+      field: "supervisor.supervisor_id",
+    };
+  }
+
+  const actualSupervisorPid = actualSupervisor.pid ?? 0;
+  if (actualSupervisorPid !== expected.supervisor.pid) {
+    return {
+      actual: actualSupervisorPid.toString(),
+      expected: expected.supervisor.pid.toString(),
+      field: "supervisor.pid",
+    };
+  }
+
+  const actualSupervisorGeneration = actualSupervisor.generation ?? 0n;
+  if (actualSupervisorGeneration !== expected.supervisor.generation) {
+    return {
+      actual: actualSupervisorGeneration.toString(),
+      expected: expected.supervisor.generation.toString(),
+      field: "supervisor.generation",
     };
   }
 
@@ -1023,7 +1117,7 @@ function findRuntimeTargetMismatch(
 
 function runtimeTargetFieldIsSet(
   target: RuntimeTargetInit,
-  field: "pid" | "supervisorGeneration" | "supervisorPid"
+  field: "pid"
 ): boolean {
   if (isRuntimeTargetMessage(target)) {
     return isFieldSet(target, RuntimeTargetSchema.field[field]);

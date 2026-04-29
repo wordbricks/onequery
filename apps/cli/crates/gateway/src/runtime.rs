@@ -1,6 +1,7 @@
 mod control;
 mod control_error;
 mod lifecycle;
+mod lifecycle_event_log;
 mod lifecycle_records;
 mod logs;
 mod process;
@@ -9,7 +10,11 @@ mod status;
 mod supervisor;
 mod supervisor_crash_loop;
 mod supervisor_effects;
+mod supervisor_generation;
+mod supervisor_lifecycle_writer;
 mod supervisor_machine;
+mod supervisor_monitor;
+mod supervisor_startup;
 mod transport;
 
 pub(crate) use control::RuntimeControlStatus;

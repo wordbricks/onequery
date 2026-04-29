@@ -156,7 +156,7 @@ pub(crate) async fn request_runtime_control_stop(
 ) -> Result<RuntimeControlStopResponse, ConnectError> {
     let client = runtime_control_client(paths).await?;
     let request = stop_request(
-        runtime_target(paths, identity),
+        runtime_stop_target(paths, identity, supervisor_id),
         operation_id,
         reason,
         grace_timeout,
@@ -374,7 +374,7 @@ fn runtime_control_call_headers_for_identity<'a>(
 }
 
 fn stop_request(
-    target: types::RuntimeTarget,
+    target: types::RuntimeStopTarget,
     operation_id: &str,
     reason: &str,
     grace_timeout: StdDuration,
@@ -405,16 +405,21 @@ fn watch_status_request(
     }
 }
 
-fn runtime_target(
+fn runtime_stop_target(
     paths: &SelfHostRuntimePaths,
     identity: &ManagedRuntimeIdentity,
-) -> types::RuntimeTarget {
-    types::RuntimeTarget {
+    supervisor_id: &str,
+) -> types::RuntimeStopTarget {
+    types::RuntimeStopTarget {
         launch_id: Some(identity.launch_id.clone()),
         data_dir: Some(paths.data_dir.display().to_string()),
         pid: Some(identity.pid),
-        supervisor_pid: identity.supervisor_pid,
-        supervisor_generation: identity.supervisor_generation,
+        supervisor: MessageField::some(types::SupervisorIdentity {
+            supervisor_id: Some(supervisor_id.to_owned()),
+            pid: Some(identity.supervisor_pid),
+            generation: Some(identity.supervisor_generation),
+            ..Default::default()
+        }),
         ..Default::default()
     }
 }
@@ -487,6 +492,7 @@ fn status_from_proto(status: types::RuntimeStatus) -> RuntimeControlStatus {
 mod tests {
     use std::time::Duration;
 
+    use buffa::MessageField;
     use pretty_assertions::assert_eq;
 
     use super::RUNTIME_CONTROL_CLI_VERSION_HEADER_NAME;
@@ -507,7 +513,7 @@ mod tests {
     #[cfg(unix)]
     use super::runtime_control_transport_endpoint;
     use super::runtime_control_watch_event_from_proto;
-    use super::runtime_target;
+    use super::runtime_stop_target;
     use super::status_from_proto;
     use super::stop_request;
     use super::validate_stop_response;
@@ -616,10 +622,16 @@ mod tests {
 
     #[test]
     fn stop_request_asks_runtime_to_cleanup_and_exit() {
-        let target = types::RuntimeTarget {
+        let target = types::RuntimeStopTarget {
             launch_id: Some("launch-a".to_owned()),
             data_dir: Some("/tmp/onequery-data".to_owned()),
             pid: Some(4242),
+            supervisor: MessageField::some(types::SupervisorIdentity {
+                supervisor_id: Some("gateway-supervisor:1001".to_owned()),
+                pid: Some(1001),
+                generation: Some(7),
+                ..Default::default()
+            }),
             ..Default::default()
         };
         let request = stop_request(
@@ -658,6 +670,14 @@ mod tests {
         );
         assert_eq!(
             request
+                .target
+                .as_option()
+                .and_then(|target| target.supervisor.as_option())
+                .and_then(|supervisor| supervisor.generation),
+            Some(7)
+        );
+        assert_eq!(
+            request
                 .completion
                 .and_then(|completion| completion.as_known()),
             Some(types::RuntimeStopCompletion::RUNTIME_STOP_COMPLETION_CLEANUP_AND_EXIT)
@@ -669,29 +689,34 @@ mod tests {
     }
 
     #[test]
-    fn runtime_target_includes_supervisor_fencing_when_available() {
+    fn runtime_stop_target_includes_supervisor_fencing() {
         let paths = SelfHostRuntimePaths::from_dirs(
             "/tmp/onequery-config".into(),
             "/tmp/onequery-data".into(),
         );
-        let target = runtime_target(
+        let target = runtime_stop_target(
             &paths,
             &ManagedRuntimeIdentity {
                 launch_id: "launch-a".to_owned(),
                 pid: 4242,
-                supervisor_pid: Some(1001),
-                supervisor_generation: Some(7),
+                supervisor_pid: 1001,
+                supervisor_generation: 7,
             },
+            "gateway-supervisor:1001",
         );
 
         assert_eq!(
             target,
-            types::RuntimeTarget {
+            types::RuntimeStopTarget {
                 launch_id: Some("launch-a".to_owned()),
                 data_dir: Some("/tmp/onequery-data".to_owned()),
                 pid: Some(4242),
-                supervisor_pid: Some(1001),
-                supervisor_generation: Some(7),
+                supervisor: MessageField::some(types::SupervisorIdentity {
+                    supervisor_id: Some("gateway-supervisor:1001".to_owned()),
+                    pid: Some(1001),
+                    generation: Some(7),
+                    ..Default::default()
+                }),
                 ..Default::default()
             }
         );

@@ -74,6 +74,54 @@ function runtimeTarget(
   };
 }
 
+function runtimeSupervisorIdentity(
+  overrides: Partial<{
+    generation: bigint;
+    pid: number;
+    supervisorId: string;
+  }> = {}
+) {
+  const pid = overrides.pid ?? 1001;
+
+  return {
+    generation: overrides.generation ?? 7n,
+    pid,
+    supervisorId: overrides.supervisorId ?? `gateway-supervisor:${pid}`,
+  };
+}
+
+function runtimeControlIdentity(
+  overrides: Partial<{
+    dataDir: string;
+    launchId: string;
+    pid: number;
+    supervisor: ReturnType<typeof runtimeSupervisorIdentity>;
+  }> = {}
+) {
+  return {
+    dataDir: overrides.dataDir ?? "/tmp/onequery-data",
+    launchId: overrides.launchId ?? "launch-a",
+    pid: overrides.pid ?? 123,
+    supervisor: overrides.supervisor ?? runtimeSupervisorIdentity(),
+  };
+}
+
+function runtimeStopTarget(
+  overrides: Partial<{
+    dataDir: string;
+    launchId: string;
+    pid: number;
+    supervisor: ReturnType<typeof runtimeSupervisorIdentity>;
+  }> = {}
+) {
+  return {
+    dataDir: overrides.dataDir ?? "/tmp/onequery-data",
+    launchId: overrides.launchId ?? "launch-a",
+    pid: overrides.pid ?? 123,
+    supervisor: overrides.supervisor ?? runtimeSupervisorIdentity(),
+  };
+}
+
 function runtimeShutdownRequest(input: {
   graceTimeout?: { nanos: number; seconds: bigint };
   operationId: string;
@@ -83,7 +131,7 @@ function runtimeShutdownRequest(input: {
     ...(input.graceTimeout ? { graceTimeout: input.graceTimeout } : {}),
     operationId: input.operationId,
     reason: "gateway_stop",
-    target: runtimeTarget(),
+    target: runtimeStopTarget(),
   };
 }
 
@@ -92,11 +140,7 @@ describe("runtime control actor", () => {
     const lease = createLease();
     const shutdown = vi.fn(async () => undefined);
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => new Date("2026-04-27T00:00:00.000Z"),
     });
@@ -111,13 +155,13 @@ describe("runtime control actor", () => {
       completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
       operationId: firstOperationId,
       reason: "gateway_stop",
-      target: runtimeTarget(),
+      target: runtimeStopTarget(),
     });
     const duplicate = await actor.stop({
       completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
       operationId: secondOperationId,
       reason: "gateway_stop",
-      target: runtimeTarget(),
+      target: runtimeStopTarget(),
     });
     const status = await actor.getStatus();
 
@@ -151,6 +195,86 @@ describe("runtime control actor", () => {
     actor.dispose();
   });
 
+  it("accepts Rust supervisor-fenced stop targets", async () => {
+    const lease = createLease();
+    const shutdown = vi.fn(async () => undefined);
+    const actor = createRuntimeControlActor({
+      identity: runtimeControlIdentity({
+        supervisor: runtimeSupervisorIdentity({
+          generation: 42n,
+          pid: 1001,
+        }),
+      }),
+      lease,
+      now: () => new Date("2026-04-27T00:00:00.000Z"),
+    });
+    actor.attachShutdownController({
+      dispose: vi.fn(),
+      shutdown,
+    });
+
+    const stop = await actor.stop({
+      completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
+      operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a101",
+      reason: "gateway_stop",
+      target: runtimeStopTarget({
+        supervisor: runtimeSupervisorIdentity({
+          generation: 42n,
+          pid: 1001,
+        }),
+      }),
+    });
+
+    expect(stop.disposition).toBe(RuntimeStopDisposition.ACCEPTED);
+    expect(shutdown).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: expect.objectContaining({
+          supervisor: expect.objectContaining({
+            generation: 42n,
+            pid: 1001,
+          }),
+        }),
+      })
+    );
+  });
+
+  it("rejects stale Rust supervisor-fenced stop targets", async () => {
+    const lease = createLease();
+    const actor = createRuntimeControlActor({
+      identity: runtimeControlIdentity({
+        supervisor: runtimeSupervisorIdentity({
+          generation: 42n,
+          pid: 1001,
+        }),
+      }),
+      lease,
+      now: () => new Date("2026-04-27T00:00:00.000Z"),
+    });
+    actor.attachShutdownController({
+      dispose: vi.fn(),
+      shutdown: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      actor.stop({
+        completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
+        operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a102",
+        reason: "gateway_stop",
+        target: runtimeStopTarget({
+          supervisor: runtimeSupervisorIdentity({
+            generation: 41n,
+            pid: 1001,
+          }),
+        }),
+      })
+    ).rejects.toMatchObject({
+      actual: "41",
+      expected: "42",
+      field: "supervisor.generation",
+      operation: "stop",
+    });
+  });
+
   it("replays the same stop response when an operation id is retried", async () => {
     const lease = createLease();
     const shutdown = vi.fn(() => new Promise<void>(() => undefined));
@@ -161,11 +285,7 @@ describe("runtime control actor", () => {
       new Date("2026-04-27T00:00:03.000Z"),
     ];
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => timestamps.shift() ?? new Date("2026-04-27T00:00:04.000Z"),
     });
@@ -178,7 +298,7 @@ describe("runtime control actor", () => {
       completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
       operationId,
       reason: "gateway_stop",
-      target: runtimeTarget(),
+      target: runtimeStopTarget(),
     };
 
     const accepted = await actor.stop(request);
@@ -223,11 +343,7 @@ describe("runtime control actor", () => {
       new Date("2026-04-27T00:00:02.000Z"),
     ];
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => timestamps.shift() ?? new Date("2026-04-27T00:00:03.000Z"),
     });
@@ -242,7 +358,7 @@ describe("runtime control actor", () => {
       graceTimeout: durationFromMs(5),
       operationId,
       reason: "gateway_stop",
-      target: runtimeTarget(),
+      target: runtimeStopTarget(),
     });
     await new Promise((resolve) => setTimeout(resolve, 20));
     const status = await actor.getStatus();
@@ -312,11 +428,7 @@ describe("runtime control actor", () => {
       new Date("2026-04-27T00:00:02.000Z"),
     ];
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => timestamps.shift() ?? new Date("2026-04-27T00:00:03.000Z"),
     });
@@ -330,7 +442,7 @@ describe("runtime control actor", () => {
       completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
       operationId,
       reason: "gateway_stop",
-      target: runtimeTarget(),
+      target: runtimeStopTarget(),
     });
     await new Promise((resolve) => setTimeout(resolve, 20));
     const status = await actor.getStatus();
@@ -360,11 +472,7 @@ describe("runtime control actor", () => {
     const lease = createLease();
     const shutdown = vi.fn(() => new Promise<void>(() => undefined));
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => new Date("2026-04-27T00:00:00.000Z"),
     });
@@ -378,7 +486,7 @@ describe("runtime control actor", () => {
       graceTimeout: durationFromMs(30_000),
       operationId,
       reason: "gateway_stop",
-      target: runtimeTarget(),
+      target: runtimeStopTarget(),
     };
 
     await actor.stop(request);
@@ -433,11 +541,7 @@ describe("runtime control actor", () => {
       new Date("2026-04-27T00:00:02.000Z"),
     ];
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => timestamps.shift() ?? new Date("2026-04-27T00:00:03.000Z"),
     });
@@ -449,7 +553,7 @@ describe("runtime control actor", () => {
       completion: RuntimeStopCompletion.CLEANUP_AND_EXIT,
       operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a005",
       reason: "gateway_stop",
-      target: runtimeTarget(),
+      target: runtimeStopTarget(),
     };
 
     await expect(actor.stop(request)).rejects.toMatchObject({
@@ -501,11 +605,7 @@ describe("runtime control actor", () => {
   it("streams the current snapshot and later lifecycle transitions", async () => {
     const lease = createLease();
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => new Date("2026-04-27T00:00:00.000Z"),
     });
@@ -598,11 +698,7 @@ describe("runtime control Connect server", () => {
       },
     };
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => new Date("2026-04-27T00:00:00.000Z"),
     });
@@ -765,11 +861,7 @@ describe("runtime control Connect server", () => {
       },
     };
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => new Date("2026-04-27T00:00:00.000Z"),
     });
@@ -797,11 +889,7 @@ describe("runtime control Connect server", () => {
   it("keeps non-UDS transports disabled behind launch-scoped auth and fencing", async () => {
     const lease = createLease();
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => new Date("2026-04-27T00:00:00.000Z"),
     });
@@ -863,11 +951,7 @@ describe("runtime control Connect server", () => {
       },
     };
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
-        launchId: "launch-a",
-        pid: 123,
-      },
+      identity: runtimeControlIdentity(),
       lease,
       now: () => new Date("2026-04-27T00:00:00.000Z"),
     });
@@ -898,11 +982,14 @@ describe("runtime control Connect server", () => {
       },
     };
     const actor = createRuntimeControlActor({
-      identity: {
-        dataDir: "/tmp/onequery-data",
+      identity: runtimeControlIdentity({
         launchId: "launch-b",
         pid: 456,
-      },
+        supervisor: runtimeSupervisorIdentity({
+          generation: 8n,
+          pid: 1002,
+        }),
+      }),
       lease,
       now: () => new Date("2026-04-27T00:00:00.000Z"),
     });
@@ -950,7 +1037,7 @@ describe("runtime control Connect server", () => {
       graceTimeout: durationFromMs(30_000),
       operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a001",
       reason: "gateway_stop",
-      target: runtimeTarget(),
+      target: runtimeStopTarget(),
     });
 
     expect(status.status).toMatchObject({
@@ -1019,7 +1106,7 @@ describe("runtime control Connect server", () => {
         graceTimeout: durationFromMs(30_000),
         operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a002",
         reason: "gateway_stop",
-        target: runtimeTarget({
+        target: runtimeStopTarget({
           launchId: "launch-b",
         }),
       });
@@ -1072,7 +1159,7 @@ describe("runtime control Connect server", () => {
       graceTimeout: durationFromMs(30_000),
       operationId,
       reason: "gateway_stop",
-      target: runtimeTarget(),
+      target: runtimeStopTarget(),
     };
 
     await client.stop(request);
@@ -1139,7 +1226,7 @@ describe("runtime control Connect server", () => {
         graceTimeout: durationFromMs(30_000),
         operationId: "not-a-uuid",
         reason: "gateway_stop",
-        target: runtimeTarget(),
+        target: runtimeStopTarget(),
       });
     } catch (caught) {
       error = caught;
@@ -1184,7 +1271,7 @@ describe("runtime control Connect server", () => {
         graceTimeout: durationFromMs(30_000),
         operationId: "018f0789-cc38-7d46-9a6b-83a2c8f0a004",
         reason: "gateway_stop",
-        target: runtimeTarget(),
+        target: runtimeStopTarget(),
       });
     } catch (caught) {
       error = caught;

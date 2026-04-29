@@ -66,7 +66,7 @@ export function createSelfHostRuntimePaths(input?: {
 }): NonNullable<ServerLaunchConfig["runtimePaths"]> {
   return {
     backupsDir: input?.backupsDir ?? "/tmp/onequery/backups",
-    dataDir: input?.dataDir ?? "/tmp/onequery/data",
+    dataDir: input?.dataDir ?? "/tmp/onequery",
     lifecycleEventLogPath:
       input?.lifecycleEventLogPath ?? "/tmp/onequery/run/lifecycle.events.pb",
     logsDir: input?.logsDir ?? "/tmp/onequery/logs",
@@ -87,6 +87,18 @@ export function createSelfHostRuntimeControl(input?: {
       kind: "unix",
       socketPath: input?.socketPath ?? "/tmp/onequery/run/runtime-control.sock",
     },
+  };
+}
+
+export function createSelfHostSupervisor(input?: {
+  generation?: string;
+  pid?: number;
+  supervisorId?: string;
+}): NonNullable<ServerLaunchConfig["supervisor"]> {
+  return {
+    generation: input?.generation ?? "7",
+    pid: input?.pid ?? 1001,
+    supervisorId: input?.supervisorId ?? "gateway-supervisor:1001",
   };
 }
 
@@ -125,6 +137,7 @@ export function createSelfHostLaunchConfig(input?: {
   runtimePaths?: NonNullable<ServerLaunchConfig["runtimePaths"]>;
   smtp?: NonNullable<ServerLaunchConfig["smtp"]>;
   storageDir?: string;
+  supervisor?: NonNullable<ServerLaunchConfig["supervisor"]>;
 }): ServerLaunchConfig {
   return {
     assets: {
@@ -160,8 +173,9 @@ export function createSelfHostLaunchConfig(input?: {
     runtimePaths: input?.runtimePaths ?? createSelfHostRuntimePaths(),
     smtp: input?.smtp,
     storage: {
-      dir: input?.storageDir ?? "/tmp/onequery/pglite",
+      dir: input?.storageDir ?? "/tmp/onequery/pglite/onequery",
       kind: "pglite",
     },
+    supervisor: input?.supervisor ?? createSelfHostSupervisor(),
   };
 }

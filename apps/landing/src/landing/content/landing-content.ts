@@ -173,7 +173,7 @@ budget       $4.2k remaining`;
 
 export const QUICKSTART_TERMINAL_LINES = [
   { kind: "prompt", text: DOWNLOAD_COMMAND },
-  { kind: "output", text: "downloaded @onequery/cli to ~/.local/bin" },
+  { kind: "output", text: "installed onequery under ~/.onequery" },
   { kind: "prompt", text: "onequery gateway start" },
   { kind: "output", text: "gateway listening on http://localhost:5656" },
   { kind: "prompt", text: "onequery auth login" },

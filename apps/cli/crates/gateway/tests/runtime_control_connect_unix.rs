@@ -166,12 +166,7 @@ async fn rust_generated_stop_status_sequence_drives_follow_up_watch_status() {
                 }),
                 operation_id: Some("018f0789-cc38-7d46-9a6b-83a2c8f0a101".to_owned()),
                 reason: Some("gateway_stop".to_owned()),
-                target: MessageField::some(runtime::RuntimeTarget {
-                    launch_id: Some("launch-rust-connect-unix".to_owned()),
-                    data_dir: Some("/tmp/onequery-data".to_owned()),
-                    pid: Some(4242),
-                    ..Default::default()
-                }),
+                target: MessageField::some(runtime_stop_target()),
                 ..Default::default()
             },
             runtime_control_test_call_options(),
@@ -244,6 +239,21 @@ fn runtime_control_test_call_options() -> CallOptions {
             "launch-rust-connect-unix",
         )
         .with_header("x-onequery-cli-version", env!("CARGO_PKG_VERSION"))
+}
+
+fn runtime_stop_target() -> runtime::RuntimeStopTarget {
+    runtime::RuntimeStopTarget {
+        launch_id: Some("launch-rust-connect-unix".to_owned()),
+        data_dir: Some("/tmp/onequery-data".to_owned()),
+        pid: Some(4242),
+        supervisor: MessageField::some(runtime::SupervisorIdentity {
+            supervisor_id: Some("gateway-supervisor-test".to_owned()),
+            pid: Some(1001),
+            generation: Some(7),
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
 }
 
 fn private_runtime_control_tempdir() -> TempDir {

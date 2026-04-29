@@ -111,10 +111,15 @@ fn assert_reduction_invariants(
                     SupervisorFailureRetryability::Retryable
                 );
             }
-            SupervisorEffect::RequestRuntimeStop { operation_id: _ }
-            | SupervisorEffect::SignalRuntimeTerminate
-            | SupervisorEffect::SignalRuntimeKill
-            | SupervisorEffect::ScheduleGraceDeadline
+            SupervisorEffect::RequestRuntimeStop {
+                runtime_pid,
+                operation_id: _,
+            }
+            | SupervisorEffect::SignalRuntimeTerminate { runtime_pid }
+            | SupervisorEffect::SignalRuntimeKill { runtime_pid } => {
+                prop_assert_eq!(Some(*runtime_pid), reduction.machine.runtime_pid);
+            }
+            SupervisorEffect::ScheduleGraceDeadline
             | SupervisorEffect::ScheduleTerminateDeadline
             | SupervisorEffect::ScheduleEscalationDeadline
             | SupervisorEffect::ScheduleRestart { backoff: _ } => {}
@@ -178,7 +183,6 @@ fn supervisor_event_strategy() -> impl Strategy<Value = SupervisorEvent> {
                 backoff: Duration::from_millis(backoff_millis),
             }
         }),
-        Just(SupervisorEvent::ArtifactRecoveryCompleted),
     ]
 }
 

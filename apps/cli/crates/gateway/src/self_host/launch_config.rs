@@ -35,6 +35,8 @@ pub(crate) struct ServerLaunchConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) smtp: Option<ServerLaunchSmtpConfig>,
     pub(crate) storage: ServerLaunchStorageConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) supervisor: Option<ServerLaunchSupervisorConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -116,6 +118,14 @@ pub(crate) struct ServerLaunchRuntimeControlConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ServerLaunchSupervisorConfig {
+    pub(crate) generation: String,
+    pub(crate) pid: u32,
+    pub(crate) supervisor_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case", tag = "kind")]
 pub(crate) enum ServerLaunchRuntimeControlTransportConfig {
     Unix {
@@ -176,6 +186,74 @@ pub(crate) fn write_self_host_launch_config(
     )?;
 
     Ok(launch_config_path)
+}
+
+pub(crate) fn write_self_host_launch_supervisor_identity(
+    launch_config_path: &Path,
+    command_line: &str,
+    supervisor: ServerLaunchSupervisorConfig,
+) -> Result<(), CliError> {
+    let contents = std::fs::read_to_string(launch_config_path).map_err(|error| {
+        CliError::new(
+            "failed to read self-host launch config for supervisor identity",
+            command_line,
+            ErrorStage::Internal,
+            format!("{error} ({})", launch_config_path.display()),
+            vec!["retry command".to_owned()],
+        )
+    })?;
+    let mut launch_config =
+        serde_json::from_str::<serde_json::Value>(&contents).map_err(|error| {
+            CliError::new(
+                "failed to parse self-host launch config for supervisor identity",
+                command_line,
+                ErrorStage::Internal,
+                format!("{error} ({})", launch_config_path.display()),
+                vec!["retry command".to_owned()],
+            )
+        })?;
+    let Some(launch_config_object) = launch_config.as_object_mut() else {
+        return Err(CliError::new(
+            "failed to stamp self-host launch config supervisor identity",
+            command_line,
+            ErrorStage::Internal,
+            format!(
+                "launch config {} must be a JSON object",
+                launch_config_path.display()
+            ),
+            vec!["retry command".to_owned()],
+        ));
+    };
+
+    launch_config_object.insert(
+        "supervisor".to_owned(),
+        serde_json::to_value(supervisor).map_err(|serialize_error| {
+            CliError::new(
+                "failed to serialize self-host launch supervisor identity",
+                command_line,
+                ErrorStage::Internal,
+                serialize_error.to_string(),
+                vec!["retry command".to_owned()],
+            )
+        })?,
+    );
+    let serialized = serde_json::to_string_pretty(&launch_config).map_err(|serialize_error| {
+        CliError::new(
+            "failed to serialize self-host launch config with supervisor identity",
+            command_line,
+            ErrorStage::Internal,
+            serialize_error.to_string(),
+            vec!["retry command".to_owned()],
+        )
+    })?;
+
+    private_files::atomic_write_private_file(
+        launch_config_path,
+        &serialized,
+        command_line,
+        ErrorStage::Internal,
+        "self-host launch config supervisor identity",
+    )
 }
 
 fn resolve_self_host_launch_config(
@@ -245,6 +323,7 @@ fn resolve_self_host_launch_config(
         storage: ServerLaunchStorageConfig::Pglite {
             dir: paths.pglite_dir.display().to_string(),
         },
+        supervisor: None,
     }
 }
 
