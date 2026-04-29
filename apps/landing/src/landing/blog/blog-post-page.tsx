@@ -30,6 +30,24 @@ function getPostSections(post: BlogPost): BlogPostSection[] {
   ];
 }
 
+const URL_PATTERN = /(https?:\/\/[^\s.]+(?:\.[^\s.]+)*[^\s.,)])/g;
+
+function renderParagraphWithLinks(paragraph: string) {
+  const parts = paragraph.split(URL_PATTERN);
+
+  return parts.map((part) => {
+    if (!part.match(URL_PATTERN)) {
+      return part;
+    }
+
+    return (
+      <a key={part} href={part} target="_blank" rel="noreferrer">
+        {part}
+      </a>
+    );
+  });
+}
+
 export function BlogPostPage({ post }: { post: BlogPost }) {
   const sections = getPostSections(post);
   const relatedPosts = blogPosts
@@ -87,7 +105,7 @@ export function BlogPostPage({ post }: { post: BlogPost }) {
                 <section key={section.id} id={section.id}>
                   <h2>{section.title}</h2>
                   {section.paragraphs.map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
+                    <p key={paragraph}>{renderParagraphWithLinks(paragraph)}</p>
                   ))}
                   {section.imageSrc ? (
                     <figure className="blog-post-figure">

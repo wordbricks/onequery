@@ -550,6 +550,17 @@ code {
   line-height: 1.7;
 }
 
+.blog-post-body a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.blog-post-body a:hover {
+  color: #1d4ed8;
+}
+
 .blog-post-body section {
   margin-top: 44px;
 }
