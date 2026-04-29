@@ -26,7 +26,6 @@ use super::runtime::LogPreview;
 use super::runtime::read_live_runtime_status;
 use super::state::GatewayRuntimeState;
 use super::state::GatewayStateAccessMode;
-use crate::runtime_control::types;
 use crate::runtime_probe_host;
 use crate::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
 use crate::self_host::SelfHostConfig;
@@ -36,6 +35,7 @@ use crate::self_host::default_port;
 use crate::self_host::load_self_host_config;
 use crate::self_host::self_host_launch_config_path_for_launch;
 use crate::self_host::write_self_host_launch_config;
+use crate::supervisor_control_proto::types;
 
 fn sample_paths() -> SelfHostRuntimePaths {
     SelfHostRuntimePaths::from_dirs("/tmp/onequery/self-host".into(), "/tmp/onequery".into())
@@ -149,39 +149,38 @@ fn runtime_status_snapshot_json(paths: &SelfHostRuntimePaths, pid: u32, launch_i
     )
 }
 
-#[test]
-fn render_gateway_status_output_reports_running_from_lease_without_status_snapshot() {
-    let test_dir =
-        std::env::temp_dir().join(format!("onequery-gateway-lease-status-{}", Uuid::new_v4()));
-    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
-
-    resolve_runtime_state_with_paths_for_test(
-        paths.clone(),
-        GatewayStateAccessMode::BootstrapIfMissing,
-        "onequery gateway",
+fn supervisor_status_snapshot_json(
+    paths: &SelfHostRuntimePaths,
+    runtime_pid: u32,
+    supervisor_pid: u32,
+    launch_id: &str,
+) -> String {
+    format!(
+        r#"{{
+  "header": {{
+    "schemaVersion": 1,
+    "writer": {{"writer": "LIFECYCLE_RECORD_WRITER_SUPERVISOR", "writerId": "supervisor:{supervisor_pid}"}},
+    "launch": {{"launchId": "{launch_id}", "dataDir": "{}", "runtimePid": {runtime_pid}, "supervisorPid": {supervisor_pid}, "supervisorGeneration": "1"}},
+    "writtenAt": "2026-03-25T00:00:00Z"
+  }},
+  "status": {{
+    "identity": {{"supervisorId": "supervisor:{supervisor_pid}", "pid": {supervisor_pid}, "generation": "1"}},
+    "launch": {{"launchId": "{launch_id}", "dataDir": "{}", "runtimePid": {runtime_pid}, "supervisorPid": {supervisor_pid}, "supervisorGeneration": "1"}},
+    "phase": "SUPERVISOR_PHASE_READY",
+    "supervisorSequence": "3",
+    "updatedAt": "2026-03-25T00:00:00Z",
+    "runtime": {{"pid": {runtime_pid}, "launchId": "{launch_id}", "dataDir": "{}"}}
+  }},
+  "snapshotAt": "2026-03-25T00:00:00Z"
+}}"#,
+        paths.data_dir.display(),
+        paths.data_dir.display(),
+        paths.data_dir.display()
     )
-    .unwrap_or_else(|error| panic!("expected gateway bootstrap to succeed: {error}"));
-    fs::write(
-        &paths.runtime_lease_path,
-        runtime_lease_json(&paths, std::process::id(), "launch-a"),
-    )
-    .unwrap_or_else(|error| panic!("expected lease fixture write to succeed: {error}"));
-
-    let state = resolve_runtime_state_with_paths_for_test(
-        paths,
-        GatewayStateAccessMode::ReadOnly,
-        "onequery gateway",
-    )
-    .unwrap_or_else(|error| panic!("expected gateway state read to succeed: {error}"));
-    let output = render_gateway_status_output(&state);
-    assert_snapshot!(output.lines.join("\n"));
-
-    fs::remove_dir_all(test_dir)
-        .unwrap_or_else(|error| panic!("expected gateway proof temp dir cleanup: {error}"));
 }
 
 #[test]
-fn render_gateway_status_output_reports_running_from_lease_and_runtime_status_snapshot() {
+fn render_gateway_status_output_reports_stale_records_from_lease_without_status_snapshot() {
     let test_dir =
         std::env::temp_dir().join(format!("onequery-gateway-lease-status-{}", Uuid::new_v4()));
     let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
@@ -197,11 +196,6 @@ fn render_gateway_status_output_reports_running_from_lease_and_runtime_status_sn
         runtime_lease_json(&paths, std::process::id(), "launch-a"),
     )
     .unwrap_or_else(|error| panic!("expected lease fixture write to succeed: {error}"));
-    fs::write(
-        &paths.runtime_status_snapshot_path,
-        runtime_status_snapshot_json(&paths, std::process::id(), "launch-a"),
-    )
-    .unwrap_or_else(|error| panic!("expected status snapshot fixture write to succeed: {error}"));
 
     let state = resolve_runtime_state_with_paths_for_test(
         paths,
@@ -217,7 +211,7 @@ fn render_gateway_status_output_reports_running_from_lease_and_runtime_status_sn
 }
 
 #[tokio::test]
-async fn gateway_status_falls_back_to_durable_snapshot_when_supervisor_unavailable() {
+async fn gateway_status_reports_stale_durable_snapshot_without_live_supervisor() {
     let test_dir = std::env::temp_dir().join(format!(
         "onequery-gateway-supervisor-unavailable-status-{}",
         Uuid::new_v4()
@@ -242,28 +236,67 @@ async fn gateway_status_falls_back_to_durable_snapshot_when_supervisor_unavailab
         "onequery gateway status",
     )
     .unwrap_or_else(|error| panic!("expected gateway state read to succeed: {error}"));
-    let live_status = read_live_runtime_status(&state, "onequery gateway status").await;
+    let live_status = read_live_runtime_status(&state, "onequery gateway status")
+        .await
+        .unwrap_or_else(|error| panic!("expected live status probe to complete: {error}"));
     let output = render_gateway_status_output_with_live_status(&state, live_status.as_ref());
 
     assert_eq!(live_status, None);
-    assert_eq!(output.lines[3], "Runtime: running");
+    assert_eq!(output.lines[3], "Runtime: stale_durable_records");
     let data = output.into_data();
     assert_eq!(
         data.pointer("/runtimeState/status")
             .and_then(serde_json::Value::as_str),
-        Some("running")
+        Some("stale_durable_records")
     );
 
     fs::remove_dir_all(test_dir)
         .unwrap_or_else(|error| panic!("expected gateway proof temp dir cleanup: {error}"));
 }
 
-#[test]
-fn render_gateway_status_output_omits_dead_log_level_json() {
-    let output = render_gateway_status_output(&sample_state());
-    let data = output.into_data();
+#[tokio::test]
+async fn gateway_status_surfaces_live_supervisor_control_unavailable() {
+    let test_dir = std::env::temp_dir().join(format!(
+        "onequery-gateway-supervisor-control-unavailable-status-{}",
+        Uuid::new_v4()
+    ));
+    let paths = SelfHostRuntimePaths::from_dirs(test_dir.join("self-host"), test_dir.clone());
+    let pid = std::process::id();
 
-    assert_eq!(data.pointer("/server/logLevel"), None);
+    resolve_runtime_state_with_paths_for_test(
+        paths.clone(),
+        GatewayStateAccessMode::BootstrapIfMissing,
+        "onequery gateway",
+    )
+    .unwrap_or_else(|error| panic!("expected gateway bootstrap to succeed: {error}"));
+    fs::write(
+        &paths.supervisor_status_snapshot_path,
+        supervisor_status_snapshot_json(&paths, pid, pid, "launch-a"),
+    )
+    .unwrap_or_else(|error| {
+        panic!("expected supervisor snapshot fixture write to succeed: {error}")
+    });
+
+    let state = resolve_runtime_state_with_paths_for_test(
+        paths,
+        GatewayStateAccessMode::ReadOnly,
+        "onequery gateway status",
+    )
+    .unwrap_or_else(|error| panic!("expected gateway state read to succeed: {error}"));
+    let error = read_live_runtime_status(&state, "onequery gateway status")
+        .await
+        .expect_err("expected missing supervisor control socket to surface");
+
+    assert_eq!(error.title.as_str(), "failed to read live gateway status");
+    assert!(
+        error
+            .code
+            .as_deref()
+            .is_some_and(|code| code.starts_with("supervisor_control_"))
+    );
+
+    fs::remove_dir_all(test_dir)
+        .unwrap_or_else(|error| panic!("expected gateway proof temp dir cleanup: {error}"));
 }
 
 #[test]
@@ -489,6 +522,18 @@ fn gateway_writes_launch_contract_with_default_self_host_port() {
     assert_eq!(
         launch_config.pointer("/supervisorControl/transport/kind"),
         Some(&serde_json::Value::String("unix".to_owned()))
+    );
+    assert_eq!(
+        launch_config.pointer("/supervisorControl/baseUrl"),
+        Some(&serde_json::Value::String(
+            crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY.to_owned(),
+        ))
+    );
+    assert_eq!(
+        launch_config.pointer("/supervisorControl/maxMessageBytes"),
+        Some(&serde_json::Value::Number(
+            crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES.into(),
+        ))
     );
     assert_eq!(
         launch_config.pointer("/supervisorControl/transport/socketPath"),

@@ -16,7 +16,7 @@ use super::SupervisorRuntimeFailureInfo;
 use super::SupervisorStopRpcFailureDisposition;
 use super::SupervisorTransitionRejected;
 use super::reduce_supervisor_machine;
-use crate::runtime_control::types;
+use crate::supervisor_control_proto::types;
 
 #[test]
 fn launch_path_moves_through_explicit_handshake_states() {
@@ -84,13 +84,13 @@ fn graceful_stop_emits_deferred_rpc_and_deadline_effects() {
             },
             SupervisorEffect::RequestRuntimeStop {
                 runtime_pid: 4242,
-                operation_id: "stop-operation-a".to_owned(),
+                operation_id: stop_operation_id(),
             },
         ]
     );
     assert_eq!(
         stop_requested.transition.caller_operation_id.as_deref(),
-        Some("stop-operation-a")
+        Some(stop_operation_id().as_str())
     );
 
     let accepted = reduce_ok(&stop_requested.machine, stop_rpc_accepted_event());
@@ -106,9 +106,9 @@ fn graceful_stop_emits_deferred_rpc_and_deadline_effects() {
 }
 
 #[test]
-fn stop_rpc_fallback_enters_terminating_with_process_effects() {
+fn stop_rpc_escalation_enters_terminating_with_process_effects() {
     let stop_requested = reduce_ok(&ready_machine(), stop_intent_received_event());
-    let terminating = reduce_ok(&stop_requested.machine, stop_rpc_failed_fallback_event());
+    let terminating = reduce_ok(&stop_requested.machine, stop_rpc_failed_escalation_event());
 
     assert_eq!(
         terminating.machine.state(),
@@ -125,6 +125,89 @@ fn stop_rpc_fallback_enters_terminating_with_process_effects() {
             },
             SupervisorEffect::SignalRuntimeTerminate { runtime_pid: 4242 },
             SupervisorEffect::ScheduleTerminateDeadline,
+        ]
+    );
+}
+
+#[test]
+fn startup_timeout_after_child_spawn_owns_terminate_cleanup() {
+    let timed_out = reduce_ok(&handshaking_machine(), startup_deadline_elapsed_event());
+
+    assert_eq!(timed_out.machine.state(), SupervisorMachineState::Failed);
+    assert_eq!(
+        timed_out.effects,
+        vec![
+            SupervisorEffect::WriteStatusSnapshot {
+                phase: types::SupervisorPhase::SUPERVISOR_PHASE_FAILED,
+                supervisor_sequence: 3,
+                runtime_pid: Some(4242),
+                failure: Some(startup_timeout_failure()),
+            },
+            SupervisorEffect::SignalRuntimeTerminate { runtime_pid: 4242 },
+            SupervisorEffect::ScheduleTerminateDeadline,
+        ]
+    );
+}
+
+#[test]
+fn startup_timeout_cleanup_escalates_to_hard_kill_without_losing_failure() {
+    let timed_out = reduce_ok(&handshaking_machine(), startup_deadline_elapsed_event());
+    let escalated = reduce_ok(
+        &timed_out.machine,
+        SupervisorEvent::TerminateDeadlineElapsed,
+    );
+
+    assert_eq!(escalated.machine.state(), SupervisorMachineState::Failed);
+    assert_eq!(
+        escalated.effects,
+        vec![
+            SupervisorEffect::WriteStatusSnapshot {
+                phase: types::SupervisorPhase::SUPERVISOR_PHASE_FAILED,
+                supervisor_sequence: 4,
+                runtime_pid: Some(4242),
+                failure: Some(startup_timeout_failure()),
+            },
+            SupervisorEffect::SignalRuntimeKill { runtime_pid: 4242 },
+            SupervisorEffect::ScheduleEscalationDeadline,
+        ]
+    );
+}
+
+#[test]
+fn startup_timeout_cleanup_child_exit_writes_terminal_runtime_failure() {
+    let timed_out = reduce_ok(&handshaking_machine(), startup_deadline_elapsed_event());
+    let exited = reduce_ok(
+        &timed_out.machine,
+        SupervisorEvent::ChildExited {
+            runtime_pid: 4242,
+            exit_kind: SupervisorChildExitKind::Expected,
+            exit_code: None,
+            signal: Some("SIGTERM".to_owned()),
+            message: "self-host server exited due to signal SIGTERM".to_owned(),
+        },
+    );
+
+    assert_eq!(exited.machine.state(), SupervisorMachineState::Failed);
+    assert_eq!(
+        exited.effects,
+        vec![
+            SupervisorEffect::WriteStatusSnapshot {
+                phase: types::SupervisorPhase::SUPERVISOR_PHASE_FAILED,
+                supervisor_sequence: 4,
+                runtime_pid: Some(4242),
+                failure: Some(startup_timeout_failure()),
+            },
+            SupervisorEffect::WriteTerminalRuntimeStatusSnapshot {
+                phase: types::RuntimePhase::RUNTIME_PHASE_FAILED,
+                runtime_pid: 4242,
+                failure: Some(SupervisorRuntimeFailureInfo {
+                    code: types::RuntimeFailureCode::RUNTIME_FAILURE_CODE_INTERNAL,
+                    message: "startup timed out".to_owned(),
+                    retryability: SupervisorFailureRetryability::Retryable,
+                }),
+                exit_code: None,
+                signal: Some("SIGTERM".to_owned()),
+            },
         ]
     );
 }
@@ -150,11 +233,11 @@ fn unexpected_child_exit_from_ready_is_terminal_failure() {
             SupervisorEffect::WriteTerminalRuntimeStatusSnapshot {
                 phase: types::RuntimePhase::RUNTIME_PHASE_FAILED,
                 runtime_pid: 4242,
-                failure: SupervisorRuntimeFailureInfo {
+                failure: Some(SupervisorRuntimeFailureInfo {
                     code: types::RuntimeFailureCode::RUNTIME_FAILURE_CODE_INTERNAL,
                     message: "self-host server exited with code 1".to_owned(),
                     retryability: SupervisorFailureRetryability::Retryable,
-                },
+                }),
                 exit_code: Some(1),
                 signal: None,
             },
@@ -235,7 +318,6 @@ fn restart_scheduled_rejects_stale_attempt() {
 #[test_case(SupervisorMachineFixture::StartingFresh, 1, 4242; "starting fresh")]
 #[test_case(SupervisorMachineFixture::StartingAfterLaunch, 2, 4242; "starting after launch")]
 #[test_case(SupervisorMachineFixture::Handshaking, 3, 4242; "handshaking")]
-#[test_case(SupervisorMachineFixture::Ready, 4, 4242; "ready")]
 #[test_case(SupervisorMachineFixture::StopRequested, 5, 4242; "stop requested")]
 #[test_case(SupervisorMachineFixture::Terminating, 6, 4242; "terminating")]
 #[test_case(SupervisorMachineFixture::Escalating, 7, 4242; "escalating")]
@@ -256,11 +338,11 @@ fn unexpected_child_exit_is_accepted_from_non_terminal_state(
         Some(&SupervisorEffect::WriteTerminalRuntimeStatusSnapshot {
             phase: types::RuntimePhase::RUNTIME_PHASE_FAILED,
             runtime_pid,
-            failure: SupervisorRuntimeFailureInfo {
+            failure: Some(SupervisorRuntimeFailureInfo {
                 code: types::RuntimeFailureCode::RUNTIME_FAILURE_CODE_INTERNAL,
                 message: "self-host server exited with code 1".to_owned(),
                 retryability: SupervisorFailureRetryability::Retryable,
-            },
+            }),
             exit_code: Some(1),
             signal: None,
         })
@@ -279,29 +361,14 @@ fn child_exit_rejects_mismatched_runtime_pid() {
     );
 }
 
-#[test]
-fn rejects_watch_ready_before_child_spawned() {
-    let rejection = reduce_err(&SupervisorMachine::new(), SupervisorEvent::WatchReady);
-
-    assert_eq!(rejection.state, SupervisorMachineState::Starting);
-    assert_eq!(rejection.event, SupervisorEventKind::WatchReady);
-}
-
-#[test_case(SupervisorMachineFixture::StartingFresh, SupervisorEventSample::LaunchRequested, SupervisorMachineState::Starting; "starting accepts launch requested")]
 #[test_case(SupervisorMachineFixture::StartingAfterLaunch, SupervisorEventSample::LaunchFailed, SupervisorMachineState::Failed; "starting after launch accepts launch failed")]
-#[test_case(SupervisorMachineFixture::StartingAfterLaunch, SupervisorEventSample::ChildSpawned, SupervisorMachineState::Handshaking; "starting after launch accepts child spawned")]
 #[test_case(SupervisorMachineFixture::StartingFresh, SupervisorEventSample::StartupDeadlineElapsed, SupervisorMachineState::Failed; "starting accepts startup deadline elapsed")]
 #[test_case(SupervisorMachineFixture::Handshaking, SupervisorEventSample::StartupDeadlineElapsed, SupervisorMachineState::Failed; "handshaking accepts startup deadline elapsed")]
 #[test_case(SupervisorMachineFixture::Handshaking, SupervisorEventSample::ControlSocketObserved, SupervisorMachineState::Handshaking; "handshaking accepts control socket observed")]
-#[test_case(SupervisorMachineFixture::Handshaking, SupervisorEventSample::WatchReady, SupervisorMachineState::Ready; "handshaking accepts watch ready")]
-#[test_case(SupervisorMachineFixture::Ready, SupervisorEventSample::StopIntentReceived, SupervisorMachineState::StopRequested; "ready accepts stop intent received")]
-#[test_case(SupervisorMachineFixture::StopRequested, SupervisorEventSample::StopRpcAccepted, SupervisorMachineState::StopRequested; "stop requested accepts stop rpc accepted")]
-#[test_case(SupervisorMachineFixture::StopRequested, SupervisorEventSample::StopRpcFailedFallback, SupervisorMachineState::Terminating; "stop requested accepts stop rpc failed fallback")]
 #[test_case(SupervisorMachineFixture::StopRequested, SupervisorEventSample::StopRpcFailedTerminal, SupervisorMachineState::Failed; "stop requested accepts stop rpc failed terminal")]
 #[test_case(SupervisorMachineFixture::StopRequested, SupervisorEventSample::GraceDeadlineElapsed, SupervisorMachineState::Terminating; "stop requested accepts grace deadline elapsed")]
 #[test_case(SupervisorMachineFixture::Terminating, SupervisorEventSample::TerminateDeadlineElapsed, SupervisorMachineState::Escalating; "terminating accepts terminate deadline elapsed")]
 #[test_case(SupervisorMachineFixture::Escalating, SupervisorEventSample::EscalationDeadlineElapsed, SupervisorMachineState::Failed; "escalating accepts escalation deadline elapsed")]
-#[test_case(SupervisorMachineFixture::FailedAfterUnexpectedChildExit, SupervisorEventSample::RestartScheduled, SupervisorMachineState::Starting; "failed after unexpected child exit accepts restart scheduled")]
 fn transition_table_accepts_allowed_state_event_row(
     fixture: SupervisorMachineFixture,
     event: SupervisorEventSample,
@@ -334,12 +401,21 @@ fn transition_table_accepts_expected_child_exit_from_non_terminal_state(
     assert_eq!(reduction.machine.supervisor_sequence, expected_sequence);
     assert_eq!(
         reduction.effects,
-        vec![SupervisorEffect::WriteStatusSnapshot {
-            phase: types::SupervisorPhase::SUPERVISOR_PHASE_EXITED,
-            supervisor_sequence: expected_sequence,
-            runtime_pid: Some(runtime_pid),
-            failure: None,
-        }]
+        vec![
+            SupervisorEffect::WriteStatusSnapshot {
+                phase: types::SupervisorPhase::SUPERVISOR_PHASE_EXITED,
+                supervisor_sequence: expected_sequence,
+                runtime_pid: Some(runtime_pid),
+                failure: None,
+            },
+            SupervisorEffect::WriteTerminalRuntimeStatusSnapshot {
+                phase: types::RuntimePhase::RUNTIME_PHASE_STOPPED,
+                runtime_pid,
+                failure: None,
+                exit_code: Some(0),
+                signal: None,
+            },
+        ]
     );
 }
 
@@ -388,7 +464,11 @@ fn stop_requested_machine() -> SupervisorMachine {
 }
 
 fn terminating_machine() -> SupervisorMachine {
-    reduce_ok(&stop_requested_machine(), stop_rpc_failed_fallback_event()).machine
+    reduce_ok(
+        &stop_requested_machine(),
+        stop_rpc_failed_escalation_event(),
+    )
+    .machine
 }
 
 fn escalating_machine() -> SupervisorMachine {
@@ -439,6 +519,14 @@ fn startup_deadline_elapsed_event() -> SupervisorEvent {
     }
 }
 
+fn startup_timeout_failure() -> SupervisorFailureInfo {
+    SupervisorFailureInfo {
+        code: types::SupervisorFailureCode::SUPERVISOR_FAILURE_CODE_STARTUP_TIMEOUT,
+        message: "startup timed out".to_owned(),
+        retryability: SupervisorFailureRetryability::Retryable,
+    }
+}
+
 fn escalation_deadline_elapsed_event() -> SupervisorEvent {
     SupervisorEvent::EscalationDeadlineElapsed {
         message: "hard kill timed out".to_owned(),
@@ -454,30 +542,34 @@ fn restart_scheduled_event() -> SupervisorEvent {
 
 fn stop_intent_received_event() -> SupervisorEvent {
     SupervisorEvent::StopIntentReceived {
-        operation_id: "stop-operation-a".to_owned(),
+        operation_id: stop_operation_id(),
     }
 }
 
 fn stop_rpc_accepted_event() -> SupervisorEvent {
     SupervisorEvent::StopRpcAccepted {
-        operation_id: "stop-operation-a".to_owned(),
+        operation_id: stop_operation_id(),
     }
 }
 
-fn stop_rpc_failed_fallback_event() -> SupervisorEvent {
+fn stop_rpc_failed_escalation_event() -> SupervisorEvent {
     SupervisorEvent::StopRpcFailed {
-        operation_id: "stop-operation-a".to_owned(),
-        disposition: SupervisorStopRpcFailureDisposition::FallbackToTerminate,
+        operation_id: stop_operation_id(),
+        disposition: SupervisorStopRpcFailureDisposition::EscalateToTerminate,
         message: "runtime control unavailable".to_owned(),
     }
 }
 
 fn stop_rpc_failed_terminal_event() -> SupervisorEvent {
     SupervisorEvent::StopRpcFailed {
-        operation_id: "stop-operation-a".to_owned(),
+        operation_id: stop_operation_id(),
         disposition: SupervisorStopRpcFailureDisposition::TerminalFailure,
         message: "runtime control rejected stop".to_owned(),
     }
+}
+
+fn stop_operation_id() -> String {
+    "00000000-0000-4000-8000-000000000001".to_owned()
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -489,7 +581,7 @@ enum SupervisorEventSample {
     WatchReady,
     StopIntentReceived,
     StopRpcAccepted,
-    StopRpcFailedFallback,
+    StopRpcFailedEscalation,
     StopRpcFailedTerminal,
     GraceDeadlineElapsed,
     TerminateDeadlineElapsed,
@@ -508,7 +600,7 @@ impl SupervisorEventSample {
         Self::WatchReady,
         Self::StopIntentReceived,
         Self::StopRpcAccepted,
-        Self::StopRpcFailedFallback,
+        Self::StopRpcFailedEscalation,
         Self::StopRpcFailedTerminal,
         Self::GraceDeadlineElapsed,
         Self::TerminateDeadlineElapsed,
@@ -527,7 +619,7 @@ impl SupervisorEventSample {
             Self::WatchReady => SupervisorEvent::WatchReady,
             Self::StopIntentReceived => stop_intent_received_event(),
             Self::StopRpcAccepted => stop_rpc_accepted_event(),
-            Self::StopRpcFailedFallback => stop_rpc_failed_fallback_event(),
+            Self::StopRpcFailedEscalation => stop_rpc_failed_escalation_event(),
             Self::StopRpcFailedTerminal => stop_rpc_failed_terminal_event(),
             Self::GraceDeadlineElapsed => SupervisorEvent::GraceDeadlineElapsed,
             Self::TerminateDeadlineElapsed => SupervisorEvent::TerminateDeadlineElapsed,

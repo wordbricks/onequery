@@ -6,7 +6,7 @@ use onequery_core::error::CliError;
 use onequery_core::error::CliValidationIssue;
 use onequery_proto_runtime::google::rpc;
 
-const RUNTIME_CONTROL_ERROR_INFO_DOMAIN: &str = "onequery.runtime.v1";
+const SUPERVISOR_CONTROL_ERROR_INFO_DOMAIN: &str = "onequery.runtime.v1";
 const ERROR_INFO_DETAIL_TYPE: &str = "google.rpc.ErrorInfo";
 const BAD_REQUEST_DETAIL_TYPE: &str = "google.rpc.BadRequest";
 const RETRY_INFO_DETAIL_TYPE: &str = "google.rpc.RetryInfo";
@@ -16,37 +16,37 @@ const ERROR_INFO_OPERATION_METADATA: &str = "operation";
 const ERROR_INFO_RETRYABLE_METADATA: &str = "retryable";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-struct RuntimeControlConnectProblem {
+struct SupervisorControlConnectProblem {
     reason: String,
     server_message: Option<String>,
     retryable: bool,
     retry_after_ms: Option<u64>,
     operation: Option<String>,
     validation_issues: Vec<CliValidationIssue>,
-    preconditions: Vec<RuntimeControlPreconditionViolation>,
-    resources: Vec<RuntimeControlResourceInfo>,
+    preconditions: Vec<SupervisorControlPreconditionViolation>,
+    resources: Vec<SupervisorControlResourceInfo>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-struct RuntimeControlPreconditionViolation {
+struct SupervisorControlPreconditionViolation {
     violation_type: String,
     subject: String,
     description: String,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-struct RuntimeControlResourceInfo {
+struct SupervisorControlResourceInfo {
     resource_type: String,
     resource_name: String,
     description: Option<String>,
 }
 
-impl RuntimeControlConnectProblem {
+impl SupervisorControlConnectProblem {
     fn summary(&self) -> String {
         let operation = self.operation.as_deref().unwrap_or("request");
         let mut detail = format!(
             "{}{}",
-            runtime_control_reason_summary(self.reason.as_str()),
+            supervisor_control_reason_summary(self.reason.as_str()),
             if operation == "request" {
                 String::new()
             } else {
@@ -106,31 +106,34 @@ impl RuntimeControlConnectProblem {
     }
 }
 
-pub(crate) fn runtime_control_error_allows_fallback(error: &ConnectError) -> bool {
-    if let Some(problem) = runtime_control_problem_from_connect_error(error) {
-        return problem.retryable;
+pub(crate) fn supervisor_control_error_allows_stop_escalation(error: &ConnectError) -> bool {
+    if let Some(problem) = supervisor_control_problem_from_connect_error(error) {
+        return problem.retryable
+            && problem
+                .operation
+                .as_deref()
+                .is_some_and(|operation| operation.eq_ignore_ascii_case("stop"));
     }
 
-    matches!(
-        error.code,
-        ErrorCode::DeadlineExceeded
-            | ErrorCode::Unavailable
-            | ErrorCode::Unimplemented
-            | ErrorCode::Unknown
-    )
+    error.code == ErrorCode::DeadlineExceeded
+        || (error.code == ErrorCode::Unavailable
+            && error
+                .message
+                .as_deref()
+                .is_some_and(|message| message.contains("stop command stream is not attached")))
 }
 
-pub(super) fn runtime_control_connect_error_summary(error: &ConnectError) -> Option<String> {
-    runtime_control_problem_from_connect_error(error).map(|problem| problem.summary())
+pub(super) fn supervisor_control_connect_error_summary(error: &ConnectError) -> Option<String> {
+    supervisor_control_problem_from_connect_error(error).map(|problem| problem.summary())
 }
 
-pub(super) fn with_runtime_control_connect_error_metadata(
+pub(super) fn with_supervisor_control_connect_error_metadata(
     error: &ConnectError,
     cli_error: CliError,
-    fallback_code: Option<String>,
+    default_code: Option<String>,
 ) -> CliError {
-    let Some(problem) = runtime_control_problem_from_connect_error(error) else {
-        return cli_error.with_code(fallback_code);
+    let Some(problem) = supervisor_control_problem_from_connect_error(error) else {
+        return cli_error.with_code(default_code);
     };
 
     cli_error
@@ -140,16 +143,16 @@ pub(super) fn with_runtime_control_connect_error_metadata(
         .with_validation_issues(problem.validation_issues)
 }
 
-fn runtime_control_problem_from_connect_error(
+fn supervisor_control_problem_from_connect_error(
     error: &ConnectError,
-) -> Option<RuntimeControlConnectProblem> {
-    let error_info = runtime_control_error_info(error)?;
+) -> Option<SupervisorControlConnectProblem> {
+    let error_info = supervisor_control_error_info(error)?;
     let server_message = non_empty(error.message.clone());
     let retryable = error_info_retryable(&error_info);
     let operation =
         metadata_value(&error_info, ERROR_INFO_OPERATION_METADATA).map(ToOwned::to_owned);
     let reason = non_empty_string(error_info.reason)?;
-    let mut parsed = ParsedRuntimeControlDetails::default();
+    let mut parsed = ParsedSupervisorControlDetails::default();
 
     for detail in &error.details {
         match detail.type_url.as_str() {
@@ -197,7 +200,7 @@ fn runtime_control_problem_from_connect_error(
         }
     }
 
-    Some(RuntimeControlConnectProblem {
+    Some(SupervisorControlConnectProblem {
         reason,
         server_message,
         retryable,
@@ -209,14 +212,14 @@ fn runtime_control_problem_from_connect_error(
     })
 }
 
-fn runtime_control_error_info(error: &ConnectError) -> Option<rpc::ErrorInfo> {
+fn supervisor_control_error_info(error: &ConnectError) -> Option<rpc::ErrorInfo> {
     error.details.iter().find_map(|detail| {
         if detail.type_url.as_str() != ERROR_INFO_DETAIL_TYPE {
             return None;
         }
 
         let error_info = decode_connect_detail::<rpc::ErrorInfo>(detail)?;
-        if error_info.domain == RUNTIME_CONTROL_ERROR_INFO_DOMAIN {
+        if error_info.domain == SUPERVISOR_CONTROL_ERROR_INFO_DOMAIN {
             Some(error_info)
         } else {
             None
@@ -241,11 +244,11 @@ fn metadata_value<'a>(error_info: &'a rpc::ErrorInfo, key: &str) -> Option<&'a s
 }
 
 #[derive(Default)]
-struct ParsedRuntimeControlDetails {
+struct ParsedSupervisorControlDetails {
     retry_after_ms: Option<u64>,
     validation_issues: Vec<CliValidationIssue>,
-    preconditions: Vec<RuntimeControlPreconditionViolation>,
-    resources: Vec<RuntimeControlResourceInfo>,
+    preconditions: Vec<SupervisorControlPreconditionViolation>,
+    resources: Vec<SupervisorControlResourceInfo>,
 }
 
 fn validation_issue_from_generated(
@@ -260,16 +263,18 @@ fn validation_issue_from_generated(
 
 fn precondition_from_generated(
     violation: rpc::precondition_failure::Violation,
-) -> RuntimeControlPreconditionViolation {
-    RuntimeControlPreconditionViolation {
+) -> SupervisorControlPreconditionViolation {
+    SupervisorControlPreconditionViolation {
         violation_type: violation.r#type,
         subject: violation.subject,
         description: violation.description,
     }
 }
 
-fn resource_from_generated(resource_info: rpc::ResourceInfo) -> Option<RuntimeControlResourceInfo> {
-    Some(RuntimeControlResourceInfo {
+fn resource_from_generated(
+    resource_info: rpc::ResourceInfo,
+) -> Option<SupervisorControlResourceInfo> {
+    Some(SupervisorControlResourceInfo {
         resource_type: non_empty_string(resource_info.resource_type)?,
         resource_name: non_empty_string(resource_info.resource_name)?,
         description: non_empty_string(resource_info.description),
@@ -302,27 +307,20 @@ where
     MessageType::decode_from_slice(bytes.as_slice()).ok()
 }
 
-fn runtime_control_reason_summary(reason: &str) -> String {
+fn supervisor_control_reason_summary(reason: &str) -> String {
     match reason {
-        "RUNTIME_CONTROL_REQUEST_INVALID" | "SUPERVISOR_CONTROL_REQUEST_INVALID" => {
-            "supervisor control request is invalid".to_owned()
-        }
-        "RUNTIME_CONTROL_OPERATION_CONFLICT" | "SUPERVISOR_CONTROL_OPERATION_CONFLICT" => {
+        "SUPERVISOR_CONTROL_REQUEST_INVALID" => "supervisor control request is invalid".to_owned(),
+        "SUPERVISOR_CONTROL_OPERATION_CONFLICT" => {
             "supervisor control operation id conflicts with an earlier request".to_owned()
         }
-        "RUNTIME_CONTROL_TARGET_PRECONDITION_FAILED"
-        | "SUPERVISOR_CONTROL_TARGET_PRECONDITION_FAILED" => {
+        "SUPERVISOR_CONTROL_TARGET_PRECONDITION_FAILED" => {
             "supervisor control target does not match the active launch".to_owned()
         }
-        "RUNTIME_CONTROL_STARTUP_NOT_READY" | "SUPERVISOR_CONTROL_STARTUP_NOT_READY" => {
-            "supervisor control is not ready yet".to_owned()
-        }
-        "RUNTIME_CONTROL_ACTOR_UNAVAILABLE" | "SUPERVISOR_CONTROL_ACTOR_UNAVAILABLE" => {
+        "SUPERVISOR_CONTROL_STARTUP_NOT_READY" => "supervisor control is not ready yet".to_owned(),
+        "SUPERVISOR_CONTROL_ACTOR_UNAVAILABLE" => {
             "supervisor control actor is unavailable".to_owned()
         }
-        "RUNTIME_CONTROL_INTERNAL" | "SUPERVISOR_CONTROL_INTERNAL" => {
-            "supervisor control failed internally".to_owned()
-        }
+        "SUPERVISOR_CONTROL_INTERNAL" => "supervisor control failed internally".to_owned(),
         _ => format!("supervisor control returned {}", reason_to_label(reason)),
     }
 }
@@ -335,7 +333,7 @@ fn validation_issue_summary(issue: &CliValidationIssue) -> String {
     format!("{}: {} ({})", issue.field, issue.message, issue.code)
 }
 
-fn precondition_summary(violation: &RuntimeControlPreconditionViolation) -> String {
+fn precondition_summary(violation: &SupervisorControlPreconditionViolation) -> String {
     let subject = if violation.subject.is_empty() {
         "target"
     } else {
@@ -354,7 +352,7 @@ fn precondition_summary(violation: &RuntimeControlPreconditionViolation) -> Stri
     }
 }
 
-fn resource_summary(resource: &RuntimeControlResourceInfo) -> String {
+fn resource_summary(resource: &SupervisorControlResourceInfo) -> String {
     match resource.description.as_deref() {
         Some(description) => format!(
             "{} {} ({description})",
@@ -397,9 +395,9 @@ mod tests {
     use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
-    use super::runtime_control_connect_error_summary;
-    use super::runtime_control_error_allows_fallback;
-    use super::with_runtime_control_connect_error_metadata;
+    use super::supervisor_control_connect_error_summary;
+    use super::supervisor_control_error_allows_stop_escalation;
+    use super::with_supervisor_control_connect_error_metadata;
     use onequery_proto_runtime::google::rpc as google_rpc;
 
     #[test]
@@ -408,7 +406,7 @@ mod tests {
         error.details.push(error_detail(
             "google.rpc.ErrorInfo",
             &error_info(
-                "RUNTIME_CONTROL_REQUEST_INVALID",
+                "SUPERVISOR_CONTROL_REQUEST_INVALID",
                 &[("operation", "Stop"), ("retryable", "false")],
             ),
         ));
@@ -425,7 +423,7 @@ mod tests {
             },
         ));
 
-        let cli_error = with_runtime_control_connect_error_metadata(
+        let cli_error = with_supervisor_control_connect_error_metadata(
             &error,
             CliError::new(
                 "failed",
@@ -434,7 +432,7 @@ mod tests {
                 "supervisor control failed",
                 Vec::new(),
             ),
-            Some("fallback".to_owned()),
+            Some("default".to_owned()),
         );
 
         assert_eq!(
@@ -445,7 +443,7 @@ mod tests {
                 cli_error.validation_issues.as_slice(),
             ),
             (
-                Some("RUNTIME_CONTROL_REQUEST_INVALID"),
+                Some("SUPERVISOR_CONTROL_REQUEST_INVALID"),
                 false,
                 None,
                 [onequery_core::error::CliValidationIssue {
@@ -459,7 +457,7 @@ mod tests {
     }
 
     #[test]
-    fn typed_retryable_startup_errors_allow_fallback() {
+    fn typed_retryable_stop_errors_allow_escalation() {
         let mut error = ConnectError::new(
             ErrorCode::Unavailable,
             "runtime shutdown controller is not attached",
@@ -467,7 +465,7 @@ mod tests {
         error.details.push(error_detail(
             "google.rpc.ErrorInfo",
             &error_info(
-                "RUNTIME_CONTROL_STARTUP_NOT_READY",
+                "SUPERVISOR_CONTROL_STARTUP_NOT_READY",
                 &[("operation", "stop"), ("retryable", "true")],
             ),
         ));
@@ -482,9 +480,12 @@ mod tests {
             },
         ));
 
-        assert_eq!(runtime_control_error_allows_fallback(&error), true);
         assert_eq!(
-            runtime_control_connect_error_summary(&error),
+            supervisor_control_error_allows_stop_escalation(&error),
+            true
+        );
+        assert_eq!(
+            supervisor_control_connect_error_summary(&error),
             Some(
                 "supervisor control is not ready yet for stop: runtime shutdown controller is not attached; retryable after 250ms"
                     .to_owned()
@@ -493,17 +494,67 @@ mod tests {
     }
 
     #[test]
-    fn typed_non_retryable_unavailable_errors_do_not_allow_fallback() {
+    fn typed_non_retryable_unavailable_errors_do_not_allow_escalation() {
         let mut error = ConnectError::new(ErrorCode::Unavailable, "actor stopped");
         error.details.push(error_detail(
             "google.rpc.ErrorInfo",
             &error_info(
-                "RUNTIME_CONTROL_ACTOR_UNAVAILABLE",
+                "SUPERVISOR_CONTROL_ACTOR_UNAVAILABLE",
                 &[("operation", "watchStatus"), ("retryable", "false")],
             ),
         ));
 
-        assert_eq!(runtime_control_error_allows_fallback(&error), false);
+        assert_eq!(
+            supervisor_control_error_allows_stop_escalation(&error),
+            false
+        );
+    }
+
+    #[test]
+    fn typed_retryable_non_stop_errors_do_not_allow_escalation() {
+        let mut error = ConnectError::new(ErrorCode::Unavailable, "watch closed");
+        error.details.push(error_detail(
+            "google.rpc.ErrorInfo",
+            &error_info(
+                "SUPERVISOR_CONTROL_ACTOR_UNAVAILABLE",
+                &[("operation", "watchStatus"), ("retryable", "true")],
+            ),
+        ));
+
+        assert_eq!(
+            supervisor_control_error_allows_stop_escalation(&error),
+            false
+        );
+    }
+
+    #[test]
+    fn unstructured_unknown_and_unimplemented_errors_do_not_allow_escalation() {
+        for code in [ErrorCode::Unknown, ErrorCode::Unimplemented] {
+            let error = ConnectError::new(code, "unstructured control error");
+
+            assert_eq!(
+                supervisor_control_error_allows_stop_escalation(&error),
+                false
+            );
+        }
+    }
+
+    #[test]
+    fn unstructured_unavailable_only_allows_stop_stream_loss_escalation() {
+        let broad_unavailable = ConnectError::new(ErrorCode::Unavailable, "socket unavailable");
+        let stream_loss = ConnectError::new(
+            ErrorCode::Unavailable,
+            "supervisor control stop command stream is not attached",
+        );
+
+        assert_eq!(
+            supervisor_control_error_allows_stop_escalation(&broad_unavailable),
+            false
+        );
+        assert_eq!(
+            supervisor_control_error_allows_stop_escalation(&stream_loss),
+            true
+        );
     }
 
     fn error_detail<MessageType>(

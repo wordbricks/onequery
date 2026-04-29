@@ -59,6 +59,8 @@ export const serverLaunchSupervisorControlTransportSchema =
 
 export const serverLaunchSupervisorControlSchema = z
   .object({
+    baseUrl: originSchema,
+    maxMessageBytes: z.number().int().min(1).max(0xffffffff),
     transport: serverLaunchSupervisorControlTransportSchema,
   })
   .strict();

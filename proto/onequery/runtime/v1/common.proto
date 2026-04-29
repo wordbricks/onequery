@@ -21,16 +21,20 @@ enum RuntimePhase {
 }
 
 enum RuntimeStopCompletion {
+  reserved 1;
+  reserved RUNTIME_STOP_COMPLETION_CLEANUP_ONLY;
+
   RUNTIME_STOP_COMPLETION_UNSPECIFIED = 0;
-  RUNTIME_STOP_COMPLETION_CLEANUP_ONLY = 1;
   RUNTIME_STOP_COMPLETION_CLEANUP_AND_EXIT = 2;
 }
 
 enum RuntimeStopDisposition {
+  reserved 3;
+  reserved RUNTIME_STOP_DISPOSITION_ALREADY_FINISHED;
+
   RUNTIME_STOP_DISPOSITION_UNSPECIFIED = 0;
   RUNTIME_STOP_DISPOSITION_ACCEPTED = 1;
   RUNTIME_STOP_DISPOSITION_ALREADY_STOPPING = 2;
-  RUNTIME_STOP_DISPOSITION_ALREADY_FINISHED = 3;
 }
 
 enum RuntimeFailureCode {
@@ -46,6 +50,17 @@ enum LifecycleRecordWriter {
   LIFECYCLE_RECORD_WRITER_UNSPECIFIED = 0;
   LIFECYCLE_RECORD_WRITER_RUNTIME = 1;
   LIFECYCLE_RECORD_WRITER_SUPERVISOR = 2;
+}
+
+enum LifecycleRecordEncoding {
+  LIFECYCLE_RECORD_ENCODING_UNSPECIFIED = 0;
+  LIFECYCLE_RECORD_ENCODING_PROTO_JSON = 1;
+  LIFECYCLE_RECORD_ENCODING_LENGTH_DELIMITED_BINARY_PROTOBUF = 2;
+}
+
+enum LifecycleRecordSchemaVersion {
+  LIFECYCLE_RECORD_SCHEMA_VERSION_UNSPECIFIED = 0;
+  LIFECYCLE_RECORD_SCHEMA_VERSION_V1 = 1;
 }
 
 enum SupervisorPhase {
@@ -121,7 +136,10 @@ message RuntimeTransition {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 128
   ];
-  uint64 runtime_sequence = 2 [(buf.validate.field).uint64.gte = 1];
+  uint64 runtime_sequence = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint64.gte = 1
+  ];
   RuntimePhase previous_phase = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,
@@ -272,7 +290,10 @@ message SupervisorStatusSnapshot {
 
 message SupervisorTransition {
   SupervisorIdentity supervisor = 1 [(buf.validate.field).required = true];
-  uint64 supervisor_sequence = 2 [(buf.validate.field).uint64.gte = 1];
+  uint64 supervisor_sequence = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint64.gte = 1
+  ];
   SupervisorPhase previous_phase = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).enum.not_in = 0,

@@ -5,13 +5,13 @@ use connectrpc::client::ClientConfig;
 #[cfg(unix)]
 use connectrpc::client::Http2Connection;
 
-use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
+use crate::supervisor_control_proto::types;
+use crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY;
+use crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES;
 
-const SUPERVISOR_CONTROL_AUTHORITY: &str = "http://onequery-supervisor";
 const SUPERVISOR_CONTROL_SHARED_STREAM_BOUND: usize = 8;
 const SUPERVISOR_CONTROL_REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
-const SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE: usize = 64 * 1024;
 
 pub(crate) type SupervisorControlClient =
     onequery_proto_runtime::onequery::runtime::v1::SupervisorLifecycleServiceClient<
@@ -20,7 +20,7 @@ pub(crate) type SupervisorControlClient =
 
 pub(crate) async fn get_supervisor_status(
     paths: &SelfHostRuntimePaths,
-    target: types::SupervisorStopTarget,
+    target: types::SupervisorControlTarget,
 ) -> Result<types::SupervisorStatus, ConnectError> {
     let response = supervisor_control_client(paths)
         .await?
@@ -48,7 +48,7 @@ pub(crate) async fn supervisor_control_client(
     .await?;
     let config = ClientConfig::new(authority)
         .default_timeout(SUPERVISOR_CONTROL_REQUEST_TIMEOUT)
-        .default_max_message_size(SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE);
+        .default_max_message_size(SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES);
 
     Ok(SupervisorControlClient::new(
         connection.shared(SUPERVISOR_CONTROL_SHARED_STREAM_BOUND),

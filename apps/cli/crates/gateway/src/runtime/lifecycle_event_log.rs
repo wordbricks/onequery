@@ -46,7 +46,9 @@ pub(super) fn next_lifecycle_event_sequence(
                 format!(
                     "{error} ({}, encoding={})",
                     path.display(),
-                    lifecycle_records::DURABLE_EVENT_LOG_ENCODING
+                    lifecycle_records::durable_lifecycle_record_encoding_label(
+                        lifecycle_records::DURABLE_EVENT_LOG_ENCODING
+                    )
                 ),
                 parse_try_next,
             )

@@ -10,14 +10,12 @@ use onequery_core::error::CliError;
 use onequery_core::error::ErrorStage;
 use onequery_core::process::is_process_running;
 
-use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
+use crate::supervisor_control_proto::types;
 
 use super::super::lifecycle_event_log;
 use super::super::lifecycle_event_log::protobuf_timestamp;
 use super::super::lifecycle_records;
-
-const LIFECYCLE_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum DurableRecoveryStep {
@@ -257,23 +255,58 @@ fn read_lifecycle_proto_json_record_for_recovery<T>(
             "record is empty",
             try_next,
         )?;
-        return Ok(None);
+        return Err(lifecycle_artifact_parse_error(
+            path,
+            command_line,
+            parse_title,
+            "record is empty",
+            try_next,
+        ));
     }
 
     match decode(trimmed) {
         Ok(record) => Ok(Some(record)),
         Err(error) => {
+            let message = format!("{error}");
             append_lifecycle_artifact_corruption_event(
                 paths,
                 path,
                 command_line,
                 parse_title,
-                &format!("{error}"),
+                &message,
                 try_next,
             )?;
-            Ok(None)
+            Err(lifecycle_artifact_parse_error(
+                path,
+                command_line,
+                parse_title,
+                &message,
+                try_next,
+            ))
         }
     }
+}
+
+fn lifecycle_artifact_parse_error(
+    path: &Path,
+    command_line: &str,
+    parse_title: &'static str,
+    message: &str,
+    try_next: &'static str,
+) -> CliError {
+    CliError::new(
+        parse_title,
+        command_line,
+        ErrorStage::LoadConfig,
+        format!(
+            "{message} ({}, encoding={})",
+            path.display(),
+            lifecycle_records::durable_lifecycle_record_encoding_label(
+                lifecycle_records::DURABLE_STATE_FILE_ENCODING
+            )
+        ),
+        vec![try_next.to_owned()],
+    )
 }
 
 #[cfg(test)]
@@ -302,7 +335,9 @@ fn read_lifecycle_proto_json_record<T>(
             format!(
                 "{error} ({}, encoding={})",
                 path.display(),
-                lifecycle_records::DURABLE_STATE_FILE_ENCODING
+                lifecycle_records::durable_lifecycle_record_encoding_label(
+                    lifecycle_records::DURABLE_STATE_FILE_ENCODING
+                )
             ),
             vec![try_next.to_owned()],
         )
@@ -329,7 +364,9 @@ fn append_lifecycle_artifact_corruption_event(
         path: Some(path.display().to_string()),
         message: Some(format!(
             "{summary}: {message} (encoding={})",
-            lifecycle_records::DURABLE_STATE_FILE_ENCODING
+            lifecycle_records::durable_lifecycle_record_encoding_label(
+                lifecycle_records::DURABLE_STATE_FILE_ENCODING
+            )
         )),
         ..Default::default()
     };
@@ -361,7 +398,7 @@ fn recovery_lifecycle_record_header(
     written_at: chrono::DateTime<Utc>,
 ) -> types::LifecycleRecordHeader {
     types::LifecycleRecordHeader {
-        schema_version: Some(LIFECYCLE_SCHEMA_VERSION),
+        schema_version: Some(lifecycle_records::LIFECYCLE_SCHEMA_VERSION),
         writer: MessageField::some(types::LifecycleRecordWriterIdentity {
             writer: Some(types::LifecycleRecordWriter::LIFECYCLE_RECORD_WRITER_SUPERVISOR.into()),
             writer_id: Some(format!("gateway-recovery:{}", std::process::id())),
@@ -397,7 +434,8 @@ fn read_runtime_status_snapshot_during_startup_poll(
         return Ok(None);
     }
 
-    // CONTEXT: this bounded pre-handshake startup poll can race the runtime
+    // CONTEXT: this bounded pre-handshake startup poll is diagnostic-only and
+    // can race the runtime
     // replacing this file, so malformed protobuf JSON is retried instead of
     // recorded as recovery corruption.
     Ok(lifecycle_records::decode_runtime_status_snapshot(trimmed).ok())
@@ -758,20 +796,6 @@ fn supervisor_identity_matches_launch(
         && supervisor
             .generation
             .is_some_and(|generation| generation > 0)
-}
-
-pub(in crate::runtime) fn runtime_phase_label(phase: types::RuntimePhase) -> &'static str {
-    match phase {
-        types::RuntimePhase::RUNTIME_PHASE_CHECKPOINTING => "checkpointing",
-        types::RuntimePhase::RUNTIME_PHASE_DRAINING => "draining",
-        types::RuntimePhase::RUNTIME_PHASE_FAILED => "failed",
-        types::RuntimePhase::RUNTIME_PHASE_READY => "ready",
-        types::RuntimePhase::RUNTIME_PHASE_SHUTDOWN_FAILED => "shutdown_failed",
-        types::RuntimePhase::RUNTIME_PHASE_STARTING => "starting",
-        types::RuntimePhase::RUNTIME_PHASE_STOPPED => "stopped",
-        types::RuntimePhase::RUNTIME_PHASE_STOPPING => "stopping",
-        types::RuntimePhase::RUNTIME_PHASE_UNSPECIFIED => "unspecified",
-    }
 }
 
 #[cfg(test)]

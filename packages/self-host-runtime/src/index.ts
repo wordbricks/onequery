@@ -1,12 +1,9 @@
 import { join } from "node:path";
 
 import { create } from "@bufbuild/protobuf";
-import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 import {
   RuntimePhase,
-  RuntimeStatusSchema,
-  RuntimeStopCompletion,
   SupervisorIdentitySchema,
 } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import type { SupervisorIdentity } from "@onequery/proto-runtime/runtime/v1/common_pb";
@@ -85,7 +82,6 @@ type ManagedLifecycleContext = {
   lease: RuntimeLifecycleLease;
   logWriter: LifecycleLogWriter;
   runtimePid: number;
-  runtimeSequence: bigint;
   supervisor: SupervisorIdentity;
 };
 
@@ -308,34 +304,12 @@ function supervisorStopCommandToRuntimeShutdownRequest(
       : undefined;
 
   return {
-    completion:
-      command.completion === RuntimeStopCompletion.CLEANUP_ONLY
-        ? "cleanup_only"
-        : "cleanup_and_exit",
+    completion: "cleanup_and_exit",
     graceTimeout: command.graceTimeout,
     operationId: command.operationId,
     reason: command.reason,
     target,
   };
-}
-
-function runtimeStatusFromLifecycle(input: {
-  dataDir: string;
-  launchId: string;
-  phase: RuntimePhase;
-  runtimePid: number;
-  runtimeSequence: bigint;
-}) {
-  return create(RuntimeStatusSchema, {
-    identity: {
-      dataDir: input.dataDir,
-      launchId: input.launchId,
-      pid: input.runtimePid,
-    },
-    phase: input.phase,
-    runtimeSequence: input.runtimeSequence,
-    updatedAt: timestampFromDate(new Date()),
-  });
 }
 
 function resolveLaunchLifecycleModeResult(
@@ -505,7 +479,6 @@ async function resolveLifecycleContextResult(
           lease,
           logWriter,
           runtimePid: process.pid,
-          runtimeSequence: 1n,
           supervisor,
         } satisfies ManagedLifecycleContext);
       }
@@ -679,7 +652,6 @@ export function createStartServerResult(
               cause
             ),
         });
-        let supervisorSession: SupervisorRuntimeSession | null = null;
         const shutdownController = yield* Result.try({
           try: () =>
             resolvedDependencies.attachGracefulShutdownHandlers({
@@ -687,10 +659,6 @@ export function createStartServerResult(
               logWriter: lifecycle.logWriter,
               server: startedServer,
               shutdownResources: [
-                {
-                  close: () => supervisorSession?.close(),
-                  name: "supervisor-session",
-                },
                 {
                   close: () => storageHandle.close(),
                   failureCode: "checkpoint_failed",
@@ -717,27 +685,20 @@ export function createStartServerResult(
               cause
             ),
         });
-        supervisorSession = yield* Result.try({
+        const supervisorSession = yield* Result.try({
           try: () =>
             resolvedDependencies.openSupervisorRuntimeSession({
               client: supervisorClient,
               dataDir: lifecycle.lease.paths.dataDir,
               launchId: selfHostLaunchConfig.launchId,
               runtimePid: lifecycle.runtimePid,
-              runtimeSequence: lifecycle.runtimeSequence,
+              runtimeSequence: lifecycle.lease.currentStatus().runtimeSequence,
               onStopCommand: async (command) => {
                 await shutdownController.shutdown(
                   supervisorStopCommandToRuntimeShutdownRequest(command)
                 );
-                lifecycle.runtimeSequence += 1n;
                 return {
-                  status: runtimeStatusFromLifecycle({
-                    dataDir: lifecycle.lease.paths.dataDir,
-                    launchId: lifecycle.launchId,
-                    phase: RuntimePhase.STOPPED,
-                    runtimePid: lifecycle.runtimePid,
-                    runtimeSequence: lifecycle.runtimeSequence,
-                  }),
+                  status: lifecycle.lease.terminalStatus(RuntimePhase.STOPPED),
                 };
               },
               supervisor: createSupervisorIdentity(
@@ -751,6 +712,17 @@ export function createStartServerResult(
               cause
             ),
         });
+        yield* Result.await(
+          Result.tryPromise({
+            try: () => supervisorSession.opened,
+            catch: (cause) =>
+              createWorkflowError(
+                "open_supervisor_session",
+                "failed to open supervisor runtime session",
+                cause
+              ),
+          })
+        );
         startupShellRef.current = {
           lifecycle,
           server: startedServer,
@@ -759,9 +731,9 @@ export function createStartServerResult(
           supervisorSession,
           status: "serving_managed",
         };
-        yield* Result.await(
+        const readyStatus = yield* Result.await(
           Result.tryPromise({
-            try: () => lifecycle.lease.transition("ready"),
+            try: () => lifecycle.lease.transition(RuntimePhase.READY),
             catch: (cause) =>
               createWorkflowError(
                 "transition_lifecycle_ready",
@@ -770,19 +742,9 @@ export function createStartServerResult(
               ),
           })
         );
-        lifecycle.runtimeSequence += 1n;
         yield* Result.await(
           Result.tryPromise({
-            try: () =>
-              supervisorSession.ready(
-                runtimeStatusFromLifecycle({
-                  dataDir: lifecycle.lease.paths.dataDir,
-                  launchId: lifecycle.launchId,
-                  phase: RuntimePhase.READY,
-                  runtimePid: lifecycle.runtimePid,
-                  runtimeSequence: lifecycle.runtimeSequence,
-                })
-              ),
+            try: () => supervisorSession.ready(readyStatus),
             catch: (cause) =>
               createWorkflowError(
                 "report_supervisor_ready",
@@ -791,6 +753,10 @@ export function createStartServerResult(
               ),
           })
         );
+        observeSupervisorSessionClosed({
+          shutdownController,
+          supervisorSession,
+        });
       }
 
       yield* Result.await(
@@ -897,6 +863,28 @@ export function createStartServerResult(
       )
     );
   };
+}
+
+function observeSupervisorSessionClosed(input: {
+  shutdownController: GracefulShutdownController;
+  supervisorSession: SupervisorRuntimeSession;
+}): void {
+  void input.supervisorSession.closed
+    .then(
+      () =>
+        input.shutdownController.shutdown({
+          completion: "cleanup_and_exit",
+          reason: "supervisor_session_closed",
+        }),
+      () =>
+        input.shutdownController.shutdown({
+          completion: "cleanup_and_exit",
+          reason: "supervisor_session_failed",
+        })
+    )
+    .catch((cause) => {
+      console.error("[runtime] supervisor session shutdown failed", cause);
+    });
 }
 
 export function createStartServer(

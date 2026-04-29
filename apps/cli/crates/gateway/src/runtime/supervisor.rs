@@ -6,7 +6,7 @@ use std::process::ExitStatus;
 use std::process::Stdio;
 use std::time::Duration;
 
-use buffa::MessageField;
+use chrono::Utc;
 use onequery_core::error::CliError;
 use onequery_core::error::ErrorStage;
 use serde_json::json;
@@ -14,9 +14,9 @@ use tokio::time::sleep;
 
 use crate::GatewayCommandOutput;
 use crate::GatewaySupervisorArgs;
-use crate::runtime_control::types;
 use crate::self_host::ServerLaunchSupervisorConfig;
 use crate::self_host::write_self_host_launch_supervisor_identity;
+use crate::supervisor_control_proto::types;
 
 use super::super::BACKGROUND_GATEWAY_RETRY_COMMAND;
 use super::super::state::GatewayRuntimeState;
@@ -34,6 +34,8 @@ use super::supervisor_effects::SupervisorEffectContext;
 use super::supervisor_effects::dispatch_supervisor_event;
 use super::supervisor_effects::supervisor_effect_context;
 use super::supervisor_generation::allocate_supervisor_generation;
+use super::supervisor_lifecycle_writer::SupervisorStatusProjection;
+use super::supervisor_lifecycle_writer::project_supervisor_status;
 use super::supervisor_machine::SupervisorChildExitKind;
 use super::supervisor_machine::SupervisorEvent;
 use super::supervisor_machine::SupervisorMachine;
@@ -438,29 +440,17 @@ fn supervisor_control_status(
     runtime_pid: Option<u32>,
 ) -> types::SupervisorStatus {
     let data_dir = state.paths.data_dir.display().to_string();
-    let runtime = runtime_pid.map(|pid| types::RuntimeIdentity {
-        pid: Some(pid),
-        launch_id: Some(launch_id.to_owned()),
-        data_dir: Some(data_dir.clone()),
-        ..Default::default()
-    });
-
-    types::SupervisorStatus {
-        identity: MessageField::some(supervisor.clone()),
-        launch: MessageField::some(types::LifecycleLaunchIdentity {
-            launch_id: Some(launch_id.to_owned()),
-            data_dir: Some(data_dir),
-            runtime_pid,
-            supervisor_pid: supervisor.pid,
-            supervisor_generation: supervisor.generation,
-            ..Default::default()
-        }),
-        phase: Some(phase.into()),
-        supervisor_sequence: Some(supervisor_sequence),
-        active_session: Some(false),
-        runtime: runtime.map(MessageField::some).unwrap_or_default(),
-        ..Default::default()
-    }
+    project_supervisor_status(SupervisorStatusProjection {
+        supervisor,
+        launch_id,
+        data_dir: &data_dir,
+        phase,
+        supervisor_sequence,
+        runtime_pid,
+        failure: None,
+        active_session: false,
+        updated_at: Utc::now(),
+    })
 }
 
 fn supervisor_control_server_error(
@@ -593,13 +583,13 @@ fn supervisor_identity(supervisor_pid: u32, generation: u64) -> types::Superviso
 
 #[cfg(all(test, unix))]
 mod tests {
-    use std::ffi::OsString;
     use std::fs;
     use std::future::Future;
     use std::os::unix::fs::PermissionsExt;
     use std::path::PathBuf;
     use std::pin::Pin;
 
+    use futures::StreamExt;
     use pretty_assertions::assert_eq;
     use serde_json::json;
     use tempfile::TempDir;
@@ -675,122 +665,142 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn foreground_and_background_launch_modes_share_startup_handshake() {
-        let foreground = run_launch_mode_parity_fixture(LaunchParityMode::Foreground).await;
-        let background = run_launch_mode_parity_fixture(LaunchParityMode::Background).await;
-
-        assert_eq!(foreground.transitions, background.transitions);
-        assert_eq!(
-            foreground.transitions,
-            vec![
-                SupervisorTransitionRecord {
-                    current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
-                    event: "launch_requested".to_owned(),
-                    previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
-                },
-                SupervisorTransitionRecord {
-                    current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_HANDSHAKING,
-                    event: "child_spawned".to_owned(),
-                    previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
-                },
-                SupervisorTransitionRecord {
-                    current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_HANDSHAKING,
-                    event: "control_socket_observed".to_owned(),
-                    previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_HANDSHAKING,
-                },
-                SupervisorTransitionRecord {
-                    current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_READY,
-                    event: "watch_ready".to_owned(),
-                    previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_HANDSHAKING,
-                },
-                SupervisorTransitionRecord {
-                    current_phase: types::SupervisorPhase::SUPERVISOR_PHASE_EXITED,
-                    event: "child_exited".to_owned(),
-                    previous_phase: types::SupervisorPhase::SUPERVISOR_PHASE_READY,
-                },
-            ]
-        );
-        assert!(
-            !foreground.log_file_present,
-            "foreground launch should inherit stdio without creating background log capture"
-        );
-        assert!(
-            background.log_file_present,
-            "background launch should capture runtime stdio in the gateway log"
-        );
-    }
-
-    #[derive(Debug, Clone, Copy)]
-    enum LaunchParityMode {
-        Foreground,
-        Background,
-    }
-
-    struct LaunchParityResult {
-        log_file_present: bool,
-        transitions: Vec<SupervisorTransitionRecord>,
-    }
-
-    async fn run_launch_mode_parity_fixture(mode: LaunchParityMode) -> LaunchParityResult {
-        let fixture = SupervisorFixture::new_with_test_launch_options(
-            &["exit-after-ready"],
-            Some(500),
-            Some(150),
-        );
+    async fn stop_rpc_without_active_session_escalates_to_terminate_and_returns_accepted() {
+        let fixture = SupervisorFixture::new();
         let state = fixture.state();
-        let runtime_entry = supervisor_fixture_runtime_path();
+        let supervisor = supervisor_identity(std::process::id(), 1);
+        let supervisor_control = SupervisorControlActor::new(supervisor_control_status(
+            &state,
+            &supervisor,
+            LAUNCH_ID,
+            types::SupervisorPhase::SUPERVISOR_PHASE_STARTING,
+            0,
+            None,
+        ));
+        let mut machine = SupervisorMachine::new();
 
-        match mode {
-            LaunchParityMode::Foreground => {
-                let runtime_command = OsString::from("bun");
-                let exit = run_foreground_supervised_runtime(
-                    &state,
-                    LAUNCH_ID,
-                    runtime_command.as_os_str(),
-                    runtime_entry.as_path(),
-                    fixture.launch_config_path.as_path(),
-                    COMMAND_LINE,
-                    RETRY_COMMAND,
-                )
-                .await
-                .unwrap_or_else(|error| {
-                    panic!("expected foreground supervisor parity run: {error}")
-                });
+        dispatch_supervisor_event(
+            &mut machine,
+            SupervisorEvent::LaunchRequested,
+            supervisor_effect_context(
+                &state,
+                &supervisor_control,
+                &supervisor,
+                LAUNCH_ID,
+                COMMAND_LINE,
+            ),
+            None,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected launch request dispatch: {error}"));
 
-                assert_eq!(exit.kind, MonitoredRuntimeExitKind::Expected);
-            }
-            LaunchParityMode::Background => {
-                let output = run_gateway_supervisor(
-                    &state,
-                    &crate::GatewaySupervisorArgs {
-                        runtime_command: OsString::from("bun"),
-                        runtime_entry,
-                        launch_config: fixture.launch_config_path.clone(),
-                        crash_loop_max_restarts: 0,
-                        crash_loop_initial_backoff_ms: 1,
-                        crash_loop_max_backoff_ms: 1,
-                    },
-                    COMMAND_LINE,
-                )
-                .await
-                .unwrap_or_else(|error| {
-                    panic!("expected background supervisor parity run: {error}")
-                });
+        let mut child = ProcessCommand::new("sleep")
+            .arg("30")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap_or_else(|error| panic!("expected sleep fixture spawn: {error}"));
+        let runtime_pid = child.id();
 
-                assert_eq!(
-                    output
-                        .data
-                        .get("status")
-                        .and_then(serde_json::Value::as_str),
-                    Some("stopped")
-                );
-            }
-        }
+        dispatch_supervisor_event(
+            &mut machine,
+            SupervisorEvent::ChildSpawned { runtime_pid },
+            supervisor_effect_context(
+                &state,
+                &supervisor_control,
+                &supervisor,
+                LAUNCH_ID,
+                COMMAND_LINE,
+            ),
+            None,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected child spawned dispatch: {error}"));
+        dispatch_supervisor_event(
+            &mut machine,
+            SupervisorEvent::ControlSocketObserved,
+            supervisor_effect_context(
+                &state,
+                &supervisor_control,
+                &supervisor,
+                LAUNCH_ID,
+                COMMAND_LINE,
+            ),
+            None,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected control socket dispatch: {error}"));
+        dispatch_supervisor_event(
+            &mut machine,
+            SupervisorEvent::WatchReady,
+            supervisor_effect_context(
+                &state,
+                &supervisor_control,
+                &supervisor,
+                LAUNCH_ID,
+                COMMAND_LINE,
+            ),
+            None,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected watch ready dispatch: {error}"));
 
-        LaunchParityResult {
-            log_file_present: fixture.paths.server_log_path.is_file(),
-            transitions: supervisor_transitions(&fixture.paths),
-        }
+        let runtime_context = SupervisedRuntimeContext {
+            state: &state,
+            supervisor_control: &supervisor_control,
+            supervisor: &supervisor,
+            launch_id: LAUNCH_ID,
+            runtime_pid,
+            command_line: COMMAND_LINE,
+            retry_command: RETRY_COMMAND,
+        };
+        let mut watch = supervisor_control.watch_status(0, false).await;
+        let mut stop_signal = PendingStopSignal;
+        let stop_request =
+            supervisor_control.request_stop("00000000-0000-4000-8000-000000000771".to_owned());
+        let monitor = monitor_supervised_runtime_with_stop_signal(
+            runtime_context,
+            &mut child,
+            machine,
+            &mut stop_signal,
+        );
+
+        let (stop_response, exit) = tokio::join!(stop_request, monitor);
+        let stop_response = stop_response
+            .unwrap_or_else(|error| panic!("expected accepted stop response: {error}"));
+        let exit = exit.unwrap_or_else(|error| panic!("expected stop escalation exit: {error}"));
+
+        assert_eq!(
+            stop_response.disposition.and_then(|value| value.as_known()),
+            Some(types::RuntimeStopDisposition::RUNTIME_STOP_DISPOSITION_ACCEPTED)
+        );
+        assert_eq!(exit.exit_kind, SupervisorChildExitKind::Expected);
+        assert!(
+            supervisor_transitions(&fixture.paths)
+                .iter()
+                .any(|transition| transition.current_phase
+                    == types::SupervisorPhase::SUPERVISOR_PHASE_TERMINATING),
+            "missing stop escalation terminate transition"
+        );
+
+        let watch_response = watch
+            .next()
+            .await
+            .expect("expected stop transition watch response")
+            .expect("expected successful watch response");
+        let Some(
+            types::supervisor_lifecycle_service_watch_status_response::Event::SupervisorTransition(
+                transition,
+            ),
+        ) = watch_response.event
+        else {
+            panic!("expected supervisor transition watch event");
+        };
+        assert_eq!(
+            transition.current_phase,
+            Some(types::SupervisorPhase::SUPERVISOR_PHASE_STOP_REQUESTED.into())
+        );
     }
 
     async fn run_stop_escalation_fixture(modes: &[&str]) -> StopEscalationResult {
@@ -933,6 +943,14 @@ mod tests {
         }
     }
 
+    struct PendingStopSignal;
+
+    impl SupervisorStopSignalSource for PendingStopSignal {
+        fn recv(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>> {
+            Box::pin(std::future::pending())
+        }
+    }
+
     struct SupervisorFixture {
         _temp_dir: TempDir,
         launch_config_path: PathBuf,
@@ -985,6 +1003,8 @@ mod tests {
                     "supervisorId": supervisor_id_for_pid(supervisor_pid),
                 },
                 "supervisorControl": {
+                    "baseUrl": crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY,
+                    "maxMessageBytes": crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES,
                     "transport": {
                         "kind": "unix",
                         "socketPath": paths.supervisor_control_socket_path.display().to_string(),

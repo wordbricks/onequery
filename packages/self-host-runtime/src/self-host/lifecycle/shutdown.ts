@@ -1,3 +1,4 @@
+import { RuntimePhase } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import { channel } from "antiox/sync/mpsc";
 import type { Receiver, Sender } from "antiox/sync/mpsc";
 import { oneshot } from "antiox/sync/oneshot";
@@ -205,11 +206,11 @@ async function executeShutdown(args: {
 
   const stoppingTransitionResult = await transitionShutdownPhase(args, {
     message: `failed to record runtime shutdown state for ${reason}`,
-    phase: "stopping",
+    phase: RuntimePhase.STOPPING,
   });
   const drainingTransitionResult = await transitionShutdownPhase(args, {
     message: `failed to record runtime drain state for ${reason}`,
-    phase: "draining",
+    phase: RuntimePhase.DRAINING,
   });
   const stopResult = await Result.tryPromise({
     try: async () => {
@@ -226,7 +227,7 @@ async function executeShutdown(args: {
   const checkpointingTransitionResult = await transitionShutdownPhase(args, {
     failureCode: "checkpoint_failed",
     message: `failed to record runtime storage checkpoint state for ${reason}`,
-    phase: "checkpointing",
+    phase: RuntimePhase.CHECKPOINTING,
   });
   const closeResourcesResult = await closeShutdownResources(
     args.shutdownResources,
@@ -269,7 +270,7 @@ async function executeShutdown(args: {
     failedTransitionResult = await transitionShutdownPhase(args, {
       failure,
       message: `failed to record runtime shutdown failure state for ${reason}`,
-      phase: "shutdown_failed",
+      phase: RuntimePhase.SHUTDOWN_FAILED,
     });
   }
 

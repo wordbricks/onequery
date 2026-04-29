@@ -1,10 +1,11 @@
 mod launch;
 mod render;
 mod runtime;
-mod runtime_control;
 pub mod self_host;
 mod self_host_paths;
 mod state;
+mod supervisor_control_proto;
+mod supervisor_control_protocol;
 
 #[cfg(test)]
 mod tests;
@@ -138,7 +139,7 @@ pub async fn execute(
         }
         GatewayCommand::Status => {
             let state = resolve_runtime_state(command_line, GatewayStateAccessMode::ReadOnly)?;
-            let live_status = read_live_runtime_status(&state, command_line).await;
+            let live_status = read_live_runtime_status(&state, command_line).await?;
             Ok(render_gateway_status_output_with_live_status(
                 &state,
                 live_status.as_ref(),

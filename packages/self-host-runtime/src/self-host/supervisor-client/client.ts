@@ -18,11 +18,6 @@ export class SupervisorLifecycleClientError extends TaggedError(
   socketPath?: string;
 }>() {}
 
-export const SUPERVISOR_LIFECYCLE_CONNECT_BASE_URL =
-  "http://onequery-supervisor";
-export const SUPERVISOR_LIFECYCLE_CONNECT_MAX_MESSAGE_BYTES = 64 * 1024;
-export const SUPERVISOR_LIFECYCLE_CONNECT_MAX_TIMEOUT_MS = 300_000;
-
 export function createSupervisorLifecycleClient(input: {
   endpoint: SupervisorControlEndpoint;
 }) {
@@ -37,13 +32,13 @@ export function createSupervisorLifecycleClient(input: {
   return createClient(
     SupervisorLifecycleService,
     createConnectTransport({
-      baseUrl: SUPERVISOR_LIFECYCLE_CONNECT_BASE_URL,
+      baseUrl: input.endpoint.baseUrl,
       httpVersion: "2",
       nodeOptions: {
         createConnection: () => net.connect(transport.socketPath),
       },
-      readMaxBytes: SUPERVISOR_LIFECYCLE_CONNECT_MAX_MESSAGE_BYTES,
-      writeMaxBytes: SUPERVISOR_LIFECYCLE_CONNECT_MAX_MESSAGE_BYTES,
+      readMaxBytes: input.endpoint.maxMessageBytes,
+      writeMaxBytes: input.endpoint.maxMessageBytes,
     })
   );
 }

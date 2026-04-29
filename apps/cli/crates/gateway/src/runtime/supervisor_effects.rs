@@ -1,32 +1,29 @@
 use std::time::Duration;
 
-use buffa::MessageField;
 use chrono::Utc;
 use connectrpc::ConnectError;
 use onequery_core::error::CliError;
 use onequery_core::error::ErrorStage;
 use tokio::time::Instant;
 
-use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
+use crate::supervisor_control_proto::types;
 
 use super::super::BACKGROUND_GATEWAY_RETRY_COMMAND;
 use super::super::state::GatewayRuntimeState;
 use super::lifecycle::ManagedRuntimeIdentity;
-use super::lifecycle_event_log::protobuf_timestamp;
 use super::shutdown::hard_kill_process;
 use super::shutdown::terminate_process;
 use super::supervisor_control::actor::SupervisorControlActor;
 use super::supervisor_lifecycle_writer::SupervisorStatusSnapshotWrite;
 use super::supervisor_lifecycle_writer::TerminalRuntimeStatusSnapshotWrite;
 use super::supervisor_lifecycle_writer::append_supervisor_transition_event_log_entry;
+use super::supervisor_lifecycle_writer::project_supervisor_transition;
 use super::supervisor_lifecycle_writer::write_supervisor_status_snapshot;
 use super::supervisor_lifecycle_writer::write_terminal_runtime_status_snapshot;
 use super::supervisor_machine::SupervisorEffect;
 use super::supervisor_machine::SupervisorEvent;
-use super::supervisor_machine::SupervisorFailureInfo;
 use super::supervisor_machine::SupervisorMachine;
-use super::supervisor_machine::SupervisorTransitionEffect;
 use super::supervisor_machine::reduce_supervisor_machine;
 use super::transport::retry_command_hint;
 
@@ -137,6 +134,7 @@ pub(super) struct SupervisorEffectContext<'a> {
 pub(super) struct SupervisorEffectReport {
     runtime_stop_result: Option<Result<(), ConnectError>>,
     restart_backoff: Option<Duration>,
+    supervisor_status: Option<types::SupervisorStatus>,
 }
 
 impl SupervisorEffectReport {
@@ -206,52 +204,15 @@ pub(super) async fn dispatch_supervisor_event(
     *machine = reduction.machine;
 
     let report = execute_supervisor_effects(&effects, context, timers).await?;
+    let supervisor_status = report.supervisor_status.clone();
     context
         .supervisor_control
-        .apply_supervisor_transition(supervisor_transition_to_proto(&transition, context))
+        .apply_supervisor_transition(
+            project_supervisor_transition(&transition, context, Utc::now()),
+            supervisor_status,
+        )
         .await;
     Ok(report)
-}
-
-fn supervisor_transition_to_proto(
-    transition: &SupervisorTransitionEffect,
-    context: SupervisorEffectContext<'_>,
-) -> types::SupervisorTransition {
-    let data_dir = context.paths.data_dir.display().to_string();
-    let runtime = transition.runtime_pid.map(|pid| types::RuntimeIdentity {
-        pid: Some(pid),
-        launch_id: Some(context.launch_id.to_owned()),
-        data_dir: Some(data_dir),
-        ..Default::default()
-    });
-
-    types::SupervisorTransition {
-        supervisor: MessageField::some(context.supervisor.clone()),
-        supervisor_sequence: Some(transition.supervisor_sequence),
-        previous_phase: Some(transition.previous_phase.into()),
-        current_phase: Some(transition.current_phase.into()),
-        reason: Some(transition.reason.clone()),
-        occurred_at: MessageField::some(protobuf_timestamp(Utc::now())),
-        runtime: runtime.map(MessageField::some).unwrap_or_default(),
-        failure: transition
-            .failure
-            .as_ref()
-            .map(supervisor_failure_to_proto)
-            .map(MessageField::some)
-            .unwrap_or_default(),
-        exit_code: transition.exit_code,
-        signal: transition.signal.clone(),
-        ..Default::default()
-    }
-}
-
-fn supervisor_failure_to_proto(failure: &SupervisorFailureInfo) -> types::SupervisorFailure {
-    types::SupervisorFailure {
-        code: Some(failure.code.into()),
-        message: Some(failure.message.clone()),
-        retryable: Some(failure.retryability.as_bool()),
-        ..Default::default()
-    }
 }
 
 async fn execute_supervisor_effects(
@@ -270,7 +231,7 @@ async fn execute_supervisor_effects(
                 runtime_pid,
                 failure,
             } => {
-                write_supervisor_status_snapshot(
+                let status = write_supervisor_status_snapshot(
                     context.paths,
                     SupervisorStatusSnapshotWrite {
                         supervisor: context.supervisor,
@@ -282,6 +243,7 @@ async fn execute_supervisor_effects(
                     },
                     context.command_line,
                 )?;
+                report.supervisor_status = Some(status);
             }
             SupervisorEffect::WriteTerminalRuntimeStatusSnapshot {
                 phase,
@@ -290,19 +252,26 @@ async fn execute_supervisor_effects(
                 exit_code,
                 signal,
             } => {
-                write_terminal_runtime_status_snapshot(
+                let terminal_status = write_terminal_runtime_status_snapshot(
                     context.paths,
                     TerminalRuntimeStatusSnapshotWrite {
                         supervisor: context.supervisor,
                         launch_id: context.launch_id,
                         phase: *phase,
                         runtime_pid: *runtime_pid,
-                        failure,
+                        failure: failure.as_ref(),
                         exit_code: *exit_code,
                         signal: signal.as_deref(),
                     },
                     context.command_line,
                 )?;
+                context
+                    .supervisor_control
+                    .apply_supervisor_terminal_runtime_status(
+                        terminal_status,
+                        "supervisor-child-exit",
+                    )
+                    .await;
             }
             SupervisorEffect::RequestRuntimeStop {
                 runtime_pid,
@@ -392,7 +361,7 @@ async fn request_supervised_runtime_stop(
             grace_timeout: buffa::MessageField::some(protobuf_duration(
                 supervisor_runtime_stop_grace_timeout(),
             )),
-            target: buffa::MessageField::some(types::SupervisorStopTarget {
+            target: buffa::MessageField::some(types::SupervisorControlTarget {
                 launch_id: Some(identity.launch_id),
                 data_dir: Some(paths.data_dir.display().to_string()),
                 runtime_pid: Some(identity.pid),

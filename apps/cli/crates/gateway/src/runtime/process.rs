@@ -14,9 +14,9 @@ use tokio::time::Instant;
 use tokio::time::sleep;
 
 use crate::GatewayCommandOutput;
-use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
 use crate::self_host::write_self_host_launch_config;
+use crate::supervisor_control_proto::types;
 use onequery_core::process_context::ProcessContext;
 
 use super::super::GATEWAY_START_POLL_ATTEMPTS;

@@ -13,13 +13,29 @@ use buffa::Message;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::runtime_control::types;
+use crate::supervisor_control_proto::types;
 
-pub(super) const DURABLE_STATE_FILE_ENCODING: &str = "proto-json";
+pub(super) const DURABLE_STATE_FILE_ENCODING: types::LifecycleRecordEncoding =
+    types::LifecycleRecordEncoding::LIFECYCLE_RECORD_ENCODING_PROTO_JSON;
 #[allow(dead_code)]
-pub(super) const DURABLE_EVENT_LOG_ENCODING: &str = "length-delimited-binary-protobuf";
+pub(super) const DURABLE_EVENT_LOG_ENCODING: types::LifecycleRecordEncoding =
+    types::LifecycleRecordEncoding::LIFECYCLE_RECORD_ENCODING_LENGTH_DELIMITED_BINARY_PROTOBUF;
+pub(super) const LIFECYCLE_SCHEMA_VERSION: u32 =
+    types::LifecycleRecordSchemaVersion::LIFECYCLE_RECORD_SCHEMA_VERSION_V1 as u32;
 static MONOTONIC_TIMESTAMP_START: OnceLock<Instant> = OnceLock::new();
 static LAST_MONOTONIC_TIMESTAMP_NANOS: AtomicU64 = AtomicU64::new(0);
+
+pub(super) const fn durable_lifecycle_record_encoding_label(
+    encoding: types::LifecycleRecordEncoding,
+) -> &'static str {
+    match encoding {
+        types::LifecycleRecordEncoding::LIFECYCLE_RECORD_ENCODING_PROTO_JSON => "proto-json",
+        types::LifecycleRecordEncoding::LIFECYCLE_RECORD_ENCODING_LENGTH_DELIMITED_BINARY_PROTOBUF => {
+            "length-delimited-binary-protobuf"
+        }
+        types::LifecycleRecordEncoding::LIFECYCLE_RECORD_ENCODING_UNSPECIFIED => "unspecified",
+    }
+}
 
 pub(super) fn decode_runtime_lease_record(
     contents: &str,
@@ -114,16 +130,28 @@ mod tests {
     use super::DURABLE_STATE_FILE_ENCODING;
     use super::decode_lifecycle_event_log_entries;
     use super::decode_runtime_status_snapshot;
+    use super::durable_lifecycle_record_encoding_label;
     use super::encode_lifecycle_event_log_entry;
     use super::encode_supervisor_status_snapshot;
-    use crate::runtime_control::types;
+    use crate::supervisor_control_proto::types;
 
     #[test]
     fn documents_lifecycle_record_encodings() {
-        assert_eq!(DURABLE_STATE_FILE_ENCODING, "proto-json");
         assert_eq!(
             DURABLE_EVENT_LOG_ENCODING,
+            types::LifecycleRecordEncoding::LIFECYCLE_RECORD_ENCODING_LENGTH_DELIMITED_BINARY_PROTOBUF
+        );
+        assert_eq!(
+            DURABLE_STATE_FILE_ENCODING,
+            types::LifecycleRecordEncoding::LIFECYCLE_RECORD_ENCODING_PROTO_JSON
+        );
+        assert_eq!(
+            durable_lifecycle_record_encoding_label(DURABLE_EVENT_LOG_ENCODING),
             "length-delimited-binary-protobuf"
+        );
+        assert_eq!(
+            durable_lifecycle_record_encoding_label(DURABLE_STATE_FILE_ENCODING),
+            "proto-json"
         );
     }
 

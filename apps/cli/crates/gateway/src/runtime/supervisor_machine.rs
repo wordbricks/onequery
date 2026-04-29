@@ -7,18 +7,20 @@
 //! | `starting` | `launch_requested` | no prior launch request | `starting` | write status snapshot | `SupervisorStatusSnapshot(starting)` | repeated launch requests reject |
 //! | `starting` | `launch_failed` | prior launch request | `failed` | write status snapshot | `SupervisorStatusSnapshot(failed)` | non-starting states reject |
 //! | `starting` | `child_spawned` | prior launch request and runtime pid > 0 | `handshaking` | write status snapshot | `SupervisorStatusSnapshot(handshaking)` | all other states reject |
-//! | `starting`, `handshaking` | `startup_deadline_elapsed` | none | `failed` | write status snapshot | `SupervisorStatusSnapshot(failed)` | terminal states reject |
+//! | `starting`, `handshaking` | `startup_deadline_elapsed` | runtime pid optional | `failed` | write status snapshot; signal terminate and schedule terminate deadline when runtime pid is known | `SupervisorStatusSnapshot(failed)` | terminal states reject |
 //! | `handshaking` | `control_socket_observed` | none | `handshaking` | none | none | all other states reject |
 //! | `handshaking` | `watch_ready` | runtime pid known | `ready` | write status snapshot | `SupervisorStatusSnapshot(ready)` | all other states reject |
 //! | `ready` | `stop_intent_received` | runtime pid known | `stop_requested` | write status snapshot, request runtime stop | `SupervisorStatusSnapshot(stop_requested)` | states without a runtime reject |
 //! | `stop_requested` | `stop_rpc_accepted` | none | `stop_requested` | schedule grace deadline | none | all other states reject |
-//! | `stop_requested` | `stop_rpc_failed` | fallback allowed | `terminating` | write status snapshot, signal terminate, schedule terminate deadline | `SupervisorStatusSnapshot(terminating)` | all other states reject |
-//! | `stop_requested` | `stop_rpc_failed` | fallback denied | `failed` | write status snapshot | `SupervisorStatusSnapshot(failed)` | all other states reject |
+//! | `stop_requested` | `stop_rpc_failed` | stop-control escalation allowed | `terminating` | write status snapshot, signal terminate, schedule terminate deadline | `SupervisorStatusSnapshot(terminating)` | all other states reject |
+//! | `stop_requested` | `stop_rpc_failed` | stop-control escalation denied | `failed` | write status snapshot | `SupervisorStatusSnapshot(failed)` | all other states reject |
 //! | `stop_requested` | `grace_deadline_elapsed` | runtime pid known | `terminating` | write status snapshot, signal terminate, schedule terminate deadline | `SupervisorStatusSnapshot(terminating)` | all other states reject |
 //! | `terminating` | `terminate_deadline_elapsed` | runtime pid known | `escalating` | write status snapshot, signal hard kill, schedule escalation deadline | `SupervisorStatusSnapshot(escalating)` | all other states reject |
+//! | startup-timeout `failed` | `terminate_deadline_elapsed` | runtime pid known | `failed` | write status snapshot, signal hard kill, schedule escalation deadline | `SupervisorStatusSnapshot(failed)` | non-startup failures reject |
 //! | `escalating` | `escalation_deadline_elapsed` | none | `failed` | write status snapshot | `SupervisorStatusSnapshot(failed)` | all other states reject |
-//! | any non-terminal state | `child_exited` | runtime pid is valid and expected exit | `exited` | write status snapshot | `SupervisorStatusSnapshot(exited)` | terminal states reject; runtime pid mismatch rejects |
+//! | any non-terminal state | `child_exited` | runtime pid is valid and expected exit | `exited` | write status snapshot, write terminal runtime status snapshot, write process exit event | `SupervisorStatusSnapshot(exited)`, `RuntimeStatusSnapshot(stopped)`, `LifecycleProcessExit` | terminal states reject; runtime pid mismatch rejects |
 //! | any non-terminal state | `child_exited` | runtime pid is valid and unexpected exit | `failed` | write status snapshot, write terminal runtime status snapshot, write process exit event | `SupervisorStatusSnapshot(failed)`, `RuntimeStatusSnapshot(failed)`, `LifecycleProcessExit` | terminal states reject; runtime pid mismatch rejects |
+//! | startup-timeout `failed` | `child_exited` | runtime pid matches startup cleanup child | `failed` | write status snapshot, write terminal runtime status snapshot, write process exit event | `SupervisorStatusSnapshot(failed)`, `RuntimeStatusSnapshot(failed)`, `LifecycleProcessExit` | non-startup failures reject; runtime pid mismatch rejects |
 //! | `failed` | `restart_scheduled` | failure came from a retryable unexpected child exit and attempt advances | `starting` | write status snapshot, schedule restart backoff | `SupervisorStatusSnapshot(starting)` | disabled/exhausted policy does not dispatch; stale attempts reject |
 //!
 //! Every accepted transition, including self-transitions without status
@@ -28,7 +30,7 @@ use std::time::Duration;
 
 use onequery_utils_string::take_bytes_at_char_boundary;
 
-use crate::runtime_control::types;
+use crate::supervisor_control_proto::types;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct SupervisorMachine {
@@ -90,7 +92,7 @@ pub(super) enum SupervisorEffect {
     WriteTerminalRuntimeStatusSnapshot {
         phase: types::RuntimePhase,
         runtime_pid: u32,
-        failure: SupervisorRuntimeFailureInfo,
+        failure: Option<SupervisorRuntimeFailureInfo>,
         exit_code: Option<i32>,
         signal: Option<String>,
     },
@@ -175,7 +177,7 @@ pub(super) enum SupervisorEventKind {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(super) enum SupervisorStopRpcFailureDisposition {
-    FallbackToTerminate,
+    EscalateToTerminate,
     TerminalFailure,
 }
 
@@ -421,12 +423,23 @@ pub(super) fn reduce_supervisor_machine(
         (
             SupervisorMachineState::Starting | SupervisorMachineState::Handshaking,
             SupervisorEvent::StartupDeadlineElapsed { message },
-        ) => Ok(failed_transition(
-            machine,
-            types::SupervisorFailureCode::SUPERVISOR_FAILURE_CODE_STARTUP_TIMEOUT,
-            message,
-            SupervisorFailureRetryability::Retryable,
-        )),
+        ) => {
+            let mut reduction = failed_transition(
+                machine,
+                types::SupervisorFailureCode::SUPERVISOR_FAILURE_CODE_STARTUP_TIMEOUT,
+                message,
+                SupervisorFailureRetryability::Retryable,
+            );
+            if let Some(runtime_pid) = machine.runtime_pid {
+                reduction
+                    .effects
+                    .push(SupervisorEffect::SignalRuntimeTerminate { runtime_pid });
+                reduction
+                    .effects
+                    .push(SupervisorEffect::ScheduleTerminateDeadline);
+            }
+            Ok(reduction)
+        }
         (SupervisorMachineState::Handshaking, SupervisorEvent::ControlSocketObserved) => {
             Ok(self_transition(machine))
         }
@@ -464,7 +477,7 @@ pub(super) fn reduce_supervisor_machine(
             SupervisorMachineState::StopRequested,
             SupervisorEvent::StopRpcFailed {
                 operation_id: _,
-                disposition: SupervisorStopRpcFailureDisposition::FallbackToTerminate,
+                disposition: SupervisorStopRpcFailureDisposition::EscalateToTerminate,
                 message: _,
             },
         )
@@ -524,6 +537,47 @@ pub(super) fn reduce_supervisor_machine(
             message,
             SupervisorFailureRetryability::Retryable,
         )),
+        (SupervisorMachineState::Failed, SupervisorEvent::TerminateDeadlineElapsed)
+            if startup_timeout_cleanup_is_active(machine) =>
+        {
+            let runtime_pid = require_runtime_pid(
+                machine,
+                event_kind,
+                "runtime pid is required before startup cleanup escalation",
+            )?;
+            let mut reduction = failure_preserving_snapshot_reduction(machine);
+            reduction
+                .effects
+                .push(SupervisorEffect::SignalRuntimeKill { runtime_pid });
+            reduction
+                .effects
+                .push(SupervisorEffect::ScheduleEscalationDeadline);
+            Ok(reduction)
+        }
+        (
+            SupervisorMachineState::Failed,
+            SupervisorEvent::EscalationDeadlineElapsed { message: _ },
+        ) if startup_timeout_cleanup_is_active(machine) => {
+            Ok(failure_preserving_snapshot_reduction(machine))
+        }
+        (
+            SupervisorMachineState::Failed,
+            SupervisorEvent::ChildExited {
+                runtime_pid,
+                exit_kind: _,
+                exit_code,
+                signal,
+                message: _,
+            },
+        ) if startup_timeout_cleanup_is_active(machine) => {
+            startup_cleanup_child_exited_transition(
+                machine,
+                event_kind,
+                runtime_pid,
+                exit_code,
+                signal,
+            )
+        }
         (
             SupervisorMachineState::Starting
             | SupervisorMachineState::Handshaking
@@ -544,7 +598,12 @@ pub(super) fn reduce_supervisor_machine(
                 event_kind,
                 runtime_pid,
                 SupervisorMachineState::Exited,
-                None,
+                ChildExitedRuntimeProjection {
+                    phase: types::RuntimePhase::RUNTIME_PHASE_STOPPED,
+                    failure: None,
+                    exit_code,
+                    signal,
+                },
             ),
             SupervisorChildExitKind::Unexpected => {
                 child_exited_transition(
@@ -552,20 +611,23 @@ pub(super) fn reduce_supervisor_machine(
                     event_kind,
                     runtime_pid,
                     SupervisorMachineState::Failed,
-                    Some(ChildExitedUnexpectedFailure {
-                        supervisor_failure: SupervisorFailureInfo {
-                            code: types::SupervisorFailureCode::SUPERVISOR_FAILURE_CODE_CHILD_EXITED_UNEXPECTEDLY,
-                            message: message.clone(),
-                            retryability: SupervisorFailureRetryability::Retryable,
-                        },
-                        runtime_failure: SupervisorRuntimeFailureInfo {
-                            code: types::RuntimeFailureCode::RUNTIME_FAILURE_CODE_INTERNAL,
-                            message,
-                            retryability: SupervisorFailureRetryability::Retryable,
-                        },
+                    ChildExitedRuntimeProjection {
+                        phase: types::RuntimePhase::RUNTIME_PHASE_FAILED,
+                        failure: Some(ChildExitedUnexpectedFailure {
+                            supervisor_failure: SupervisorFailureInfo {
+                                code: types::SupervisorFailureCode::SUPERVISOR_FAILURE_CODE_CHILD_EXITED_UNEXPECTEDLY,
+                                message: message.clone(),
+                                retryability: SupervisorFailureRetryability::Retryable,
+                            },
+                            runtime_failure: SupervisorRuntimeFailureInfo {
+                                code: types::RuntimeFailureCode::RUNTIME_FAILURE_CODE_INTERNAL,
+                                message,
+                                retryability: SupervisorFailureRetryability::Retryable,
+                            },
+                        }),
                         exit_code,
                         signal,
-                    }),
+                    },
                 )
             }
         },
@@ -676,6 +738,11 @@ fn failed_transition(
 struct ChildExitedUnexpectedFailure {
     supervisor_failure: SupervisorFailureInfo,
     runtime_failure: SupervisorRuntimeFailureInfo,
+}
+
+struct ChildExitedRuntimeProjection {
+    phase: types::RuntimePhase,
+    failure: Option<ChildExitedUnexpectedFailure>,
     exit_code: Option<i32>,
     signal: Option<String>,
 }
@@ -685,7 +752,7 @@ fn child_exited_transition(
     event_kind: SupervisorEventKind,
     runtime_pid: u32,
     state: SupervisorMachineState,
-    failure: Option<ChildExitedUnexpectedFailure>,
+    runtime_projection: ChildExitedRuntimeProjection,
 ) -> Result<SupervisorReduction, SupervisorTransitionRejected> {
     if runtime_pid == 0 {
         return Err(rejected(
@@ -709,22 +776,78 @@ fn child_exited_transition(
     let mut next = next_machine(machine, state);
     next.runtime_pid = Some(runtime_pid);
 
-    if let Some(failure) = failure {
+    let runtime_failure = if let Some(failure) = runtime_projection.failure {
         next.failure = Some(failure.supervisor_failure);
-        let mut reduction = snapshot_reduction(next);
-        reduction
-            .effects
-            .push(SupervisorEffect::WriteTerminalRuntimeStatusSnapshot {
-                phase: types::RuntimePhase::RUNTIME_PHASE_FAILED,
-                runtime_pid,
-                failure: failure.runtime_failure,
-                exit_code: failure.exit_code,
-                signal: failure.signal,
-            });
-        return Ok(reduction);
+        Some(failure.runtime_failure)
+    } else {
+        None
+    };
+    let mut reduction = snapshot_reduction(next);
+    reduction
+        .effects
+        .push(SupervisorEffect::WriteTerminalRuntimeStatusSnapshot {
+            phase: runtime_projection.phase,
+            runtime_pid,
+            failure: runtime_failure,
+            exit_code: runtime_projection.exit_code,
+            signal: runtime_projection.signal,
+        });
+    Ok(reduction)
+}
+
+fn startup_cleanup_child_exited_transition(
+    machine: &SupervisorMachine,
+    event_kind: SupervisorEventKind,
+    runtime_pid: u32,
+    exit_code: Option<i32>,
+    signal: Option<String>,
+) -> Result<SupervisorReduction, SupervisorTransitionRejected> {
+    if runtime_pid == 0 {
+        return Err(rejected(
+            machine.state,
+            event_kind,
+            "runtime pid must be greater than zero",
+        ));
     }
 
-    Ok(snapshot_reduction(next))
+    if machine
+        .runtime_pid
+        .is_some_and(|known_runtime_pid| known_runtime_pid != runtime_pid)
+    {
+        return Err(rejected(
+            machine.state,
+            event_kind,
+            "child exit runtime pid does not match supervised runtime",
+        ));
+    }
+
+    let Some(supervisor_failure) = machine.failure.as_ref() else {
+        return Err(rejected(
+            machine.state,
+            event_kind,
+            "startup cleanup child exit requires a startup timeout failure",
+        ));
+    };
+
+    let mut next = next_machine(machine, SupervisorMachineState::Failed);
+    next.runtime_pid = Some(runtime_pid);
+    next.failure = Some(supervisor_failure.clone());
+
+    let mut reduction = snapshot_reduction(next);
+    reduction
+        .effects
+        .push(SupervisorEffect::WriteTerminalRuntimeStatusSnapshot {
+            phase: types::RuntimePhase::RUNTIME_PHASE_FAILED,
+            runtime_pid,
+            failure: Some(SupervisorRuntimeFailureInfo {
+                code: types::RuntimeFailureCode::RUNTIME_FAILURE_CODE_INTERNAL,
+                message: supervisor_failure.message.clone(),
+                retryability: supervisor_failure.retryability,
+            }),
+            exit_code,
+            signal,
+        });
+    Ok(reduction)
 }
 
 fn snapshot_transition(
@@ -732,6 +855,12 @@ fn snapshot_transition(
     state: SupervisorMachineState,
 ) -> SupervisorReduction {
     snapshot_reduction(next_machine(machine, state))
+}
+
+fn failure_preserving_snapshot_reduction(machine: &SupervisorMachine) -> SupervisorReduction {
+    let mut next = next_machine(machine, machine.state);
+    next.failure = machine.failure.clone();
+    snapshot_reduction(next)
 }
 
 fn self_transition(machine: &SupervisorMachine) -> SupervisorReduction {
@@ -772,6 +901,13 @@ fn require_runtime_pid(
     machine
         .runtime_pid
         .ok_or_else(|| rejected(machine.state, event, reason))
+}
+
+fn startup_timeout_cleanup_is_active(machine: &SupervisorMachine) -> bool {
+    machine.runtime_pid.is_some()
+        && machine.failure.as_ref().is_some_and(|failure| {
+            failure.code == types::SupervisorFailureCode::SUPERVISOR_FAILURE_CODE_STARTUP_TIMEOUT
+        })
 }
 
 fn supervisor_transition_effect(

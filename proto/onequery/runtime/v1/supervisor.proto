@@ -43,13 +43,10 @@ message RuntimeSessionHello {
 }
 
 message RuntimeSessionHeartbeat {
+  reserved 2, 3;
+  reserved runtime_phase, runtime_sequence;
+
   uint64 heartbeat_sequence = 1 [(buf.validate.field).uint64.gte = 1];
-  RuntimePhase runtime_phase = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
-  ];
-  uint64 runtime_sequence = 3 [(buf.validate.field).uint64.gte = 0];
   google.protobuf.Timestamp sent_at = 4 [(buf.validate.field).required = true];
 }
 
@@ -58,44 +55,44 @@ message RuntimeReady {
 }
 
 message RuntimeShutdownStarted {
-  string operation_id = 1 [(buf.validate.field).string.max_len = 64];
+  string operation_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
   string reason = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 512
   ];
-  uint64 runtime_sequence = 3 [(buf.validate.field).uint64.gte = 1];
+  uint64 runtime_sequence = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint64.gte = 1
+  ];
   google.protobuf.Timestamp started_at = 4 [(buf.validate.field).required = true];
 }
 
 message RuntimeShutdownFinished {
-  string operation_id = 1 [(buf.validate.field).string.max_len = 64];
+  string operation_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
   RuntimeStatus status = 2 [(buf.validate.field).required = true];
   google.protobuf.Timestamp finished_at = 3 [(buf.validate.field).required = true];
 }
 
 message RuntimeShutdownFailed {
-  string operation_id = 1 [(buf.validate.field).string.max_len = 64];
+  string operation_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
   RuntimeFailure failure = 2 [(buf.validate.field).required = true];
-  RuntimeStatus status = 3;
+  RuntimeStatus status = 3 [(buf.validate.field).required = true];
   google.protobuf.Timestamp failed_at = 4 [(buf.validate.field).required = true];
 }
 
-message RuntimeExiting {
-  int32 exit_code = 1 [
-    (buf.validate.field).int32.gte = 0,
-    (buf.validate.field).int32.lte = 255
-  ];
-  string signal = 2 [(buf.validate.field).string.max_len = 64];
-  google.protobuf.Timestamp exiting_at = 3 [(buf.validate.field).required = true];
-}
-
 message OpenRuntimeSessionRequest {
-  string event_id = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 128
-  ];
+  reserved 1;
+  reserved event_id;
 
   oneof payload {
     option (buf.validate.oneof).required = true;
@@ -107,11 +104,10 @@ message OpenRuntimeSessionRequest {
     RuntimeShutdownStarted shutdown_started = 6;
     RuntimeShutdownFinished shutdown_finished = 7;
     RuntimeShutdownFailed shutdown_failed = 8;
-    RuntimeExiting runtime_exiting = 9;
   }
 }
 
-message SupervisorStopTarget {
+message SupervisorControlTarget {
   string launch_id = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
@@ -149,7 +145,7 @@ message SupervisorStopCommand {
     (buf.validate.field).duration.gt = {},
     (buf.validate.field).duration.lte = {seconds: 300}
   ];
-  SupervisorStopTarget target = 5 [(buf.validate.field).required = true];
+  SupervisorControlTarget target = 5 [(buf.validate.field).required = true];
 }
 
 message SupervisorCloseCommand {
@@ -160,29 +156,20 @@ message SupervisorCloseCommand {
   ];
 }
 
-message SupervisorPingCommand {
-  uint64 ping_sequence = 1 [(buf.validate.field).uint64.gte = 1];
-  google.protobuf.Timestamp sent_at = 2 [(buf.validate.field).required = true];
-}
-
 message OpenRuntimeSessionResponse {
-  string command_id = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 128
-  ];
+  reserved 2;
+  reserved ack;
 
-  oneof command {
+  oneof response {
     option (buf.validate.oneof).required = true;
 
-    SupervisorStopCommand stop = 2;
-    SupervisorCloseCommand close = 3;
-    SupervisorPingCommand ping = 4;
+    SupervisorStopCommand stop = 3;
+    SupervisorCloseCommand close = 4;
   }
 }
 
 message SupervisorLifecycleServiceGetStatusRequest {
-  SupervisorStopTarget target = 1 [(buf.validate.field).required = true];
+  SupervisorControlTarget target = 1 [(buf.validate.field).required = true];
 }
 
 message SupervisorLifecycleServiceGetStatusResponse {
@@ -190,7 +177,11 @@ message SupervisorLifecycleServiceGetStatusResponse {
 }
 
 message SupervisorLifecycleServiceStopRequest {
-  SupervisorStopCommand command = 1 [(buf.validate.field).required = true];
+  string operation_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
+  SupervisorControlTarget target = 2 [(buf.validate.field).required = true];
 }
 
 message SupervisorLifecycleServiceStopResponse {
@@ -200,13 +191,12 @@ message SupervisorLifecycleServiceStopResponse {
     (buf.validate.field).enum.defined_only = true
   ];
   SupervisorStatus status = 2 [(buf.validate.field).required = true];
-  RuntimeTransition transition = 3;
 }
 
 message SupervisorLifecycleServiceWatchStatusRequest {
   uint64 after_supervisor_sequence = 1 [(buf.validate.field).uint64.gte = 0];
   bool include_snapshot = 2 [(buf.validate.field).required = true];
-  SupervisorStopTarget target = 3 [(buf.validate.field).required = true];
+  SupervisorControlTarget target = 3 [(buf.validate.field).required = true];
 }
 
 message SupervisorLifecycleServiceWatchStatusResponse {

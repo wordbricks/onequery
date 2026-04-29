@@ -3,9 +3,10 @@ use chrono::Utc;
 use onequery_core::error::CliError;
 use onequery_core::error::ErrorStage;
 use onequery_core::private_files;
+use std::fs;
 
-use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
+use crate::supervisor_control_proto::types;
 
 use super::super::BACKGROUND_GATEWAY_RETRY_COMMAND;
 use super::lifecycle::read_runtime_status_snapshot_for_recovery;
@@ -20,8 +21,6 @@ use super::supervisor_machine::SupervisorRuntimeFailureInfo;
 use super::supervisor_machine::SupervisorTransitionEffect;
 use super::transport::retry_command_hint;
 
-const LIFECYCLE_SCHEMA_VERSION: u32 = 1;
-
 pub(super) fn append_supervisor_transition_event_log_entry(
     transition: &SupervisorTransitionEffect,
     context: SupervisorEffectContext<'_>,
@@ -35,27 +34,7 @@ pub(super) fn append_supervisor_transition_event_log_entry(
     )?;
     let monotonic_timestamp_nanos = lifecycle_records::next_monotonic_timestamp_nanos();
     let data_dir = context.paths.data_dir.display().to_string();
-    let runtime = transition
-        .runtime_pid
-        .map(|pid| runtime_identity(pid, context.launch_id, &data_dir));
-    let supervisor_transition = types::SupervisorTransition {
-        supervisor: MessageField::some(context.supervisor.clone()),
-        supervisor_sequence: Some(transition.supervisor_sequence),
-        previous_phase: Some(transition.previous_phase.into()),
-        current_phase: Some(transition.current_phase.into()),
-        reason: Some(transition.reason.clone()),
-        occurred_at: MessageField::some(protobuf_timestamp(now)),
-        runtime: runtime.map(MessageField::some).unwrap_or_default(),
-        failure: transition
-            .failure
-            .as_ref()
-            .map(supervisor_failure_to_proto)
-            .map(MessageField::some)
-            .unwrap_or_default(),
-        exit_code: transition.exit_code,
-        signal: transition.signal.clone(),
-        ..Default::default()
-    };
+    let supervisor_transition = project_supervisor_transition(transition, context, now);
     let entry = types::LifecycleEventLogEntry {
         header: MessageField::some(lifecycle_record_header(
             context.supervisor,
@@ -88,6 +67,36 @@ pub(super) fn append_supervisor_transition_event_log_entry(
     )
 }
 
+pub(super) fn project_supervisor_transition(
+    transition: &SupervisorTransitionEffect,
+    context: SupervisorEffectContext<'_>,
+    occurred_at: chrono::DateTime<Utc>,
+) -> types::SupervisorTransition {
+    let data_dir = context.paths.data_dir.display().to_string();
+    let runtime = transition
+        .runtime_pid
+        .map(|pid| runtime_identity(pid, context.launch_id, &data_dir));
+
+    types::SupervisorTransition {
+        supervisor: MessageField::some(context.supervisor.clone()),
+        supervisor_sequence: Some(transition.supervisor_sequence),
+        previous_phase: Some(transition.previous_phase.into()),
+        current_phase: Some(transition.current_phase.into()),
+        reason: Some(transition.reason.clone()),
+        occurred_at: MessageField::some(protobuf_timestamp(occurred_at)),
+        runtime: runtime.map(MessageField::some).unwrap_or_default(),
+        failure: transition
+            .failure
+            .as_ref()
+            .map(supervisor_failure_to_proto)
+            .map(MessageField::some)
+            .unwrap_or_default(),
+        exit_code: transition.exit_code,
+        signal: transition.signal.clone(),
+        ..Default::default()
+    }
+}
+
 fn supervisor_transition_id(transition: &SupervisorTransitionEffect) -> String {
     format!(
         "supervisor:{}:{}",
@@ -104,7 +113,7 @@ fn lifecycle_record_header(
     written_at: chrono::DateTime<Utc>,
 ) -> types::LifecycleRecordHeader {
     types::LifecycleRecordHeader {
-        schema_version: Some(LIFECYCLE_SCHEMA_VERSION),
+        schema_version: Some(lifecycle_records::LIFECYCLE_SCHEMA_VERSION),
         writer: MessageField::some(types::LifecycleRecordWriterIdentity {
             writer: Some(types::LifecycleRecordWriter::LIFECYCLE_RECORD_WRITER_SUPERVISOR.into()),
             writer_id: supervisor.supervisor_id.clone(),
@@ -155,16 +164,69 @@ pub(super) struct SupervisorStatusSnapshotWrite<'a> {
     pub(super) failure: Option<&'a SupervisorFailureInfo>,
 }
 
+pub(super) struct SupervisorStatusProjection<'a> {
+    pub(super) supervisor: &'a types::SupervisorIdentity,
+    pub(super) launch_id: &'a str,
+    pub(super) data_dir: &'a str,
+    pub(super) phase: types::SupervisorPhase,
+    pub(super) supervisor_sequence: u64,
+    pub(super) runtime_pid: Option<u32>,
+    pub(super) failure: Option<&'a SupervisorFailureInfo>,
+    pub(super) active_session: bool,
+    pub(super) updated_at: chrono::DateTime<Utc>,
+}
+
+pub(super) fn project_supervisor_status(
+    projection: SupervisorStatusProjection<'_>,
+) -> types::SupervisorStatus {
+    let runtime = projection
+        .runtime_pid
+        .map(|pid| runtime_identity(pid, projection.launch_id, projection.data_dir));
+
+    types::SupervisorStatus {
+        identity: MessageField::some(projection.supervisor.clone()),
+        launch: MessageField::some(lifecycle_launch_identity(
+            projection.supervisor,
+            projection.launch_id,
+            projection.data_dir,
+            projection.runtime_pid,
+        )),
+        phase: Some(projection.phase.into()),
+        supervisor_sequence: Some(projection.supervisor_sequence),
+        updated_at: MessageField::some(protobuf_timestamp(projection.updated_at)),
+        runtime: runtime.map(MessageField::some).unwrap_or_default(),
+        failure: projection
+            .failure
+            .map(supervisor_failure_to_proto)
+            .map(MessageField::some)
+            .unwrap_or_default(),
+        active_session: Some(projection.active_session),
+        ..Default::default()
+    }
+}
+
 pub(super) fn write_supervisor_status_snapshot(
     paths: &SelfHostRuntimePaths,
     record: SupervisorStatusSnapshotWrite<'_>,
     command_line: &str,
-) -> Result<(), CliError> {
+) -> Result<types::SupervisorStatus, CliError> {
     let now = Utc::now();
     let data_dir = paths.data_dir.display().to_string();
-    let runtime = record
-        .runtime_pid
-        .map(|pid| runtime_identity(pid, record.launch_id, &data_dir));
+    // Comment: supervisor-authored durable snapshots only project
+    // supervisor-owned status. Runtime phase/sequence are owned by the live
+    // runtime session and runtime-authored snapshots; active_session is always
+    // false after recovery because no in-memory command stream survives.
+    let status = project_supervisor_status(SupervisorStatusProjection {
+        supervisor: record.supervisor,
+        launch_id: record.launch_id,
+        data_dir: &data_dir,
+        phase: record.phase,
+        supervisor_sequence: record.supervisor_sequence,
+        runtime_pid: record.runtime_pid,
+        failure: record.failure,
+        active_session: false,
+        updated_at: now,
+    });
     let snapshot = types::SupervisorStatusSnapshot {
         header: MessageField::some(lifecycle_record_header(
             record.supervisor,
@@ -173,25 +235,7 @@ pub(super) fn write_supervisor_status_snapshot(
             record.runtime_pid,
             now,
         )),
-        status: MessageField::some(types::SupervisorStatus {
-            identity: MessageField::some(record.supervisor.clone()),
-            launch: MessageField::some(lifecycle_launch_identity(
-                record.supervisor,
-                record.launch_id,
-                &data_dir,
-                record.runtime_pid,
-            )),
-            phase: Some(record.phase.into()),
-            supervisor_sequence: Some(record.supervisor_sequence),
-            updated_at: MessageField::some(protobuf_timestamp(now)),
-            runtime: runtime.map(MessageField::some).unwrap_or_default(),
-            failure: record
-                .failure
-                .map(supervisor_failure_to_proto)
-                .map(MessageField::some)
-                .unwrap_or_default(),
-            ..Default::default()
-        }),
+        status: MessageField::some(status.clone()),
         snapshot_at: MessageField::some(protobuf_timestamp(now)),
         ..Default::default()
     };
@@ -203,7 +247,9 @@ pub(super) fn write_supervisor_status_snapshot(
                 ErrorStage::Internal,
                 format!(
                     "{error} (encoding={})",
-                    lifecycle_records::DURABLE_STATE_FILE_ENCODING
+                    lifecycle_records::durable_lifecycle_record_encoding_label(
+                        lifecycle_records::DURABLE_STATE_FILE_ENCODING
+                    )
                 ),
                 vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
             )
@@ -215,7 +261,9 @@ pub(super) fn write_supervisor_status_snapshot(
         command_line,
         ErrorStage::Internal,
         "gateway supervisor status snapshot",
-    )
+    )?;
+
+    Ok(status)
 }
 
 pub(super) struct TerminalRuntimeStatusSnapshotWrite<'a> {
@@ -223,7 +271,7 @@ pub(super) struct TerminalRuntimeStatusSnapshotWrite<'a> {
     pub(super) launch_id: &'a str,
     pub(super) phase: types::RuntimePhase,
     pub(super) runtime_pid: u32,
-    pub(super) failure: &'a SupervisorRuntimeFailureInfo,
+    pub(super) failure: Option<&'a SupervisorRuntimeFailureInfo>,
     pub(super) exit_code: Option<i32>,
     pub(super) signal: Option<&'a str>,
 }
@@ -232,23 +280,38 @@ pub(super) fn write_terminal_runtime_status_snapshot(
     paths: &SelfHostRuntimePaths,
     record: TerminalRuntimeStatusSnapshotWrite<'_>,
     command_line: &str,
-) -> Result<(), CliError> {
+) -> Result<types::RuntimeStatus, CliError> {
     let now = Utc::now();
     let data_dir = paths.data_dir.display().to_string();
     let runtime_sequence =
         next_terminal_runtime_sequence(paths, record.launch_id, record.runtime_pid, command_line)?;
-    let failure_message = format!(
-        "{}; exit_code={}; signal={}",
-        record.failure.message,
-        record
-            .exit_code
-            .map_or_else(|| "none".to_owned(), |code| code.to_string()),
-        record.signal.unwrap_or("none"),
+    let failure = record.failure.map(|failure| {
+        let failure_message = format!(
+            "{}; exit_code={}; signal={}",
+            failure.message,
+            record
+                .exit_code
+                .map_or_else(|| "none".to_owned(), |code| code.to_string()),
+            record.signal.unwrap_or("none"),
+        );
+
+        types::RuntimeFailure {
+            code: Some(failure.code.into()),
+            message: Some(failure_message),
+            retryable: Some(failure.retryability.as_bool()),
+            ..Default::default()
+        }
+    });
+    let status = terminal_runtime_status_projection(
+        record.runtime_pid,
+        record.launch_id,
+        &data_dir,
+        record.phase,
+        runtime_sequence,
+        now,
+        failure,
     );
 
-    // Comment: this supervisor-authored runtime snapshot is terminal recovery
-    // evidence for OS child exit; live in-process lifecycle transitions still
-    // come from the supervisor-control session.
     let snapshot = types::RuntimeStatusSnapshot {
         header: MessageField::some(lifecycle_record_header(
             record.supervisor,
@@ -257,23 +320,7 @@ pub(super) fn write_terminal_runtime_status_snapshot(
             Some(record.runtime_pid),
             now,
         )),
-        status: MessageField::some(types::RuntimeStatus {
-            identity: MessageField::some(runtime_identity(
-                record.runtime_pid,
-                record.launch_id,
-                &data_dir,
-            )),
-            phase: Some(record.phase.into()),
-            runtime_sequence: Some(runtime_sequence),
-            updated_at: MessageField::some(protobuf_timestamp(now)),
-            failure: MessageField::some(types::RuntimeFailure {
-                code: Some(record.failure.code.into()),
-                message: Some(failure_message),
-                retryable: Some(record.failure.retryability.as_bool()),
-                ..Default::default()
-            }),
-            ..Default::default()
-        }),
+        status: MessageField::some(status.clone()),
         snapshot_at: MessageField::some(protobuf_timestamp(now)),
         ..Default::default()
     };
@@ -285,7 +332,9 @@ pub(super) fn write_terminal_runtime_status_snapshot(
                 ErrorStage::Internal,
                 format!(
                     "{error} (encoding={})",
-                    lifecycle_records::DURABLE_STATE_FILE_ENCODING
+                    lifecycle_records::durable_lifecycle_record_encoding_label(
+                        lifecycle_records::DURABLE_STATE_FILE_ENCODING
+                    )
                 ),
                 vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
             )
@@ -307,12 +356,35 @@ pub(super) fn write_terminal_runtime_status_snapshot(
             phase: record.phase,
             runtime_pid: record.runtime_pid,
             runtime_sequence,
-            retryable: record.failure.retryability.as_bool(),
+            retryable: record
+                .failure
+                .is_some_and(|failure| failure.retryability.as_bool()),
             exit_code: record.exit_code,
             signal: record.signal,
         },
         command_line,
-    )
+    )?;
+
+    Ok(status)
+}
+
+fn terminal_runtime_status_projection(
+    runtime_pid: u32,
+    launch_id: &str,
+    data_dir: &str,
+    phase: types::RuntimePhase,
+    runtime_sequence: u64,
+    updated_at: chrono::DateTime<Utc>,
+    failure: Option<types::RuntimeFailure>,
+) -> types::RuntimeStatus {
+    types::RuntimeStatus {
+        identity: MessageField::some(runtime_identity(runtime_pid, launch_id, data_dir)),
+        phase: Some(phase.into()),
+        runtime_sequence: Some(runtime_sequence),
+        updated_at: MessageField::some(protobuf_timestamp(updated_at)),
+        failure: failure.map(MessageField::some).unwrap_or_default(),
+        ..Default::default()
+    }
 }
 
 struct ProcessExitEventLogWrite<'a> {
@@ -385,18 +457,94 @@ fn next_terminal_runtime_sequence(
     command_line: &str,
 ) -> Result<u64, CliError> {
     let Some(snapshot) = read_runtime_status_snapshot_for_recovery(paths, command_line)? else {
-        return Ok(1);
+        return next_terminal_runtime_sequence_from_supervisor_snapshot(
+            paths,
+            launch_id,
+            runtime_pid,
+            command_line,
+        );
     };
     let Some(status) = snapshot.status.as_option() else {
-        return Ok(1);
+        return next_terminal_runtime_sequence_from_supervisor_snapshot(
+            paths,
+            launch_id,
+            runtime_pid,
+            command_line,
+        );
     };
     let Some(identity) = status.identity.as_option() else {
-        return Ok(1);
+        return next_terminal_runtime_sequence_from_supervisor_snapshot(
+            paths,
+            launch_id,
+            runtime_pid,
+            command_line,
+        );
     };
 
     if identity.pid != Some(runtime_pid)
         || identity.launch_id.as_deref() != Some(launch_id)
         || identity
+            .data_dir
+            .as_deref()
+            .is_none_or(|data_dir| std::path::Path::new(data_dir) != paths.data_dir.as_path())
+    {
+        return next_terminal_runtime_sequence_from_supervisor_snapshot(
+            paths,
+            launch_id,
+            runtime_pid,
+            command_line,
+        );
+    }
+
+    Ok(status.runtime_sequence.unwrap_or(0).saturating_add(1))
+}
+
+fn next_terminal_runtime_sequence_from_supervisor_snapshot(
+    paths: &SelfHostRuntimePaths,
+    launch_id: &str,
+    runtime_pid: u32,
+    command_line: &str,
+) -> Result<u64, CliError> {
+    let path = paths.supervisor_status_snapshot_path.as_path();
+    if !path.exists() {
+        return Ok(1);
+    }
+
+    let contents = fs::read_to_string(path).map_err(|error| {
+        CliError::new(
+            "failed to write terminal runtime lifecycle snapshot",
+            command_line,
+            ErrorStage::Internal,
+            format!(
+                "failed to read supervisor status snapshot {}: {error}",
+                path.display()
+            ),
+            vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
+        )
+    })?;
+    let snapshot =
+        lifecycle_records::decode_supervisor_status_snapshot(&contents).map_err(|error| {
+            CliError::new(
+                "failed to write terminal runtime lifecycle snapshot",
+                command_line,
+                ErrorStage::Internal,
+                format!(
+                    "failed to decode supervisor status snapshot {}: {error}",
+                    path.display()
+                ),
+                vec![retry_command_hint(BACKGROUND_GATEWAY_RETRY_COMMAND)],
+            )
+        })?;
+    let Some(status) = snapshot.status.as_option() else {
+        return Ok(1);
+    };
+    let Some(runtime) = status.runtime.as_option() else {
+        return Ok(1);
+    };
+
+    if runtime.pid != Some(runtime_pid)
+        || runtime.launch_id.as_deref() != Some(launch_id)
+        || runtime
             .data_dir
             .as_deref()
             .is_none_or(|data_dir| std::path::Path::new(data_dir) != paths.data_dir.as_path())

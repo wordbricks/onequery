@@ -1,6 +1,11 @@
 import { open } from "node:fs/promises";
 
-import type { RuntimeLeaseRecord } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import type {
+  RuntimeLeaseRecord,
+  RuntimeStatus,
+  RuntimeStatusSnapshot,
+} from "@onequery/proto-runtime/runtime/v1/common_pb";
+import { RuntimePhase } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import { Result } from "better-result";
 import type { Result as ResultType } from "better-result";
 
@@ -49,6 +54,7 @@ type ActiveRuntimeLeaseRecord = {
   failure?: RuntimeLifecycleFailure;
   phase: RuntimeLifecyclePhase;
   record: RuntimeLeaseRecord;
+  status: RuntimeStatus;
   runtimeSequence: bigint;
 };
 
@@ -80,26 +86,26 @@ export async function acquireRuntimeLifecycleLeaseResult(
   const acquisition = await Result.gen(async function* acquireLeaseFlow() {
     yield* Result.await(ensureRuntimeDirectories(paths));
     activeRecord = yield* Result.await(acquireLease(paths, resolved));
+    const acquiredStatusSnapshot = createRuntimeStatusSnapshot({
+      launchId: resolved.launchId,
+      paths,
+      phase: RuntimePhase.STARTING,
+      pid: resolved.pid,
+      runtimeSequence: initialRuntimeSequence,
+      snapshotAt: resolved.now(),
+      supervisor: resolved.supervisor,
+    });
     const activeLease: ActiveRuntimeLeaseRecord = {
-      phase: "starting",
+      phase: RuntimePhase.STARTING,
       record: activeRecord,
       runtimeSequence: initialRuntimeSequence,
+      status: runtimeStatusFromSnapshot(acquiredStatusSnapshot),
     };
 
     yield* Result.await(
       writeRuntimeStatusSnapshot(
         paths,
-        encodeRuntimeStatusSnapshot(
-          createRuntimeStatusSnapshot({
-            launchId: resolved.launchId,
-            paths,
-            phase: "starting",
-            pid: resolved.pid,
-            runtimeSequence: activeLease.runtimeSequence,
-            snapshotAt: resolved.now(),
-            supervisor: resolved.supervisor,
-          })
-        )
+        encodeRuntimeStatusSnapshot(acquiredStatusSnapshot)
       )
     );
     yield* Result.await(
@@ -122,7 +128,7 @@ export async function acquireRuntimeLifecycleLeaseResult(
           failure
         );
         if (transition === null) {
-          return;
+          return activeLease.status;
         }
 
         const transitionResult = await transitionRuntimeLifecycleLease(
@@ -135,6 +141,35 @@ export async function acquireRuntimeLifecycleLeaseResult(
         if (transitionResult.isErr()) {
           throw transitionResult.error;
         }
+
+        return transitionResult.value;
+      },
+      currentStatus() {
+        return activeLease.status;
+      },
+      terminalStatus(phase, failure) {
+        if (activeLease.phase === phase) {
+          return activeLease.status;
+        }
+
+        const occurredAt = resolved.now();
+        const terminalSnapshot = createRuntimeStatusSnapshot({
+          failure,
+          launchId: resolved.launchId,
+          paths,
+          phase,
+          pid: resolved.pid,
+          runtimeSequence: activeLease.runtimeSequence + 1n,
+          snapshotAt: occurredAt,
+          supervisor: resolved.supervisor,
+        });
+
+        activeLease.failure = failure;
+        activeLease.phase = phase;
+        activeLease.runtimeSequence += 1n;
+        activeLease.status = runtimeStatusFromSnapshot(terminalSnapshot);
+
+        return activeLease.status;
       },
       async persistTransition(transition) {
         const transitionResult = await transitionRuntimeLifecycleLease(
@@ -147,6 +182,8 @@ export async function acquireRuntimeLifecycleLeaseResult(
         if (transitionResult.isErr()) {
           throw transitionResult.error;
         }
+
+        return transitionResult.value;
       },
       async release({ reason, stopServer }) {
         if (released) {
@@ -195,7 +232,7 @@ async function transitionRuntimeLifecycleLease(
   activeLease: ActiveRuntimeLeaseRecord,
   transition: RuntimeLifecycleTransitionPersistence,
   options: ResolvedLifecycleOptions
-): Promise<ResultType<void, RuntimeLifecycleMutationError>> {
+): Promise<ResultType<RuntimeStatus, RuntimeLifecycleMutationError>> {
   const validation = validateLifecycleTransition(activeLease, transition);
   if (validation.isErr()) {
     return Result.err(validation.error);
@@ -206,24 +243,24 @@ async function transitionRuntimeLifecycleLease(
     transition.occurredAt,
     transition.runtimeSequence
   );
+  const nextSnapshot = createRuntimeStatusSnapshot({
+    failure: transition.failure,
+    launchId: options.launchId,
+    paths,
+    phase: transition.phase,
+    pid: options.pid,
+    runtimeSequence: transition.runtimeSequence,
+    snapshotAt: transition.occurredAt,
+    supervisor: options.supervisor,
+  });
+  const nextStatus = runtimeStatusFromSnapshot(nextSnapshot);
 
   const persisted = await Result.gen(async function* transitionLeaseFlow() {
     yield* Result.await(writeRuntimeLeaseRecord(paths, nextRecord));
     yield* Result.await(
       writeRuntimeStatusSnapshot(
         paths,
-        encodeRuntimeStatusSnapshot(
-          createRuntimeStatusSnapshot({
-            failure: transition.failure,
-            launchId: options.launchId,
-            paths,
-            phase: transition.phase,
-            pid: options.pid,
-            runtimeSequence: transition.runtimeSequence,
-            snapshotAt: transition.occurredAt,
-            supervisor: options.supervisor,
-          })
-        )
+        encodeRuntimeStatusSnapshot(nextSnapshot)
       )
     );
 
@@ -238,9 +275,10 @@ async function transitionRuntimeLifecycleLease(
   activeLease.failure = transition.failure;
   activeLease.phase = transition.phase;
   activeLease.record = nextRecord;
+  activeLease.status = nextStatus;
   activeLease.runtimeSequence = transition.runtimeSequence;
 
-  return Result.ok(undefined);
+  return Result.ok(nextStatus);
 }
 
 function createStandaloneLifecycleTransition(
@@ -261,6 +299,16 @@ function createStandaloneLifecycleTransition(
   };
 }
 
+function runtimeStatusFromSnapshot(
+  snapshot: RuntimeStatusSnapshot
+): RuntimeStatus {
+  if (!snapshot.status) {
+    throw new Error("runtime status snapshot omitted status");
+  }
+
+  return snapshot.status;
+}
+
 function validateLifecycleTransition(
   activeLease: ActiveRuntimeLeaseRecord,
   transition: RuntimeLifecycleTransitionPersistence
@@ -269,7 +317,7 @@ function validateLifecycleTransition(
     return Result.err(
       new RuntimeLifecycleTransitionError({
         message: `runtime lifecycle phase ${transition.phase} cannot advance sequence ${transition.runtimeSequence.toString()} without changing phase`,
-        phase: transition.phase,
+        phase: String(transition.phase),
         runtimeSequence: transition.runtimeSequence.toString(),
       })
     );
@@ -280,7 +328,7 @@ function validateLifecycleTransition(
     return Result.err(
       new RuntimeLifecycleTransitionError({
         message: `runtime lifecycle transition to ${transition.phase} used sequence ${transition.runtimeSequence.toString()} but expected ${nextRuntimeSequence.toString()}`,
-        phase: transition.phase,
+        phase: String(transition.phase),
         runtimeSequence: transition.runtimeSequence.toString(),
       })
     );

@@ -13,8 +13,8 @@ use tokio::time::sleep;
 use tokio::time::timeout;
 
 use crate::GatewayCommandOutput;
-use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
+use crate::supervisor_control_proto::types;
 
 use super::super::CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP;
 use super::super::GATEWAY_STOP_POLL_ATTEMPTS;
@@ -25,10 +25,9 @@ use super::super::render::runtime_state_json;
 use super::super::state::GatewayRuntimeState;
 use super::super::state::GatewayStateAccessMode;
 use super::super::state::resolve_runtime_state;
-use super::control::runtime_control_error_allows_fallback;
 use super::control::runtime_phase_label;
-use super::control_error::runtime_control_connect_error_summary;
-use super::control_error::with_runtime_control_connect_error_metadata;
+use super::control_error::supervisor_control_connect_error_summary;
+use super::control_error::with_supervisor_control_connect_error_metadata;
 use super::lifecycle::ManagedRuntimeIdentity;
 use super::lifecycle::ManagedSupervisorIdentity;
 use super::lifecycle::read_active_supervisor_identity_for_runtime;
@@ -36,7 +35,7 @@ use super::lifecycle::read_managed_runtime_identity;
 use super::supervisor_control::client::get_supervisor_status;
 use super::supervisor_control::client::supervisor_control_client;
 
-const RUNTIME_CONTROL_STOP_GRACE_TIMEOUT: Duration = Duration::from_secs(30);
+const SUPERVISOR_CONTROL_STOP_GRACE_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub(crate) async fn stop_runtime(
     state: &GatewayRuntimeState,
@@ -118,53 +117,12 @@ async fn submit_supervisor_stop_intent(
 
     match submit_supervisor_stop_rpc(paths, identity, supervisor).await {
         Ok(()) => Ok(()),
-        Err(error) if runtime_control_error_allows_fallback(&error) => {
-            submit_supervisor_stop_signal(identity, supervisor, command_line)
-        }
         Err(error) => Err(supervisor_stop_rpc_error(
             &error,
             identity,
             supervisor,
             command_line,
         )),
-    }
-}
-
-fn submit_supervisor_stop_signal(
-    identity: &ManagedRuntimeIdentity,
-    supervisor: &ManagedSupervisorIdentity,
-    command_line: &str,
-) -> Result<(), CliError> {
-    #[cfg(unix)]
-    {
-        let result = unsafe { libc::kill(supervisor.pid as i32, libc::SIGTERM) };
-        if result == 0 {
-            return Ok(());
-        }
-
-        Err(CliError::new(
-            "failed to submit gateway supervisor stop intent",
-            command_line,
-            ErrorStage::Internal,
-            format!(
-                "unable to send stop intent to supervisor pid {} for runtime pid {}",
-                supervisor.pid, identity.pid
-            ),
-            vec![CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP.to_owned()],
-        ))
-    }
-
-    #[cfg(not(unix))]
-    {
-        let _ = supervisor;
-
-        Err(CliError::new(
-            "failed to submit gateway supervisor stop intent",
-            command_line,
-            ErrorStage::Internal,
-            "supervisor stop intent signaling is unavailable on this platform".to_owned(),
-            vec![CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP.to_owned()],
-        ))
     }
 }
 
@@ -176,20 +134,8 @@ async fn submit_supervisor_stop_rpc(
     let client = supervisor_control_client(paths).await?;
     client
         .stop(types::SupervisorLifecycleServiceStopRequest {
-            command: buffa::MessageField::some(types::SupervisorStopCommand {
-                operation_id: Some(uuid::Uuid::new_v4().to_string()),
-                reason: Some("onequery gateway stop".to_owned()),
-                completion: Some(
-                    types::RuntimeStopCompletion::RUNTIME_STOP_COMPLETION_CLEANUP_AND_EXIT.into(),
-                ),
-                grace_timeout: buffa::MessageField::some(protobuf_duration(
-                    RUNTIME_CONTROL_STOP_GRACE_TIMEOUT,
-                )),
-                target: buffa::MessageField::some(supervisor_stop_target(
-                    paths, identity, supervisor,
-                )),
-                ..Default::default()
-            }),
+            operation_id: Some(uuid::Uuid::new_v4().to_string()),
+            target: buffa::MessageField::some(supervisor_stop_target(paths, identity, supervisor)),
             ..Default::default()
         })
         .await?;
@@ -201,8 +147,8 @@ pub(super) fn supervisor_stop_target(
     paths: &SelfHostRuntimePaths,
     identity: &ManagedRuntimeIdentity,
     supervisor: &ManagedSupervisorIdentity,
-) -> types::SupervisorStopTarget {
-    types::SupervisorStopTarget {
+) -> types::SupervisorControlTarget {
+    types::SupervisorControlTarget {
         launch_id: Some(identity.launch_id.clone()),
         data_dir: Some(paths.data_dir.display().to_string()),
         runtime_pid: Some(identity.pid),
@@ -222,7 +168,7 @@ fn supervisor_stop_rpc_error(
     supervisor: &ManagedSupervisorIdentity,
     command_line: &str,
 ) -> CliError {
-    let detail = runtime_control_connect_error_summary(error).unwrap_or_else(|| {
+    let detail = supervisor_control_connect_error_summary(error).unwrap_or_else(|| {
         format!(
             "supervisor control RPC returned {} while stopping runtime pid {} through supervisor pid {}: {error}",
             error.code.as_str(),
@@ -238,7 +184,7 @@ fn supervisor_stop_rpc_error(
         vec![CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP.to_owned()],
     );
 
-    with_runtime_control_connect_error_metadata(error, cli_error, None)
+    with_supervisor_control_connect_error_metadata(error, cli_error, None)
 }
 
 fn supervisor_identity_error(identity: &ManagedRuntimeIdentity, command_line: &str) -> CliError {
@@ -267,13 +213,9 @@ async fn wait_for_supervised_runtime_stop(
     let mut last_status_error = None;
 
     loop {
-        if runtime_process_has_exited_and_released_records(paths, identity.pid) {
-            return Ok(());
-        }
-
         let remaining = stop_deadline.saturating_duration_since(Instant::now());
         if remaining.is_zero() {
-            return Err(runtime_control_stop_timeout_error(
+            return Err(supervisor_control_stop_timeout_error(
                 identity.pid,
                 command_line,
                 last_status_error.as_ref(),
@@ -288,16 +230,27 @@ async fn wait_for_supervised_runtime_stop(
         .await;
 
         match status_result {
-            Ok(Ok(status)) => match runtime_control_stop_phase_outcome(runtime_phase_from_proto(
+            Ok(Ok(status)) => match supervisor_control_stop_phase_outcome(runtime_phase_from_proto(
                 status.runtime_phase,
             )) {
-                RuntimeControlStopPhaseOutcome::Stopped => {}
-                RuntimeControlStopPhaseOutcome::Failed(phase) => {
-                    return Err(runtime_control_stop_terminal_error(phase, command_line));
+                SupervisorControlStopPhaseOutcome::Stopped => {
+                    if runtime_process_has_exited_and_released_lease(paths, identity.pid) {
+                        return Ok(());
+                    }
                 }
-                RuntimeControlStopPhaseOutcome::Pending => {}
+                SupervisorControlStopPhaseOutcome::Failed(phase) => {
+                    return Err(supervisor_control_stop_terminal_error(phase, command_line));
+                }
+                SupervisorControlStopPhaseOutcome::Pending => {}
             },
             Ok(Err(error)) => {
+                if !is_process_running(identity.pid) {
+                    return Err(supervisor_control_unavailable_after_exit_error(
+                        identity.pid,
+                        command_line,
+                        &error,
+                    ));
+                }
                 last_status_error = Some(error);
             }
             Err(_) => {}
@@ -307,13 +260,11 @@ async fn wait_for_supervised_runtime_stop(
     }
 }
 
-fn runtime_process_has_exited_and_released_records(paths: &SelfHostRuntimePaths, pid: u32) -> bool {
-    !is_process_running(pid)
-        && !paths.runtime_status_snapshot_path.exists()
-        && !paths.runtime_lease_path.exists()
+fn runtime_process_has_exited_and_released_lease(paths: &SelfHostRuntimePaths, pid: u32) -> bool {
+    !is_process_running(pid) && !paths.runtime_lease_path.exists()
 }
 
-fn runtime_control_stop_timeout_error(
+fn supervisor_control_stop_timeout_error(
     pid: u32,
     command_line: &str,
     last_watch_error: Option<&ConnectError>,
@@ -321,15 +272,15 @@ fn runtime_control_stop_timeout_error(
     let detail = last_watch_error.map_or_else(
         || {
             format!(
-                "supervisor stop intent did not produce runtime exit and durable record cleanup for pid {pid}"
+                "supervisor stop intent did not produce terminal supervisor status, runtime exit, and runtime lease release for pid {pid}"
             )
         },
         |error| {
-            let last_error = runtime_control_connect_error_summary(error)
+            let last_error = supervisor_control_connect_error_summary(error)
                 .unwrap_or_else(|| error.to_string());
 
             format!(
-                "supervisor stop intent did not produce runtime exit and durable record cleanup for pid {pid} (last error: {last_error})"
+                "supervisor stop intent did not produce terminal supervisor status, runtime exit, and runtime lease release for pid {pid} (last error: {last_error})"
             )
         },
     );
@@ -343,13 +294,44 @@ fn runtime_control_stop_timeout_error(
     );
 
     if let Some(error) = last_watch_error {
-        with_runtime_control_connect_error_metadata(error, cli_error, None)
+        with_supervisor_control_connect_error_metadata(error, cli_error, None)
     } else {
         cli_error
     }
 }
 
-fn runtime_control_stop_terminal_error(phase: types::RuntimePhase, command_line: &str) -> CliError {
+fn supervisor_control_unavailable_after_exit_error(
+    pid: u32,
+    command_line: &str,
+    error: &ConnectError,
+) -> CliError {
+    let detail = supervisor_control_connect_error_summary(error).unwrap_or_else(|| {
+        format!(
+            "supervisor control GetStatus returned {} after runtime pid {pid} exited: {error}",
+            error.code.as_str()
+        )
+    });
+    let cli_error = CliError::new(
+        "self-host runtime stop status unavailable after process exit",
+        command_line,
+        ErrorStage::Internal,
+        format!(
+            "runtime pid {pid} exited before supervisor control reported terminal status ({detail})"
+        ),
+        vec![CHECK_SERVER_LOG_AND_RETRY_GATEWAY_STOP.to_owned()],
+    );
+
+    with_supervisor_control_connect_error_metadata(
+        error,
+        cli_error,
+        Some("control_unavailable_after_exit".to_owned()),
+    )
+}
+
+fn supervisor_control_stop_terminal_error(
+    phase: types::RuntimePhase,
+    command_line: &str,
+) -> CliError {
     CliError::new(
         "self-host runtime did not stop cleanly",
         command_line,
@@ -363,22 +345,22 @@ fn runtime_control_stop_terminal_error(phase: types::RuntimePhase, command_line:
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum RuntimeControlStopPhaseOutcome {
+enum SupervisorControlStopPhaseOutcome {
     Pending,
     Stopped,
     Failed(types::RuntimePhase),
 }
 
-fn runtime_control_stop_phase_outcome(
+fn supervisor_control_stop_phase_outcome(
     phase: types::RuntimePhase,
-) -> RuntimeControlStopPhaseOutcome {
+) -> SupervisorControlStopPhaseOutcome {
     match phase {
-        types::RuntimePhase::RUNTIME_PHASE_STOPPED => RuntimeControlStopPhaseOutcome::Stopped,
+        types::RuntimePhase::RUNTIME_PHASE_STOPPED => SupervisorControlStopPhaseOutcome::Stopped,
         types::RuntimePhase::RUNTIME_PHASE_SHUTDOWN_FAILED
         | types::RuntimePhase::RUNTIME_PHASE_FAILED => {
-            RuntimeControlStopPhaseOutcome::Failed(phase)
+            SupervisorControlStopPhaseOutcome::Failed(phase)
         }
-        _ => RuntimeControlStopPhaseOutcome::Pending,
+        _ => SupervisorControlStopPhaseOutcome::Pending,
     }
 }
 
@@ -393,20 +375,12 @@ fn runtime_stop_deadline() -> Instant {
 }
 
 fn runtime_stop_timeout() -> Duration {
-    RUNTIME_CONTROL_STOP_GRACE_TIMEOUT
+    SUPERVISOR_CONTROL_STOP_GRACE_TIMEOUT
         + runtime_stop_poll_interval() * GATEWAY_STOP_POLL_ATTEMPTS as u32
 }
 
 fn runtime_stop_poll_interval() -> Duration {
     Duration::from_millis(GATEWAY_STOP_POLL_INTERVAL_MS)
-}
-
-fn protobuf_duration(value: Duration) -> buffa_types::google::protobuf::Duration {
-    buffa_types::google::protobuf::Duration {
-        seconds: value.as_secs().min(i64::MAX as u64) as i64,
-        nanos: value.subsec_nanos() as i32,
-        ..Default::default()
-    }
 }
 
 pub(super) fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliError> {
@@ -417,11 +391,16 @@ pub(super) fn terminate_process(pid: u32, command_line: &str) -> Result<(), CliE
             return Ok(());
         }
 
+        let error = std::io::Error::last_os_error();
+        if error.raw_os_error() == Some(libc::ESRCH) {
+            return Ok(());
+        }
+
         Err(CliError::new(
             "failed to stop self-host runtime",
             command_line,
             ErrorStage::Internal,
-            format!("unable to send SIGTERM to pid {pid}"),
+            format!("unable to send SIGTERM to pid {pid}: {error}"),
             vec![RETRY_GATEWAY_STOP_COMMAND.to_owned()],
         ))
     }

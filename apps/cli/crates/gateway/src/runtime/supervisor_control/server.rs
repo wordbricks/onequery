@@ -1,11 +1,14 @@
+use std::any::Any;
 use std::error::Error;
 use std::io;
+use std::panic::AssertUnwindSafe;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use connectrpc::ConnectRpcService;
 use connectrpc::Limits;
+use futures::FutureExt;
 use hyper::service::service_fn;
 use hyper_util::rt::TokioExecutor;
 use hyper_util::rt::TokioIo;
@@ -15,12 +18,13 @@ use tokio::net::UnixListener;
 use tokio::net::UnixStream;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
+use tokio::task::JoinSet;
 use tower::Service;
 
 use super::service::SupervisorControlService;
+use crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES;
 
 type SupervisorControlServerResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
-const SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES: usize = 64 * 1024;
 
 pub(super) fn connect_service(
     service: SupervisorControlService,
@@ -34,6 +38,12 @@ pub(crate) struct SupervisorControlServer {
 }
 
 impl SupervisorControlServer {
+    /// Stop accepting supervisor control connections.
+    ///
+    /// Shutdown deliberately aborts active connection tasks instead of draining
+    /// them. Runtime sessions are long-lived bidi streams, and supervisor
+    /// process shutdown must be bounded so socket cleanup cannot wait on a
+    /// runtime that is already exiting or unresponsive.
     pub(crate) async fn stop(mut self) -> SupervisorControlServerResult<()> {
         if let Some(shutdown) = self.shutdown.take() {
             let _ = shutdown.send(());
@@ -56,15 +66,43 @@ pub(crate) async fn start_supervisor_control_server(
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let task_socket_path = socket_path.clone();
     let task = tokio::spawn(async move {
-        let result = serve_unix_listener(listener, service, shutdown_rx).await;
-        remove_socket_file(task_socket_path.as_path()).await?;
-        result
+        run_supervisor_control_server(listener, service, shutdown_rx, task_socket_path).await
     });
 
     Ok(SupervisorControlServer {
         shutdown: Some(shutdown_tx),
         task,
     })
+}
+
+async fn run_supervisor_control_server(
+    listener: UnixListener,
+    service: SupervisorControlService,
+    shutdown: oneshot::Receiver<()>,
+    socket_path: PathBuf,
+) -> SupervisorControlServerResult<()> {
+    let serve_result = AssertUnwindSafe(serve_unix_listener(listener, service, shutdown))
+        .catch_unwind()
+        .await
+        .map_err(|panic| panic_error("supervisor control server", panic))
+        .and_then(|result| result);
+    let cleanup_result = remove_socket_file(socket_path.as_path())
+        .await
+        .map_err(Box::<dyn Error + Send + Sync>::from);
+
+    match (serve_result, cleanup_result) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(error), Ok(())) => Err(error),
+        (Ok(()), Err(error)) => Err(error),
+        (Err(error), Err(cleanup_error)) => {
+            tracing::warn!(
+                error = %cleanup_error,
+                socket_path = %socket_path.display(),
+                "failed to remove supervisor control socket after server error"
+            );
+            Err(error)
+        }
+    }
 }
 
 async fn serve_unix_listener(
@@ -76,24 +114,53 @@ async fn serve_unix_listener(
         .max_message_size(SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES)
         .max_request_body_size(SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES);
     let service = Arc::new(ConnectRpcService::new(connect_service(service)).with_limits(limits));
+    let mut connections = JoinSet::new();
 
     loop {
-        let stream = tokio::select! {
+        tokio::select! {
             biased;
 
             _ = &mut shutdown => break,
-            accepted = listener.accept() => accepted?.0,
-        };
-
-        let service = Arc::clone(&service);
-        tokio::spawn(async move {
-            if let Err(error) = serve_unix_stream(stream, service).await {
-                tracing::debug!(error = %error, "supervisor control connection ended with error");
+            joined = connections.join_next(), if !connections.is_empty() => {
+                if let Some(result) = joined {
+                    handle_connection_result(result)?;
+                }
             }
-        });
+            accepted = listener.accept() => {
+                let stream = accepted?.0;
+                let service = Arc::clone(&service);
+                connections.spawn(async move { serve_unix_stream(stream, service).await });
+            },
+        }
+    }
+
+    connections.abort_all();
+    while let Some(result) = connections.join_next().await {
+        handle_connection_result(result)?;
     }
 
     Ok(())
+}
+
+fn handle_connection_result(
+    result: Result<SupervisorControlServerResult<()>, tokio::task::JoinError>,
+) -> SupervisorControlServerResult<()> {
+    match result {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(error)) => {
+            tracing::debug!(error = %error, "supervisor control connection ended with error");
+            Ok(())
+        }
+        Err(error) if error.is_cancelled() => Ok(()),
+        Err(error) if error.is_panic() => {
+            tracing::error!(
+                error = %error,
+                "supervisor control connection task panicked"
+            );
+            Ok(())
+        }
+        Err(error) => Err(Box::new(error)),
+    }
 }
 
 async fn serve_unix_stream(
@@ -105,11 +172,31 @@ async fn serve_unix_stream(
         async move { service.call(request).await }
     });
 
-    Builder::new(TokioExecutor::new())
-        .serve_connection(TokioIo::new(stream), svc)
-        .await?;
+    AssertUnwindSafe(
+        Builder::new(TokioExecutor::new()).serve_connection(TokioIo::new(stream), svc),
+    )
+    .catch_unwind()
+    .await
+    .map_err(|panic| panic_error("supervisor control connection", panic))??;
 
     Ok(())
+}
+
+fn panic_error(context: &'static str, panic: Box<dyn Any + Send>) -> Box<dyn Error + Send + Sync> {
+    Box::new(io::Error::other(format!(
+        "{context} panicked: {}",
+        panic_payload_message(panic.as_ref())
+    )))
+}
+
+fn panic_payload_message(panic: &(dyn Any + Send)) -> String {
+    if let Some(message) = panic.downcast_ref::<String>() {
+        message.clone()
+    } else if let Some(message) = panic.downcast_ref::<&str>() {
+        (*message).to_owned()
+    } else {
+        "unknown panic payload".to_owned()
+    }
 }
 
 async fn prepare_socket_path(socket_path: &Path) -> io::Result<()> {
@@ -226,25 +313,10 @@ mod tests {
     use tokio::time::timeout;
 
     use super::*;
-    use crate::runtime_control::types;
+    use crate::supervisor_control_proto::types;
+    use crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY;
 
-    const SUPERVISOR_CONTROL_AUTHORITY: &str = "http://onequery-supervisor";
     const SHARED_STREAM_BOUND: usize = 8;
-
-    #[tokio::test]
-    async fn server_starts_and_serves_get_status_over_unix_socket() {
-        let temp_dir = tempfile::tempdir().expect("expected temp dir");
-        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
-        let server = start_supervisor_control_server(socket_path.clone(), test_service(41))
-            .await
-            .unwrap();
-
-        let status = get_status(socket_path.as_path()).await;
-
-        assert_eq!(status.supervisor_sequence, Some(41));
-
-        server.stop().await.unwrap();
-    }
 
     #[tokio::test]
     async fn server_sets_parent_directory_and_socket_permissions() {
@@ -292,6 +364,64 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn server_stop_aborts_active_connections_and_removes_socket() {
+        let temp_dir = tempfile::tempdir().expect("expected temp dir");
+        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
+        let server = start_supervisor_control_server(socket_path.clone(), test_service(7))
+            .await
+            .unwrap();
+        let client = supervisor_client(socket_path.as_path()).await;
+        let mut session = client.open_runtime_session().await.unwrap();
+        session
+            .send(types::OpenRuntimeSessionRequest {
+                payload: Some(types::open_runtime_session_request::Payload::Hello(
+                    Box::new(test_session_hello()),
+                )),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+
+        timeout(Duration::from_secs(1), server.stop())
+            .await
+            .expect("server stop should not wait forever for active sessions")
+            .expect("server stop should succeed");
+
+        assert!(!socket_path.exists());
+        let connect_error = UnixStream::connect(socket_path.as_path())
+            .await
+            .expect_err("stopped server socket should not accept connections");
+        assert_eq!(connect_error.kind(), io::ErrorKind::NotFound);
+    }
+
+    #[tokio::test]
+    async fn server_contains_connection_handler_panic_and_keeps_serving() {
+        let temp_dir = tempfile::tempdir().expect("expected temp dir");
+        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
+        let server = start_supervisor_control_server(
+            socket_path.clone(),
+            test_service_with_next_get_status_panic(17),
+        )
+        .await
+        .unwrap();
+        let client = supervisor_client(socket_path.as_path()).await;
+
+        let _ = client
+            .get_status(types::SupervisorLifecycleServiceGetStatusRequest {
+                target: MessageField::some(test_target()),
+                ..Default::default()
+            })
+            .await
+            .expect_err("expected first request to fail after handler panic");
+
+        let status = get_status(socket_path.as_path()).await;
+        assert_eq!(status.supervisor_sequence, Some(17));
+
+        server.stop().await.unwrap();
+        assert!(!socket_path.exists());
+    }
+
+    #[tokio::test]
     async fn server_rejects_active_socket() {
         let temp_dir = tempfile::tempdir().expect("expected temp dir");
         let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
@@ -335,6 +465,29 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn stop_rejects_non_uuid_operation_id() {
+        let temp_dir = tempfile::tempdir().expect("expected temp dir");
+        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
+        let server = start_supervisor_control_server(socket_path.clone(), test_service(1))
+            .await
+            .unwrap();
+        let client = supervisor_client(socket_path.as_path()).await;
+
+        let error = client
+            .stop(types::SupervisorLifecycleServiceStopRequest {
+                operation_id: Some("not-a-uuid".to_owned()),
+                target: MessageField::some(test_target()),
+                ..Default::default()
+            })
+            .await
+            .expect_err("expected invalid operation id to be rejected");
+
+        assert_eq!(error.code, ErrorCode::InvalidArgument);
+
+        server.stop().await.unwrap();
+    }
+
+    #[tokio::test]
     async fn open_runtime_session_rejects_mismatched_hello_without_registering_session() {
         let temp_dir = tempfile::tempdir().expect("expected temp dir");
         let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
@@ -346,9 +499,9 @@ mod tests {
 
         session
             .send(types::OpenRuntimeSessionRequest {
-                payload: Some(types::open_runtime_session_request::Payload::Hello(Box::new(
-                    test_session_hello_with_launch_id("stale-launch"),
-                ))),
+                payload: Some(types::open_runtime_session_request::Payload::Hello(
+                    Box::new(test_session_hello_with_launch_id("stale-launch")),
+                )),
                 ..Default::default()
             })
             .await
@@ -373,6 +526,110 @@ mod tests {
         server.stop().await.unwrap();
     }
 
+    #[tokio::test]
+    async fn open_runtime_session_returns_error_for_second_hello() {
+        let temp_dir = tempfile::tempdir().expect("expected temp dir");
+        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
+        let server = start_supervisor_control_server(socket_path.clone(), test_service(7))
+            .await
+            .unwrap();
+        let client = supervisor_client(socket_path.as_path()).await;
+        let mut session = client.open_runtime_session().await.unwrap();
+
+        session
+            .send(types::OpenRuntimeSessionRequest {
+                payload: Some(types::open_runtime_session_request::Payload::Hello(
+                    Box::new(test_session_hello()),
+                )),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        session
+            .send(types::OpenRuntimeSessionRequest {
+                payload: Some(types::open_runtime_session_request::Payload::Hello(
+                    Box::new(test_session_hello()),
+                )),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        session.close_send();
+
+        let message = timeout(Duration::from_secs(1), session.message())
+            .await
+            .expect("expected rejected session to finish")
+            .expect("expected rejected session to close cleanly");
+        assert!(message.is_none());
+        assert_eq!(
+            session
+                .error()
+                .expect("expected rejected session to expose Connect error")
+                .code,
+            ErrorCode::FailedPrecondition
+        );
+
+        let status = get_status(socket_path.as_path()).await;
+        assert_eq!(status.active_session, Some(false));
+        assert_ne!(
+            status.runtime_phase,
+            Some(types::RuntimePhase::RUNTIME_PHASE_READY.into())
+        );
+
+        server.stop().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn open_runtime_session_returns_error_for_missing_post_hello_payload() {
+        let temp_dir = tempfile::tempdir().expect("expected temp dir");
+        let socket_path = temp_dir.path().join("run").join("supervisor-control.sock");
+        let server = start_supervisor_control_server(socket_path.clone(), test_service(7))
+            .await
+            .unwrap();
+        let client = supervisor_client(socket_path.as_path()).await;
+        let mut session = client.open_runtime_session().await.unwrap();
+
+        session
+            .send(types::OpenRuntimeSessionRequest {
+                payload: Some(types::open_runtime_session_request::Payload::Hello(
+                    Box::new(test_session_hello()),
+                )),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        session
+            .send(types::OpenRuntimeSessionRequest {
+                payload: None,
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        session.close_send();
+
+        let message = timeout(Duration::from_secs(1), session.message())
+            .await
+            .expect("expected rejected session to finish")
+            .expect("expected rejected session to close cleanly");
+        assert!(message.is_none());
+        assert_eq!(
+            session
+                .error()
+                .expect("expected rejected session to expose Connect error")
+                .code,
+            ErrorCode::FailedPrecondition
+        );
+
+        let status = get_status(socket_path.as_path()).await;
+        assert_eq!(status.active_session, Some(false));
+        assert_ne!(
+            status.runtime_phase,
+            Some(types::RuntimePhase::RUNTIME_PHASE_READY.into())
+        );
+
+        server.stop().await.unwrap();
+    }
+
     async fn get_status(socket_path: &Path) -> types::SupervisorStatus {
         let client = supervisor_client(socket_path).await;
         let response = client
@@ -381,19 +638,24 @@ mod tests {
                 ..Default::default()
             })
             .await
-            .unwrap()
+            .unwrap_or_else(|error| panic!("expected get_status response: {error}"))
             .into_owned();
 
-        response.status.into_option().unwrap()
+        match response.status.into_option() {
+            Some(status) => status,
+            None => panic!("expected get_status response status"),
+        }
     }
 
     async fn supervisor_client(
         socket_path: &Path,
     ) -> SupervisorLifecycleServiceClient<connectrpc::client::SharedHttp2Connection> {
-        let authority: http::Uri = SUPERVISOR_CONTROL_AUTHORITY.parse().unwrap();
+        let authority: http::Uri = SUPERVISOR_CONTROL_AUTHORITY
+            .parse()
+            .unwrap_or_else(|error| panic!("expected supervisor control authority URI: {error}"));
         let connection = Http2Connection::connect_unix(socket_path, authority.clone())
             .await
-            .unwrap();
+            .unwrap_or_else(|error| panic!("expected supervisor control connection: {error}"));
         SupervisorLifecycleServiceClient::new(
             connection.shared(SHARED_STREAM_BOUND),
             ClientConfig::new(authority),
@@ -401,42 +663,48 @@ mod tests {
     }
 
     fn test_service(sequence: u64) -> SupervisorControlService {
-        SupervisorControlService::new(super::super::actor::SupervisorControlActor::new(
-            types::SupervisorStatus {
-                identity: MessageField::some(types::SupervisorIdentity {
-                    supervisor_id: Some("gateway-supervisor:test".to_owned()),
-                    pid: Some(1),
-                    generation: Some(1),
-                    ..Default::default()
-                }),
-                launch: MessageField::some(types::LifecycleLaunchIdentity {
-                    launch_id: Some("launch-a".to_owned()),
-                    data_dir: Some("/tmp/onequery-data".to_owned()),
-                    runtime_pid: Some(4242),
-                    supervisor_pid: Some(1),
-                    supervisor_generation: Some(1),
-                    ..Default::default()
-                }),
-                phase: Some(types::SupervisorPhase::SUPERVISOR_PHASE_READY.into()),
-                supervisor_sequence: Some(sequence),
-                runtime: MessageField::some(types::RuntimeIdentity {
-                    pid: Some(4242),
-                    launch_id: Some("launch-a".to_owned()),
-                    data_dir: Some("/tmp/onequery-data".to_owned()),
-                    ..Default::default()
-                }),
-                active_session: Some(false),
-                ..Default::default()
-            },
-        ))
+        SupervisorControlService::new(test_actor(sequence))
     }
 
-    fn test_target() -> types::SupervisorStopTarget {
+    fn test_service_with_next_get_status_panic(sequence: u64) -> SupervisorControlService {
+        SupervisorControlService::new_with_next_get_status_panic(test_actor(sequence))
+    }
+
+    fn test_actor(sequence: u64) -> super::super::actor::SupervisorControlActor {
+        super::super::actor::SupervisorControlActor::new(types::SupervisorStatus {
+            identity: MessageField::some(types::SupervisorIdentity {
+                supervisor_id: Some("gateway-supervisor:test".to_owned()),
+                pid: Some(1),
+                generation: Some(1),
+                ..Default::default()
+            }),
+            launch: MessageField::some(types::LifecycleLaunchIdentity {
+                launch_id: Some("launch-a".to_owned()),
+                data_dir: Some("/tmp/onequery-data".to_owned()),
+                runtime_pid: Some(4242),
+                supervisor_pid: Some(1),
+                supervisor_generation: Some(1),
+                ..Default::default()
+            }),
+            phase: Some(types::SupervisorPhase::SUPERVISOR_PHASE_READY.into()),
+            supervisor_sequence: Some(sequence),
+            runtime: MessageField::some(types::RuntimeIdentity {
+                pid: Some(4242),
+                launch_id: Some("launch-a".to_owned()),
+                data_dir: Some("/tmp/onequery-data".to_owned()),
+                ..Default::default()
+            }),
+            active_session: Some(false),
+            ..Default::default()
+        })
+    }
+
+    fn test_target() -> types::SupervisorControlTarget {
         test_target_with_launch_id("launch-a")
     }
 
-    fn test_target_with_launch_id(launch_id: &str) -> types::SupervisorStopTarget {
-        types::SupervisorStopTarget {
+    fn test_target_with_launch_id(launch_id: &str) -> types::SupervisorControlTarget {
+        types::SupervisorControlTarget {
             launch_id: Some(launch_id.to_owned()),
             data_dir: Some("/tmp/onequery-data".to_owned()),
             runtime_pid: Some(4242),
@@ -462,6 +730,18 @@ mod tests {
                 ..Default::default()
             }),
             runtime_sequence: Some(1),
+            started_at: MessageField::some(timestamp(1)),
+            ..Default::default()
+        }
+    }
+
+    fn test_session_hello() -> types::RuntimeSessionHello {
+        test_session_hello_with_launch_id("launch-a")
+    }
+
+    fn timestamp(seconds: i64) -> buffa_types::google::protobuf::Timestamp {
+        buffa_types::google::protobuf::Timestamp {
+            seconds,
             ..Default::default()
         }
     }

@@ -15,7 +15,7 @@ use super::SupervisorMachineState;
 use super::SupervisorStopRpcFailureDisposition;
 use super::bounded_reason;
 use super::reduce_supervisor_machine;
-use crate::runtime_control::types;
+use crate::supervisor_control_proto::types;
 
 proptest! {
     #[test]
@@ -99,17 +99,26 @@ fn assert_reduction_invariants(
                 exit_code: _,
                 signal: _,
             } => {
-                prop_assert_eq!(reduction.machine.state(), SupervisorMachineState::Failed);
-                prop_assert_eq!(*phase, types::RuntimePhase::RUNTIME_PHASE_FAILED);
+                prop_assert!(matches!(
+                    reduction.machine.state(),
+                    SupervisorMachineState::Exited | SupervisorMachineState::Failed
+                ));
                 prop_assert!(*runtime_pid > 0);
-                prop_assert_eq!(
-                    failure.code,
-                    types::RuntimeFailureCode::RUNTIME_FAILURE_CODE_INTERNAL
-                );
-                prop_assert_eq!(
-                    failure.retryability,
-                    SupervisorFailureRetryability::Retryable
-                );
+                if reduction.machine.state() == SupervisorMachineState::Failed {
+                    let failure = failure.as_ref().expect("failed runtime exit has failure");
+                    prop_assert_eq!(*phase, types::RuntimePhase::RUNTIME_PHASE_FAILED);
+                    prop_assert_eq!(
+                        failure.code,
+                        types::RuntimeFailureCode::RUNTIME_FAILURE_CODE_INTERNAL
+                    );
+                    prop_assert_eq!(
+                        failure.retryability,
+                        SupervisorFailureRetryability::Retryable
+                    );
+                } else {
+                    prop_assert_eq!(*phase, types::RuntimePhase::RUNTIME_PHASE_STOPPED);
+                    prop_assert!(failure.is_none());
+                }
             }
             SupervisorEffect::RequestRuntimeStop {
                 runtime_pid,
@@ -200,7 +209,7 @@ fn message_strategy() -> impl Strategy<Value = String> {
 
 fn stop_rpc_failure_disposition_strategy() -> BoxedStrategy<SupervisorStopRpcFailureDisposition> {
     prop_oneof![
-        Just(SupervisorStopRpcFailureDisposition::FallbackToTerminate),
+        Just(SupervisorStopRpcFailureDisposition::EscalateToTerminate),
         Just(SupervisorStopRpcFailureDisposition::TerminalFailure),
     ]
     .boxed()

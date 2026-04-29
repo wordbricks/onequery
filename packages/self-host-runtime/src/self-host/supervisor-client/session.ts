@@ -35,6 +35,7 @@ export interface SupervisorRuntimeSession {
   close(): Promise<void>;
   closed: Promise<void>;
   heartbeat(): Promise<void>;
+  opened: Promise<void>;
   ready(status: RuntimeStatusInit): Promise<void>;
 }
 
@@ -59,9 +60,7 @@ export function openSupervisorRuntimeSession(input: {
   const [eventTx, eventRx] = channel<OpenRuntimeSessionRequestInit>(16);
   const abortController = new AbortController();
   let closed = false;
-  let eventSequence = 0n;
   let heartbeatSequence = 0n;
-  let runtimePhase = RuntimePhase.STARTING;
   let runtimeSequence = input.runtimeSequence ?? 1n;
 
   const sendEvent = async (
@@ -76,17 +75,13 @@ export function openSupervisorRuntimeSession(input: {
       });
     }
 
-    eventSequence += 1n;
-    await eventTx.send({
-      eventId: `${input.launchId}:${eventSequence}`,
-      payload,
-    });
+    await eventTx.send({ payload });
   };
 
   const responseStream = input.client.openRuntimeSession(readEvents(eventRx), {
     signal: abortController.signal,
   });
-  void sendEvent(
+  const opened = sendEvent(
     {
       case: "hello",
       value: {
@@ -100,13 +95,12 @@ export function openSupervisorRuntimeSession(input: {
     },
     "hello"
   );
+  void opened.catch(() => {});
 
   const heartbeatTimer = setInterval(() => {
     void sendHeartbeat({
       now,
       operation: "heartbeat_interval",
-      runtimePhase,
-      runtimeSequence,
       sendEvent,
       sequence: (heartbeatSequence += 1n),
     });
@@ -114,13 +108,15 @@ export function openSupervisorRuntimeSession(input: {
   heartbeatTimer.unref?.();
   const closedPromise = observeCommands({
     abortController,
+    dataDir: input.dataDir,
+    launchId: input.launchId,
     now,
     onStopCommand: input.onStopCommand,
     responseStream,
+    runtimePid,
     sendEvent,
     getRuntimeSequence: () => runtimeSequence,
     setRuntimeStatus: (status) => {
-      runtimePhase = status.phase ?? runtimePhase;
       runtimeSequence = status.runtimeSequence ?? runtimeSequence;
     },
   }).finally(() => {
@@ -150,21 +146,21 @@ export function openSupervisorRuntimeSession(input: {
       });
     },
     closed: closedPromise,
-    heartbeat() {
+    opened,
+    async heartbeat() {
+      await opened;
       heartbeatSequence += 1n;
-      return sendHeartbeat({
+      await sendHeartbeat({
         now,
         operation: "heartbeat",
-        runtimePhase,
-        runtimeSequence,
         sendEvent,
         sequence: heartbeatSequence,
       });
     },
-    ready(status) {
-      runtimePhase = status.phase ?? runtimePhase;
+    async ready(status) {
+      await opened;
       runtimeSequence = status.runtimeSequence ?? runtimeSequence;
-      return sendEvent(
+      await sendEvent(
         {
           case: "runtimeReady",
           value: {
@@ -180,8 +176,6 @@ export function openSupervisorRuntimeSession(input: {
 async function sendHeartbeat(input: {
   now: () => Date;
   operation: string;
-  runtimePhase: RuntimePhase;
-  runtimeSequence: bigint;
   sendEvent(
     payload: OpenRuntimeSessionRequestInit["payload"],
     operation: string
@@ -193,8 +187,6 @@ async function sendHeartbeat(input: {
       case: "heartbeat",
       value: {
         heartbeatSequence: input.sequence,
-        runtimePhase: input.runtimePhase,
-        runtimeSequence: input.runtimeSequence,
         sentAt: timestampFromDate(input.now()),
       },
     },
@@ -217,7 +209,9 @@ async function* readEvents(
 
 async function observeCommands(input: {
   abortController: AbortController;
+  dataDir: string;
   getRuntimeSequence(): bigint;
+  launchId: string;
   now: () => Date;
   onStopCommand?: (
     command: SupervisorStopCommand
@@ -230,23 +224,25 @@ async function observeCommands(input: {
     payload: OpenRuntimeSessionRequestInit["payload"],
     operation: string
   ): Promise<void>;
+  runtimePid: number;
   setRuntimeStatus(status: RuntimeStatusInit): void;
 }): Promise<void> {
   try {
     for await (const response of input.responseStream) {
-      const command = response.command;
-      switch (command.case) {
+      const responsePayload = response.response;
+      switch (responsePayload.case) {
         case "close":
           input.abortController.abort();
           return;
-        case "ping":
-          break;
         case "stop":
           await handleStopCommand({
-            command: command.value,
+            command: responsePayload.value,
+            dataDir: input.dataDir,
             getRuntimeSequence: input.getRuntimeSequence,
+            launchId: input.launchId,
             now: input.now,
             onStopCommand: input.onStopCommand,
+            runtimePid: input.runtimePid,
             sendEvent: input.sendEvent,
             setRuntimeStatus: input.setRuntimeStatus,
           });
@@ -257,6 +253,10 @@ async function observeCommands(input: {
     }
   } catch (cause) {
     if (!input.abortController.signal.aborted) {
+      await new Promise<void>((resolve) => {
+        setImmediate(resolve);
+      });
+      input.abortController.abort();
       throw cause;
     }
   }
@@ -264,7 +264,9 @@ async function observeCommands(input: {
 
 async function handleStopCommand(input: {
   command: SupervisorStopCommand;
+  dataDir: string;
   getRuntimeSequence(): bigint;
+  launchId: string;
   now: () => Date;
   onStopCommand?: (
     command: SupervisorStopCommand
@@ -276,57 +278,79 @@ async function handleStopCommand(input: {
     payload: OpenRuntimeSessionRequestInit["payload"],
     operation: string
   ): Promise<void>;
+  runtimePid: number;
   setRuntimeStatus(status: RuntimeStatusInit): void;
 }): Promise<void> {
   const operationId = input.command.operationId;
   const reason = input.command.reason || "supervisor_stop";
 
-  await input.sendEvent(
-    {
-      case: "shutdownStarted",
-      value: {
-        operationId,
-        reason,
-        runtimeSequence: input.getRuntimeSequence(),
-        startedAt: timestampFromDate(input.now()),
+  void input
+    .sendEvent(
+      {
+        case: "shutdownStarted",
+        value: {
+          operationId,
+          reason,
+          runtimeSequence: input.getRuntimeSequence(),
+          startedAt: timestampFromDate(input.now()),
+        },
       },
-    },
-    "shutdown_started"
-  );
+      "shutdown_started"
+    )
+    .catch(() => {});
 
   try {
     const result = await input.onStopCommand?.(input.command);
     const status = runtimeStatusFromStopResult(result);
     if (status) {
       input.setRuntimeStatus(status);
-      await input.sendEvent(
+      void input
+        .sendEvent(
+          {
+            case: "shutdownFinished",
+            value: {
+              finishedAt: timestampFromDate(input.now()),
+              operationId,
+              status,
+            },
+          },
+          "shutdown_finished"
+        )
+        .catch(() => {});
+    }
+  } catch (cause) {
+    const failedAt = input.now();
+    const failure = {
+      code: RuntimeFailureCode.INTERNAL,
+      message: cause instanceof Error ? cause.message : String(cause),
+      retryable: false,
+    };
+    const status = {
+      failure,
+      identity: {
+        dataDir: input.dataDir,
+        launchId: input.launchId,
+        pid: input.runtimePid,
+      },
+      phase: RuntimePhase.SHUTDOWN_FAILED,
+      runtimeSequence: input.getRuntimeSequence() + 1n,
+      updatedAt: timestampFromDate(failedAt),
+    };
+    input.setRuntimeStatus(status);
+    void input
+      .sendEvent(
         {
-          case: "shutdownFinished",
+          case: "shutdownFailed",
           value: {
-            finishedAt: timestampFromDate(input.now()),
+            failedAt: timestampFromDate(failedAt),
+            failure,
             operationId,
             status,
           },
         },
-        "shutdown_finished"
-      );
-    }
-  } catch (cause) {
-    await input.sendEvent(
-      {
-        case: "shutdownFailed",
-        value: {
-          failedAt: timestampFromDate(input.now()),
-          failure: {
-            code: RuntimeFailureCode.INTERNAL,
-            message: cause instanceof Error ? cause.message : String(cause),
-            retryable: false,
-          },
-          operationId,
-        },
-      },
-      "shutdown_failed"
-    );
+        "shutdown_failed"
+      )
+      .catch(() => {});
     throw cause;
   }
 }

@@ -31,27 +31,27 @@ lifecycle event log and must not be treated as lifecycle truth.
 
 Crash recovery resolves durable lifecycle evidence in one fixed order:
 
-1. lifecycle event log
+1. supervisor terminal record
 2. runtime status snapshot
-3. supervisor terminal record
-4. runtime lease record
-5. process liveness check
+3. runtime lease record
+4. process liveness check
 
-The lifecycle event log is the highest-precedence source once recovery folding
-is wired to the binary log reader. Until then, recovery has no event-log
-decision and continues to the snapshot steps below.
+The lifecycle event log is diagnostic evidence today. Recovery records corrupt
+durable artifacts there, but the binary log is not folded into startup recovery
+decisions yet.
 
-Runtime status snapshots are the first decisive state-file source. A
+Supervisor status snapshots are decisive only when they are terminal
+(`exited` or `failed`) and their launch identity matches the requested data
+directory. A matching supervisor terminal record resolves recovery as no active
+runtime and lower-precedence runtime or lease evidence cannot resurrect that
+runtime.
+
+Runtime status snapshots are the next decisive state-file source. A
 non-terminal runtime status snapshot (`starting`, `ready`, `draining`,
 `checkpointing`, or `stopping`) can nominate an active runtime pid when its
 launch identity matches the requested data directory. A terminal runtime status
 snapshot (`stopped`, `shutdown_failed`, or `failed`) resolves recovery as no
 active runtime for that launch.
-
-Supervisor status snapshots are only decisive when they are terminal
-(`exited` or `failed`) and their launch identity matches the requested data
-directory. A matching supervisor terminal record resolves recovery as no active
-runtime and lower-precedence lease evidence cannot resurrect that runtime.
 
 Runtime lease records are the lowest-precedence durable source. A matching
 lease may nominate an active runtime pid only when no higher-precedence durable
@@ -63,11 +63,15 @@ stale; it does not override a higher-precedence terminal decision and does not
 fall through to lower-precedence durable records after a higher source has made
 a decision.
 
+Malformed non-empty durable artifacts are recovery errors after the corruption
+event is recorded. Only missing files or valid but non-decisive records can fall
+through to lower-precedence evidence.
+
 ## Sequence Domains
 
 Lifecycle ordering uses explicit sequence domains:
 
-- `runtime_sequence` is owned by the TypeScript runtime-control actor and
+- `runtime_sequence` is owned by the TypeScript supervisor runtime session and
   increments once for each runtime phase transition in a launch.
 - `supervisor_sequence` is owned by the Rust supervisor and increments once for
   each supervisor phase transition in a supervisor generation.

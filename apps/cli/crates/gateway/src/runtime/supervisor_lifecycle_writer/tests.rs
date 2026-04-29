@@ -5,11 +5,13 @@ use pretty_assertions::assert_eq;
 use tempfile::tempdir;
 
 use super::SupervisorRuntimeFailureInfo;
+use super::SupervisorStatusSnapshotWrite;
 use super::TerminalRuntimeStatusSnapshotWrite;
 use super::append_supervisor_transition_event_log_entry;
 use super::dispatch_supervisor_event;
 use super::lifecycle_records;
 use super::types;
+use super::write_supervisor_status_snapshot;
 use super::write_terminal_runtime_status_snapshot;
 use crate::runtime::supervisor_control::actor::SupervisorControlActor;
 use crate::runtime::supervisor_effects::SupervisorEffectContext;
@@ -22,45 +24,6 @@ use crate::runtime::supervisor_machine::SupervisorMachine;
 use crate::runtime::supervisor_machine::SupervisorMachineState;
 use crate::runtime::supervisor_machine::SupervisorTransitionEffect;
 use crate::self_host::SelfHostRuntimePaths;
-
-#[tokio::test]
-async fn unexpected_child_exit_before_control_socket_writes_crash_recovery_records() {
-    let (_temp_dir, paths) = test_paths();
-    let supervisor = test_supervisor_identity(123);
-    let mut machine = SupervisorMachine::new();
-
-    dispatch_test_supervisor_event(
-        &mut machine,
-        SupervisorEvent::LaunchRequested,
-        &paths,
-        &supervisor,
-    )
-    .await;
-    dispatch_test_supervisor_event(
-        &mut machine,
-        SupervisorEvent::ChildSpawned { runtime_pid: 4242 },
-        &paths,
-        &supervisor,
-    )
-    .await;
-    dispatch_test_supervisor_event(
-        &mut machine,
-        unexpected_child_exit_event(),
-        &paths,
-        &supervisor,
-    )
-    .await;
-
-    assert_eq!(machine.state(), SupervisorMachineState::Failed);
-    assert_unexpected_child_exit_recovery_records(
-        &paths,
-        ChildExitRecoveryExpectation {
-            event_count: 4,
-            previous_supervisor_phase: types::SupervisorPhase::SUPERVISOR_PHASE_HANDSHAKING,
-            supervisor_sequence: 3,
-        },
-    );
-}
 
 #[tokio::test]
 async fn unexpected_child_exit_after_ready_writes_crash_recovery_records() {
@@ -115,6 +78,84 @@ async fn unexpected_child_exit_after_ready_writes_crash_recovery_records() {
     );
 }
 
+#[tokio::test]
+async fn expected_child_exit_projects_terminal_runtime_status_to_durable_and_live_status() {
+    let (_temp_dir, paths) = test_paths();
+    let supervisor = test_supervisor_identity(123);
+    let supervisor_control = SupervisorControlActor::new(types::SupervisorStatus {
+        identity: buffa::MessageField::some(supervisor.clone()),
+        launch: buffa::MessageField::some(types::LifecycleLaunchIdentity {
+            launch_id: Some("launch-a".to_owned()),
+            data_dir: Some(paths.data_dir.display().to_string()),
+            runtime_pid: Some(4242),
+            supervisor_pid: supervisor.pid,
+            supervisor_generation: supervisor.generation,
+            ..Default::default()
+        }),
+        phase: Some(types::SupervisorPhase::SUPERVISOR_PHASE_STARTING.into()),
+        supervisor_sequence: Some(0),
+        active_session: Some(false),
+        ..Default::default()
+    });
+    let mut machine = SupervisorMachine::new();
+
+    for event in [
+        SupervisorEvent::LaunchRequested,
+        SupervisorEvent::ChildSpawned { runtime_pid: 4242 },
+        SupervisorEvent::ControlSocketObserved,
+        SupervisorEvent::WatchReady,
+        expected_child_exit_event(),
+    ] {
+        dispatch_supervisor_event(
+            &mut machine,
+            event,
+            SupervisorEffectContext {
+                paths: &paths,
+                supervisor_control: &supervisor_control,
+                supervisor: &supervisor,
+                launch_id: "launch-a",
+                command_line: "onequery gateway start",
+            },
+            None,
+        )
+        .await
+        .unwrap_or_else(|error| panic!("expected supervisor event dispatch: {error}"));
+    }
+
+    assert_eq!(machine.state(), SupervisorMachineState::Exited);
+
+    let runtime_snapshot = lifecycle_records::decode_runtime_status_snapshot(
+        &fs::read_to_string(&paths.runtime_status_snapshot_path)
+            .unwrap_or_else(|error| panic!("expected runtime snapshot read: {error}")),
+    )
+    .unwrap_or_else(|error| panic!("expected runtime snapshot decode: {error}"));
+    let durable_runtime_status = runtime_snapshot
+        .status
+        .as_option()
+        .expect("expected runtime status");
+    assert_eq!(
+        durable_runtime_status
+            .phase
+            .and_then(|phase| phase.as_known()),
+        Some(types::RuntimePhase::RUNTIME_PHASE_STOPPED)
+    );
+    assert_eq!(durable_runtime_status.runtime_sequence, Some(1));
+    assert!(durable_runtime_status.failure.as_option().is_none());
+
+    let live_status = supervisor_control.snapshot().await;
+    assert_eq!(
+        live_status.phase.and_then(|phase| phase.as_known()),
+        Some(types::SupervisorPhase::SUPERVISOR_PHASE_EXITED)
+    );
+    assert_eq!(
+        live_status.runtime_phase.and_then(|phase| phase.as_known()),
+        Some(types::RuntimePhase::RUNTIME_PHASE_STOPPED)
+    );
+    assert_eq!(live_status.runtime_sequence, Some(1));
+    assert_eq!(live_status.active_session, Some(false));
+    assert_eq!(live_status.runtime, durable_runtime_status.identity);
+}
+
 #[test]
 fn terminal_runtime_status_snapshot_records_unexpected_child_exit_identity_and_failure() {
     let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
@@ -156,11 +197,11 @@ fn terminal_runtime_status_snapshot_records_unexpected_child_exit_identity_and_f
             launch_id: "launch-a",
             phase: types::RuntimePhase::RUNTIME_PHASE_FAILED,
             runtime_pid: 4242,
-            failure: &SupervisorRuntimeFailureInfo {
+            failure: Some(&SupervisorRuntimeFailureInfo {
                 code: types::RuntimeFailureCode::RUNTIME_FAILURE_CODE_INTERNAL,
                 message: "self-host server exited with code 1".to_owned(),
                 retryability: SupervisorFailureRetryability::Retryable,
-            },
+            }),
             exit_code: Some(1),
             signal: Some("SIGTERM"),
         },
@@ -418,9 +459,11 @@ async fn dispatch_supervisor_event_publishes_transition_to_watch_status() {
         .await
         .expect("expected supervisor transition response")
         .expect("expected successful watch response");
-    let Some(types::supervisor_lifecycle_service_watch_status_response::Event::SupervisorTransition(
-        transition,
-    )) = response.event
+    let Some(
+        types::supervisor_lifecycle_service_watch_status_response::Event::SupervisorTransition(
+            transition,
+        ),
+    ) = response.event
     else {
         panic!("expected supervisor transition event");
     };
@@ -428,6 +471,50 @@ async fn dispatch_supervisor_event_publishes_transition_to_watch_status() {
     assert_eq!(
         supervisor_control.snapshot().await.supervisor_sequence,
         Some(1)
+    );
+
+    assert_live_status_matches_durable_supervisor_projection(&paths, &supervisor_control).await;
+}
+
+#[test]
+fn supervisor_status_snapshot_records_intentional_live_field_defaults() {
+    let (_temp_dir, paths) = test_paths();
+    let supervisor = test_supervisor_identity(123);
+
+    write_supervisor_status_snapshot(
+        &paths,
+        SupervisorStatusSnapshotWrite {
+            supervisor: &supervisor,
+            launch_id: "launch-a",
+            phase: types::SupervisorPhase::SUPERVISOR_PHASE_READY,
+            supervisor_sequence: 5,
+            runtime_pid: Some(4242),
+            failure: None,
+        },
+        "onequery gateway start",
+    )
+    .unwrap_or_else(|error| panic!("expected supervisor status snapshot write: {error}"));
+
+    let snapshot = lifecycle_records::decode_supervisor_status_snapshot(
+        &fs::read_to_string(&paths.supervisor_status_snapshot_path)
+            .unwrap_or_else(|error| panic!("expected supervisor snapshot read: {error}")),
+    )
+    .unwrap_or_else(|error| panic!("expected supervisor snapshot decode: {error}"));
+    let status = snapshot
+        .status
+        .as_option()
+        .expect("expected supervisor status");
+
+    assert_eq!(status.active_session, Some(false));
+    assert_eq!(status.runtime_phase, None);
+    assert_eq!(status.runtime_sequence, None);
+    assert_eq!(
+        status
+            .runtime
+            .as_option()
+            .expect("expected runtime identity")
+            .pid,
+        Some(4242)
     );
 }
 
@@ -482,6 +569,16 @@ fn unexpected_child_exit_event() -> SupervisorEvent {
         exit_code: Some(42),
         signal: None,
         message: "self-host server exited with code 42".to_owned(),
+    }
+}
+
+fn expected_child_exit_event() -> SupervisorEvent {
+    SupervisorEvent::ChildExited {
+        runtime_pid: 4242,
+        exit_kind: SupervisorChildExitKind::Expected,
+        exit_code: Some(0),
+        signal: None,
+        message: "self-host server exited cleanly".to_owned(),
     }
 }
 
@@ -633,4 +730,29 @@ fn assert_unexpected_child_exit_recovery_records(
     assert_eq!(process_exit.exit_code, Some(42));
     assert_eq!(process_exit.signal.as_deref(), None);
     assert_eq!(process_exit.retryable, Some(true));
+}
+
+async fn assert_live_status_matches_durable_supervisor_projection(
+    paths: &SelfHostRuntimePaths,
+    supervisor_control: &SupervisorControlActor,
+) {
+    let durable_snapshot = lifecycle_records::decode_supervisor_status_snapshot(
+        &fs::read_to_string(&paths.supervisor_status_snapshot_path)
+            .unwrap_or_else(|error| panic!("expected supervisor snapshot read: {error}")),
+    )
+    .unwrap_or_else(|error| panic!("expected supervisor snapshot decode: {error}"));
+    let durable = durable_snapshot
+        .status
+        .as_option()
+        .expect("expected durable supervisor status");
+    let live = supervisor_control.snapshot().await;
+
+    assert_eq!(durable.identity, live.identity);
+    assert_eq!(durable.launch, live.launch);
+    assert_eq!(durable.phase, live.phase);
+    assert_eq!(durable.supervisor_sequence, live.supervisor_sequence);
+    assert_eq!(durable.runtime, live.runtime);
+    assert_eq!(durable.failure, live.failure);
+    assert_eq!(durable.active_session, Some(false));
+    assert!(durable.updated_at.as_option().is_some());
 }

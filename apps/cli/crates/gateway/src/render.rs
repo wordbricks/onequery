@@ -6,14 +6,12 @@ use crate::self_host::SelfHostRuntimePaths;
 
 use super::runtime::LiveSupervisorRuntimeStatus;
 use super::runtime::LogPreview;
-use super::runtime::read_managed_runtime_pid;
 use super::runtime::runtime_phase_label;
 use super::state::GatewayRuntimeState;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum RuntimeStatus<'a> {
     Live(&'a LiveSupervisorRuntimeStatus),
-    Running,
     StaleDurableRecords,
     NotRunning,
     NotInitialized,
@@ -23,7 +21,6 @@ impl RuntimeStatus<'_> {
     fn label(self) -> &'static str {
         match self {
             Self::Live(status) => runtime_phase_label(status.phase),
-            Self::Running => "running",
             Self::StaleDurableRecords => "stale_durable_records",
             Self::NotRunning => "not_running",
             Self::NotInitialized => "not_initialized",
@@ -219,14 +216,6 @@ fn resolve_runtime_status<'a>(
 ) -> RuntimeStatus<'a> {
     if let Some(live_status) = live_status {
         return RuntimeStatus::Live(live_status);
-    }
-
-    if read_managed_runtime_pid(&state.paths, "onequery gateway status")
-        .ok()
-        .flatten()
-        .is_some()
-    {
-        return RuntimeStatus::Running;
     }
 
     if state.runtime_lease_present || state.runtime_status_snapshot_present {

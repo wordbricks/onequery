@@ -1,14 +1,20 @@
 use buffa::EnumValue;
+use connectrpc::ConnectError;
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
 
-use crate::runtime_control::types;
+pub(crate) use crate::supervisor_control_proto::runtime_phase_label;
+use crate::supervisor_control_proto::types;
 
 use super::super::state::GatewayRuntimeState;
+use super::control_error::supervisor_control_connect_error_summary;
+use super::control_error::with_supervisor_control_connect_error_metadata;
 use super::lifecycle::ManagedRuntimeIdentity;
 use super::lifecycle::read_supervisor_control_identity_for_recovery;
 use super::shutdown::supervisor_stop_target;
 use super::supervisor_control::client::get_supervisor_status;
 
-pub(crate) use super::control_error::runtime_control_error_allows_fallback;
+pub(crate) use super::control_error::supervisor_control_error_allows_stop_escalation;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct LiveSupervisorRuntimeStatus {
@@ -19,34 +25,42 @@ pub(crate) struct LiveSupervisorRuntimeStatus {
     pub(crate) runtime_sequence: Option<u64>,
 }
 
-pub(crate) const fn runtime_phase_label(phase: types::RuntimePhase) -> &'static str {
-    match phase {
-        types::RuntimePhase::RUNTIME_PHASE_UNSPECIFIED => "unspecified",
-        types::RuntimePhase::RUNTIME_PHASE_STARTING => "starting",
-        types::RuntimePhase::RUNTIME_PHASE_READY => "ready",
-        types::RuntimePhase::RUNTIME_PHASE_DRAINING => "draining",
-        types::RuntimePhase::RUNTIME_PHASE_CHECKPOINTING => "checkpointing",
-        types::RuntimePhase::RUNTIME_PHASE_STOPPING => "stopping",
-        types::RuntimePhase::RUNTIME_PHASE_STOPPED => "stopped",
-        types::RuntimePhase::RUNTIME_PHASE_SHUTDOWN_FAILED => "shutdown_failed",
-        types::RuntimePhase::RUNTIME_PHASE_FAILED => "failed",
-    }
-}
-
 pub(crate) async fn read_live_runtime_status(
     state: &GatewayRuntimeState,
     command_line: &str,
-) -> Option<LiveSupervisorRuntimeStatus> {
-    let identity = read_supervisor_control_identity_for_recovery(&state.paths, command_line)
-        .ok()
-        .flatten()?;
-    let target =
-        supervisor_stop_target(&state.paths, &identity.runtime, &identity.supervisor);
+) -> Result<Option<LiveSupervisorRuntimeStatus>, CliError> {
+    let Some(identity) = read_supervisor_control_identity_for_recovery(&state.paths, command_line)?
+    else {
+        return Ok(None);
+    };
+    let target = supervisor_stop_target(&state.paths, &identity.runtime, &identity.supervisor);
 
     get_supervisor_status(&state.paths, target)
         .await
-        .ok()
-        .map(|status| status_from_supervisor_status(status, &identity.runtime))
+        .map(|status| Some(status_from_supervisor_status(status, &identity.runtime)))
+        .map_err(|error| live_supervisor_status_error(&error, command_line))
+}
+
+fn live_supervisor_status_error(error: &ConnectError, command_line: &str) -> CliError {
+    let detail = supervisor_control_connect_error_summary(error).unwrap_or_else(|| {
+        format!(
+            "supervisor control GetStatus returned {}: {error}",
+            error.code.as_str()
+        )
+    });
+    let cli_error = CliError::new(
+        "failed to read live gateway status",
+        command_line,
+        ErrorStage::Internal,
+        detail,
+        vec!["retry onequery gateway status".to_owned()],
+    );
+
+    with_supervisor_control_connect_error_metadata(
+        error,
+        cli_error,
+        Some(format!("supervisor_control_{}", error.code.as_str())),
+    )
 }
 
 fn runtime_phase_from_proto(value: Option<EnumValue<types::RuntimePhase>>) -> types::RuntimePhase {

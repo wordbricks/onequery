@@ -11,7 +11,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { create } from "@bufbuild/protobuf";
-import { SupervisorIdentitySchema } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import {
+  RuntimePhase,
+  SupervisorIdentitySchema,
+} from "@onequery/proto-runtime/runtime/v1/common_pb";
 import type { SupervisorIdentity } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -39,6 +42,8 @@ function createPaths(root: string): SelfHostLifecyclePaths & {
 
   return {
     controlEndpoint: {
+      baseUrl: "http://onequery-supervisor",
+      maxMessageBytes: 64 * 1024,
       transport: {
         kind: "unix",
         socketPath: join(runDir, "supervisor-control.sock"),
@@ -210,7 +215,7 @@ describe("self-host lifecycle lease", () => {
       '"launchId":"launch-a"'
     );
 
-    await lease.transition("ready");
+    await lease.transition(RuntimePhase.READY);
 
     await expect(readFile(paths.statusPath, "utf8")).resolves.toContain(
       '"phase":"RUNTIME_PHASE_READY"'

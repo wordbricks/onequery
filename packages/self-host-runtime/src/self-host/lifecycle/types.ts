@@ -1,5 +1,9 @@
 import type { ServerLaunchConfig } from "@onequery/config/server-launch";
-import type { SupervisorIdentity } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import { RuntimePhase } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import type {
+  RuntimeStatus,
+  SupervisorIdentity,
+} from "@onequery/proto-runtime/runtime/v1/common_pb";
 
 export type RuntimeSupervisorIdentity = Pick<
   SupervisorIdentity,
@@ -86,16 +90,16 @@ export interface CleanupOptions {
   stopServer: boolean;
 }
 
-// Internal lifecycle phases owned by the runtime shutdown reducer. Durable
-// records map these string states to generated RuntimePhase values in
-// lifecycle/records.ts; supervisor terminal state is owned by supervisor-control.
+// Internal lifecycle phases are the generated runtime contract values. The
+// reducer still owns legal transitions; the proto enum owns vocabulary.
 export type RuntimeLifecyclePhase =
-  | "checkpointing"
-  | "draining"
-  | "ready"
-  | "shutdown_failed"
-  | "starting"
-  | "stopping";
+  | RuntimePhase.CHECKPOINTING
+  | RuntimePhase.DRAINING
+  | RuntimePhase.READY
+  | RuntimePhase.SHUTDOWN_FAILED
+  | RuntimePhase.STARTING
+  | RuntimePhase.STOPPED
+  | RuntimePhase.STOPPING;
 
 export type RuntimeLifecycleFailureCode =
   | "checkpoint_failed"
@@ -122,14 +126,22 @@ export interface RuntimeLifecycleLease {
   transition(
     phase: RuntimeLifecyclePhase,
     failure?: RuntimeLifecycleFailure
-  ): Promise<void>;
+  ): Promise<RuntimeStatus>;
+  currentStatus(): RuntimeStatus;
+  terminalStatus(
+    phase: Extract<
+      RuntimeLifecyclePhase,
+      RuntimePhase.SHUTDOWN_FAILED | RuntimePhase.STOPPED
+    >,
+    failure?: RuntimeLifecycleFailure
+  ): RuntimeStatus;
   release(options: CleanupOptions): Promise<void>;
 }
 
 export interface RuntimeLifecycleDurableLease extends RuntimeLifecycleLease {
   persistTransition(
     transition: RuntimeLifecycleTransitionPersistence
-  ): Promise<void>;
+  ): Promise<RuntimeStatus>;
 }
 
 export interface GracefulShutdownController {

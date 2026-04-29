@@ -3,17 +3,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { create } from "@bufbuild/protobuf";
-import { DurationSchema } from "@bufbuild/protobuf/wkt";
+import { DurationSchema, timestampFromDate } from "@bufbuild/protobuf/wkt";
 import {
   createSelfHostLaunchConfig,
   createSelfHostRuntimePaths,
   createWorkspaceDevLaunchConfig,
 } from "@onequery/config/testing";
 import type { DatabasePreparationResult } from "@onequery/db/server";
-import { SupervisorIdentitySchema } from "@onequery/proto-runtime/runtime/v1/common_pb";
+import {
+  RuntimePhase,
+  RuntimeStatusSchema,
+  SupervisorIdentitySchema,
+} from "@onequery/proto-runtime/runtime/v1/common_pb";
 import {
   SupervisorStopCommandSchema,
-  SupervisorStopTargetSchema,
+  SupervisorControlTargetSchema,
 } from "@onequery/proto-runtime/runtime/v1/supervisor_pb";
 import type { ApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
@@ -57,6 +61,8 @@ function createTempSupervisorControlEndpoint(
   runtimePaths: ReturnType<typeof createTempSelfHostRuntimePaths>
 ) {
   return {
+    baseUrl: "http://onequery-supervisor",
+    maxMessageBytes: 64 * 1024,
     transport: {
       kind: "unix" as const,
       socketPath: join(runtimePaths.runDir, "supervisor-control.sock"),
@@ -129,8 +135,12 @@ function createMocks() {
       } satisfies DatabasePreparationResult)
     );
   const releaseLifecycleLease = vi.fn(async () => undefined);
-  const transitionLifecycleLease = vi.fn(async () => undefined);
-  const persistLifecycleTransition = vi.fn(async () => undefined);
+  const transitionLifecycleLease = vi.fn(async () => mockRuntimeStatus(2n));
+  const persistLifecycleTransition = vi.fn(async () => mockRuntimeStatus(2n));
+  const currentLifecycleStatus = vi.fn(() => mockRuntimeStatus(1n));
+  const terminalLifecycleStatus = vi.fn(() =>
+    mockRuntimeStatus(3n, RuntimePhase.STOPPED)
+  );
   const supervisorLifecycleClient = {
     name: "supervisor-lifecycle-client",
   } as unknown as ReturnType<
@@ -144,15 +154,18 @@ function createMocks() {
   const openSupervisorRuntimeSession: StartServerDependencies["openSupervisorRuntimeSession"] =
     vi.fn(() => ({
       close: supervisorRuntimeSessionClose,
-      closed: Promise.resolve(),
+      closed: new Promise<void>(() => {}),
       heartbeat: supervisorRuntimeSessionHeartbeat,
+      opened: Promise.resolve(),
       ready: supervisorRuntimeSessionReady,
     }));
   const acquireRuntimeLifecycleLeaseResult: StartServerDependencies["acquireRuntimeLifecycleLeaseResult"] =
     vi.fn(async (paths) =>
       Result.ok({
         paths,
+        currentStatus: currentLifecycleStatus,
         persistTransition: persistLifecycleTransition,
+        terminalStatus: terminalLifecycleStatus,
         transition: transitionLifecycleLease,
         release: releaseLifecycleLease,
       })
@@ -186,6 +199,8 @@ function createMocks() {
     openSupervisorRuntimeSession,
     prepareRuntimeDatabaseResult,
     releaseLifecycleLease,
+    currentLifecycleStatus,
+    terminalLifecycleStatus,
     persistLifecycleTransition,
     shutdownController,
     supervisorLifecycleClient,
@@ -327,10 +342,16 @@ describe("startServer", () => {
         server,
         shutdownResources: expect.arrayContaining([
           expect.objectContaining({
-            name: "supervisor-session",
-          }),
-          expect.objectContaining({
             name: "server-storage",
+          }),
+        ]),
+      })
+    );
+    expect(mocks.attachGracefulShutdownHandlers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shutdownResources: expect.not.arrayContaining([
+          expect.objectContaining({
+            name: "supervisor-session",
           }),
         ]),
       })
@@ -361,7 +382,7 @@ describe("startServer", () => {
       supervisorId: "gateway-supervisor:1001",
     });
     const graceTimeout = create(DurationSchema, { seconds: 30n });
-    const supervisorStopTarget = create(SupervisorStopTargetSchema, {
+    const supervisorControlTarget = create(SupervisorControlTargetSchema, {
       dataDir: runtimePaths.dataDir,
       launchId: "launch-a",
       runtimePid: process.pid,
@@ -371,15 +392,15 @@ describe("startServer", () => {
       create(SupervisorStopCommandSchema, {
         completion: 2,
         graceTimeout,
-        operationId: "stop-operation",
+        operationId: "00000000-0000-4000-8000-000000000001",
         reason: "test stop",
-        target: supervisorStopTarget,
+        target: supervisorControlTarget,
       })
     );
     expect(mocks.shutdownController.shutdown).toHaveBeenCalledWith({
       completion: "cleanup_and_exit",
       graceTimeout,
-      operationId: "stop-operation",
+      operationId: "00000000-0000-4000-8000-000000000001",
       reason: "test stop",
       target: {
         dataDir: runtimePaths.dataDir,
@@ -388,7 +409,10 @@ describe("startServer", () => {
         supervisor: supervisorIdentity,
       },
     });
-    expect(mocks.transitionLifecycleLease).toHaveBeenCalledWith("ready");
+    expect(mocks.supervisorRuntimeSessionClose).not.toHaveBeenCalled();
+    expect(mocks.transitionLifecycleLease).toHaveBeenCalledWith(
+      RuntimePhase.READY
+    );
     expect(mocks.supervisorRuntimeSessionReady).toHaveBeenCalledWith(
       expect.objectContaining({
         phase: 2,
@@ -409,6 +433,40 @@ describe("startServer", () => {
     expect(server).toMatchObject({
       hostname: "127.0.0.1",
       port: 5656,
+    });
+  });
+
+  it("shuts down when the supervisor session closes after ready", async () => {
+    const runtimePaths = createTempSelfHostRuntimePaths();
+    const launchConfigPath = writeLaunchConfigFile(
+      createSelfHostLaunchConfig({
+        assetsDistDir: "/tmp/web",
+        migrationsDir: "/tmp/migrations",
+        runtimePaths,
+        supervisorControl: createTempSupervisorControlEndpoint(runtimePaths),
+      })
+    );
+    let resolveClosed: (() => void) | undefined;
+    vi.mocked(mocks.openSupervisorRuntimeSession).mockReturnValueOnce({
+      close: mocks.supervisorRuntimeSessionClose,
+      closed: new Promise<void>((resolve) => {
+        resolveClosed = resolve;
+      }),
+      heartbeat: mocks.supervisorRuntimeSessionHeartbeat,
+      opened: Promise.resolve(),
+      ready: mocks.supervisorRuntimeSessionReady,
+    });
+
+    await startServer({ launchConfigPath });
+    expect(mocks.supervisorRuntimeSessionReady).toHaveBeenCalledTimes(1);
+    expect(mocks.shutdownController.shutdown).not.toHaveBeenCalled();
+
+    resolveClosed?.();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(mocks.shutdownController.shutdown).toHaveBeenCalledWith({
+      completion: "cleanup_and_exit",
+      reason: "supervisor_session_closed",
     });
   });
 
@@ -444,3 +502,19 @@ describe("startServer", () => {
     });
   });
 });
+
+function mockRuntimeStatus(
+  runtimeSequence: bigint,
+  phase = RuntimePhase.READY
+) {
+  return create(RuntimeStatusSchema, {
+    identity: {
+      dataDir: "/tmp/onequery-data",
+      launchId: "launch-a",
+      pid: process.pid,
+    },
+    phase,
+    runtimeSequence,
+    updatedAt: timestampFromDate(new Date("2026-04-29T00:00:00.000Z")),
+  });
+}

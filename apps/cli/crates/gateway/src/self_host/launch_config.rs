@@ -16,6 +16,8 @@ use super::paths::SelfHostRuntimePaths;
 use super::paths::self_host_launch_config_path_for_launch;
 use super::secrets::SecretsConfig;
 use super::secrets::SmtpSecrets;
+use crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY;
+use crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES;
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -114,6 +116,8 @@ pub(crate) struct ServerLaunchRuntimePathsConfig {
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ServerLaunchSupervisorControlConfig {
+    pub(crate) base_url: String,
+    pub(crate) max_message_bytes: usize,
     pub(crate) transport: ServerLaunchSupervisorControlTransportConfig,
 }
 
@@ -306,6 +310,8 @@ fn resolve_self_host_launch_config(
             enabled: true,
         },
         supervisor_control: ServerLaunchSupervisorControlConfig {
+            base_url: SUPERVISOR_CONTROL_AUTHORITY.to_owned(),
+            max_message_bytes: SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES,
             transport: ServerLaunchSupervisorControlTransportConfig::Unix {
                 socket_path: paths.supervisor_control_socket_path.display().to_string(),
             },

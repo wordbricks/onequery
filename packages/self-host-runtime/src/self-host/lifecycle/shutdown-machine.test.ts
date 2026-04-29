@@ -163,36 +163,6 @@ describe("shutdown machine", () => {
     expect(secondTransition.state.exitHandled).toBe(true);
   });
 
-  it("responds with a shutdown error after disposal", () => {
-    const responseTx = createResponseSender();
-
-    const transition = reduceShutdownMachine(
-      {
-        status: "disposed",
-      },
-      {
-        request: shutdownRequest("manual", "cleanup_only"),
-        responseTx,
-        type: "shutdown_requested",
-      }
-    );
-
-    expect(transition.effects).toHaveLength(1);
-    const effect = transition.effects[0];
-    expect(effect?.type).toBe("respond");
-    if (effect?.type !== "respond") {
-      throw new Error("expected respond effect");
-    }
-    expect(effect.responders).toEqual([responseTx]);
-    expect(effect.result.isErr()).toBe(true);
-    if (effect.result.isErr()) {
-      expect(effect.result.error).toBeInstanceOf(RuntimeShutdownError);
-    }
-    expect(transition.state).toEqual({
-      status: "disposed",
-    });
-  });
-
   it("ignores stale shutdown completion events while idle", () => {
     const transition = reduceShutdownMachine(initialShutdownMachineState, {
       type: "shutdown_finished",

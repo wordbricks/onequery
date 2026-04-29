@@ -43,6 +43,8 @@ describe("createSupervisorLifecycleClient", () => {
 
     const client = createSupervisorLifecycleClient({
       endpoint: {
+        baseUrl: "http://onequery-supervisor",
+        maxMessageBytes: 64 * 1024,
         transport: {
           kind: "unix",
           socketPath,

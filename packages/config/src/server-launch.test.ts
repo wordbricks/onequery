@@ -172,6 +172,8 @@ describe("server launch contract", () => {
         {
           ...createSelfHostLaunchConfig(),
           supervisorControl: {
+            baseUrl: "http://onequery-supervisor",
+            maxMessageBytes: 64 * 1024,
             socketPath: "/tmp/onequery/supervisor-control.sock",
             transport: "unix",
           },
@@ -187,6 +189,8 @@ describe("server launch contract", () => {
         {
           ...createSelfHostLaunchConfig(),
           supervisorControl: {
+            baseUrl: "http://onequery-supervisor",
+            maxMessageBytes: 64 * 1024,
             transport: {
               host: "127.0.0.1",
               kind: "loopback-h2c",

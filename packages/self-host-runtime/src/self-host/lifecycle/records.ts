@@ -1,10 +1,10 @@
 import { create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
 import { timestampFromDate } from "@bufbuild/protobuf/wkt";
 import {
+  LifecycleRecordSchemaVersion,
   LifecycleRecordWriter,
   RuntimeFailureCode,
   RuntimeLeaseRecordSchema,
-  RuntimePhase,
   RuntimeStatusSnapshotSchema,
 } from "@onequery/proto-runtime/runtime/v1/common_pb";
 import type {
@@ -23,13 +23,8 @@ import type {
   SelfHostLifecyclePaths,
 } from "./types";
 
-const lifecycleSchemaVersion = 1;
+export const lifecycleSchemaVersion = LifecycleRecordSchemaVersion.V1;
 const defaultLeaseTtlSeconds = 60n;
-
-export const durableLifecycleRecordEncoding = {
-  eventLog: "length-delimited-binary-protobuf",
-  stateFile: "proto-json",
-} as const;
 
 export const runtimeLaunchIdSchema = z
   .string()
@@ -112,7 +107,7 @@ export function createRuntimeStatusSnapshot(input: {
         launchId: input.launchId,
         pid: input.pid,
       },
-      phase: toProtoRuntimePhase(input.phase),
+      phase: input.phase,
       runtimeSequence: input.runtimeSequence,
       updatedAt: timestampFromDate(input.snapshotAt),
       ...(input.failure
@@ -173,23 +168,6 @@ function createRuntimeRecordHeader(input: {
     },
     writtenAt: timestampFromDate(input.writtenAt),
   };
-}
-
-function toProtoRuntimePhase(phase: RuntimeLifecyclePhase): RuntimePhase {
-  switch (phase) {
-    case "checkpointing":
-      return RuntimePhase.CHECKPOINTING;
-    case "draining":
-      return RuntimePhase.DRAINING;
-    case "ready":
-      return RuntimePhase.READY;
-    case "shutdown_failed":
-      return RuntimePhase.SHUTDOWN_FAILED;
-    case "starting":
-      return RuntimePhase.STARTING;
-    case "stopping":
-      return RuntimePhase.STOPPING;
-  }
 }
 
 function toProtoRuntimeFailure(failure: RuntimeLifecycleFailure) {

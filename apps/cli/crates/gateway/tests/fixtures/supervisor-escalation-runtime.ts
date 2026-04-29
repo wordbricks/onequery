@@ -158,7 +158,7 @@ if (Number.isFinite(readyDelayMs) && readyDelayMs > 0) {
   await new Promise((resolve) => setTimeout(resolve, readyDelayMs));
 }
 
-await lease.transition("ready");
+await lease.transition(RuntimePhase.READY);
 runtimeSequence += 1n;
 await supervisorSession.ready(runtimeStatus(RuntimePhase.READY));
 

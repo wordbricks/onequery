@@ -431,6 +431,14 @@ secure = false
         }
     );
     assert_eq!(
+        launch_config.supervisor_control.base_url,
+        crate::supervisor_control_protocol::SUPERVISOR_CONTROL_AUTHORITY.to_owned()
+    );
+    assert_eq!(
+        launch_config.supervisor_control.max_message_bytes,
+        crate::supervisor_control_protocol::SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES
+    );
+    assert_eq!(
         launch_config.runtime_paths.run_dir,
         paths.run_dir.display().to_string()
     );

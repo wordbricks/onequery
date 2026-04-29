@@ -80,9 +80,13 @@ export function createSelfHostRuntimePaths(input?: {
 }
 
 export function createSelfHostSupervisorControl(input?: {
+  baseUrl?: string;
+  maxMessageBytes?: number;
   socketPath?: string;
 }): NonNullable<ServerLaunchConfig["supervisorControl"]> {
   return {
+    baseUrl: input?.baseUrl ?? "http://onequery-supervisor",
+    maxMessageBytes: input?.maxMessageBytes ?? 64 * 1024,
     transport: {
       kind: "unix",
       socketPath:

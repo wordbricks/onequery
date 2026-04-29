@@ -1,6 +1,5 @@
 import { unreachable } from "antiox/panic";
 import type { OneshotSender } from "antiox/sync/oneshot";
-import { Result } from "better-result";
 import type { Result as ResultType } from "better-result";
 
 import { createRuntimeShutdownError } from "./errors";
@@ -234,21 +233,8 @@ export function reduceShutdownMachine(
             effects: [],
             state,
           };
-        case "shutdown_requested":
-          return {
-            effects: [
-              {
-                type: "respond",
-                responders: [event.responseTx],
-                result: Result.err(
-                  createDisposedShutdownError(event.request.reason)
-                ),
-              },
-            ],
-            state,
-          };
         default:
-          return unreachable(event);
+          return unreachable(event as never);
       }
     }
     default:

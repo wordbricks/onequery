@@ -1,4 +1,10 @@
 use std::pin::Pin;
+#[cfg(test)]
+use std::sync::Arc;
+#[cfg(test)]
+use std::sync::atomic::AtomicBool;
+#[cfg(test)]
+use std::sync::atomic::Ordering;
 
 use buffa::MessageView;
 use buffa::view::OwnedView;
@@ -6,19 +12,34 @@ use futures::Stream;
 use futures::StreamExt;
 use onequery_proto_runtime::onequery::runtime::v1::SupervisorLifecycleService;
 
-use crate::runtime_control::types;
+use crate::supervisor_control_proto::types;
 
 use super::actor::SupervisorControlActor;
 use super::errors::failed_precondition;
+use super::errors::invalid_argument;
 
 #[derive(Clone)]
 pub(crate) struct SupervisorControlService {
     actor: SupervisorControlActor,
+    #[cfg(test)]
+    panic_next_get_status: Arc<AtomicBool>,
 }
 
 impl SupervisorControlService {
     pub(crate) fn new(actor: SupervisorControlActor) -> Self {
-        Self { actor }
+        Self {
+            actor,
+            #[cfg(test)]
+            panic_next_get_status: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn new_with_next_get_status_panic(actor: SupervisorControlActor) -> Self {
+        Self {
+            actor,
+            panic_next_get_status: Arc::new(AtomicBool::new(true)),
+        }
     }
 }
 
@@ -63,13 +84,18 @@ impl SupervisorLifecycleService for SupervisorControlService {
             _ => None,
         };
         let identity = self.actor.validate_session_hello(hello).await?;
-        let (session_id, command_rx) = self.actor.open_runtime_session_commands(identity).await;
+        let (session_id, command_rx) = self.actor.open_runtime_session_commands(identity).await?;
 
         let actor = self.actor.clone();
+        let (error_tx, error_rx) = tokio::sync::mpsc::channel(1);
         tokio::spawn(async move {
             while let Some(request) = requests.next().await {
-                let Ok(request) = request else {
-                    break;
+                let request = match request {
+                    Ok(request) => request,
+                    Err(error) => {
+                        let _ = error_tx.send(error).await;
+                        break;
+                    }
                 };
                 let result = match request.payload.as_ref() {
                     Some(types::open_runtime_session_request::PayloadView::Hello(_)) => {
@@ -120,25 +146,22 @@ impl SupervisorLifecycleService for SupervisorControlService {
                             .apply_runtime_shutdown_failed(session_id, &failed.to_owned_message())
                             .await
                     }
-                    Some(types::open_runtime_session_request::PayloadView::RuntimeExiting(
-                        exiting,
-                    )) => {
-                        actor
-                            .apply_runtime_exiting(session_id, &exiting.to_owned_message())
-                            .await
-                    }
                     None => Err(failed_precondition(
                         "runtime session request payload is required",
                     )),
                 };
-                if result.is_err() {
+                if let Err(error) = result {
+                    let _ = error_tx.send(error).await;
                     break;
                 }
             }
             actor.close_runtime_session_commands(session_id).await;
         });
 
-        Ok((Box::pin(runtime_session_command_stream(command_rx)), ctx))
+        Ok((
+            Box::pin(runtime_session_command_stream(command_rx, error_rx)),
+            ctx,
+        ))
     }
 
     async fn get_status(
@@ -152,6 +175,11 @@ impl SupervisorLifecycleService for SupervisorControlService {
         ),
         connectrpc::ConnectError,
     > {
+        #[cfg(test)]
+        if self.panic_next_get_status.swap(false, Ordering::SeqCst) {
+            panic!("test supervisor control get_status panic");
+        }
+
         self.actor
             .validate_target(request.target.as_option())
             .await?;
@@ -176,15 +204,14 @@ impl SupervisorLifecycleService for SupervisorControlService {
         ),
         connectrpc::ConnectError,
     > {
-        let command = request
-            .command
-            .as_option()
-            .ok_or_else(|| failed_precondition("supervisor control stop command is required"))?;
         self.actor
-            .validate_target(command.target.as_option())
+            .validate_target(request.target.as_option())
             .await?;
+        validate_uuid(request.operation_id, "supervisor control stop operation_id")?;
         Ok((
-            self.actor.request_stop(command.to_owned_message()).await?,
+            self.actor
+                .request_stop(request.operation_id.map(str::to_owned).unwrap_or_default())
+                .await?,
             _ctx,
         ))
     }
@@ -226,12 +253,31 @@ impl SupervisorLifecycleService for SupervisorControlService {
 
 fn runtime_session_command_stream(
     command_rx: tokio::sync::mpsc::Receiver<types::OpenRuntimeSessionResponse>,
+    error_rx: tokio::sync::mpsc::Receiver<connectrpc::ConnectError>,
 ) -> impl Stream<Item = Result<types::OpenRuntimeSessionResponse, connectrpc::ConnectError>> + Send
 {
-    futures::stream::unfold(command_rx, |mut command_rx| async {
-        command_rx
-            .recv()
-            .await
-            .map(|command| (Ok(command), command_rx))
-    })
+    futures::stream::unfold(
+        (command_rx, error_rx),
+        |(mut command_rx, mut error_rx)| async {
+            if let Ok(error) = error_rx.try_recv() {
+                return Some((Err(error), (command_rx, error_rx)));
+            }
+
+            tokio::select! {
+                biased;
+
+                error = error_rx.recv() => error.map(|error| (Err(error), (command_rx, error_rx))),
+                command = command_rx.recv() => command.map(|command| (Ok(command), (command_rx, error_rx))),
+            }
+        },
+    )
+}
+
+fn validate_uuid(value: Option<&str>, field: &'static str) -> Result<(), connectrpc::ConnectError> {
+    let Some(value) = value.filter(|value| !value.is_empty()) else {
+        return Err(invalid_argument(format!("{field} is required")));
+    };
+    uuid::Uuid::parse_str(value)
+        .map(|_| ())
+        .map_err(|_| invalid_argument(format!("{field} must be a UUID")))
 }

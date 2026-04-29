@@ -16,8 +16,8 @@ use super::read_supervisor_control_identity_for_recovery;
 use super::runtime_ready_pid_reported_during_startup_poll;
 use super::runtime_ready_status_reported_during_startup_poll;
 use crate::runtime::lifecycle_records;
-use crate::runtime_control::types;
 use crate::self_host::SelfHostRuntimePaths;
+use crate::supervisor_control_proto::types;
 
 fn test_paths() -> (tempfile::TempDir, SelfHostRuntimePaths) {
     let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
@@ -266,7 +266,7 @@ fn read_managed_runtime_pid_ignores_lifecycle_event_log_as_recovery_input() {
     let data_dir = paths.data_dir.display().to_string();
     let entry = types::LifecycleEventLogEntry {
         header: MessageField::some(types::LifecycleRecordHeader {
-            schema_version: Some(1),
+            schema_version: Some(lifecycle_records::LIFECYCLE_SCHEMA_VERSION),
             writer: MessageField::some(types::LifecycleRecordWriterIdentity {
                 writer: Some(
                     types::LifecycleRecordWriter::LIFECYCLE_RECORD_WRITER_SUPERVISOR.into(),
@@ -469,7 +469,7 @@ fn startup_poll_reports_runtime_status_snapshot_read_failures() {
 }
 
 #[test]
-fn read_managed_runtime_pid_records_corrupt_runtime_status_snapshot_and_uses_live_lease() {
+fn read_managed_runtime_pid_records_corrupt_runtime_status_snapshot_and_fails_recovery() {
     let (_temp_dir, paths) = test_paths();
     let pid = std::process::id();
 
@@ -481,10 +481,12 @@ fn read_managed_runtime_pid_records_corrupt_runtime_status_snapshot_and_uses_liv
     )
     .unwrap_or_else(|error| panic!("expected lease write: {error}"));
 
+    let error = read_managed_runtime_pid(&paths, "onequery gateway status")
+        .expect_err("expected corrupt runtime status snapshot to fail recovery");
+
     assert_eq!(
-        read_managed_runtime_pid(&paths, "onequery gateway status")
-            .unwrap_or_else(|error| panic!("expected recovery read: {error}")),
-        Some(pid)
+        error.title.as_str(),
+        "failed to parse runtime status snapshot file"
     );
 
     let events = read_lifecycle_events(&paths);
@@ -493,7 +495,7 @@ fn read_managed_runtime_pid_records_corrupt_runtime_status_snapshot_and_uses_liv
 }
 
 #[test]
-fn read_managed_runtime_pid_records_corrupt_supervisor_status_snapshot_and_uses_live_lease() {
+fn read_managed_runtime_pid_records_corrupt_supervisor_status_snapshot_and_fails_recovery() {
     let (_temp_dir, paths) = test_paths();
     let pid = std::process::id();
 
@@ -505,10 +507,12 @@ fn read_managed_runtime_pid_records_corrupt_supervisor_status_snapshot_and_uses_
     )
     .unwrap_or_else(|error| panic!("expected lease write: {error}"));
 
+    let error = read_managed_runtime_pid(&paths, "onequery gateway status")
+        .expect_err("expected corrupt supervisor status snapshot to fail recovery");
+
     assert_eq!(
-        read_managed_runtime_pid(&paths, "onequery gateway status")
-            .unwrap_or_else(|error| panic!("expected recovery read: {error}")),
-        Some(pid)
+        error.title.as_str(),
+        "failed to parse supervisor status snapshot file"
     );
 
     let events = read_lifecycle_events(&paths);
@@ -521,17 +525,16 @@ fn read_managed_runtime_pid_records_corrupt_supervisor_status_snapshot_and_uses_
 }
 
 #[test]
-fn read_managed_runtime_pid_records_corrupt_runtime_lease_as_absent_evidence() {
+fn read_managed_runtime_pid_records_corrupt_runtime_lease_and_fails_recovery() {
     let (_temp_dir, paths) = test_paths();
 
     fs::write(&paths.runtime_lease_path, "{\"runtime\":")
         .unwrap_or_else(|error| panic!("expected malformed lease write: {error}"));
 
-    assert_eq!(
-        read_managed_runtime_pid(&paths, "onequery gateway status")
-            .unwrap_or_else(|error| panic!("expected recovery read: {error}")),
-        None
-    );
+    let error = read_managed_runtime_pid(&paths, "onequery gateway status")
+        .expect_err("expected corrupt runtime lease to fail recovery");
+
+    assert_eq!(error.title.as_str(), "failed to parse runtime lease file");
 
     let events = read_lifecycle_events(&paths);
     assert_eq!(events.len(), 1);
@@ -560,34 +563,6 @@ fn read_managed_runtime_pid_uses_live_lease_after_missing_higher_evidence() {
         runtime_lease_json(&paths, pid, "launch-a"),
     )
     .unwrap_or_else(|error| panic!("expected lease write: {error}"));
-
-    assert_eq!(
-        read_managed_runtime_pid(&paths, "onequery gateway status")
-            .unwrap_or_else(|error| panic!("expected pid read: {error}")),
-        Some(pid)
-    );
-}
-
-#[test]
-fn read_managed_runtime_pid_accepts_live_lease_with_matching_runtime_status_snapshot() {
-    let (_temp_dir, paths) = test_paths();
-    let pid = std::process::id();
-
-    fs::write(
-        &paths.runtime_lease_path,
-        runtime_lease_json(&paths, pid, "launch-a"),
-    )
-    .unwrap_or_else(|error| panic!("expected lease write: {error}"));
-    fs::write(
-        &paths.runtime_status_snapshot_path,
-        runtime_status_snapshot_json(
-            &paths.data_dir.display().to_string(),
-            pid,
-            "launch-a",
-            "RUNTIME_PHASE_READY",
-        ),
-    )
-    .unwrap_or_else(|error| panic!("expected snapshot write: {error}"));
 
     assert_eq!(
         read_managed_runtime_pid(&paths, "onequery gateway status")
@@ -696,33 +671,6 @@ fn read_active_supervisor_identity_rejects_mismatched_supervisor_generation() {
 }
 
 #[test]
-fn read_managed_runtime_pid_prefers_runtime_status_snapshot_over_live_lease() {
-    let (_temp_dir, paths) = test_paths();
-    let pid = std::process::id();
-
-    fs::write(
-        &paths.runtime_status_snapshot_path,
-        runtime_status_snapshot_json(
-            &paths.data_dir.display().to_string(),
-            pid,
-            "launch-a",
-            "RUNTIME_PHASE_READY",
-        ),
-    )
-    .unwrap_or_else(|error| panic!("expected snapshot write: {error}"));
-    fs::write(&paths.supervisor_status_snapshot_path, "{not-json")
-        .unwrap_or_else(|error| panic!("expected malformed supervisor snapshot write: {error}"));
-    fs::write(&paths.runtime_lease_path, "{not-json")
-        .unwrap_or_else(|error| panic!("expected malformed lease write: {error}"));
-
-    assert_eq!(
-        read_managed_runtime_pid(&paths, "onequery gateway status")
-            .unwrap_or_else(|error| panic!("expected pid read: {error}")),
-        Some(pid)
-    );
-}
-
-#[test]
 fn read_managed_runtime_pid_prefers_supervisor_terminal_record_over_runtime_status_snapshot() {
     let (_temp_dir, paths) = test_paths();
     let pid = std::process::id();
@@ -779,12 +727,9 @@ fn supervisor_control_identity_recovery_can_probe_from_terminal_supervisor_snaps
         None
     );
 
-    let identity =
-        read_supervisor_control_identity_for_recovery(&paths, "onequery gateway status")
-            .unwrap_or_else(|error| {
-                panic!("expected supervisor control identity recovery: {error}")
-            })
-            .expect("expected supervisor control identity from terminal snapshot");
+    let identity = read_supervisor_control_identity_for_recovery(&paths, "onequery gateway status")
+        .unwrap_or_else(|error| panic!("expected supervisor control identity recovery: {error}"))
+        .expect("expected supervisor control identity from terminal snapshot");
 
     assert_eq!(identity.runtime.launch_id, "launch-a");
     assert_eq!(identity.runtime.pid, pid);

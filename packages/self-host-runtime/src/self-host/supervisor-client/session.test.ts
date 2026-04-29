@@ -36,12 +36,12 @@ describe("openSupervisorRuntimeSession", () => {
   it("reports shutdown start and finish after a supervisor stop command", async () => {
     const service = createSessionCapturingSupervisorService([
       create(OpenRuntimeSessionResponseSchema, {
-        command: {
+        response: {
           case: "stop",
           value: {
             completion: 2,
             graceTimeout: create(DurationSchema, { seconds: 30n }),
-            operationId: "stop-operation",
+            operationId: "00000000-0000-4000-8000-000000000001",
             reason: "test stop",
             target: {
               dataDir: "/tmp/onequery-data",
@@ -55,12 +55,13 @@ describe("openSupervisorRuntimeSession", () => {
             },
           },
         },
-        commandId: "stop:stop-operation",
       }),
     ]);
     const { socketPath } = await startSupervisorService(service.impl);
     const client = createSupervisorLifecycleClient({
       endpoint: {
+        baseUrl: "http://onequery-supervisor",
+        maxMessageBytes: 64 * 1024,
         transport: {
           kind: "unix",
           socketPath,
@@ -80,7 +81,7 @@ describe("openSupervisorRuntimeSession", () => {
             launchId: "launch-a",
             pid: 4242,
           },
-          phase: RuntimePhase.STOPPING,
+          phase: RuntimePhase.STOPPED,
           runtimeSequence: 3n,
           updatedAt: timestampFromDate(new Date("2026-04-29T00:00:02.000Z")),
         }),
@@ -103,17 +104,97 @@ describe("openSupervisorRuntimeSession", () => {
       "shutdownFinished",
     ]);
     expect(events[1]?.payload.value).toMatchObject({
-      operationId: "stop-operation",
+      operationId: "00000000-0000-4000-8000-000000000001",
       reason: "test stop",
       runtimeSequence: 2n,
     });
     expect(events[2]?.payload.value).toMatchObject({
-      operationId: "stop-operation",
+      operationId: "00000000-0000-4000-8000-000000000001",
       status: {
-        phase: RuntimePhase.STOPPING,
+        phase: RuntimePhase.STOPPED,
         runtimeSequence: 3n,
       },
     });
+  });
+
+  it("reports shutdown failure with a terminal status after a stop command fails", async () => {
+    const service = createSessionCapturingSupervisorService([
+      create(OpenRuntimeSessionResponseSchema, {
+        response: {
+          case: "stop",
+          value: {
+            completion: 2,
+            graceTimeout: create(DurationSchema, { seconds: 30n }),
+            operationId: "00000000-0000-4000-8000-000000000001",
+            reason: "test stop",
+            target: {
+              dataDir: "/tmp/onequery-data",
+              launchId: "launch-a",
+              runtimePid: 4242,
+              supervisor: {
+                generation: 1n,
+                pid: 1001,
+                supervisorId: "gateway-supervisor:test",
+              },
+            },
+          },
+        },
+      }),
+    ]);
+    const { socketPath } = await startSupervisorService(service.impl);
+    const client = createSupervisorLifecycleClient({
+      endpoint: {
+        baseUrl: "http://onequery-supervisor",
+        maxMessageBytes: 64 * 1024,
+        transport: {
+          kind: "unix",
+          socketPath,
+        },
+      },
+    });
+    const session = openSupervisorRuntimeSession({
+      client,
+      dataDir: "/tmp/onequery-data",
+      heartbeatIntervalMs: 60_000,
+      launchId: "launch-a",
+      now: () => new Date("2026-04-29T00:00:00.000Z"),
+      onStopCommand: async () => {
+        throw new Error("stop failed");
+      },
+      runtimePid: 4242,
+      runtimeSequence: 2n,
+      supervisor: create(SupervisorIdentitySchema, {
+        generation: 1n,
+        pid: 1001,
+        supervisorId: "gateway-supervisor:test",
+      }),
+    });
+    cleanupTasks.push(() => session.close());
+    const closed = session.closed.then(
+      () => null,
+      (cause: unknown) => cause
+    );
+
+    const events = await service.waitForEvents(3);
+    const closeCause = await closed;
+
+    expect(events.map((event) => event.payload.case)).toEqual([
+      "hello",
+      "shutdownStarted",
+      "shutdownFailed",
+    ]);
+    expect(events[2]?.payload.value).toMatchObject({
+      failure: {
+        message: "stop failed",
+      },
+      operationId: "00000000-0000-4000-8000-000000000001",
+      status: {
+        phase: RuntimePhase.SHUTDOWN_FAILED,
+        runtimeSequence: 3n,
+      },
+    });
+    expect(closeCause).toBeInstanceOf(Error);
+    expect((closeCause as Error).message).toBe("stop failed");
   });
 
   it("sends hello, ready, and heartbeat events over the supervisor session", async () => {
@@ -121,6 +202,8 @@ describe("openSupervisorRuntimeSession", () => {
     const { socketPath } = await startSupervisorService(service.impl);
     const client = createSupervisorLifecycleClient({
       endpoint: {
+        baseUrl: "http://onequery-supervisor",
+        maxMessageBytes: 64 * 1024,
         transport: {
           kind: "unix",
           socketPath,
@@ -178,8 +261,6 @@ describe("openSupervisorRuntimeSession", () => {
     });
     expect(events[2]?.payload.value).toMatchObject({
       heartbeatSequence: 1n,
-      runtimePhase: RuntimePhase.READY,
-      runtimeSequence: 2n,
     });
   });
 

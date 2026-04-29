@@ -8,12 +8,12 @@ use onequery_core::error::ErrorStage;
 use tokio::time::sleep;
 use uuid::Uuid;
 
-use crate::runtime_control::types;
+use crate::supervisor_control_proto::types;
 
 use super::super::BACKGROUND_GATEWAY_RETRY_COMMAND;
-use super::control::runtime_control_error_allows_fallback;
-use super::control_error::runtime_control_connect_error_summary;
-use super::control_error::with_runtime_control_connect_error_metadata;
+use super::control::supervisor_control_error_allows_stop_escalation;
+use super::control_error::supervisor_control_connect_error_summary;
+use super::control_error::with_supervisor_control_connect_error_metadata;
 use super::status::describe_exit_status;
 use super::status::exit_signal_label;
 use super::supervisor::SupervisedRuntimeContext;
@@ -202,13 +202,13 @@ async fn request_supervised_runtime_stop(
             .await?;
             Ok(())
         }
-        Err(error) if runtime_control_error_allows_fallback(&error) => {
+        Err(error) if supervisor_control_error_allows_stop_escalation(&error) => {
             dispatch_supervisor_event(
                 machine,
                 SupervisorEvent::StopRpcFailed {
                     operation_id: stop_operation_id,
-                    disposition: SupervisorStopRpcFailureDisposition::FallbackToTerminate,
-                    message: runtime_control_stop_failure_message(&error),
+                    disposition: SupervisorStopRpcFailureDisposition::EscalateToTerminate,
+                    message: supervisor_control_stop_failure_message(&error),
                 },
                 context.effect_context(),
                 Some(&mut *timers),
@@ -222,13 +222,13 @@ async fn request_supervised_runtime_stop(
                 SupervisorEvent::StopRpcFailed {
                     operation_id: stop_operation_id,
                     disposition: SupervisorStopRpcFailureDisposition::TerminalFailure,
-                    message: runtime_control_stop_failure_message(&error),
+                    message: supervisor_control_stop_failure_message(&error),
                 },
                 context.effect_context(),
                 Some(&mut *timers),
             )
             .await?;
-            Err(runtime_control_stop_error(
+            Err(supervisor_control_stop_error(
                 error,
                 context.command_line,
                 context.retry_command,
@@ -237,13 +237,13 @@ async fn request_supervised_runtime_stop(
     }
 }
 
-fn runtime_control_stop_error(
+fn supervisor_control_stop_error(
     error: ConnectError,
     command_line: &str,
     retry_command: &str,
 ) -> CliError {
-    let detail = runtime_control_stop_failure_message(&error);
-    let fallback_code = Some(format!("supervisor_control_{}", error.code.as_str()));
+    let detail = supervisor_control_stop_failure_message(&error);
+    let default_code = Some(format!("supervisor_control_{}", error.code.as_str()));
     let cli_error = CliError::new(
         "failed to request self-host runtime stop",
         command_line,
@@ -252,11 +252,11 @@ fn runtime_control_stop_error(
         vec![retry_command_hint(retry_command)],
     );
 
-    with_runtime_control_connect_error_metadata(&error, cli_error, fallback_code)
+    with_supervisor_control_connect_error_metadata(&error, cli_error, default_code)
 }
 
-fn runtime_control_stop_failure_message(error: &ConnectError) -> String {
-    runtime_control_connect_error_summary(error).map_or_else(
+fn supervisor_control_stop_failure_message(error: &ConnectError) -> String {
+    supervisor_control_connect_error_summary(error).map_or_else(
         || {
             format!(
                 "supervisor control RPC returned {}: {error}",
