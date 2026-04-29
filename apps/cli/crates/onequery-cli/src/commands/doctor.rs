@@ -246,6 +246,23 @@ mod tests {
         })
     }
 
+    fn report_snapshot_filters(temp_dir: &tempfile::TempDir) -> Vec<(&str, &str)> {
+        vec![
+            (
+                temp_dir
+                    .path()
+                    .to_str()
+                    .expect("expected temp path to be valid UTF-8"),
+                "<tmp>",
+            ),
+            (r"CLI version: `[^`]+`", "CLI version: `<cli-version>`"),
+            (
+                r#""cliVersion": "[^"]+""#,
+                r#""cliVersion": "<cli-version>""#,
+            ),
+        ]
+    }
+
     fn seed_snapshot(paths: &DiagnosticsPaths) -> DiagnosticSnapshot {
         let snapshot = DiagnosticSnapshot {
             schema_version: 1,
@@ -340,9 +357,7 @@ mod tests {
 
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
-                filters => [
-                    (temp_dir.path().to_string_lossy().as_ref(), "<tmp>")
-                ]
+                filters => report_snapshot_filters(&temp_dir)
             }, {
                 assert_snapshot!(rendered);
             });
@@ -384,9 +399,7 @@ mod tests {
 
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
-                filters => [
-                    (temp_dir.path().to_string_lossy().as_ref(), "<tmp>")
-                ]
+                filters => report_snapshot_filters(&temp_dir)
             }, {
                 assert_snapshot!(rendered);
             });
@@ -439,9 +452,7 @@ mod tests {
 
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
-                filters => [
-                    (temp_dir.path().to_string_lossy().as_ref(), "<tmp>")
-                ]
+                filters => report_snapshot_filters(&temp_dir)
             }, {
                 assert_snapshot!(pretty);
             });
@@ -481,10 +492,14 @@ mod tests {
 
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
-                filters => [
-                    (temp_dir.path().to_string_lossy().as_ref(), "<tmp>"),
-                    (r"https://github\\.com/wordbricks/onequery/issues/new\\?\\S+", "<ISSUE_URL>")
-                ]
+                filters => {
+                    let mut filters = report_snapshot_filters(&temp_dir);
+                    filters.push((
+                        r"https://github\\.com/wordbricks/onequery/issues/new\\?\\S+",
+                        "<ISSUE_URL>",
+                    ));
+                    filters
+                }
             }, {
                 assert_snapshot!(rendered);
             });
@@ -580,9 +595,7 @@ mod tests {
 
         crate::commands::with_command_snapshot_path(|| {
             insta::with_settings!({
-                filters => [
-                    (temp_dir.path().to_string_lossy().as_ref(), "<tmp>")
-                ]
+                filters => report_snapshot_filters(&temp_dir)
             }, {
                 assert_snapshot!(rendered);
             });
