@@ -20,6 +20,11 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "catalog:",
+    "@bufbuild/protovalidate": "catalog:",
+    "@connectrpc/connect": "catalog:",
+    "@connectrpc/connect-node": "catalog:",
+    "@connectrpc/validate": "catalog:",
     "@hono/node-server": "catalog:",
     "@hono/zod-validator": "catalog:",
     "@onequery/base": "workspace:*",
@@ -27,6 +32,7 @@
     "@onequery/config": "workspace:*",
     "@onequery/db": "workspace:*",
     "@onequery/installer": "workspace:*",
+    "@onequery/proto-runtime": "workspace:*",
     "@onequery/server": "workspace:*",
     "antiox": "catalog:",
     "better-result": "catalog:",

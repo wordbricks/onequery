@@ -1,11 +1,11 @@
 import { create, isFieldSet } from "@bufbuild/protobuf";
+import { CliPageRequestSchema } from "@onequery/proto-cli/cli/v1/common_pb";
 import { describe, expect, it } from "vitest";
 
 import {
   CLI_DEFAULT_PAGE_LIMIT,
   encodePageCursor,
 } from "../../read-controls-policy";
-import { CliPageRequestSchema } from "../gen/onequery/cli/v1/common_pb";
 import { parseCliPageRequest } from "./read-controls";
 
 describe("parseCliPageRequest", () => {

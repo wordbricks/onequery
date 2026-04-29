@@ -16,8 +16,8 @@
   },
   "dependencies": {
     "@hookform/resolvers": "5.2.2",
+    "@onequery/audit-contracts": "workspace:*",
     "@onequery/base": "workspace:*",
-    "@onequery/contracts": "workspace:*",
     "@onequery/datetime": "workspace:*",
     "@onequery/db": "workspace:*",
     "@onequery/self-host-runtime": "workspace:*",

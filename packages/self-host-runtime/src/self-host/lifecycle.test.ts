@@ -14,7 +14,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DuplicateRuntimeStartError,
+  RuntimeLifecycleOptionsError,
+  RuntimeShutdownError,
   acquireRuntimeLifecycleLease,
+  acquireRuntimeLifecycleLeaseResult,
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
   toLifecyclePathsResult,
@@ -31,6 +34,10 @@ function createPaths(root: string): SelfHostLifecyclePaths & {
   const runDir = join(dataDir, "run");
 
   return {
+    controlEndpoint: {
+      socketPath: join(runDir, "runtime-control.sock"),
+      transport: "unix",
+    },
     dataDir,
     lockPath: join(runDir, "server.lock"),
     logsDir,
@@ -65,6 +72,7 @@ describe("self-host lifecycle lease", () => {
 
     const firstLease = await acquireRuntimeLifecycleLease(paths, {
       isProcessRunning: (pid) => pid === 111,
+      launchId: "launch-a",
       logWriter,
       pid: 111,
     });
@@ -72,6 +80,7 @@ describe("self-host lifecycle lease", () => {
     await expect(
       acquireRuntimeLifecycleLease(paths, {
         isProcessRunning: (pid) => pid === 111,
+        launchId: "launch-b",
         logWriter,
         pid: 222,
       })
@@ -99,12 +108,14 @@ describe("self-host lifecycle lease", () => {
         pid: 999,
         acquiredAt: "2026-03-25T00:00:00.000Z",
         dataDir: paths.dataDir,
+        launchId: "stale-launch",
       })
     );
     await writeFile(paths.pidPath, "999\n");
 
     const lease = await acquireRuntimeLifecycleLease(paths, {
       isProcessRunning: () => false,
+      launchId: "launch-a",
       pid: 222,
     });
     const lockContents = await readFile(paths.lockPath, "utf8");
@@ -117,18 +128,41 @@ describe("self-host lifecycle lease", () => {
     });
   });
 
+  it("rejects an empty launch id before creating lifecycle files", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-empty-launch-id-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+
+    const result = await acquireRuntimeLifecycleLeaseResult(paths, {
+      launchId: " ",
+      pid: 222,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(RuntimeLifecycleOptionsError);
+    }
+    await expect(access(paths.runDir)).rejects.toBeDefined();
+  });
+
   it("records startup and shutdown lifecycle phases in the runtime state file", async () => {
     const root = await mkdtemp(join(tmpdir(), "onequery-self-host-state-"));
     tempRoots.push(root);
     const paths = createPaths(root);
     const lease = await acquireRuntimeLifecycleLease(paths, {
       isProcessRunning: () => false,
+      launchId: "launch-a",
       now: () => new Date("2026-03-25T00:00:00.000Z"),
       pid: 333,
     });
 
     await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
       '"phase":"starting"'
+    );
+    await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
+      '"launchId":"launch-a"'
     );
 
     await lease.transition("ready");
@@ -151,12 +185,17 @@ describe("self-host lifecycle lease", () => {
     const paths = createPaths(root);
     const lease = await acquireRuntimeLifecycleLease(paths, {
       isProcessRunning: () => false,
+      launchId: "launch-a",
       pid: 333,
     });
     const processSignals = new EventEmitter();
     let resolveServerStop = () => {};
     const serverStopPromise = new Promise<void>((resolve) => {
       resolveServerStop = resolve;
+    });
+    let resolveStorageClose = () => {};
+    const storageClosePromise = new Promise<void>((resolve) => {
+      resolveStorageClose = resolve;
     });
     const events: string[] = [];
     const server = {
@@ -165,6 +204,14 @@ describe("self-host lifecycle lease", () => {
         await serverStopPromise;
         events.push("stop:done");
       }),
+    };
+    const storageResource = {
+      close: vi.fn(async () => {
+        events.push("storage:start");
+        await storageClosePromise;
+        events.push("storage:done");
+      }),
+      name: "server-storage",
     };
     const exitProcess = vi.fn((code: number) => {
       events.push(`exit:${code}`);
@@ -179,6 +226,7 @@ describe("self-host lifecycle lease", () => {
       logWriter,
       processSignals,
       server,
+      shutdownResources: [storageResource],
     });
 
     processSignals.emit("SIGTERM");
@@ -191,21 +239,37 @@ describe("self-host lifecycle lease", () => {
     await access(paths.pidPath);
     await access(paths.lockPath);
     await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
-      '"phase":"stopping"'
+      '"phase":"draining"'
     );
 
     resolveServerStop();
+
+    await waitUntil(async () => {
+      expect(storageResource.close).toHaveBeenCalledTimes(1);
+      expect(exitProcess).not.toHaveBeenCalled();
+      await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
+        '"phase":"checkpointing"'
+      );
+    });
+
+    resolveStorageClose();
 
     await waitUntil(async () => {
       expect(exitProcess).toHaveBeenCalledWith(0);
       await expect(access(paths.pidPath)).rejects.toBeDefined();
       await expect(access(paths.lockPath)).rejects.toBeDefined();
       await expect(access(paths.statePath)).rejects.toBeDefined();
-      expect(events).toEqual(["stop:start", "stop:done", "exit:0"]);
+      expect(events).toEqual([
+        "stop:start",
+        "stop:done",
+        "storage:start",
+        "storage:done",
+        "exit:0",
+      ]);
     });
   });
 
-  it("releases the lifecycle lease and exits with failure when server shutdown errors", async () => {
+  it("keeps the lifecycle lease and exits with failure when server shutdown errors", async () => {
     const root = await mkdtemp(
       join(tmpdir(), "onequery-self-host-signal-failure-")
     );
@@ -213,6 +277,7 @@ describe("self-host lifecycle lease", () => {
     const paths = createPaths(root);
     const lease = await acquireRuntimeLifecycleLease(paths, {
       isProcessRunning: () => false,
+      launchId: "launch-a",
       pid: 444,
     });
     const processSignals = new EventEmitter();
@@ -222,6 +287,10 @@ describe("self-host lifecycle lease", () => {
         throw stopError;
       }),
     };
+    const storageResource = {
+      close: vi.fn(async () => {}),
+      name: "server-storage",
+    };
     const exitProcess = vi.fn();
 
     attachGracefulShutdownHandlers({
@@ -229,17 +298,152 @@ describe("self-host lifecycle lease", () => {
       lease,
       processSignals,
       server,
+      shutdownResources: [storageResource],
     });
 
     processSignals.emit("SIGTERM");
 
     await waitUntil(async () => {
       expect(server.stop).toHaveBeenCalledWith(true);
+      expect(storageResource.close).toHaveBeenCalledTimes(1);
       expect(exitProcess).toHaveBeenCalledWith(1);
-      await expect(access(paths.pidPath)).rejects.toBeDefined();
-      await expect(access(paths.lockPath)).rejects.toBeDefined();
-      await expect(access(paths.statePath)).rejects.toBeDefined();
+      await access(paths.pidPath);
+      await access(paths.lockPath);
+      await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
+        '"phase":"shutdown_failed"'
+      );
     });
+  });
+
+  it("keeps the lifecycle lease and exits with failure when storage checkpoint errors", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-storage-failure-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+    const lease = await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: () => false,
+      launchId: "launch-a",
+      pid: 445,
+    });
+    const processSignals = new EventEmitter();
+    const storageError = new Error("storage close failed");
+    const server = {
+      stop: vi.fn(async () => {}),
+    };
+    const storageResource = {
+      close: vi.fn(async () => {
+        throw storageError;
+      }),
+      name: "server-storage",
+    };
+    const exitProcess = vi.fn();
+
+    attachGracefulShutdownHandlers({
+      exitProcess,
+      lease,
+      processSignals,
+      server,
+      shutdownResources: [storageResource],
+    });
+
+    processSignals.emit("SIGTERM");
+
+    await waitUntil(async () => {
+      expect(server.stop).toHaveBeenCalledWith(true);
+      expect(storageResource.close).toHaveBeenCalledTimes(1);
+      expect(exitProcess).toHaveBeenCalledWith(1);
+      await access(paths.pidPath);
+      await access(paths.lockPath);
+      await expect(readFile(paths.statePath, "utf8")).resolves.toContain(
+        '"phase":"shutdown_failed"'
+      );
+    });
+  });
+
+  it("disposes shutdown coordination without handling later process signals", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-disposed-controller-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+    const lease = await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: () => false,
+      launchId: "launch-a",
+      pid: 446,
+    });
+    const processSignals = new EventEmitter();
+    const server = {
+      stop: vi.fn(async () => {}),
+    };
+    const controller = attachGracefulShutdownHandlers({
+      lease,
+      processSignals,
+      server,
+    });
+
+    controller.dispose();
+    processSignals.emit("SIGTERM");
+
+    await expect(controller.shutdown("manual")).rejects.toBeInstanceOf(
+      RuntimeShutdownError
+    );
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(server.stop).not.toHaveBeenCalled();
+
+    await lease.release({
+      reason: "test_cleanup",
+      stopServer: false,
+    });
+  });
+
+  it("allows an in-flight manual shutdown to finish after controller disposal", async () => {
+    const root = await mkdtemp(
+      join(tmpdir(), "onequery-self-host-dispose-in-flight-")
+    );
+    tempRoots.push(root);
+    const paths = createPaths(root);
+    const lease = await acquireRuntimeLifecycleLease(paths, {
+      isProcessRunning: () => false,
+      launchId: "launch-a",
+      pid: 447,
+    });
+    const processSignals = new EventEmitter();
+    let resolveServerStop = () => {};
+    const serverStopPromise = new Promise<void>((resolve) => {
+      resolveServerStop = resolve;
+    });
+    const server = {
+      stop: vi.fn(async () => {
+        await serverStopPromise;
+      }),
+    };
+    const storageResource = {
+      close: vi.fn(async () => {}),
+      name: "server-storage",
+    };
+    const exitProcess = vi.fn();
+    const controller = attachGracefulShutdownHandlers({
+      exitProcess,
+      lease,
+      processSignals,
+      server,
+      shutdownResources: [storageResource],
+    });
+
+    const shutdown = controller.shutdown("manual");
+    await waitUntil(async () => {
+      expect(server.stop).toHaveBeenCalledWith(true);
+    });
+
+    controller.dispose();
+    resolveServerStop();
+
+    await expect(shutdown).resolves.toBeUndefined();
+    expect(storageResource.close).toHaveBeenCalledTimes(1);
+    expect(exitProcess).not.toHaveBeenCalled();
+    await expect(access(paths.pidPath)).rejects.toBeDefined();
+    await expect(access(paths.lockPath)).rejects.toBeDefined();
   });
 
   it("appends lifecycle log lines into the configured server log file", async () => {
@@ -282,6 +486,7 @@ describe("self-host lifecycle lease", () => {
 
     const result = toLifecyclePathsResult({
       mode: "self-host",
+      runtimeControl: paths.controlEndpoint,
       runtimePaths: {
         backupsDir: join(root, "backups"),
         dataDir: paths.dataDir,
@@ -299,6 +504,7 @@ describe("self-host lifecycle lease", () => {
     expect(result.value).toEqual({
       kind: "self-host",
       paths: {
+        controlEndpoint: paths.controlEndpoint,
         dataDir: paths.dataDir,
         lockPath: paths.lockPath,
         logsDir: paths.logsDir,
@@ -329,6 +535,7 @@ describe("self-host lifecycle lease", () => {
 
     const lease = await acquireRuntimeLifecycleLease(paths, {
       isProcessRunning: () => false,
+      launchId: "launch-a",
       pid: 555,
     });
 

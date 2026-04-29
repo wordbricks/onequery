@@ -12,10 +12,10 @@ use serde_json::json;
 use tar::Builder;
 
 use crate::cli::BackupArgs;
-use crate::config::self_host::SelfHostRuntimePaths;
-use crate::config::self_host::self_host_runtime_paths;
 use crate::output::CommandOutput;
-use crate::path_utils::resolve_user_path_for_cli;
+use onequery_cli_core::path_utils::resolve_user_path_for_cli;
+use onequery_gateway::self_host::SelfHostRuntimePaths;
+use onequery_gateway::self_host::self_host_runtime_paths;
 
 use super::CommandContext;
 use super::Runtime;
@@ -151,7 +151,7 @@ fn execute_with_paths(
 }
 
 fn ensure_backup_inputs_exist(
-    paths: &crate::config::self_host::SelfHostRuntimePaths,
+    paths: &onequery_gateway::self_host::SelfHostRuntimePaths,
     command_line: &str,
 ) -> Result<(), CliError> {
     if !paths.config_path.is_file() {
@@ -171,7 +171,7 @@ fn ensure_backup_inputs_exist(
 }
 
 fn ensure_runtime_not_running(
-    paths: &crate::config::self_host::SelfHostRuntimePaths,
+    paths: &onequery_gateway::self_host::SelfHostRuntimePaths,
     command_line: &str,
 ) -> Result<(), CliError> {
     let Some(pid) = read_pid(paths.pid_path.as_path())? else {
@@ -298,10 +298,10 @@ mod tests {
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
-    use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
-    use crate::config::self_host::SelfHostRuntimePaths;
-    use crate::config::self_host::default_port;
     use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
+    use onequery_gateway::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
+    use onequery_gateway::self_host::SelfHostRuntimePaths;
+    use onequery_gateway::self_host::default_port;
 
     #[test]
     fn backup_archives_runtime_files_and_toggles_secrets() {
@@ -315,7 +315,7 @@ mod tests {
         ] {
             let temp_root =
                 std::env::temp_dir().join(format!("{temp_dir_name}-{}", Uuid::new_v4()));
-            let paths = SelfHostRuntimePaths::for_test(
+            let paths = SelfHostRuntimePaths::from_dirs(
                 temp_root.join("config").join("self-host"),
                 temp_root.join("data"),
             );

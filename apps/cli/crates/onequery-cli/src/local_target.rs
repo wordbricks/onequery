@@ -1,24 +1,22 @@
 use std::net::IpAddr;
-use std::net::TcpStream;
-use std::net::ToSocketAddrs;
 use std::path::PathBuf;
-use std::time::Duration;
 
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
 use url::Url;
 
 use crate::commands::CommandContext;
-use crate::config::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
-use crate::config::self_host::DEFAULT_SELF_HOST_PORT;
-use crate::config::self_host::SelfHostConfig;
-use crate::config::self_host::SelfHostRuntimePaths;
-use crate::config::self_host::default_public_origin;
-use crate::config::self_host::load_self_host_public_config_with_paths;
-use crate::config::self_host::self_host_public_origin;
-use crate::config::self_host::self_host_runtime_paths;
+pub(crate) use onequery_gateway::runtime_accepting_connections;
+use onequery_gateway::runtime_probe_host;
+use onequery_gateway::self_host::DEFAULT_SELF_HOST_LISTEN_HOST;
+use onequery_gateway::self_host::DEFAULT_SELF_HOST_PORT;
+use onequery_gateway::self_host::SelfHostConfig;
+use onequery_gateway::self_host::SelfHostRuntimePaths;
+use onequery_gateway::self_host::default_public_origin;
+use onequery_gateway::self_host::load_self_host_public_config;
+use onequery_gateway::self_host::self_host_public_origin;
+use onequery_gateway::self_host::self_host_runtime_paths;
 
-const LOCAL_CONNECTION_PROBE_TIMEOUT_MS: u64 = 100;
 const GATEWAY_START_COMMAND: &str = "onequery gateway start";
 const GATEWAY_STATUS_COMMAND: &str = "onequery gateway status";
 const GATEWAY_LOGS_COMMAND: &str = "onequery gateway logs";
@@ -41,25 +39,6 @@ struct SelfHostTargetState {
 enum SelfHostTargetConfig {
     Missing,
     Loaded(SelfHostConfig),
-}
-
-pub(crate) fn runtime_accepting_connections(listen_host: &str, listen_port: u16) -> bool {
-    let timeout = Duration::from_millis(LOCAL_CONNECTION_PROBE_TIMEOUT_MS);
-
-    (runtime_probe_host(listen_host), listen_port)
-        .to_socket_addrs()
-        .ok()
-        .into_iter()
-        .flatten()
-        .any(|address| TcpStream::connect_timeout(&address, timeout).is_ok())
-}
-
-pub(crate) fn runtime_probe_host(listen_host: &str) -> &str {
-    match listen_host {
-        "0.0.0.0" => "127.0.0.1",
-        "::" => "::1",
-        _ => listen_host,
-    }
 }
 
 pub(crate) fn managed_gateway_unavailable_error(
@@ -210,10 +189,7 @@ fn load_self_host_target_state(
         // Comment: keep self-host config loading strict here so transport-path callers can surface
         // invalid managed-gateway config directly. Callers using gateway probing only as additive
         // recovery guidance should downgrade these errors at their boundary.
-        SelfHostTargetConfig::Loaded(load_self_host_public_config_with_paths(
-            &paths,
-            command_line,
-        )?)
+        SelfHostTargetConfig::Loaded(load_self_host_public_config(&paths, command_line)?)
     } else {
         SelfHostTargetConfig::Missing
     };
@@ -319,9 +295,9 @@ mod tests {
     use uuid::Uuid;
 
     use crate::commands::ResolvedOrgSource;
-    use crate::config::self_host::SelfHostRuntimePaths;
     use crate::output::EffectiveOutputMode;
     use crate::output::render_error;
+    use onequery_gateway::self_host::SelfHostRuntimePaths;
 
     use super::CommandContext;
     use super::DEFAULT_SELF_HOST_LISTEN_HOST;
@@ -354,7 +330,7 @@ mod tests {
             .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
         fs::create_dir_all(&data_dir)
             .unwrap_or_else(|error| panic!("expected data dir creation to succeed: {error}"));
-        SelfHostRuntimePaths::for_test(config_dir, data_dir)
+        SelfHostRuntimePaths::from_dirs(config_dir, data_dir)
     }
 
     fn test_context(base_url: &str, command_line: &str) -> CommandContext {
@@ -411,7 +387,7 @@ mod tests {
             &target_state(
                 paths.clone(),
                 SelfHostTargetConfig::Loaded(SelfHostConfig {
-                    server: crate::config::self_host::ServerSection {
+                    server: onequery_gateway::self_host::ServerSection {
                         listen_host: "127.0.0.1".to_owned(),
                         port: 7777,
                         public_origin: Some("https://onequery.example.com".to_owned()),

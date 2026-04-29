@@ -1,5 +1,6 @@
 import { isFieldSet } from "@bufbuild/protobuf";
-import type { AuditSourceApiActionFailureCode } from "@onequery/contracts/audit";
+import type { AuditSourceApiActionFailureCode } from "@onequery/audit-contracts/audit";
+import type { ProviderType } from "@onequery/db/server";
 import {
   SourceApiActionCommandPayloadSchema,
   SourceApiActionEventPayloadSchema,
@@ -12,13 +13,12 @@ import {
   SourceApiActionRequestKind,
   SourceApiActionRequestDescriptorSchema,
   SourceApiActionSourceDescriptorSchema,
-} from "@onequery/contracts/workflow/v1/source_api_action_pb";
+} from "@onequery/proto-workflow/workflow/v1/source_api_action_pb";
 import type {
   SourceApiActionEventPayload as ProtoSourceApiActionEventPayload,
   SourceApiActionRequestDescriptor as ProtoSourceApiActionRequestDescriptor,
   SourceApiActionSourceDescriptor as ProtoSourceApiActionSourceDescriptor,
-} from "@onequery/contracts/workflow/v1/source_api_action_pb";
-import type { ProviderType } from "@onequery/db/server";
+} from "@onequery/proto-workflow/workflow/v1/source_api_action_pb";
 
 import { assertNever, requireProtoMessage } from "./protobuf-utils";
 import type { SourceApiActionEventRecord } from "./types";

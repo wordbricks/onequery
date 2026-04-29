@@ -8,10 +8,10 @@ use tokio::io::AsyncReadExt;
 use tokio::time::Duration;
 
 use crate::cli::QueryInputArgs;
-use crate::path_utils::resolve_user_path_for_cli;
 use crate::transport::query::QueryRequestPayload;
 use crate::workflows::retry::RetryDirective;
 use crate::workflows::retry::classify_retry_directive;
+use onequery_cli_core::path_utils::resolve_user_path_for_cli;
 
 use super::CommandContext;
 use super::QueryIntent;

@@ -1,11 +1,8 @@
 import { create, toBinary } from "@bufbuild/protobuf";
-import type { Result as ResultType } from "better-result";
-import { describe, expect, it } from "vitest";
-
 import {
   WorkflowDataSourceStatus,
   WorkflowSourceProvider,
-} from "../../connect/gen/onequery/workflow/v1/common_pb";
+} from "@onequery/proto-workflow/workflow/v1/common_pb";
 import {
   QueryActionCommandPayloadSchema,
   QueryActionEventPayloadSchema,
@@ -19,7 +16,10 @@ import {
   QueryActionQuerySourceRecordSchema,
   QueryActionRecordSourceNotQueryableCommandSchema,
   QueryActionStartValidateCommandSchema,
-} from "../../connect/gen/onequery/workflow/v1/query_action_pb";
+} from "@onequery/proto-workflow/workflow/v1/query_action_pb";
+import type { Result as ResultType } from "better-result";
+import { describe, expect, it } from "vitest";
+
 import { WorkflowStorageCorruptRowError } from "../storage/errors";
 import type { QueryActionCommandPayload } from "./commands";
 import type { QueryActionSourceDescriptor } from "./descriptors";

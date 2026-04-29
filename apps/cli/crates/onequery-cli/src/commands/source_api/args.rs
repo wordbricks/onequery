@@ -7,7 +7,7 @@ use tokio::fs;
 use tokio::io::AsyncReadExt;
 
 use crate::cli::ApiArgs;
-use crate::path_utils::resolve_user_path_for_cli;
+use onequery_cli_core::path_utils::resolve_user_path_for_cli;
 
 use super::CommandContext;
 

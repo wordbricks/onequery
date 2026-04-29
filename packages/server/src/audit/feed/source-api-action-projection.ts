@@ -2,13 +2,13 @@ import {
   auditOriginActorSchema,
   auditSourceApiActionMetricsSchema,
   auditTargetSchema,
-} from "@onequery/contracts/audit";
+} from "@onequery/audit-contracts/audit";
 import type {
   AuditOutcome,
   AuditSourceApiActionEventType,
   AuditSourceApiActionFailureCode,
   AuditSourceApiActionPhase,
-} from "@onequery/contracts/audit";
+} from "@onequery/audit-contracts/audit";
 import type { auditFeedEntries } from "@onequery/db/server";
 
 import { finalizeSourceApiActionRow, normalizeOriginActor } from "./read-model";

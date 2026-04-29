@@ -1,10 +1,10 @@
 import { create, toBinary } from "@bufbuild/protobuf";
+import { WorkflowSourceProvider } from "@onequery/proto-workflow/workflow/v1/common_pb";
+import * as sourceApiPb from "@onequery/proto-workflow/workflow/v1/source_api_action_pb";
 import type { SourceApiDescriptor } from "@onequery/server/source-api";
 import type { Result as ResultType } from "better-result";
 import { describe, expect, it } from "vitest";
 
-import { WorkflowSourceProvider } from "../../connect/gen/onequery/workflow/v1/common_pb";
-import * as sourceApiPb from "../../connect/gen/onequery/workflow/v1/source_api_action_pb";
 import { WorkflowStorageCorruptRowError } from "../storage/errors";
 import type { SourceApiActionCommandPayload } from "./commands";
 import type {

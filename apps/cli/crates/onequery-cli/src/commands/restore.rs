@@ -10,12 +10,12 @@ use tar::Archive;
 use uuid::Uuid;
 
 use crate::cli::RestoreArgs;
-use crate::config::self_host::SelfHostBootstrapResult;
-use crate::config::self_host::SelfHostRuntimePaths;
-use crate::config::self_host::bootstrap_self_host_foundation;
-use crate::config::self_host::self_host_runtime_paths;
 use crate::output::CommandOutput;
-use crate::path_utils::resolve_user_path_for_cli;
+use onequery_cli_core::path_utils::resolve_user_path_for_cli;
+use onequery_gateway::self_host::SelfHostBootstrapResult;
+use onequery_gateway::self_host::SelfHostRuntimePaths;
+use onequery_gateway::self_host::bootstrap_self_host_foundation;
+use onequery_gateway::self_host::self_host_runtime_paths;
 
 use super::CommandContext;
 use super::Runtime;
@@ -60,7 +60,10 @@ fn execute_with_paths(
     archive_path: &Path,
     context: &CommandContext,
     paths: &SelfHostRuntimePaths,
-    bootstrap_foundation: impl FnOnce(&str) -> Result<SelfHostBootstrapResult, CliError>,
+    bootstrap_foundation: impl FnOnce(
+        &SelfHostRuntimePaths,
+        &str,
+    ) -> Result<SelfHostBootstrapResult, CliError>,
 ) -> Result<CommandOutput, CliError> {
     ensure_runtime_not_running(paths, &context.command_line)?;
     let temp_root = std::env::temp_dir().join(format!("onequery-restore-{}", Uuid::new_v4()));
@@ -143,7 +146,7 @@ fn execute_with_paths(
         paths.data_dir.as_path(),
         &context.command_line,
     )?;
-    let bootstrap = bootstrap_foundation(&context.command_line)?;
+    let bootstrap = bootstrap_foundation(paths, &context.command_line)?;
 
     Ok(CommandOutput::structured(
         vec![
@@ -167,7 +170,7 @@ fn execute_with_paths(
 }
 
 fn ensure_runtime_not_running(
-    paths: &crate::config::self_host::SelfHostRuntimePaths,
+    paths: &onequery_gateway::self_host::SelfHostRuntimePaths,
     command_line: &str,
 ) -> Result<(), CliError> {
     let Some(pid) = read_pid(paths.pid_path.as_path())? else {
@@ -324,10 +327,10 @@ mod tests {
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
     use crate::config::default_base_url;
-    use crate::config::self_host::SelfHostRuntimePaths;
-    use crate::config::self_host::bootstrap_self_host_foundation_for_test;
-    use crate::config::self_host::default_port;
     use crate::test_support::TEST_MASTER_ENCRYPTION_KEY;
+    use onequery_gateway::self_host::SelfHostRuntimePaths;
+    use onequery_gateway::self_host::bootstrap_self_host_foundation;
+    use onequery_gateway::self_host::default_port;
 
     #[test]
     fn restore_replaces_runtime_and_toggles_secrets_from_the_archive() {
@@ -342,7 +345,7 @@ mod tests {
             } else {
                 "backup-no-secrets.tar.gz"
             });
-            let paths = SelfHostRuntimePaths::for_test(
+            let paths = SelfHostRuntimePaths::from_dirs(
                 temp_root.join("config").join("self-host"),
                 temp_root.join("data"),
             );
@@ -353,7 +356,7 @@ mod tests {
                 archive_path.as_path(),
                 &sample_context("onequery restore"),
                 &paths,
-                |command_line| bootstrap_self_host_foundation_for_test(paths.clone(), command_line),
+                bootstrap_self_host_foundation,
             )
             .unwrap_or_else(|error| panic!("expected restore to succeed: {error}"));
 

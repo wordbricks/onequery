@@ -1,0 +1,22 @@
+[package]
+name = "onequery-proto-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+buffa = { workspace = true, features = ["json"] }
+buffa-types = { workspace = true, features = ["json"] }
+connectrpc = { workspace = true, features = ["client"] }
+futures = { workspace = true }
+http-body = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+
+[build-dependencies]
+buffa = { workspace = true, features = ["json"] }
+buffa-codegen = { workspace = true }
+connectrpc-build = { workspace = true }
+onequery-utils = { workspace = true }
+
+[lints]
+workspace = true

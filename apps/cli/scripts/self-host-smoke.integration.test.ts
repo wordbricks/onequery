@@ -18,26 +18,26 @@ import { durationFromMs, durationMs } from "@bufbuild/protobuf/wkt";
 import type { CallOptions, Client } from "@connectrpc/connect";
 import { createClient } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import { afterAll, describe, expect, it } from "vitest";
-
-import { AuthMode } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/auth_pb.js";
+import { AuthMode } from "@onequery/proto-cli/cli/v1/auth_pb";
 import {
   CliAuthService,
   CliOrganizationService,
   CliQueryService,
   CliSourceService,
-} from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/cli_pb.js";
-import { ContentFormat } from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/common_pb.js";
+} from "@onequery/proto-cli/cli/v1/cli_pb";
+import { ContentFormat } from "@onequery/proto-cli/cli/v1/common_pb";
 import {
   OrgCapability,
   OrganizationRole,
-} from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/org_pb.js";
+} from "@onequery/proto-cli/cli/v1/org_pb";
 import {
   SourceConnectSslMode,
   SourceProvider,
   SourceQuerySupport,
   SourceStatus,
-} from "../../../packages/cli-server/src/connect/gen/onequery/cli/v1/source_pb.js";
+} from "@onequery/proto-cli/cli/v1/source_pb";
+import { afterAll, describe, expect, it } from "vitest";
+
 import {
   cleanupPath,
   cliRootDir,

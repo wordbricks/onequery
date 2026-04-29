@@ -655,7 +655,7 @@ mod tests {
             auth_session,
             browser: NoopBrowser,
             terminal: NoopTerminal,
-            process: crate::process_context::ProcessContext::default(),
+            process: onequery_cli_core::process_context::ProcessContext::default(),
         }
     }
 }

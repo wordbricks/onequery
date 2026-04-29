@@ -1,7 +1,4 @@
 mod layers;
-mod paths;
-#[allow(dead_code)]
-pub(crate) mod self_host;
 
 use std::fmt::Display;
 use std::fs;
@@ -27,19 +24,17 @@ use self::layers::load_user_file_layer;
 use self::layers::materialize_runtime_config;
 use self::layers::origins_for_layer_stack;
 use self::layers::raw_cli_overrides_layer;
-pub(crate) use self::paths::config_dir;
-use self::paths::config_path;
-pub(crate) use self::paths::data_dir;
-use self::self_host::default_public_origin;
-
-use crate::path_utils;
+pub(crate) use onequery_cli_core::app_paths::config_dir;
+use onequery_cli_core::app_paths::config_path;
+pub(crate) use onequery_cli_core::app_paths::data_dir;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use onequery_cli_core::path_utils;
+use onequery_gateway::self_host::default_public_origin;
 
 pub(crate) const DEFAULT_REQUEST_TIMEOUT_SEC: u64 = 60;
 pub(crate) type RawCliConfigOverrides = Vec<(String, TomlValue)>;
 const WORKSPACE_DEV_CONFIG_FILENAME: &str = "onequery.dev.toml";
-const WORKSPACE_DEV_ROOT_FROM_CARGO_MANIFEST_DIR: &str = "../../../..";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum ServerUrlValidationFailure {
@@ -94,6 +89,7 @@ pub(crate) fn config_set_request_timeout_sec_command_example() -> String {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum WorkspaceDevBaseUrlFailure {
+    ResolveRepoRoot { message: String },
     Read { path: PathBuf, message: String },
     Parse { path: PathBuf, message: String },
     InvalidOrigin { path: PathBuf, message: String },
@@ -102,6 +98,9 @@ pub(crate) enum WorkspaceDevBaseUrlFailure {
 impl WorkspaceDevBaseUrlFailure {
     pub(crate) fn render(&self) -> String {
         match self {
+            Self::ResolveRepoRoot { message } => {
+                format!("failed to resolve workspace-dev repo root: {message}")
+            }
             Self::Read { path, message } => format!(
                 "failed to read workspace-dev config {}: {message}",
                 path.display()
@@ -135,18 +134,18 @@ pub(crate) fn workspace_dev_base_url_for_debug_build()
         return Ok(None);
     }
 
-    Ok(Some(workspace_dev_base_url_from_manifest_dir(Path::new(
-        env!("CARGO_MANIFEST_DIR"),
-    ))?))
+    let repo_root = onequery_utils::repo_root().map_err(|error| {
+        WorkspaceDevBaseUrlFailure::ResolveRepoRoot {
+            message: error.to_string(),
+        }
+    })?;
+    Ok(Some(workspace_dev_base_url_from_repo_root(&repo_root)?))
 }
 
-fn workspace_dev_base_url_from_manifest_dir(
-    manifest_dir: &Path,
+fn workspace_dev_base_url_from_repo_root(
+    repo_root: &Path,
 ) -> Result<String, WorkspaceDevBaseUrlFailure> {
-    let config_path = manifest_dir
-        .join(WORKSPACE_DEV_ROOT_FROM_CARGO_MANIFEST_DIR)
-        .join(WORKSPACE_DEV_CONFIG_FILENAME);
-    workspace_dev_base_url_from_path(&config_path)
+    workspace_dev_base_url_from_path(&repo_root.join(WORKSPACE_DEV_CONFIG_FILENAME))
 }
 
 fn workspace_dev_base_url_from_path(
@@ -572,8 +571,8 @@ mod tests {
     use super::layers::ConfigValueOrigin;
     use super::layers::materialize_runtime_config;
     use super::normalize_server_url;
-    use super::self_host::default_public_origin;
-    use super::workspace_dev_base_url_from_manifest_dir;
+    use super::workspace_dev_base_url_from_repo_root;
+    use onequery_gateway::self_host::default_public_origin;
 
     #[derive(Clone, Debug, Default, PartialEq, Eq)]
     struct CapturedEvent {
@@ -688,16 +687,11 @@ mod tests {
     }
 
     #[test]
-    fn workspace_dev_base_url_from_manifest_dir_uses_workspace_root_browser_origin() {
+    fn workspace_dev_base_url_from_repo_root_uses_workspace_root_browser_origin() {
         let workspace_root =
             std::env::temp_dir().join(format!("onequery-workspace-dev-test-{}", Uuid::new_v4()));
-        let manifest_dir = workspace_root
-            .join("apps")
-            .join("cli")
-            .join("crates")
-            .join("onequery-cli");
-        fs::create_dir_all(&manifest_dir).unwrap_or_else(|error| {
-            panic!("expected manifest directory creation to succeed: {error}");
+        fs::create_dir_all(&workspace_root).unwrap_or_else(|error| {
+            panic!("expected workspace root creation to succeed: {error}");
         });
         fs::write(
             workspace_root.join(WORKSPACE_DEV_CONFIG_FILENAME),
@@ -724,7 +718,7 @@ disable_rate_limit = true
         .unwrap_or_else(|error| panic!("expected workspace-dev config write to succeed: {error}"));
 
         assert_eq!(
-            workspace_dev_base_url_from_manifest_dir(&manifest_dir),
+            workspace_dev_base_url_from_repo_root(&workspace_root),
             Ok("http://localhost:4545".to_owned())
         );
 
@@ -734,19 +728,14 @@ disable_rate_limit = true
     }
 
     #[test]
-    fn workspace_dev_base_url_from_manifest_dir_reports_missing_workspace_config() {
+    fn workspace_dev_base_url_from_repo_root_reports_missing_workspace_config() {
         let workspace_root =
             std::env::temp_dir().join(format!("onequery-workspace-dev-test-{}", Uuid::new_v4()));
-        let manifest_dir = workspace_root
-            .join("apps")
-            .join("cli")
-            .join("crates")
-            .join("onequery-cli");
-        fs::create_dir_all(&manifest_dir).unwrap_or_else(|error| {
-            panic!("expected manifest directory creation to succeed: {error}");
+        fs::create_dir_all(&workspace_root).unwrap_or_else(|error| {
+            panic!("expected workspace root creation to succeed: {error}");
         });
 
-        let failure = workspace_dev_base_url_from_manifest_dir(&manifest_dir)
+        let failure = workspace_dev_base_url_from_repo_root(&workspace_root)
             .expect_err("expected missing workspace-dev config to fail");
         assert!(matches!(failure, WorkspaceDevBaseUrlFailure::Read { .. }));
         assert!(failure.render().contains(WORKSPACE_DEV_CONFIG_FILENAME));
@@ -757,16 +746,11 @@ disable_rate_limit = true
     }
 
     #[test]
-    fn workspace_dev_base_url_from_manifest_dir_reports_invalid_workspace_config() {
+    fn workspace_dev_base_url_from_repo_root_reports_invalid_workspace_config() {
         let workspace_root =
             std::env::temp_dir().join(format!("onequery-workspace-dev-test-{}", Uuid::new_v4()));
-        let manifest_dir = workspace_root
-            .join("apps")
-            .join("cli")
-            .join("crates")
-            .join("onequery-cli");
-        fs::create_dir_all(&manifest_dir).unwrap_or_else(|error| {
-            panic!("expected manifest directory creation to succeed: {error}");
+        fs::create_dir_all(&workspace_root).unwrap_or_else(|error| {
+            panic!("expected workspace root creation to succeed: {error}");
         });
         fs::write(
             workspace_root.join(WORKSPACE_DEV_CONFIG_FILENAME),
@@ -777,7 +761,7 @@ port = 4545
         )
         .unwrap_or_else(|error| panic!("expected workspace-dev config write to succeed: {error}"));
 
-        let failure = workspace_dev_base_url_from_manifest_dir(&manifest_dir)
+        let failure = workspace_dev_base_url_from_repo_root(&workspace_root)
             .expect_err("expected invalid workspace-dev config to fail");
         assert!(matches!(failure, WorkspaceDevBaseUrlFailure::Parse { .. }));
         assert!(failure.render().contains(WORKSPACE_DEV_CONFIG_FILENAME));

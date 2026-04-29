@@ -1,0 +1,17 @@
+{
+  "name": "@onequery/proto-workflow",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./buf/validate/*": "./src/buf/validate/*.ts",
+    "./workflow/v1/*": "./src/onequery/workflow/v1/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "catalog:"
+  }
+}

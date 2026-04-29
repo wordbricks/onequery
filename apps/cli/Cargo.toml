@@ -1,8 +1,13 @@
 [workspace]
 members = [
+  "crates/git-utils",
   "crates/onequery-cli",
   "crates/onequery-cli-core",
-  "crates/onequery-config",
+  "crates/config",
+  "crates/gateway",
+  "crates/proto-cli",
+  "crates/proto-runtime",
+  "crates/utils",
 ]
 resolver = "2"
 
@@ -23,7 +28,12 @@ license = "Apache-2.0"
 # Internal
 onequery-cli = { path = "crates/onequery-cli" }
 onequery-cli-core = { path = "crates/onequery-cli-core" }
-onequery-config = { path = "crates/onequery-config" }
+onequery-config = { path = "crates/config" }
+onequery-gateway = { path = "crates/gateway" }
+onequery-git-utils = { path = "crates/git-utils" }
+onequery-proto-cli = { path = "crates/proto-cli" }
+onequery-proto-runtime = { path = "crates/proto-runtime" }
+onequery-utils = { path = "crates/utils" }
 
 # External
 base64 = "0.22"
@@ -37,9 +47,11 @@ connectrpc = "0.3.3"
 connectrpc-build = "0.3.3"
 dirs = "6"
 flate2 = "1.1.9"
+futures = "0.3"
 getrandom = "0.4"
 http = "1"
 http-body = "1"
+http-body-util = "0.1"
 insta = "1.47.2"
 jaq-core = "3.0.0"
 jaq-json = "2.0.0"

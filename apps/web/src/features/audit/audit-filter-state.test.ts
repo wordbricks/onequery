@@ -1,4 +1,4 @@
-import type { AuditSearch } from "@onequery/contracts/audit";
+import type { AuditSearch } from "@onequery/audit-contracts/audit";
 import { describe, expect, it } from "vitest";
 
 import {

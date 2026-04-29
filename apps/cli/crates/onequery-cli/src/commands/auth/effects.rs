@@ -10,7 +10,6 @@ use tokio::time::Duration;
 use tokio::time::sleep;
 
 use crate::credentials::ImportedAuthSession;
-use crate::path_utils::resolve_user_path_for_cli;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_client_build_failure;
 use crate::presentation::api_failure::present_api_failure_with_context;
@@ -28,6 +27,7 @@ use crate::workflows::retry::classify_retry_directive;
 use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
 use crate::workflows::runner::WorkflowRunConfig;
 use crate::workflows::runner::run_reducer_workflow;
+use onequery_cli_core::path_utils::resolve_user_path_for_cli;
 
 use super::super::CommandContext;
 use super::super::Runtime;

@@ -1,5 +1,6 @@
 import { create, fromJson, isFieldSet, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
+import * as sourceApiPb from "@onequery/proto-workflow/workflow/v1/source_api_action_pb";
 import type {
   SourceApiDescriptor,
   SourceApiFieldPolicy,
@@ -10,7 +11,6 @@ import type {
 } from "@onequery/server/source-api";
 import { canonicalizeSourceApiHeaderNames } from "@onequery/server/source-api/header-policy";
 
-import * as sourceApiPb from "../../../connect/gen/onequery/workflow/v1/source_api_action_pb";
 import { assertNever } from "../../storage/protobuf-codec";
 import type {
   SourceApiActionRequestDescriptor,

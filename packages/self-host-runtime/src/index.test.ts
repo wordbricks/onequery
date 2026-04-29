@@ -10,7 +10,10 @@ import {
 import type { DatabasePreparationResult } from "@onequery/db/server";
 import type { ApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
-import type { ServerStorage } from "@onequery/server/storage";
+import type {
+  ServerStorage,
+  ServerStorageHandle,
+} from "@onequery/server/storage";
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -40,6 +43,15 @@ function createTempSelfHostRuntimePaths() {
     pidPath: join(root, "run", "server.pid"),
     runDir: join(root, "run"),
   });
+}
+
+function createTempRuntimeControlEndpoint(
+  runtimePaths: ReturnType<typeof createTempSelfHostRuntimePaths>
+) {
+  return {
+    socketPath: join(runtimePaths.runDir, "runtime-control.sock"),
+    transport: "unix" as const,
+  };
 }
 
 function createMocks() {
@@ -92,10 +104,13 @@ function createMocks() {
               },
       })
     );
-  const createServerStorage: StartServerDependencies["createServerStorage"] =
+  const closeServerStorage = vi.fn(async () => undefined);
+  const createServerStorageHandle: StartServerDependencies["createServerStorageHandle"] =
     vi.fn(
-      (_runtime, apiRateLimitStorage): ServerStorage =>
-        ({ apiRateLimitStorage }) as ServerStorage
+      (_runtime, apiRateLimitStorage): ServerStorageHandle => ({
+        close: closeServerStorage,
+        storage: { apiRateLimitStorage } as ServerStorage,
+      })
     );
   const prepareRuntimeDatabaseResult: StartServerDependencies["prepareRuntimeDatabaseResult"] =
     vi.fn(async () =>
@@ -106,19 +121,51 @@ function createMocks() {
     );
   const releaseLifecycleLease = vi.fn(async () => undefined);
   const transitionLifecycleLease = vi.fn(async () => undefined);
+  const attachRuntimeControlShutdownController = vi.fn();
+  const disposeRuntimeControlActor = vi.fn();
+  const runtimeControlServerClose = vi.fn(async () => undefined);
   const acquireRuntimeLifecycleLeaseResult: StartServerDependencies["acquireRuntimeLifecycleLeaseResult"] =
-    vi.fn(async () =>
+    vi.fn(async (paths) =>
       Result.ok({
-        paths: {
-          dataDir: "/tmp/onequery/data",
-          lockPath: "/tmp/onequery/run/server.lock",
-          logsDir: "/tmp/onequery/logs",
-          pidPath: "/tmp/onequery/run/server.pid",
-        },
+        paths,
         transition: transitionLifecycleLease,
         release: releaseLifecycleLease,
       })
     );
+  const createRuntimeControlActor: StartServerDependencies["createRuntimeControlActor"] =
+    vi.fn(({ lease }) => ({
+      attachShutdownController: attachRuntimeControlShutdownController,
+      dispose: disposeRuntimeControlActor,
+      getStatus: vi.fn(async () => ({
+        identity: {
+          dataDir: lease.paths.dataDir,
+          launchId: "launch-a",
+          pid: process.pid,
+        },
+        phase: 2,
+        sequence: 1n,
+      })),
+      lease,
+      stop: vi.fn(async () => ({
+        disposition: 1,
+        status: {
+          identity: {
+            dataDir: lease.paths.dataDir,
+            launchId: "launch-a",
+            pid: process.pid,
+          },
+          phase: 5,
+          sequence: 2n,
+        },
+      })),
+      watchStatus: vi.fn(async function* watchStatus() {}),
+    }));
+  const serveRuntimeControl: StartServerDependencies["serveRuntimeControl"] =
+    vi.fn(async ({ endpoint }) => ({
+      close: runtimeControlServerClose,
+      name: "runtime-control" as const,
+      socketPath: endpoint.socketPath,
+    }));
   const appendLifecycleLog: StartServerDependencies["appendLifecycleLog"] =
     vi.fn(async () => undefined);
   const shutdownController = {
@@ -139,14 +186,20 @@ function createMocks() {
     acquireRuntimeLifecycleLeaseResult,
     appendLifecycleLog,
     attachGracefulShutdownHandlers,
+    attachRuntimeControlShutdownController,
     createApp,
-    createServerStorage,
+    closeServerStorage,
+    createServerStorageHandle,
     createServerRuntimeConfig,
+    createRuntimeControlActor,
     createSpaAssetBindingResult,
+    disposeRuntimeControlActor,
     prepareRuntimeDatabaseResult,
     releaseLifecycleLease,
+    runtimeControlServerClose,
     shutdownController,
     transitionLifecycleLease,
+    serveRuntimeControl,
     serve,
   };
 }
@@ -160,11 +213,13 @@ function createDependencies(
     appendLifecycleLog: mocks.appendLifecycleLog,
     attachGracefulShutdownHandlers: mocks.attachGracefulShutdownHandlers,
     createApp: mocks.createApp,
-    createServerStorage: mocks.createServerStorage,
+    createServerStorageHandle: mocks.createServerStorageHandle,
     createServerRuntimeConfig: mocks.createServerRuntimeConfig,
+    createRuntimeControlActor: mocks.createRuntimeControlActor,
     createSpaAssetBindingResult: mocks.createSpaAssetBindingResult,
     loadStartupLaunchConfigResult,
     prepareRuntimeDatabaseResult: mocks.prepareRuntimeDatabaseResult,
+    serveRuntimeControl: mocks.serveRuntimeControl,
     serve: mocks.serve,
   };
 }
@@ -216,25 +271,27 @@ describe("startServer", () => {
 
   it("starts from a serialized self-host launch config file", async () => {
     const runtimePaths = createTempSelfHostRuntimePaths();
-    const launchConfigPath = writeLaunchConfigFile(
-      createSelfHostLaunchConfig({
-        assetsDistDir: "/tmp/web",
-        migrationsDir: "/tmp/migrations",
-        runtimePaths,
-      })
-    );
+    const runtimeControl = createTempRuntimeControlEndpoint(runtimePaths);
+    const launchConfig = createSelfHostLaunchConfig({
+      assetsDistDir: "/tmp/web",
+      launchId: "launch-a",
+      migrationsDir: "/tmp/migrations",
+      runtimeControl,
+      runtimePaths,
+    });
+    const launchConfigPath = writeLaunchConfigFile(launchConfig);
 
     const server = await startServer({
       launchConfigPath,
     });
 
-    const createServerStorageMock =
-      mocks.createServerStorage as typeof mocks.createServerStorage & {
+    const createServerStorageHandleMock =
+      mocks.createServerStorageHandle as typeof mocks.createServerStorageHandle & {
         mock: {
           calls: Array<[ServerRuntimeConfig, ApiRateLimitStorage]>;
         };
       };
-    const apiRateLimitStorage = createServerStorageMock.mock.calls.at(
+    const apiRateLimitStorage = createServerStorageHandleMock.mock.calls.at(
       -1
     )?.[1] as ApiRateLimitStorage;
     expect(apiRateLimitStorage).toBeDefined();
@@ -249,12 +306,14 @@ describe("startServer", () => {
     });
     expect(mocks.acquireRuntimeLifecycleLeaseResult).toHaveBeenCalledWith(
       {
+        controlEndpoint: runtimeControl,
         dataDir: runtimePaths.dataDir,
         lockPath: runtimePaths.lockPath,
         logsDir: runtimePaths.logsDir,
         pidPath: runtimePaths.pidPath,
       },
       expect.objectContaining({
+        launchId: "launch-a",
         logWriter: expect.objectContaining({
           append: expect.any(Function),
         }),
@@ -267,11 +326,37 @@ describe("startServer", () => {
           release: expect.any(Function),
         }),
         server,
+        shutdownResources: expect.arrayContaining([
+          expect.objectContaining({
+            name: "runtime-control",
+          }),
+          expect.objectContaining({
+            name: "server-storage",
+          }),
+        ]),
+      })
+    );
+    expect(mocks.createRuntimeControlActor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identity: {
+          dataDir: runtimePaths.dataDir,
+          launchId: "launch-a",
+          pid: process.pid,
+        },
+      })
+    );
+    expect(mocks.attachRuntimeControlShutdownController).toHaveBeenCalledWith(
+      mocks.shutdownController
+    );
+    expect(mocks.serveRuntimeControl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: runtimeControl,
       })
     );
     expect(mocks.transitionLifecycleLease).toHaveBeenCalledWith("ready");
     expect(mocks.appendLifecycleLog).toHaveBeenCalledWith(
       {
+        controlEndpoint: runtimeControl,
         dataDir: runtimePaths.dataDir,
         lockPath: runtimePaths.lockPath,
         logsDir: runtimePaths.logsDir,
@@ -291,6 +376,7 @@ describe("startServer", () => {
       createSelfHostLaunchConfig({
         assetsDistDir: "/tmp/web",
         migrationsDir: "/tmp/migrations",
+        runtimeControl: createTempRuntimeControlEndpoint(runtimePaths),
         runtimePaths,
       })
     );
@@ -308,6 +394,8 @@ describe("startServer", () => {
     });
 
     expect(mocks.shutdownController.dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.runtimeControlServerClose).toHaveBeenCalledTimes(1);
+    expect(mocks.closeServerStorage).toHaveBeenCalledTimes(1);
     expect(mocks.releaseLifecycleLease).toHaveBeenCalledWith({
       reason: "startup_failure",
       stopServer: false,

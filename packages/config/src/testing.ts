@@ -73,6 +73,15 @@ export function createSelfHostRuntimePaths(input?: {
   };
 }
 
+export function createSelfHostRuntimeControl(input?: {
+  socketPath?: string;
+}): NonNullable<ServerLaunchConfig["runtimeControl"]> {
+  return {
+    socketPath: input?.socketPath ?? "/tmp/onequery/run/runtime-control.sock",
+    transport: "unix",
+  };
+}
+
 export function createSelfHostSmtpConfig(input?: {
   fromEmail?: string;
   fromName?: string;
@@ -98,11 +107,13 @@ export function createSelfHostLaunchConfig(input?: {
   authSecret?: string;
   connectorEnrollmentToken?: string;
   host?: string;
+  launchId?: string;
   masterEncryptionKey?: string;
   migrationsDir?: string;
   port?: number;
   publicOrigin?: string;
   rateLimit?: ServerLaunchConfig["rateLimit"];
+  runtimeControl?: NonNullable<ServerLaunchConfig["runtimeControl"]>;
   runtimePaths?: NonNullable<ServerLaunchConfig["runtimePaths"]>;
   smtp?: NonNullable<ServerLaunchConfig["smtp"]>;
   storageDir?: string;
@@ -121,6 +132,7 @@ export function createSelfHostLaunchConfig(input?: {
       masterEncryptionKey:
         input?.masterEncryptionKey ?? SAMPLE_MASTER_ENCRYPTION_KEY,
     },
+    launchId: input?.launchId ?? "test-self-host-launch",
     listen: {
       host: input?.host ?? "127.0.0.1",
       port: input?.port ?? 5656,
@@ -136,6 +148,7 @@ export function createSelfHostLaunchConfig(input?: {
       },
       enabled: true,
     },
+    runtimeControl: input?.runtimeControl ?? createSelfHostRuntimeControl(),
     runtimePaths: input?.runtimePaths ?? createSelfHostRuntimePaths(),
     smtp: input?.smtp,
     storage: {

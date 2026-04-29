@@ -5,10 +5,26 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+dirs = { workspace = true }
+path-absolutize = { workspace = true }
+onequery-utils = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
 thiserror = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_System_Threading",
+] }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 
 [lints]
 workspace = true

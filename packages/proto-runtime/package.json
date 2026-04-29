@@ -1,0 +1,18 @@
+{
+  "name": "@onequery/proto-runtime",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./buf/validate/*": "./src/buf/validate/*.ts",
+    "./google/rpc/*": "./src/google/rpc/*.ts",
+    "./runtime/v1/*": "./src/onequery/runtime/v1/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "catalog:"
+  }
+}

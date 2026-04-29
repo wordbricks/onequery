@@ -1,8 +1,8 @@
+import type { CliQueryRequest } from "@onequery/proto-cli/cli/v1/query_pb";
 import { Result } from "better-result";
 
 import { resolveQueryResultWindow } from "../../../query/result-window";
 import { requireCliConnectRequestContext } from "../../context";
-import type { CliQueryRequest } from "../../gen/onequery/cli/v1/query_pb";
 import type { CliServiceResult } from "../result";
 import type { CliServiceMethod } from "../types";
 import { parseCliQueryRequest } from "./request";

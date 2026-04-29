@@ -1,9 +1,9 @@
-import { auditOriginActorSchema } from "@onequery/contracts/audit";
+import { auditOriginActorSchema } from "@onequery/audit-contracts/audit";
 import type {
   AuditOriginActor,
   AuditQueryActionMetrics,
   AuditSourceApiActionMetrics,
-} from "@onequery/contracts/audit";
+} from "@onequery/audit-contracts/audit";
 import type { WorkflowActorSnapshotJson } from "@onequery/db/server";
 
 import type {

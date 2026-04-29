@@ -1,8 +1,8 @@
 import { create, isFieldSet } from "@bufbuild/protobuf";
 import { durationFromMs } from "@bufbuild/protobuf/wkt";
+import { CliQueryRequestSchema } from "@onequery/proto-cli/cli/v1/query_pb";
 import { describe, expect, it } from "vitest";
 
-import { CliQueryRequestSchema } from "../../gen/onequery/cli/v1/query_pb";
 import { parseCliQueryRequest } from "./request";
 
 describe("parseCliQueryRequest", () => {

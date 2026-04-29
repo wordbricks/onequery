@@ -10,7 +10,7 @@ import type {
   AuditSourceApiActionMetrics,
   AuditSourceApiActionPhase,
   AuditTarget,
-} from "@onequery/contracts/audit";
+} from "@onequery/audit-contracts/audit";
 import type {
   Database,
   WorkflowActorSnapshotJson,

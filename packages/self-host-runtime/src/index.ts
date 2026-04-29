@@ -5,8 +5,11 @@ import { createMemoryApiRateLimitStorage } from "@onequery/server/lib/rate-limit
 import type { ApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import { createServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
-import { createServerStorage } from "@onequery/server/storage";
-import type { ServerStorage } from "@onequery/server/storage";
+import { createServerStorageHandle } from "@onequery/server/storage";
+import type {
+  ServerStorage,
+  ServerStorageHandle,
+} from "@onequery/server/storage";
 import { unreachable } from "antiox/panic";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
@@ -30,8 +33,17 @@ import {
 import type {
   GracefulShutdownController,
   RuntimeLifecycleLease,
+  RuntimeShutdownResource,
   SelfHostLifecyclePaths,
 } from "./self-host/lifecycle";
+import {
+  createRuntimeControlActor,
+  serveRuntimeControl,
+} from "./self-host/runtime-control";
+import type {
+  RuntimeControlActor,
+  RuntimeControlServer,
+} from "./self-host/runtime-control";
 import { loadStartupLaunchConfigResult } from "./startup";
 import type { ServerStartupInput } from "./startup";
 
@@ -62,6 +74,7 @@ type UnmanagedLifecycleContext = {
 
 type ManagedLifecycleContext = {
   kind: "managed";
+  controlActor: RuntimeControlActor;
   lease: RuntimeLifecycleLease;
   logWriter: LifecycleLogWriter;
 };
@@ -71,7 +84,9 @@ type RuntimeLifecycleContext =
   | UnmanagedLifecycleContext;
 
 type SelfHostLaunchConfig = ServerLaunchConfig & {
+  launchId: string;
   mode: "self-host";
+  runtimeControl: NonNullable<ServerLaunchConfig["runtimeControl"]>;
   runtimePaths: NonNullable<ServerLaunchConfig["runtimePaths"]>;
 };
 
@@ -90,19 +105,28 @@ type ServerStartupShell =
       status: "initial";
     }
   | {
+      lifecycle: RuntimeLifecycleContext;
+      status: "storage_created";
+      storageHandle: ServerStorageHandle;
+    }
+  | {
       lifecycle: UnmanagedLifecycleContext;
       server: StartedServer;
+      storageHandle: ServerStorageHandle;
       status: "serving_unmanaged";
     }
   | {
       lifecycle: ManagedLifecycleContext;
       server: StartedServer;
+      storageHandle: ServerStorageHandle;
       status: "serving_managed_starting";
     }
   | {
       lifecycle: ManagedLifecycleContext;
+      controlServer: RuntimeControlServer;
       server: StartedServer;
       shutdownController: GracefulShutdownController;
+      storageHandle: ServerStorageHandle;
       status: "serving_managed";
     };
 
@@ -146,17 +170,20 @@ export interface StartServerDependencies {
     lease: RuntimeLifecycleLease;
     logWriter: LifecycleLogWriter;
     server: StartedServer;
+    shutdownResources?: readonly RuntimeShutdownResource[];
   }): GracefulShutdownController;
   createApp(input: {
     runtime: ServerRuntimeConfig;
     spaAssets: SpaAssetBinding;
     storage: ServerStorage;
   }): AppFetchHandler;
-  createServerStorage: typeof createServerStorage;
+  createServerStorageHandle: typeof createServerStorageHandle;
   createServerRuntimeConfig: typeof createServerRuntimeConfig;
   createSpaAssetBindingResult: typeof createSpaAssetBindingResult;
+  createRuntimeControlActor: typeof createRuntimeControlActor;
   loadStartupLaunchConfigResult: typeof loadStartupLaunchConfigResult;
   prepareRuntimeDatabaseResult: typeof prepareRuntimeDatabaseResult;
+  serveRuntimeControl: typeof serveRuntimeControl;
   serve(options: {
     fetch: (request: Request, env?: object) => Response | Promise<Response>;
     hostname: string;
@@ -170,11 +197,13 @@ const defaultStartServerDependencies: StartServerDependencies = {
   appendLifecycleLog,
   attachGracefulShutdownHandlers,
   createApp,
-  createServerStorage,
+  createServerStorageHandle,
   createServerRuntimeConfig,
   createSpaAssetBindingResult,
+  createRuntimeControlActor,
   loadStartupLaunchConfigResult,
   prepareRuntimeDatabaseResult,
+  serveRuntimeControl,
   serve: serveWithNode,
 };
 
@@ -233,7 +262,10 @@ function isSelfHostLaunchConfig(
   launchConfig: ServerLaunchConfig
 ): launchConfig is SelfHostLaunchConfig {
   return (
-    launchConfig.mode === "self-host" && launchConfig.runtimePaths !== undefined
+    launchConfig.mode === "self-host" &&
+    launchConfig.runtimeControl !== undefined &&
+    launchConfig.runtimePaths !== undefined &&
+    typeof launchConfig.launchId === "string"
   );
 }
 
@@ -250,7 +282,7 @@ function resolveLaunchLifecycleModeResult(
     return Result.err(
       createWorkflowError(
         "resolve_lifecycle_paths",
-        "self-host launch config requires runtimePaths",
+        "self-host launch config requires runtimePaths, runtimeControl, and launchId",
         launchConfig
       )
     );
@@ -266,6 +298,7 @@ function createSelfHostLifecyclePaths(
   launchConfig: SelfHostLaunchConfig
 ): SelfHostLifecyclePaths {
   return {
+    controlEndpoint: launchConfig.runtimeControl,
     dataDir: launchConfig.runtimePaths.dataDir,
     lockPath: launchConfig.runtimePaths.lockPath,
     logsDir: launchConfig.runtimePaths.logsDir,
@@ -301,6 +334,22 @@ async function stopServerAfterStartupFailure(
   });
 }
 
+async function closeRuntimeControlServerAfterStartupFailure(
+  server: RuntimeControlServer
+): Promise<ResultType<void, StartServerWorkflowError>> {
+  return Result.tryPromise({
+    try: async () => {
+      await server.close();
+    },
+    catch: (cause) =>
+      createWorkflowError(
+        "cleanup_startup_failure",
+        "failed to close runtime control server after startup failure",
+        cause
+      ),
+  });
+}
+
 async function releaseLifecycleLeaseAfterStartupFailure(
   lease: RuntimeLifecycleLease
 ): Promise<ResultType<void, StartServerWorkflowError>> {
@@ -315,6 +364,22 @@ async function releaseLifecycleLeaseAfterStartupFailure(
       createWorkflowError(
         "cleanup_startup_failure",
         "failed to release lifecycle lease after startup failure",
+        cause
+      ),
+  });
+}
+
+async function closeStorageAfterStartupFailure(
+  storageHandle: ServerStorageHandle
+): Promise<ResultType<void, StartServerWorkflowError>> {
+  return Result.tryPromise({
+    try: async () => {
+      await storageHandle.close();
+    },
+    catch: (cause) =>
+      createWorkflowError(
+        "cleanup_startup_failure",
+        "failed to close runtime storage after startup failure",
         cause
       ),
   });
@@ -341,6 +406,7 @@ async function resolveLifecycleContextResult(
         const lease = yield* Result.await(
           dependencies
             .acquireRuntimeLifecycleLeaseResult(lifecyclePaths, {
+              launchId: launchLifecycleMode.launchConfig.launchId,
               logWriter,
             })
             .then((result) =>
@@ -353,10 +419,19 @@ async function resolveLifecycleContextResult(
               )
             )
         );
+        const controlActor = dependencies.createRuntimeControlActor({
+          identity: {
+            dataDir: lifecyclePaths.dataDir,
+            launchId: launchLifecycleMode.launchConfig.launchId,
+            pid: process.pid,
+          },
+          lease,
+        });
 
         return Result.ok({
+          controlActor,
           kind: "managed",
-          lease,
+          lease: controlActor.lease,
           logWriter,
         } satisfies ManagedLifecycleContext);
       }
@@ -433,9 +508,9 @@ export function createStartServerResult(
 
       const apiRateLimitStorage =
         yield* resolveApiRateLimitStorageResult(launchConfig);
-      const storage = yield* Result.try({
+      const storageHandle = yield* Result.try({
         try: () =>
-          resolvedDependencies.createServerStorage(
+          resolvedDependencies.createServerStorageHandle(
             runtime,
             apiRateLimitStorage
           ),
@@ -446,6 +521,11 @@ export function createStartServerResult(
             cause
           ),
       });
+      startupShellRef.current = {
+        lifecycle,
+        status: "storage_created",
+        storageHandle,
+      };
       const spaAssets = yield* resolvedDependencies
         .createSpaAssetBindingResult({
           assetDir: launchConfig.assets.distDir,
@@ -462,7 +542,7 @@ export function createStartServerResult(
           resolvedDependencies.createApp({
             runtime,
             spaAssets,
-            storage,
+            storage: storageHandle.storage,
           }),
         catch: (cause) =>
           createWorkflowError(
@@ -493,12 +573,14 @@ export function createStartServerResult(
         startupShellRef.current = {
           lifecycle,
           server: startedServer,
+          storageHandle,
           status: "serving_managed_starting",
         };
       } else {
         startupShellRef.current = {
           lifecycle,
           server: startedServer,
+          storageHandle,
           status: "serving_unmanaged",
         };
       }
@@ -506,12 +588,23 @@ export function createStartServerResult(
       const listenAddress = `http://${launchConfig.listen.host}:${startedServer.port}`;
 
       if (lifecycle.kind === "managed") {
+        let runtimeControlServer: RuntimeControlServer | null = null;
         const shutdownController = yield* Result.try({
           try: () =>
             resolvedDependencies.attachGracefulShutdownHandlers({
               lease: lifecycle.lease,
               logWriter: lifecycle.logWriter,
               server: startedServer,
+              shutdownResources: [
+                {
+                  close: () => runtimeControlServer?.close(),
+                  name: "runtime-control",
+                },
+                {
+                  close: () => storageHandle.close(),
+                  name: "server-storage",
+                },
+              ],
             }),
           catch: (cause) =>
             createWorkflowError(
@@ -520,10 +613,28 @@ export function createStartServerResult(
               cause
             ),
         });
+        lifecycle.controlActor.attachShutdownController(shutdownController);
+        runtimeControlServer = yield* Result.await(
+          Result.tryPromise({
+            try: () =>
+              resolvedDependencies.serveRuntimeControl({
+                actor: lifecycle.controlActor,
+                endpoint: lifecycle.lease.paths.controlEndpoint,
+              }),
+            catch: (cause) =>
+              createWorkflowError(
+                "serve",
+                "failed to start runtime control server",
+                cause
+              ),
+          })
+        );
         startupShellRef.current = {
+          controlServer: runtimeControlServer,
           lifecycle,
           server: startedServer,
           shutdownController,
+          storageHandle,
           status: "serving_managed",
         };
         yield* Result.await(
@@ -568,13 +679,35 @@ export function createStartServerResult(
     switch (startupShell.status) {
       case "initial":
         break;
+      case "storage_created": {
+        const closeStorageResult = await closeStorageAfterStartupFailure(
+          startupShell.storageHandle
+        );
+        if (closeStorageResult.isErr()) {
+          cleanupErrors.push(closeStorageResult.error);
+        }
+        break;
+      }
       case "serving_managed": {
         startupShell.shutdownController.dispose();
+        const closeRuntimeControlResult =
+          await closeRuntimeControlServerAfterStartupFailure(
+            startupShell.controlServer
+          );
+        if (closeRuntimeControlResult.isErr()) {
+          cleanupErrors.push(closeRuntimeControlResult.error);
+        }
         const stopServerResult = await stopServerAfterStartupFailure(
           startupShell.server
         );
         if (stopServerResult.isErr()) {
           cleanupErrors.push(stopServerResult.error);
+        }
+        const closeStorageResult = await closeStorageAfterStartupFailure(
+          startupShell.storageHandle
+        );
+        if (closeStorageResult.isErr()) {
+          cleanupErrors.push(closeStorageResult.error);
         }
         break;
       }
@@ -585,6 +718,12 @@ export function createStartServerResult(
         );
         if (stopServerResult.isErr()) {
           cleanupErrors.push(stopServerResult.error);
+        }
+        const closeStorageResult = await closeStorageAfterStartupFailure(
+          startupShell.storageHandle
+        );
+        if (closeStorageResult.isErr()) {
+          cleanupErrors.push(closeStorageResult.error);
         }
         break;
       }
@@ -599,6 +738,7 @@ export function createStartServerResult(
       if (releaseLeaseResult.isErr()) {
         cleanupErrors.push(releaseLeaseResult.error);
       }
+      startupShell.lifecycle.controlActor.dispose();
     }
 
     if (cleanupErrors.length === 1) {

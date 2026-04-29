@@ -9,7 +9,7 @@ use super::AuthSessionSnapshot;
 use super::AuthSessionSource;
 use super::AuthSessionStore;
 use super::paths::auth_path;
-use crate::path_utils;
+use onequery_cli_core::path_utils;
 
 pub(super) fn load_auth_session_store(startup_command: &str) -> Result<AuthSessionStore, CliError> {
     let path = auth_path(startup_command)?;

@@ -1,0 +1,72 @@
+// Private Connect service for self-host runtime lifecycle control.
+edition = "2023";
+
+package onequery.runtime.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/duration.proto";
+import "onequery/runtime/v1/common.proto";
+
+service RuntimeControlService {
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc Stop(StopRequest) returns (StopResponse);
+
+  rpc WatchStatus(WatchStatusRequest) returns (stream WatchStatusResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  RuntimeStatus status = 1 [(buf.validate.field).required = true];
+}
+
+message StopRequest {
+  string operation_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
+  string reason = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+  RuntimeStopCompletion completion = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  google.protobuf.Duration grace_timeout = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).duration.gt = {},
+    (buf.validate.field).duration.lte = {seconds: 300}
+  ];
+}
+
+message StopResponse {
+  RuntimeStopDisposition disposition = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  RuntimeStatus status = 2 [(buf.validate.field).required = true];
+  RuntimeTransition transition = 3;
+}
+
+message WatchStatusRequest {
+  uint64 after_sequence = 1 [(buf.validate.field).uint64.gte = 0];
+  bool include_snapshot = 2 [(buf.validate.field).required = true];
+}
+
+message WatchStatusResponse {
+  oneof event {
+    option (buf.validate.oneof).required = true;
+
+    RuntimeStatus snapshot = 1;
+    RuntimeTransition transition = 2;
+  }
+}

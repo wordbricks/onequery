@@ -247,6 +247,12 @@ impl CommandOutput {
     }
 }
 
+impl From<onequery_gateway::GatewayCommandOutput> for CommandOutput {
+    fn from(output: onequery_gateway::GatewayCommandOutput) -> Self {
+        Self::structured(output.lines, output.data)
+    }
+}
+
 pub(crate) fn serialize_command_data(
     value: &impl Serialize,
     command: &'static str,

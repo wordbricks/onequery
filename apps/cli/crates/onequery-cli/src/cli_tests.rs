@@ -478,14 +478,16 @@ fn parse_invocation_rejects_doctor_report_last_and_request_id_together() {
 }
 
 #[test]
-fn parse_invocation_accepts_gateway_foreground_start_and_status_subcommands() {
+fn parse_invocation_accepts_gateway_foreground_and_lifecycle_subcommands() {
     for (args, expected) in [
         (&["onequery", "gateway"][..], GatewayCommand::Foreground),
         (&["onequery", "gateway", "start"][..], GatewayCommand::Start),
+        (&["onequery", "gateway", "stop"][..], GatewayCommand::Stop),
         (
             &["onequery", "gateway", "status"][..],
             GatewayCommand::Status,
         ),
+        (&["onequery", "gateway", "logs"][..], GatewayCommand::Logs),
     ] {
         let invocation = parse_invocation(args);
 
@@ -501,6 +503,30 @@ fn parse_invocation_accepts_upgrade_command() {
     let invocation = parse_invocation(&["onequery", "upgrade"]);
 
     assert!(matches!(invocation.command, Command::Upgrade));
+}
+
+#[test]
+fn parse_invocation_accepts_hidden_gateway_supervisor_command() {
+    let invocation = parse_invocation(&[
+        "onequery",
+        "__gateway-supervisor",
+        "--runtime-command",
+        "node",
+        "--runtime-entry",
+        "/tmp/runtime/onequery-server.mjs",
+        "--launch-config",
+        "/tmp/run/launch.json",
+    ]);
+
+    let Command::GatewaySupervisor(args) = invocation.command else {
+        panic!("expected hidden gateway supervisor command");
+    };
+    assert_eq!(args.runtime_command, OsString::from("node"));
+    assert_eq!(
+        args.runtime_entry,
+        PathBuf::from("/tmp/runtime/onequery-server.mjs")
+    );
+    assert_eq!(args.launch_config, PathBuf::from("/tmp/run/launch.json"));
 }
 
 #[test]

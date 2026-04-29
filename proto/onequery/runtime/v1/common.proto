@@ -1,0 +1,137 @@
+// Private self-host runtime lifecycle contract shared by the gateway and runtime.
+edition = "2023";
+
+package onequery.runtime.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+import "google/rpc/error_details.proto";
+
+enum RuntimePhase {
+  RUNTIME_PHASE_UNSPECIFIED = 0;
+  RUNTIME_PHASE_STARTING = 1;
+  RUNTIME_PHASE_READY = 2;
+  RUNTIME_PHASE_DRAINING = 3;
+  RUNTIME_PHASE_CHECKPOINTING = 4;
+  RUNTIME_PHASE_STOPPING = 5;
+  RUNTIME_PHASE_STOPPED = 6;
+  RUNTIME_PHASE_SHUTDOWN_FAILED = 7;
+  RUNTIME_PHASE_FAILED = 8;
+}
+
+enum RuntimeStopCompletion {
+  RUNTIME_STOP_COMPLETION_UNSPECIFIED = 0;
+  RUNTIME_STOP_COMPLETION_CLEANUP_ONLY = 1;
+  RUNTIME_STOP_COMPLETION_CLEANUP_AND_EXIT = 2;
+}
+
+enum RuntimeStopDisposition {
+  RUNTIME_STOP_DISPOSITION_UNSPECIFIED = 0;
+  RUNTIME_STOP_DISPOSITION_ACCEPTED = 1;
+  RUNTIME_STOP_DISPOSITION_ALREADY_STOPPING = 2;
+  RUNTIME_STOP_DISPOSITION_ALREADY_FINISHED = 3;
+}
+
+enum RuntimeFailureCode {
+  RUNTIME_FAILURE_CODE_UNSPECIFIED = 0;
+  RUNTIME_FAILURE_CODE_SHUTDOWN_REJECTED = 1;
+  RUNTIME_FAILURE_CODE_SHUTDOWN_TIMEOUT = 2;
+  RUNTIME_FAILURE_CODE_RESOURCE_CLOSE_FAILED = 3;
+  RUNTIME_FAILURE_CODE_CHECKPOINT_FAILED = 4;
+  RUNTIME_FAILURE_CODE_INTERNAL = 5;
+}
+
+message RuntimeIdentity {
+  uint32 pid = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gt = 0
+  ];
+  string launch_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+  string data_dir = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message RuntimeFailure {
+  RuntimeFailureCode code = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string message = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  bool retryable = 3 [(buf.validate.field).required = true];
+  google.protobuf.Duration retry_after = 4 [(buf.validate.field).duration.gt = {}];
+}
+
+message RuntimeOperation {
+  string operation_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+}
+
+message RuntimeStatus {
+  RuntimeIdentity identity = 1 [(buf.validate.field).required = true];
+  RuntimePhase phase = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  uint64 sequence = 3 [(buf.validate.field).uint64.gte = 0];
+  google.protobuf.Timestamp updated_at = 4 [(buf.validate.field).required = true];
+  RuntimeFailure failure = 5;
+}
+
+message RuntimeTransition {
+  RuntimeOperation operation = 1;
+  uint64 sequence = 2 [(buf.validate.field).uint64.gte = 1];
+  RuntimePhase previous_phase = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  RuntimePhase current_phase = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  string reason = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+  google.protobuf.Timestamp occurred_at = 6 [(buf.validate.field).required = true];
+  RuntimeFailure failure = 7;
+}
+
+// Codegen anchor for standard Connect error-detail schemas used by the
+// private runtime control API. Typed runtime protocol errors use
+// google.rpc.ErrorInfo with domain "onequery.runtime.v1".
+message RuntimeConnectErrorDetailReference {
+  oneof detail {
+    option (buf.validate.oneof).required = true;
+
+    google.rpc.ErrorInfo error_info = 1;
+    google.rpc.BadRequest bad_request = 2;
+    google.rpc.RetryInfo retry_info = 3;
+    google.rpc.ResourceInfo resource_info = 4;
+    google.rpc.PreconditionFailure precondition_failure = 5;
+  }
+}

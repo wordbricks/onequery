@@ -40,6 +40,7 @@
         "@connectrpc/connect": "catalog:",
         "@connectrpc/connect-node": "catalog:",
         "@onequery/base": "workspace:*",
+        "@onequery/proto-cli": "workspace:*",
         "rolldown": "1.0.0-rc.15",
         "vitest": "catalog:testing",
       },
@@ -117,8 +118,8 @@
       "version": "0.0.0",
       "dependencies": {
         "@hookform/resolvers": "5.2.2",
+        "@onequery/audit-contracts": "workspace:*",
         "@onequery/base": "workspace:*",
-        "@onequery/contracts": "workspace:*",
         "@onequery/datetime": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/self-host-runtime": "workspace:*",
@@ -161,6 +162,13 @@
         "vite-tsconfig-paths": "catalog:tooling",
       },
     },
+    "packages/audit-contracts": {
+      "name": "@onequery/audit-contracts",
+      "version": "0.0.0",
+      "dependencies": {
+        "zod": "catalog:",
+      },
+    },
     "packages/base": {
       "name": "@onequery/base",
       "version": "0.0.0",
@@ -178,6 +186,8 @@
         "@onequery/base": "workspace:*",
         "@onequery/codecs": "workspace:*",
         "@onequery/db": "workspace:*",
+        "@onequery/proto-cli": "workspace:*",
+        "@onequery/proto-workflow": "workspace:*",
         "@onequery/server": "workspace:*",
         "better-result": "catalog:",
         "hono": "catalog:",
@@ -224,14 +234,6 @@
         "vitest": "catalog:testing",
       },
     },
-    "packages/contracts": {
-      "name": "@onequery/contracts",
-      "version": "0.0.0",
-      "dependencies": {
-        "@bufbuild/protobuf": "catalog:",
-        "zod": "catalog:",
-      },
-    },
     "packages/datetime": {
       "name": "@onequery/datetime",
       "version": "0.0.0",
@@ -242,7 +244,6 @@
       "dependencies": {
         "@electric-sql/pglite": "0.4.2",
         "@onequery/base": "workspace:*",
-        "@onequery/contracts": "workspace:*",
         "drizzle-orm": "0.45.2",
         "pg": "catalog:",
         "postgres": "3.4.8",
@@ -275,10 +276,36 @@
       "name": "@onequery/openclaw-plugin",
       "version": "0.0.0",
     },
+    "packages/proto-cli": {
+      "name": "@onequery/proto-cli",
+      "version": "0.0.0",
+      "dependencies": {
+        "@bufbuild/protobuf": "catalog:",
+      },
+    },
+    "packages/proto-runtime": {
+      "name": "@onequery/proto-runtime",
+      "version": "0.0.0",
+      "dependencies": {
+        "@bufbuild/protobuf": "catalog:",
+      },
+    },
+    "packages/proto-workflow": {
+      "name": "@onequery/proto-workflow",
+      "version": "0.0.0",
+      "dependencies": {
+        "@bufbuild/protobuf": "catalog:",
+      },
+    },
     "packages/self-host-runtime": {
       "name": "@onequery/self-host-runtime",
       "version": "0.0.0",
       "dependencies": {
+        "@bufbuild/protobuf": "catalog:",
+        "@bufbuild/protovalidate": "catalog:",
+        "@connectrpc/connect": "catalog:",
+        "@connectrpc/connect-node": "catalog:",
+        "@connectrpc/validate": "catalog:",
         "@hono/node-server": "catalog:",
         "@hono/zod-validator": "catalog:",
         "@onequery/base": "workspace:*",
@@ -286,6 +313,7 @@
         "@onequery/config": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/installer": "workspace:*",
+        "@onequery/proto-runtime": "workspace:*",
         "@onequery/server": "workspace:*",
         "antiox": "catalog:",
         "better-result": "catalog:",
@@ -304,11 +332,12 @@
         "@casual-simulation/sql-parser": "0.1.0",
         "@hono/zod-validator": "catalog:",
         "@noble/ciphers": "2.1.1",
+        "@onequery/audit-contracts": "workspace:*",
         "@onequery/base": "workspace:*",
         "@onequery/codecs": "workspace:*",
         "@onequery/config": "workspace:*",
-        "@onequery/contracts": "workspace:*",
         "@onequery/db": "workspace:*",
+        "@onequery/proto-workflow": "workspace:*",
         "better-auth": "catalog:",
         "better-result": "catalog:",
         "hono": "catalog:",
@@ -1061,6 +1090,8 @@
 
     "@nodelib/fs.walk": ["@nodelib/fs.walk@1.2.8", "", { "dependencies": { "@nodelib/fs.scandir": "2.1.5", "fastq": "^1.6.0" } }, "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg=="],
 
+    "@onequery/audit-contracts": ["@onequery/audit-contracts@workspace:packages/audit-contracts"],
+
     "@onequery/base": ["@onequery/base@workspace:packages/base"],
 
     "@onequery/cli": ["@onequery/cli@workspace:apps/cli"],
@@ -1077,8 +1108,6 @@
 
     "@onequery/connector": ["@onequery/connector@workspace:apps/connector"],
 
-    "@onequery/contracts": ["@onequery/contracts@workspace:packages/contracts"],
-
     "@onequery/datetime": ["@onequery/datetime@workspace:packages/datetime"],
 
     "@onequery/db": ["@onequery/db@workspace:packages/db"],
@@ -1092,6 +1121,12 @@
     "@onequery/landing-video": ["@onequery/landing-video@workspace:apps/landing-video"],
 
     "@onequery/openclaw-plugin": ["@onequery/openclaw-plugin@workspace:packages/openclaw-plugin"],
+
+    "@onequery/proto-cli": ["@onequery/proto-cli@workspace:packages/proto-cli"],
+
+    "@onequery/proto-runtime": ["@onequery/proto-runtime@workspace:packages/proto-runtime"],
+
+    "@onequery/proto-workflow": ["@onequery/proto-workflow@workspace:packages/proto-workflow"],
 
     "@onequery/self-host-runtime": ["@onequery/self-host-runtime@workspace:packages/self-host-runtime"],
 

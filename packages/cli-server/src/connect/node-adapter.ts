@@ -3,6 +3,18 @@ import type { ConnectRouterOptions, Interceptor } from "@connectrpc/connect";
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import type { ConnectNodeAdapterOptions } from "@connectrpc/connect-node";
 import { createValidateInterceptor } from "@connectrpc/validate";
+import { ViolationsSchema } from "@onequery/proto-cli/buf/validate/validate_pb";
+import {
+  CliAuthService,
+  CliOrganizationService,
+  CliQueryService,
+  CliSourceApiService,
+  CliSourceService,
+} from "@onequery/proto-cli/cli/v1/cli_pb";
+import {
+  BadRequestSchema,
+  ErrorInfoSchema,
+} from "@onequery/proto-cli/google/rpc/error_details_pb";
 
 import type { CliValidationIssue } from "../domain/failures";
 import type { CliProblemKey } from "../domain/problems";
@@ -13,18 +25,6 @@ import {
   createCliConnectError,
   withCliRequestId,
 } from "./error";
-import { ViolationsSchema } from "./gen/buf/validate/validate_pb";
-import {
-  BadRequestSchema,
-  ErrorInfoSchema,
-} from "./gen/google/rpc/error_details_pb";
-import {
-  CliAuthService,
-  CliOrganizationService,
-  CliQueryService,
-  CliSourceApiService,
-  CliSourceService,
-} from "./gen/onequery/cli/v1/cli_pb";
 import { registerCliConnectRoutes } from "./rpc";
 
 const cliRequestIdInterceptor: Interceptor = (next) => async (request) => {

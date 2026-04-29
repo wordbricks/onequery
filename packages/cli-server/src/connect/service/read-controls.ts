@@ -1,5 +1,10 @@
 import { isFieldSet } from "@bufbuild/protobuf";
 import type { MessageInitShape } from "@bufbuild/protobuf";
+import {
+  CliPageRequestSchema,
+  CliPageSchema,
+} from "@onequery/proto-cli/cli/v1/common_pb";
+import type { CliPageRequest } from "@onequery/proto-cli/cli/v1/common_pb";
 import { Result } from "better-result";
 
 import type { CliProblemKey } from "../../domain/problems";
@@ -7,11 +12,6 @@ import {
   CLI_DEFAULT_PAGE_LIMIT,
   parsePageCursor,
 } from "../../read-controls-policy";
-import {
-  CliPageRequestSchema,
-  CliPageSchema,
-} from "../gen/onequery/cli/v1/common_pb";
-import type { CliPageRequest } from "../gen/onequery/cli/v1/common_pb";
 import { cliServiceErr } from "./result";
 
 export function parseCliPageRequest(input: {

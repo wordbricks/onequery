@@ -1,7 +1,7 @@
 import type { ProviderType } from "@onequery/db/server";
+import { SourceProvider } from "@onequery/proto-cli/cli/v1/source_pb";
 import { Result } from "better-result";
 
-import { SourceProvider } from "../gen/onequery/cli/v1/source_pb";
 import type { CliServiceResult } from "./result";
 import { cliServiceErr } from "./result";
 

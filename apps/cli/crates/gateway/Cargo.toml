@@ -1,0 +1,43 @@
+[package]
+name = "onequery-gateway"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+base64 = { workspace = true }
+blake3 = { workspace = true }
+buffa = { workspace = true, features = ["json"] }
+buffa-types = { workspace = true, features = ["json"] }
+chrono = { workspace = true, features = ["serde"] }
+connectrpc = { workspace = true, features = ["client"] }
+futures = { workspace = true }
+getrandom = { workspace = true }
+http = { workspace = true }
+http-body = { workspace = true }
+onequery-cli-core = { workspace = true }
+onequery-proto-runtime = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+toml = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+http-body-util = { workspace = true }
+insta = { workspace = true, features = ["filters"] }
+onequery-utils = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
+[lints]
+workspace = true

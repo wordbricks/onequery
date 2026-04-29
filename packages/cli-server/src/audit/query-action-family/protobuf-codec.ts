@@ -1,13 +1,10 @@
 import { create, isFieldSet } from "@bufbuild/protobuf";
 import { durationFromMs, durationMs } from "@bufbuild/protobuf/wkt";
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
-import { Result } from "better-result";
-import type { Result as ResultType } from "better-result";
-
 import {
   WorkflowDataSourceStatus,
   WorkflowSourceProvider,
-} from "../../connect/gen/onequery/workflow/v1/common_pb";
+} from "@onequery/proto-workflow/workflow/v1/common_pb";
 import {
   QueryActionCommandPayloadSchema,
   QueryActionCredentialsLoadedEventSchema,
@@ -54,7 +51,7 @@ import {
   QueryActionUsagePersistedEventSchema,
   QueryActionUsagePersistFailedEventSchema,
   QueryActionValidateQueryEffectSchema,
-} from "../../connect/gen/onequery/workflow/v1/query_action_pb";
+} from "@onequery/proto-workflow/workflow/v1/query_action_pb";
 import type {
   QueryActionCommandPayload as ProtoQueryActionCommandPayload,
   QueryActionEffectPayload as ProtoQueryActionEffectPayload,
@@ -63,7 +60,10 @@ import type {
   QueryActionQuerySourceRecord as ProtoQueryActionQuerySourceRecord,
   QueryActionRecordQueryExecutionResult as ProtoQueryExecutionResult,
   QueryActionSourceDescriptor as ProtoQueryActionSourceDescriptor,
-} from "../../connect/gen/onequery/workflow/v1/query_action_pb";
+} from "@onequery/proto-workflow/workflow/v1/query_action_pb";
+import { Result } from "better-result";
+import type { Result as ResultType } from "better-result";
+
 import type { CliQuerySuccessResult } from "../../domain/workflows";
 import { WorkflowStorageCorruptRowError } from "../storage/errors";
 import {

@@ -5,7 +5,6 @@ mod config_cmd;
 mod debug;
 mod doctor;
 mod explain;
-mod gateway;
 mod json_input;
 mod org;
 mod query;
@@ -37,12 +36,13 @@ use crate::platform::PlatformAdapters;
 use crate::platform::StderrTerminal;
 use crate::platform::SystemBrowserLauncher;
 use crate::platform::Terminal;
-use crate::process_context::ProcessContext;
 use crate::recovery::missing_org_try_next;
 use crate::transport::query::QueryRequestWindow;
 use crate::transport::read_controls::ReadRequestControls;
 use onequery_cli_core::error::CliError;
 use onequery_cli_core::error::ErrorStage;
+use onequery_cli_core::process::is_process_running as core_is_process_running;
+use onequery_cli_core::process_context::ProcessContext;
 
 pub(crate) const STARTUP_COMMAND: &str = "onequery";
 
@@ -254,10 +254,20 @@ where
         Command::Source(source_command) => source::execute(&source_command, context, runtime).await,
         Command::Query(query_command) => query::execute(query_command, context, runtime).await,
         Command::Restore(restore_args) => restore::execute(&restore_args, context, runtime).await,
-        Command::Gateway(gateway_args) => {
-            gateway::execute(gateway_args.command(), context, runtime).await
-        }
+        Command::Gateway(gateway_args) => onequery_gateway::execute(
+            gateway_args.command(),
+            &context.command_line,
+            &runtime.process,
+        )
+        .await
+        .map(CommandOutput::from),
         Command::Upgrade => upgrade::execute(context, runtime).await,
+        Command::GatewaySupervisor(args) => {
+            let args = args.into_gateway_args();
+            onequery_gateway::execute_supervisor(&args, &context.command_line)
+                .await
+                .map(CommandOutput::from)
+        }
         Command::Api(api_args) => source_api::execute(&api_args, context, runtime).await,
         Command::Explain(_) => Err(CliError::internal(
             context.command_line.clone(),
@@ -290,51 +300,11 @@ pub(crate) fn execute_without_runtime(invocation: &Invocation) -> Result<Command
 }
 
 pub(crate) fn ensure_self_host_runtime_supported(command_line: &str) -> Result<(), CliError> {
-    if cfg!(unix) || cfg!(windows) {
-        return Ok(());
-    }
-
-    Err(CliError::new(
-        "self-host runtime is not supported on this platform",
-        command_line,
-        ErrorStage::Internal,
-        "the published self-host runtime currently supports macOS, Linux, and Windows".to_owned(),
-        vec![
-            "run onequery gateway, backup, and restore on macOS, Linux, or Windows".to_owned(),
-            "use a supported host and point remote clients at that server".to_owned(),
-        ],
-    ))
+    onequery_gateway::ensure_self_host_runtime_supported(command_line)
 }
 
 pub(crate) fn is_process_running(pid: u32) -> bool {
-    #[cfg(unix)]
-    {
-        unsafe { libc::kill(pid as i32, 0) == 0 }
-    }
-
-    #[cfg(windows)]
-    {
-        use windows_sys::Win32::Foundation::CloseHandle;
-        use windows_sys::Win32::Foundation::WAIT_TIMEOUT;
-        use windows_sys::Win32::System::Threading::OpenProcess;
-        use windows_sys::Win32::System::Threading::PROCESS_SYNCHRONIZE;
-        use windows_sys::Win32::System::Threading::WaitForSingleObject;
-
-        let handle = unsafe { OpenProcess(PROCESS_SYNCHRONIZE, 0, pid) };
-        if handle.is_null() {
-            return false;
-        }
-
-        let wait_result = unsafe { WaitForSingleObject(handle, 0) };
-        let _ = unsafe { CloseHandle(handle) };
-        wait_result == WAIT_TIMEOUT
-    }
-
-    #[cfg(not(any(unix, windows)))]
-    {
-        let _ = pid;
-        false
-    }
+    core_is_process_running(pid)
 }
 
 #[cfg(test)]

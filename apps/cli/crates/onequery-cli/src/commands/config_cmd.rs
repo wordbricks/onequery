@@ -315,7 +315,7 @@ mod tests {
             ),
             browser: NoopBrowser,
             terminal: NoopTerminal,
-            process: crate::process_context::ProcessContext::default(),
+            process: onequery_cli_core::process_context::ProcessContext::default(),
         };
         let context = CommandContext {
             command_line: format!("onequery config set api.server_url {}", default_base_url()),
@@ -356,7 +356,7 @@ mod tests {
             ),
             browser: NoopBrowser,
             terminal: NoopTerminal,
-            process: crate::process_context::ProcessContext::default(),
+            process: onequery_cli_core::process_context::ProcessContext::default(),
         };
         let context = CommandContext {
             command_line: "onequery config get api.server_url".to_owned(),
@@ -396,7 +396,7 @@ mod tests {
             ),
             browser: NoopBrowser,
             terminal: NoopTerminal,
-            process: crate::process_context::ProcessContext::default(),
+            process: onequery_cli_core::process_context::ProcessContext::default(),
         };
         let context = CommandContext {
             command_line: "onequery config get org.active".to_owned(),
@@ -436,7 +436,7 @@ mod tests {
             ),
             browser: NoopBrowser,
             terminal: NoopTerminal,
-            process: crate::process_context::ProcessContext::default(),
+            process: onequery_cli_core::process_context::ProcessContext::default(),
         };
         let context = CommandContext {
             command_line: "onequery config get api.request_timeout_sec".to_owned(),
@@ -485,7 +485,7 @@ mod tests {
             ),
             browser: NoopBrowser,
             terminal: NoopTerminal,
-            process: crate::process_context::ProcessContext::default(),
+            process: onequery_cli_core::process_context::ProcessContext::default(),
         };
         let context = CommandContext {
             command_line: "onequery config set api.request_timeout_sec 60".to_owned(),
@@ -536,7 +536,7 @@ mod tests {
             ),
             browser: NoopBrowser,
             terminal: NoopTerminal,
-            process: crate::process_context::ProcessContext::default(),
+            process: onequery_cli_core::process_context::ProcessContext::default(),
         };
         let context = CommandContext {
             command_line: "onequery config set api.server_url http://localhost:4545/api".to_owned(),
@@ -578,7 +578,7 @@ mod tests {
             ),
             browser: NoopBrowser,
             terminal: NoopTerminal,
-            process: crate::process_context::ProcessContext::default(),
+            process: onequery_cli_core::process_context::ProcessContext::default(),
         };
         let context = CommandContext {
             command_line: "onequery config set api.request_timeout_sec 0".to_owned(),

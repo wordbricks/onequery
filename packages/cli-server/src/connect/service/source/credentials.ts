@@ -2,8 +2,6 @@ import { isFieldSet } from "@bufbuild/protobuf";
 import { durationMs, timestampDate, timestampMs } from "@bufbuild/protobuf/wkt";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import type { Credentials } from "@onequery/db/server";
-import { Result } from "better-result";
-
 import {
   ConnectSourceAwsAthenaConnectorCredentialsSchema,
   ConnectSourceMySqlCredentialsSchema,
@@ -11,7 +9,7 @@ import {
   SourceConnectAmplitudeRegion,
   SourceConnectMixpanelRegion,
   SourceConnectSslMode,
-} from "../../gen/onequery/cli/v1/source_pb";
+} from "@onequery/proto-cli/cli/v1/source_pb";
 import type {
   ConnectSourceAwsAthenaConnectorCredentials,
   ConnectSourceCredentials,
@@ -19,7 +17,9 @@ import type {
   ConnectSourceMySqlCredentials,
   ConnectSourcePostgresCredentials,
   ConnectSourceServiceAccountCredentials,
-} from "../../gen/onequery/cli/v1/source_pb";
+} from "@onequery/proto-cli/cli/v1/source_pb";
+import { Result } from "better-result";
+
 import { cliServiceErr } from "../result";
 import type { CliServiceResult } from "../result";
 import type { ParsedConnectSourceCredentials } from "./types";

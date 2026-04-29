@@ -1,16 +1,16 @@
 import { isFieldSet } from "@bufbuild/protobuf";
 import { durationMs } from "@bufbuild/protobuf/wkt";
+import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
 import {
   QueryActionCommandPayloadSchema,
   QueryActionEventPayloadSchema,
   QueryActionMode,
   QueryActionSourceDescriptorSchema,
-} from "@onequery/contracts/workflow/v1/query_action_pb";
+} from "@onequery/proto-workflow/workflow/v1/query_action_pb";
 import type {
   QueryActionEventPayload as ProtoQueryActionEventPayload,
   QueryActionSourceDescriptor as ProtoQueryActionSourceDescriptor,
-} from "@onequery/contracts/workflow/v1/query_action_pb";
-import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
+} from "@onequery/proto-workflow/workflow/v1/query_action_pb";
 
 import { assertNever, requireProtoMessage } from "./protobuf-utils";
 import type { QueryActionEventRecord } from "./types";

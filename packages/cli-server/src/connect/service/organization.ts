@@ -1,15 +1,15 @@
 import type { MessageInitShape } from "@bufbuild/protobuf";
+import {
+  OrgCapability,
+  GetOrganizationResponseSchema,
+  OrganizationRole,
+} from "@onequery/proto-cli/cli/v1/org_pb";
 import { Result } from "better-result";
 
 import type { AuthorizedCliOrgContext } from "../../authorization";
 import { runCliListVisibleOrgs } from "../../organization/effects";
 import { paginateItems } from "../../read-controls-policy";
 import { requireCliConnectRequestContext } from "../context";
-import {
-  OrgCapability,
-  GetOrganizationResponseSchema,
-  OrganizationRole,
-} from "../gen/onequery/cli/v1/org_pb";
 import { buildCliPage, parseCliPageRequest } from "./read-controls";
 import type { CliResultServiceMethod } from "./result";
 import { liftCliServiceMethod } from "./result";

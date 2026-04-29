@@ -112,6 +112,24 @@ describe("server launch contract", () => {
     ).toThrow("runtimePaths");
   });
 
+  it("requires launchId for self-host launch configs", () => {
+    const { launchId: _launchId, ...launchConfig } =
+      createSelfHostLaunchConfig();
+
+    expect(() => validateServerLaunchConfig(launchConfig, "test")).toThrow(
+      "launchId"
+    );
+  });
+
+  it("requires runtimeControl for self-host launch configs", () => {
+    const { runtimeControl: _runtimeControl, ...launchConfig } =
+      createSelfHostLaunchConfig();
+
+    expect(() => validateServerLaunchConfig(launchConfig, "test")).toThrow(
+      "runtimeControl"
+    );
+  });
+
   it("rejects master keys that do not decode to exactly 32 bytes", () => {
     expect(() =>
       validateServerLaunchConfig(

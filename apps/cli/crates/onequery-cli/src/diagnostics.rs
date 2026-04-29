@@ -13,7 +13,7 @@ use serde::Serialize;
 use crate::config::data_dir;
 use crate::explain::ExplainSupportKind;
 use crate::explain::explanation_for_error_code;
-use crate::path_utils;
+use onequery_cli_core::path_utils;
 
 pub(crate) const TEXT_REPORT_COMMAND: &str = "onequery doctor report --last";
 pub(crate) const JSON_REPORT_COMMAND: &str = "onequery doctor report --last --json";

@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { auditListQuerySchema } from "@onequery/contracts/audit";
+import { auditListQuerySchema } from "@onequery/audit-contracts/audit";
 import {
   and,
   eq,

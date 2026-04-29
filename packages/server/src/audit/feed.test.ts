@@ -1,15 +1,15 @@
 import { create, toBinary } from "@bufbuild/protobuf";
 import {
-  QueryActionEventPayloadSchema,
-  QueryActionMode,
-  QueryActionReceivedEventSchema,
-} from "@onequery/contracts/workflow/v1/query_action_pb";
-import {
   organization,
   queryActionEvents,
   workflowCommands,
 } from "@onequery/db/server";
 import { pgliteTestDb } from "@onequery/db/testing/setup";
+import {
+  QueryActionEventPayloadSchema,
+  QueryActionMode,
+  QueryActionReceivedEventSchema,
+} from "@onequery/proto-workflow/workflow/v1/query_action_pb";
 import { describe, expect, it } from "vitest";
 
 import {

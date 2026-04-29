@@ -1,12 +1,12 @@
 import { durationFromMs } from "@bufbuild/protobuf/wkt";
-
-import { getCliQueryableDatabaseProviderType } from "../../../source/model";
-import { ContentFormat } from "../../gen/onequery/cli/v1/common_pb";
+import { ContentFormat } from "@onequery/proto-cli/cli/v1/common_pb";
 import {
   SourceQuerySupport,
   SourceStatus,
   SourceTestUnsupportedReason,
-} from "../../gen/onequery/cli/v1/source_pb";
+} from "@onequery/proto-cli/cli/v1/source_pb";
+
+import { getCliQueryableDatabaseProviderType } from "../../../source/model";
 import { toCliSourceProvider } from "../source-provider";
 import type {
   BuildCliSourceInput,

@@ -19,5 +19,15 @@
 //! assert_eq!(error.stage, ErrorStage::Auth);
 //! ```
 
+/// Shared application config/data path resolution.
+pub mod app_paths;
 /// Shared CLI error types and helpers.
 pub mod error;
+/// Shared packaged runtime bundle layout helpers.
+pub mod packaged_runtime;
+/// Shared path normalization and atomic file helpers.
+pub mod path_utils;
+/// Shared process inspection helpers.
+pub mod process;
+/// Captured process context used by commands that need current executable metadata.
+pub mod process_context;

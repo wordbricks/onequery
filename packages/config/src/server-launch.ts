@@ -27,6 +27,18 @@ export const serverLaunchRuntimePathsSchema = z
   })
   .strict();
 
+export const serverLaunchRuntimeControlSchema = z.discriminatedUnion(
+  "transport",
+  [
+    z
+      .object({
+        socketPath: nonEmptyStringSchema,
+        transport: z.literal("unix"),
+      })
+      .strict(),
+  ]
+);
+
 export const serverLaunchMigrationsSchema = z
   .object({
     dir: nonEmptyStringSchema,
@@ -82,6 +94,7 @@ export const serverLaunchConfigSchema = z
         masterEncryptionKey: masterEncryptionKeySchema,
       })
       .strict(),
+    launchId: nonEmptyStringSchema.optional(),
     listen: z
       .object({
         host: nonEmptyStringSchema,
@@ -101,6 +114,7 @@ export const serverLaunchConfigSchema = z
         enabled: z.boolean(),
       })
       .strict(),
+    runtimeControl: serverLaunchRuntimeControlSchema.optional(),
     runtimePaths: serverLaunchRuntimePathsSchema.optional(),
     smtp: serverLaunchSmtpSchema.optional(),
     storage: serverLaunchStorageSchema,
@@ -122,9 +136,28 @@ export const serverLaunchConfigSchema = z
         path: ["runtimePaths"],
       });
     }
+
+    if (value.mode === "self-host" && !value.runtimeControl) {
+      context.addIssue({
+        code: "custom",
+        message: "Self-host launch config requires runtimeControl.",
+        path: ["runtimeControl"],
+      });
+    }
+
+    if (value.mode === "self-host" && !value.launchId) {
+      context.addIssue({
+        code: "custom",
+        message: "Self-host launch config requires launchId.",
+        path: ["launchId"],
+      });
+    }
   });
 
 export type ServerLaunchConfig = z.infer<typeof serverLaunchConfigSchema>;
+export type ServerLaunchRuntimeControlConfig = z.infer<
+  typeof serverLaunchRuntimeControlSchema
+>;
 export type ServerLaunchSmtpConfig = z.infer<typeof serverLaunchSmtpSchema>;
 
 function buildServerLaunchConfigError(

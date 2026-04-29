@@ -2,7 +2,7 @@ import {
   AUDIT_FAMILIES,
   AUDIT_OUTCOMES,
   getAuditActionNamesForFamily,
-} from "@onequery/contracts/audit";
+} from "@onequery/audit-contracts/audit";
 import { formatDateTime } from "@onequery/datetime/format-date";
 import {
   Alert,

@@ -18,7 +18,26 @@ const DB_CACHE_SYMBOL = Symbol.for("onequery.db.instance-cache");
 export type DatabaseEngine = "postgres" | "pglite";
 export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-type DbCache = Map<string, Database>;
+type ClosableDatabaseClient = {
+  close?: () => Promise<unknown>;
+  end?: (options?: { timeout?: number }) => Promise<unknown>;
+};
+
+type DbCacheEntry = {
+  client: ClosableDatabaseClient;
+  closed: boolean;
+  closePromise?: Promise<void>;
+  db: Database;
+  engine: DatabaseEngine;
+};
+
+export type DatabaseHandle = {
+  close(): Promise<void>;
+  db: Database;
+  engine: DatabaseEngine;
+};
+
+type DbCache = Map<string, DbCacheEntry>;
 
 function getDbCache(): DbCache {
   const globalWithCache = globalThis as typeof globalThis & {
@@ -37,16 +56,28 @@ export function getDatabaseEngine(connectionString: string): DatabaseEngine {
 }
 
 export function createDb(connectionString: string): Database {
+  return createDatabaseHandle(connectionString).db;
+}
+
+export function createDatabaseHandle(connectionString: string): DatabaseHandle {
   const cache = getDbCache();
   const cachedDb = cache.get(connectionString);
-  if (cachedDb) {
-    return cachedDb;
+  if (cachedDb && !cachedDb.closed) {
+    return {
+      close: () => closeDatabaseHandle(connectionString, cachedDb),
+      db: cachedDb.db,
+      engine: cachedDb.engine,
+    };
   }
 
-  let db: Database;
+  if (cachedDb?.closed) {
+    cache.delete(connectionString);
+  }
+
+  let cacheEntry: DbCacheEntry;
 
   if (isPgliteConnectionString(connectionString)) {
-    db = createPgliteDb(connectionString);
+    cacheEntry = createPgliteDbCacheEntry(connectionString);
   } else {
     const client = postgres(connectionString, {
       max: 5,
@@ -54,22 +85,75 @@ export function createDb(connectionString: string): Database {
       fetch_types: false,
       prepare: true,
     });
-    db = drizzle(client, { schema });
+    cacheEntry = {
+      client,
+      closed: false,
+      db: drizzle(client, { schema }),
+      engine: "postgres",
+    };
   }
 
-  cache.set(connectionString, db);
+  cache.set(connectionString, cacheEntry);
 
-  return db;
+  return {
+    close: () => closeDatabaseHandle(connectionString, cacheEntry),
+    db: cacheEntry.db,
+    engine: cacheEntry.engine,
+  };
 }
 
-function createPgliteDb(connectionString: string): Database {
+async function closeDatabaseHandle(
+  connectionString: string,
+  cacheEntry: DbCacheEntry
+): Promise<void> {
+  if (cacheEntry.closed) {
+    return;
+  }
+
+  if (cacheEntry.closePromise) {
+    await cacheEntry.closePromise;
+    return;
+  }
+
+  cacheEntry.closePromise = closeDatabaseClient(cacheEntry.client)
+    .then(() => {
+      cacheEntry.closed = true;
+      getDbCache().delete(connectionString);
+    })
+    .finally(() => {
+      if (!cacheEntry.closed) {
+        cacheEntry.closePromise = undefined;
+      }
+    });
+
+  await cacheEntry.closePromise;
+}
+
+async function closeDatabaseClient(
+  client: ClosableDatabaseClient
+): Promise<void> {
+  if (typeof client.close === "function") {
+    await client.close();
+    return;
+  }
+
+  await client.end?.({ timeout: 0 });
+}
+
+function createPgliteDbCacheEntry(connectionString: string): DbCacheEntry {
   const client = new PGlite(
     ensurePgliteDataDir(connectionString),
     resolvePgliteRuntimeOptions()
   );
-  return drizzlePglite(client, {
-    schema,
-  });
+
+  return {
+    client,
+    closed: false,
+    db: drizzlePglite(client, {
+      schema,
+    }),
+    engine: "pglite",
+  };
 }
 
 export * from "./schema";

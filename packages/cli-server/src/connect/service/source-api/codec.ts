@@ -1,5 +1,17 @@
 import { fromJson, isFieldSet, toJson } from "@bufbuild/protobuf";
 import { ValueSchema } from "@bufbuild/protobuf/wkt";
+import {
+  SourceApiBodyKind,
+  SourceApiFieldEncoding,
+  SourceApiInputMode,
+  SourceApiOperationKind,
+  SourceApiPaginationPolicy,
+  SourceApiPatchMode,
+  SourceApiPathCapability,
+  SourceApiDraftSchema,
+  SourceApiSelectorKind,
+} from "@onequery/proto-cli/cli/v1/source_api_pb";
+import type { SourceApiDraft as CliSourceApiDraft } from "@onequery/proto-cli/cli/v1/source_api_pb";
 import type {
   SourceApiBodyFormat,
   SourceApiDescriptor,
@@ -16,18 +28,6 @@ import type {
 import { canonicalizeSourceApiHeaderNames } from "@onequery/server/source-api/header-policy";
 import { Result } from "better-result";
 
-import {
-  SourceApiBodyKind,
-  SourceApiFieldEncoding,
-  SourceApiInputMode,
-  SourceApiOperationKind,
-  SourceApiPaginationPolicy,
-  SourceApiPatchMode,
-  SourceApiPathCapability,
-  SourceApiDraftSchema,
-  SourceApiSelectorKind,
-} from "../../gen/onequery/cli/v1/source_api_pb";
-import type { SourceApiDraft as CliSourceApiDraft } from "../../gen/onequery/cli/v1/source_api_pb";
 import { cliServiceErr } from "../result";
 import type { CliServiceResult } from "../result";
 import { toCliSourceProvider } from "../source-provider";

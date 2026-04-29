@@ -1,8 +1,8 @@
 import { create } from "@bufbuild/protobuf";
+import * as sourceApiPb from "@onequery/proto-workflow/workflow/v1/source_api_action_pb";
 import { Result } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-import * as sourceApiPb from "../../../connect/gen/onequery/workflow/v1/source_api_action_pb";
 import type { WorkflowStorageCorruptRowError } from "../../storage/errors";
 import {
   assertNever,

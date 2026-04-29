@@ -11,9 +11,9 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::output::CommandOutput;
-use crate::packaged_runtime::CurrentExecutableLocation;
-use crate::packaged_runtime::classify_current_executable;
 use crate::platform::Terminal;
+use onequery_cli_core::packaged_runtime::CurrentExecutableLocation;
+use onequery_cli_core::packaged_runtime::classify_current_executable;
 
 use super::CommandContext;
 use super::Runtime;
@@ -22,6 +22,8 @@ const INSTALL_SCRIPT_UPGRADE_COMMAND: &str = "curl -fsSL https://onequery.dev/in
 const HOMEBREW_UPGRADE_COMMAND: &str = "brew upgrade wordbricks/tap/onequery";
 const BUN_UPGRADE_COMMAND: &str = "bun install -g @onequery/cli@latest";
 const NPM_UPGRADE_COMMAND: &str = "npm install -g @onequery/cli@latest";
+const STOP_GATEWAY_BEFORE_UPGRADE_COMMAND: &str = "onequery gateway stop";
+const START_GATEWAY_AFTER_UPGRADE_COMMAND: &str = "onequery gateway start";
 const OUTPUT_PREVIEW_LINE_COUNT: usize = 12;
 const CLI_PACKAGE_NAME: &str = "@onequery/cli";
 const CLI_PACKAGE_SCOPE_DIR_NAME: &str = "@onequery";
@@ -193,6 +195,8 @@ where
     };
     let plan = layout.upgrade_plan();
 
+    ensure_gateway_stopped_for_upgrade(&context.command_line)?;
+
     runtime.terminal.stderr_line(&format!(
         "Running upgrade via {}...",
         plan.installer.label()
@@ -236,6 +240,36 @@ where
     let installed_version = layout.resolve_installed_version();
 
     Ok(render_upgrade_output(plan, installed_version))
+}
+
+fn ensure_gateway_stopped_for_upgrade(command_line: &str) -> Result<(), CliError> {
+    reject_running_gateway_for_upgrade(
+        onequery_gateway::read_running_gateway_pid(command_line)?,
+        command_line,
+    )
+}
+
+fn reject_running_gateway_for_upgrade(
+    running_pid: Option<u32>,
+    command_line: &str,
+) -> Result<(), CliError> {
+    if let Some(pid) = running_pid {
+        return Err(CliError::new(
+            "gateway is running during upgrade",
+            command_line,
+            ErrorStage::LoadConfig,
+            format!(
+                "pid {pid} is active; stop the gateway before upgrading so app data is checkpointed cleanly and preserved for the next version"
+            ),
+            vec![
+                STOP_GATEWAY_BEFORE_UPGRADE_COMMAND.to_owned(),
+                "onequery upgrade".to_owned(),
+                START_GATEWAY_AFTER_UPGRADE_COMMAND.to_owned(),
+            ],
+        ));
+    }
+
+    Ok(())
 }
 
 fn homebrew_install_layout(install_root: &Path) -> Option<InstallLayout> {
@@ -494,9 +528,12 @@ mod tests {
     use super::NPM_UPGRADE_COMMAND;
     use super::NodePackageManager;
     use super::OUTPUT_PREVIEW_LINE_COUNT;
+    use super::START_GATEWAY_AFTER_UPGRADE_COMMAND;
+    use super::STOP_GATEWAY_BEFORE_UPGRADE_COMMAND;
     use super::UpgradeInstaller;
     use super::UpgradePlan;
     use super::parse_version_output;
+    use super::reject_running_gateway_for_upgrade;
     use super::render_command_failure;
     use super::render_upgrade_output;
 
@@ -647,6 +684,29 @@ mod tests {
         );
 
         assert_snapshot!(output.lines.join("\n"));
+    }
+
+    #[test]
+    fn reject_running_gateway_for_upgrade_blocks_mutating_install_while_runtime_is_active() {
+        let error = reject_running_gateway_for_upgrade(Some(4242), "onequery upgrade")
+            .expect_err("expected running gateway to block upgrade");
+
+        assert_eq!(error.title.as_str(), "gateway is running during upgrade");
+        assert_eq!(
+            error.try_next,
+            vec![
+                STOP_GATEWAY_BEFORE_UPGRADE_COMMAND.to_owned(),
+                "onequery upgrade".to_owned(),
+                START_GATEWAY_AFTER_UPGRADE_COMMAND.to_owned(),
+            ]
+        );
+        assert!(error.why.contains("app data is checkpointed cleanly"));
+    }
+
+    #[test]
+    fn reject_running_gateway_for_upgrade_allows_upgrade_when_runtime_is_stopped() {
+        reject_running_gateway_for_upgrade(None, "onequery upgrade")
+            .expect("expected stopped gateway to allow upgrade");
     }
 
     #[test]
