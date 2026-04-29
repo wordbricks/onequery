@@ -15,6 +15,7 @@ use super::launch::RuntimeBundleRootSource;
 use super::launch::resolve_runtime_bundle_root_from_locator;
 use super::render::render_gateway_logs_output;
 use super::render::render_gateway_output;
+use super::render::render_gateway_restart_output;
 use super::render::render_gateway_start_output;
 use super::render::render_gateway_status_output;
 use super::render::render_gateway_status_output_with_live_status;
@@ -60,6 +61,12 @@ fn render_gateway_output_snapshot() {
 #[test]
 fn render_gateway_start_output_snapshot() {
     let output = render_gateway_start_output(&sample_state(), 4242);
+    assert_snapshot!(output.lines.join("\n"));
+}
+
+#[test]
+fn render_gateway_restart_output_snapshot() {
+    let output = render_gateway_restart_output(&sample_state(), Some(1111), 4242);
     assert_snapshot!(output.lines.join("\n"));
 }
 

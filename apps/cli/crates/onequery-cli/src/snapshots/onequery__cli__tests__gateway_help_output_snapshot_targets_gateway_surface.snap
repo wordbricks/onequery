@@ -1,5 +1,6 @@
 ---
 source: crates/onequery-cli/src/cli/../cli_tests.rs
+assertion_line: 105
 expression: "rendered_display(&[\"onequery\", \"gateway\", \"--help\"])"
 ---
 Run the self-host gateway in foreground by default or manage the background lifecycle
@@ -7,11 +8,12 @@ Run the self-host gateway in foreground by default or manage the background life
 Usage: onequery gateway [OPTIONS] [COMMAND]
 
 Commands:
-  start   Start the self-host gateway in background
-  stop    Stop the self-host gateway if a managed process is present
-  status  Show the current self-host gateway state and derived paths
-  logs    Show the current self-host gateway log path and any available preview
-  help    Print this message or the help of the given subcommand(s)
+  start    Start the self-host gateway in background
+  stop     Stop the self-host gateway if a managed process is present
+  restart  Restart the managed self-host gateway
+  status   Show the current self-host gateway state and derived paths
+  logs     Show the current self-host gateway log path and any available preview
+  help     Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help     Print help

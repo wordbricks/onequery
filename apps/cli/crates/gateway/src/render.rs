@@ -90,6 +90,45 @@ pub(super) fn render_gateway_start_output(
     )
 }
 
+pub(super) fn render_gateway_restart_output(
+    state: &GatewayRuntimeState,
+    stopped_pid: Option<u32>,
+    started_pid: u32,
+) -> GatewayCommandOutput {
+    let listen = server_listen_label(state.config.as_ref());
+    let mut lines = vec!["Gateway restarted in background.".to_owned()];
+
+    if let Some(stopped_pid) = stopped_pid {
+        lines.push(format!("Stopped pid: {stopped_pid}"));
+    } else {
+        lines.push("Stopped pid: <none>".to_owned());
+    }
+
+    lines.extend([
+        format!("Started pid: {started_pid}"),
+        format!("Listen: {listen}"),
+        format!("Log path: {}", state.paths.server_log_path.display()),
+        "Next steps: onequery gateway status | onequery gateway logs | onequery gateway stop"
+            .to_owned(),
+    ]);
+
+    GatewayCommandOutput::structured(
+        lines,
+        json!({
+            "kind": "gateway-restart",
+            "phase": "managed",
+            "bootstrapped": state.bootstrapped,
+            "stopIssued": stopped_pid.is_some(),
+            "stoppedPid": stopped_pid,
+            "processStarted": true,
+            "startedPid": started_pid,
+            "server": state.config.as_ref().map(server_json),
+            "runtimeState": runtime_state_json(state),
+            "paths": paths_json(&state.paths),
+        }),
+    )
+}
+
 #[cfg(test)]
 pub(super) fn render_gateway_status_output(state: &GatewayRuntimeState) -> GatewayCommandOutput {
     render_gateway_status_output_with_live_status(state, None)

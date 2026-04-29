@@ -484,6 +484,10 @@ fn parse_invocation_accepts_gateway_foreground_and_lifecycle_subcommands() {
         (&["onequery", "gateway", "start"][..], GatewayCommand::Start),
         (&["onequery", "gateway", "stop"][..], GatewayCommand::Stop),
         (
+            &["onequery", "gateway", "restart"][..],
+            GatewayCommand::Restart,
+        ),
+        (
             &["onequery", "gateway", "status"][..],
             GatewayCommand::Status,
         ),
