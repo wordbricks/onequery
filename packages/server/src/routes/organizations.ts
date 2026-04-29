@@ -1,5 +1,8 @@
 import { zValidator } from "@hono/zod-validator";
-import { auditListQuerySchema } from "@onequery/audit-contracts/audit";
+import {
+  AUDIT_FAMILIES,
+  auditListQuerySchema,
+} from "@onequery/audit-contracts/audit";
 import {
   and,
   eq,
@@ -11,7 +14,11 @@ import type { Database } from "@onequery/db/server";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { InvalidAuditCursorError, listAuditFeedPage } from "../audit/feed";
+import {
+  getAuditActionDetail,
+  InvalidAuditCursorError,
+  listAuditFeedPage,
+} from "../audit/feed";
 import {
   canReadOrganizationAudit,
   doesOrganizationMembershipGrantPermission,
@@ -23,6 +30,11 @@ import { zodProblemHook } from "../problem-details/zod-problem-hook";
 
 const OrganizationSlugParamsSchema = z.object({
   slug: z.string().min(1, "slug is required"),
+});
+
+const AuditActionParamsSchema = OrganizationSlugParamsSchema.extend({
+  actionId: z.string().min(1, "action id is required"),
+  family: z.enum(AUDIT_FAMILIES),
 });
 
 const UpdateOrgSettingsSchema = z
@@ -179,6 +191,56 @@ export const organizationsRoute = new Hono<{
 
         throw error;
       }
+    }
+  )
+  .get(
+    "/:slug/audit/:family/:actionId",
+    zValidator("param", AuditActionParamsSchema, zodProblemHook()),
+    async (c) => {
+      const { actionId, family, slug } = c.req.valid("param");
+      const db = c.var.storage.db;
+      const session = c.get("session");
+
+      if (!session?.user) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+
+      const membership = await findOrganizationMembershipBySlug({
+        db,
+        slug,
+        userId: session.user.id,
+      });
+
+      if (membership.kind === "not_found") {
+        return c.json({ error: "Organization not found" }, 404);
+      }
+
+      if (membership.kind === "forbidden") {
+        return c.json(
+          { error: "Forbidden: Not a member of this organization" },
+          403
+        );
+      }
+
+      if (!canReadOrganizationAudit({ rawRole: membership.rawRole })) {
+        return c.json(
+          { error: "Forbidden: You do not have permission to view audit" },
+          403
+        );
+      }
+
+      const detail = await getAuditActionDetail({
+        actionId,
+        db,
+        family,
+        organizationId: membership.organizationId,
+      });
+
+      if (!detail) {
+        return c.json({ error: "Audit action not found" }, 404);
+      }
+
+      return c.json(detail);
     }
   )
   .get("/:slug/settings", async (c) => {

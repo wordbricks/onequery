@@ -183,7 +183,9 @@ async function loadAuditProjectionLag(
   };
 }
 
-function serializeAuditFeedItem(row: typeof auditFeedEntries.$inferSelect) {
+export function serializeAuditFeedItem(
+  row: typeof auditFeedEntries.$inferSelect
+) {
   const originActor = auditOriginActorSchema.parse(row.originActorJson);
   const target = auditTargetSchema.parse(row.targetJson);
 

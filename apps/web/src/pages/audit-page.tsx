@@ -44,10 +44,15 @@ import {
   IconAlertTriangle,
   IconArrowLeft,
   IconArrowRight,
+  IconChevronRight,
+  IconClock,
+  IconDatabase,
   IconHistory,
+  IconListDetails,
   IconRefresh,
+  IconRoute,
 } from "@tabler/icons-react";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { startTransition, useState } from "react";
 import type { FormEvent } from "react";
@@ -58,8 +63,15 @@ import {
   getAuditDraftResetKey,
   hasPendingAuditDraftFilters,
 } from "@/features/audit/audit-filter-state";
-import { auditListQueryOptions } from "@/queries/audit-queries";
-import type { AuditListItem, AuditSearch } from "@/queries/audit-queries";
+import {
+  auditActionDetailQueryOptions,
+  auditListQueryOptions,
+} from "@/queries/audit-queries";
+import type {
+  AuditActionDetail,
+  AuditListItem,
+  AuditSearch,
+} from "@/queries/audit-queries";
 
 const routeApi = getRouteApi("/_authenticated/$org_slug/audit");
 
@@ -131,45 +143,92 @@ function getDetailLine(item: AuditListItem) {
   return truncateText(requestShape || item.subtitle);
 }
 
-function AuditTableRow({ item }: { item: AuditListItem }) {
+function formatBytes(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "n/a";
+  }
+
+  if (value < 1024) {
+    return `${value} B`;
+  }
+
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getDurationLabel(item: AuditListItem) {
+  if (item.family === "query_action") {
+    return item.metrics?.elapsedMs ? `${item.metrics.elapsedMs} ms` : "n/a";
+  }
+
+  return item.metrics?.httpStatus ? `HTTP ${item.metrics.httpStatus}` : "n/a";
+}
+
+function getVolumeLabel(item: AuditListItem) {
+  if (item.family === "query_action") {
+    return item.metrics?.rowCount !== null &&
+      item.metrics?.rowCount !== undefined
+      ? `${item.metrics.rowCount.toLocaleString()} rows`
+      : "n/a";
+  }
+
+  return [
+    item.metrics?.pageCount !== null && item.metrics?.pageCount !== undefined
+      ? `${item.metrics.pageCount} pages`
+      : null,
+    formatBytes(item.metrics?.responseBytes),
+  ]
+    .filter((part) => part && part !== "n/a")
+    .join(" · ");
+}
+
+function AuditTableRow({
+  isSelected,
+  item,
+  onSelect,
+}: {
+  isSelected: boolean;
+  item: AuditListItem;
+  onSelect: () => void;
+}) {
   const metricsLabel = getMetricsLabel(item);
 
   return (
-    <TableRow>
-      <TableCell className="align-top">
-        <div className="min-w-[170px]">
-          <div className="font-medium">{formatDateTime(item.startedAt)}</div>
-          <div className="text-muted-foreground mt-1 text-xs">
-            Started · {formatEnumLabel(item.originSurface)}
-          </div>
-          {item.lastEventAt !== item.startedAt ? (
-            <div className="text-muted-foreground mt-1 text-xs">
-              Last event · {formatDateTime(item.lastEventAt)}
-            </div>
-          ) : null}
+    <TableRow
+      className={
+        isSelected ? "bg-muted/60 hover:bg-muted/60" : "hover:bg-muted/40"
+      }
+      onClick={onSelect}
+    >
+      <TableCell className="w-[132px] align-top">
+        <div className="text-xs font-medium">
+          {formatDateTime(item.startedAt)}
+        </div>
+        <div className="text-muted-foreground mt-1 text-xs">
+          {formatEnumLabel(item.originSurface)}
         </div>
       </TableCell>
       <TableCell className="align-top whitespace-normal">
-        <div className="font-medium">{getActorLabel(item)}</div>
+        <div className="max-w-[180px] truncate text-sm font-medium">
+          {getActorLabel(item)}
+        </div>
         <div className="text-muted-foreground mt-1 text-xs">
-          {item.originActor.membershipRoles.length > 0
-            ? item.originActor.membershipRoles.map(formatEnumLabel).join(", ")
-            : "No membership roles recorded"}
+          {item.target.sourceKey}
         </div>
       </TableCell>
-      <TableCell className="min-w-[420px] align-top whitespace-normal">
+      <TableCell className="min-w-[340px] align-top whitespace-normal">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{formatEnumLabel(item.family)}</Badge>
-          <span className="font-medium">{item.title}</span>
-        </div>
-        <div className="text-muted-foreground mt-2 text-sm">
-          {item.subtitle}
+          <span className="text-sm font-medium">{item.title}</span>
         </div>
         <div className="text-muted-foreground mt-2 text-xs font-mono break-words">
           {getDetailLine(item)}
         </div>
       </TableCell>
-      <TableCell className="align-top whitespace-normal">
+      <TableCell className="w-[132px] align-top whitespace-normal">
         <div className="flex flex-col gap-2">
           <Badge variant={getOutcomeBadgeVariant(item.outcome)}>
             {formatEnumLabel(item.outcome)}
@@ -177,15 +236,197 @@ function AuditTableRow({ item }: { item: AuditListItem }) {
           <div className="text-muted-foreground text-xs">
             {formatEnumLabel(item.phase)}
           </div>
-          <div className="text-muted-foreground text-xs">
-            {formatEnumLabel(item.lastEventType)}
-          </div>
           {metricsLabel ? (
             <div className="text-muted-foreground text-xs">{metricsLabel}</div>
           ) : null}
         </div>
       </TableCell>
+      <TableCell className="w-8 align-top">
+        <IconChevronRight className="text-muted-foreground size-4" />
+      </TableCell>
     </TableRow>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border p-3">
+      <div className="text-muted-foreground text-xs">{label}</div>
+      <div className="mt-1 truncate text-sm font-medium">{value}</div>
+    </div>
+  );
+}
+
+function JsonBlock({ title, value }: { title: string; value: unknown }) {
+  return (
+    <div className="rounded-md border">
+      <div className="border-b px-3 py-2 text-xs font-medium">{title}</div>
+      <pre className="max-h-44 overflow-auto p-3 text-xs">
+        {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
+      </pre>
+    </div>
+  );
+}
+
+function DetailSkeleton({ item }: { item: AuditListItem }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="flex items-center gap-2">
+          <Badge variant={getOutcomeBadgeVariant(item.outcome)}>
+            {formatEnumLabel(item.outcome)}
+          </Badge>
+          <Badge variant="outline">{item.family}</Badge>
+        </div>
+        <h2 className="mt-3 text-xl font-semibold">{item.title}</h2>
+        <p className="text-muted-foreground mt-1 text-sm">{item.subtitle}</p>
+      </div>
+      <div className="rounded-md border p-4 text-sm">
+        Loading full command and event trace…
+      </div>
+    </div>
+  );
+}
+
+function AuditTraceDetail({
+  detail,
+  item,
+}: {
+  detail: AuditActionDetail;
+  item: AuditListItem;
+}) {
+  const firstCommand = detail.commands.at(0);
+  const latestEvent = detail.events.at(-1);
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={getOutcomeBadgeVariant(item.outcome)}>
+            {formatEnumLabel(item.outcome)}
+          </Badge>
+          <Badge variant="outline">{detail.family}</Badge>
+          <Badge variant="secondary">Projection caught up</Badge>
+        </div>
+        <h2 className="mt-3 text-xl font-semibold">
+          {detail.family === "query_action" ? "Query trace" : "API trace"}
+        </h2>
+        <p className="text-muted-foreground mt-1 text-sm">{item.subtitle}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatTile label="Duration" value={getDurationLabel(item)} />
+        <StatTile label="Volume" value={getVolumeLabel(item) || "n/a"} />
+        <StatTile label="Source" value={item.target.sourceKey} />
+        <StatTile label="Actor" value={getActorLabel(item)} />
+      </div>
+
+      <div className="grid gap-3 text-sm md:grid-cols-2">
+        <div className="rounded-md border p-3">
+          <div className="text-muted-foreground text-xs">workflow_commands</div>
+          <div className="mt-1 font-mono text-xs break-all">
+            {firstCommand?.id ?? "No command recorded"}
+          </div>
+          <div className="text-muted-foreground mt-2 text-xs">
+            Request {firstCommand?.requestId ?? "n/a"}
+          </div>
+        </div>
+        <div className="rounded-md border p-3">
+          <div className="text-muted-foreground text-xs">Last event</div>
+          <div className="mt-1 font-mono text-xs break-all">
+            {latestEvent?.eventType ?? item.lastEventType}
+          </div>
+          <div className="text-muted-foreground mt-2 text-xs">
+            commit_position {latestEvent?.commitPosition ?? "n/a"}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          {["Timeline", "SQL", "Payload", "Metrics", "Raw events"].map(
+            (tab, index) => (
+              <Button
+                key={tab}
+                type="button"
+                variant={index === 0 ? "secondary" : "outline"}
+                size="sm"
+              >
+                {tab}
+              </Button>
+            )
+          )}
+        </div>
+
+        <div className="space-y-3">
+          {detail.events.map((event) => (
+            <div
+              key={event.id}
+              className="grid grid-cols-[32px_minmax(0,1fr)] gap-3 rounded-md border p-3"
+            >
+              <div className="bg-muted flex size-8 items-center justify-center rounded-full text-xs font-medium">
+                {event.sequence}
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">
+                    {formatEnumLabel(event.eventType)}
+                  </span>
+                  <Badge variant="outline">
+                    commit_position {event.commitPosition}
+                  </Badge>
+                  <Badge variant="outline">
+                    {formatBytes(event.payload.byteLength)}
+                  </Badge>
+                </div>
+                <div className="text-muted-foreground mt-1 text-xs">
+                  {formatDateTime(event.occurredAt)} · command {event.commandId}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {detail.family === "query_action" ? (
+        <div className="grid gap-3">
+          <JsonBlock title="query_text" value={detail.action.queryText} />
+          <JsonBlock
+            title="validated_query"
+            value={
+              detail.action.validatedQuery ?? "No validated query recorded"
+            }
+          />
+          <JsonBlock
+            title="source_descriptor_json"
+            value={detail.action.sourceDescriptor}
+          />
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          <JsonBlock
+            title="request_descriptor_json"
+            value={detail.action.requestDescriptor}
+          />
+          <JsonBlock
+            title="page_progress_json"
+            value={detail.action.pageProgress}
+          />
+          <JsonBlock
+            title="source_descriptor_json"
+            value={detail.action.sourceDescriptor}
+          />
+        </div>
+      )}
+
+      <div className="grid gap-3">
+        <JsonBlock
+          title="command_payload_bytes"
+          value={firstCommand?.commandPayload ?? null}
+        />
+        <JsonBlock title="raw_events" value={detail.events} />
+      </div>
+    </div>
   );
 }
 
@@ -508,15 +749,32 @@ export function AuditPage() {
   const { data, isFetching, refetch } = useSuspenseQuery(
     auditListQueryOptions(session.user.id, organizationSlug, search)
   );
+  const [selectedAuditId, setSelectedAuditId] = useState<string | null>(
+    () => data.items[0]?.id ?? null
+  );
+  const selectedItem =
+    data.items.find((item) => item.id === selectedAuditId) ??
+    data.items[0] ??
+    null;
+  const selectedFamily = selectedItem?.family ?? "query_action";
+  const selectedActionId = selectedItem?.familyActionId ?? "__none__";
+  const detailQuery = useQuery({
+    ...auditActionDetailQueryOptions(
+      session.user.id,
+      organizationSlug,
+      selectedFamily,
+      selectedActionId
+    ),
+    enabled: selectedItem !== null,
+  });
 
   return (
     <div className="space-y-8 p-8">
       <div>
         <h1 className="text-3xl font-bold">Audit</h1>
         <p className="text-muted-foreground mt-2">
-          One row per audited action across query and source API workflows.
-          Ordered by action start time so pagination stays stable while actions
-          continue to evolve.
+          Trace query and source API workflows from command intake through raw
+          events, payloads, metrics, and projection state.
         </p>
       </div>
 
@@ -547,22 +805,86 @@ export function AuditPage() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>When</TableHead>
-                <TableHead>Actor</TableHead>
-                <TableHead>Activity</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.items.map((item) => (
-                <AuditTableRow key={item.id} item={item} />
-              ))}
-            </TableBody>
-          </Table>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(440px,0.95fr)]">
+          <section className="min-w-0 rounded-md border">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <div>
+                <h2 className="font-semibold">Trace feed</h2>
+                <p className="text-muted-foreground text-xs">
+                  Newest audited actions with source, actor, status, and shape.
+                </p>
+              </div>
+              <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                <IconListDetails size={16} stroke={1.75} />
+                {data.projectedThrough.queryAction ||
+                data.projectedThrough.sourceApiAction
+                  ? "Projection caught up"
+                  : "Projection pending"}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Actor / source</TableHead>
+                    <TableHead>Activity</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.items.map((item) => (
+                    <AuditTableRow
+                      key={item.id}
+                      isSelected={selectedItem?.id === item.id}
+                      item={item}
+                      onSelect={() => setSelectedAuditId(item.id)}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </section>
+
+          <aside className="min-w-0 rounded-md border">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <div>
+                <h2 className="font-semibold">Trace detail</h2>
+                <p className="text-muted-foreground text-xs">
+                  Commands, event log, payload bytes, and action fold state.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <IconRoute className="text-muted-foreground size-4" />
+                <IconDatabase className="text-muted-foreground size-4" />
+                <IconClock className="text-muted-foreground size-4" />
+              </div>
+            </div>
+            <div className="max-h-[calc(100vh-220px)] overflow-auto p-4">
+              {selectedItem && detailQuery.isPending ? (
+                <DetailSkeleton item={selectedItem} />
+              ) : null}
+              {selectedItem && detailQuery.isError ? (
+                <div className="space-y-4">
+                  <DetailSkeleton item={selectedItem} />
+                  <Alert variant="destructive">
+                    <IconAlertTriangle className="size-4" />
+                    <AlertTitle>Failed to load trace detail</AlertTitle>
+                    <AlertDescription>
+                      {detailQuery.error.message}
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              ) : null}
+              {selectedItem && detailQuery.data ? (
+                <AuditTraceDetail
+                  detail={detailQuery.data}
+                  item={selectedItem}
+                />
+              ) : null}
+            </div>
+          </aside>
         </div>
       )}
     </div>

@@ -12,6 +12,20 @@ export const organizationQueryKeys = {
     slug: string,
     search: Record<string, string | number | undefined>
   ) => [...organizationQueryKeys.all(userId), "audit", slug, search] as const,
+  auditDetail: (
+    userId: UserScope,
+    slug: string,
+    family: string,
+    actionId: string
+  ) =>
+    [
+      ...organizationQueryKeys.all(userId),
+      "audit",
+      slug,
+      "detail",
+      family,
+      actionId,
+    ] as const,
   bySlug: (userId: UserScope, slug: string) =>
     [...organizationQueryKeys.all(userId), "bySlug", slug] as const,
   list: (userId: UserScope) =>
