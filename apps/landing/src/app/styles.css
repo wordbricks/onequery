@@ -566,6 +566,18 @@ code {
   margin-top: 20px;
 }
 
+.blog-post-figure {
+  margin: 28px 0 0;
+}
+
+.blog-post-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
 .blog-related {
   padding: 48px 0 80px;
   border-top: 1px solid var(--line);

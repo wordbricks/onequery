@@ -23,6 +23,8 @@ export interface BlogPost {
 }
 
 export interface BlogPostSection {
+  imageAlt?: string;
+  imageSrc?: string;
   id: string;
   paragraphs: string[];
   title: string;
