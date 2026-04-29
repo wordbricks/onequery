@@ -4,6 +4,9 @@ Use this prompt as the shared base for OneQuery blog list thumbnail images.
 Replace the bracketed fields for each article.
 
 Use `diagram-system/diagram-system-reference.png` as the visual reference.
+When a thumbnail needs to represent OneQuery itself, use the `ONEQUERY ICON`
+sample from `diagram-system/diagram-system-reference.png` inside a pale gray
+rounded tile.
 
 ```text
 Create a square 1:1 blog thumbnail using the OneQuery blog diagram system.
@@ -24,6 +27,11 @@ Style:
 minimal technical architecture diagram, thin charcoal outlines, pale gray and
 translucent gray fills, rounded rectangles and pills, subtle gray halftone dot
 texture in grouped containers, thin black arrows with small arrowheads.
+
+OneQuery icon:
+if OneQuery appears as a node, service, product, or actor, use the simplified
+line seal/whale icon shown in the `ONEQUERY ICON` sample. Do not use the filled
+app icon or wordmark.
 
 Composition:
 use one simple icon-first diagrammatic metaphor. All visual elements must be
