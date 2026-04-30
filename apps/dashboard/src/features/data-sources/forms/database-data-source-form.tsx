@@ -215,7 +215,9 @@ export function DatabaseDataSourceForm({
 
         <TabsContent value="manual" className="pt-4">
           <form
-            onSubmit={form.handleSubmit(onSubmitManual)}
+            onSubmit={(event) => {
+              void form.handleSubmit(onSubmitManual)(event);
+            }}
             className="space-y-4"
           >
             <div className="grid grid-cols-2 gap-4">

@@ -39,16 +39,14 @@ export function createInstallScriptPlugin(): Plugin {
   return {
     name: "onequery-install-script",
     configurePreviewServer(server) {
-      registerInstallScriptMiddleware(
-        server.middlewares.use.bind(server.middlewares),
-        asset
-      );
+      registerInstallScriptMiddleware((middleware) => {
+        server.middlewares.use(middleware);
+      }, asset);
     },
     configureServer(server) {
-      registerInstallScriptMiddleware(
-        server.middlewares.use.bind(server.middlewares),
-        asset
-      );
+      registerInstallScriptMiddleware((middleware) => {
+        server.middlewares.use(middleware);
+      }, asset);
     },
     generateBundle() {
       // Keep the landing asset sourced from the installer package so the

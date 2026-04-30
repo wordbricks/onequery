@@ -98,24 +98,24 @@ export function AppSidebarHeader({
         <DropdownMenuContent align="start" className="w-64">
           {canManageOrganizationSettings ? (
             <DropdownMenuItem
-              onClick={async () =>
-                navigate({
+              onClick={() => {
+                void navigate({
                   params: { org_slug: menuOrgSlug },
                   to: "/$org_slug/settings",
-                })
-              }
+                });
+              }}
             >
               <IconSettings size={16} stroke={2} />
               Settings
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem
-            onClick={async () =>
-              navigate({
+            onClick={() => {
+              void navigate({
                 params: { org_slug: menuOrgSlug },
                 to: "/$org_slug/team",
-              })
-            }
+              });
+            }}
           >
             <IconUsers size={16} stroke={2} />
             Invite and manage members
@@ -131,12 +131,12 @@ export function AppSidebarHeader({
                   return (
                     <DropdownMenuItem
                       key={org.id}
-                      onClick={async () =>
-                        navigate({
+                      onClick={() => {
+                        void navigate({
                           params: { org_slug: targetSlug },
                           to: "/$org_slug/home",
-                        })
-                      }
+                        });
+                      }}
                     >
                       <span className="truncate">{org.name}</span>
                       {isActive ? (
@@ -152,7 +152,9 @@ export function AppSidebarHeader({
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={async () => navigate({ to: "/onboarding/create-org" })}
+                onClick={() => {
+                  void navigate({ to: "/onboarding/create-org" });
+                }}
               >
                 <IconPlus size={16} stroke={2} />
                 Create organization

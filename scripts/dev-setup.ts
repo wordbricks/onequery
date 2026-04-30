@@ -195,7 +195,9 @@ async function waitForPostgres(): Promise<boolean> {
       return true;
     }
     process.stdout.write(".");
-    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    await new Promise((resolve) => {
+      setTimeout(resolve, RETRY_DELAY_MS);
+    });
   }
 
   console.log(

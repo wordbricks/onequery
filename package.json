@@ -42,7 +42,7 @@
       "smol-toml": "1.6.1",
       "sonner": "2.0.7",
       "unstorage": "1.17.4",
-      "xstate": "5.30.0",
+      "xstate": "5.31.0",
       "zod": "4.3.5"
     },
     "catalogs": {

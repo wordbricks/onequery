@@ -210,7 +210,9 @@ export function ConnectDatabasePage() {
             )}
             <Button
               variant="ghost"
-              onClick={skipAndRedirect}
+              onClick={() => {
+                void skipAndRedirect();
+              }}
               className="mt-2 w-full"
             >
               Skip for now

@@ -314,7 +314,9 @@ export function SignInPage() {
           <CardContent>
             {resolvedMode === "signin" ? (
               <form
-                onSubmit={signInForm.handleSubmit(handleSignIn)}
+                onSubmit={(event) => {
+                  void signInForm.handleSubmit(handleSignIn)(event);
+                }}
                 className="space-y-4"
               >
                 <div className="space-y-2">
@@ -388,7 +390,9 @@ export function SignInPage() {
               </form>
             ) : isFirstUserBootstrap ? (
               <form
-                onSubmit={bootstrapForm.handleSubmit(handleBootstrap)}
+                onSubmit={(event) => {
+                  void bootstrapForm.handleSubmit(handleBootstrap)(event);
+                }}
                 className="space-y-4"
               >
                 <div className="space-y-2">
@@ -507,7 +511,9 @@ export function SignInPage() {
               </form>
             ) : (
               <form
-                onSubmit={signUpForm.handleSubmit(handleSignUp)}
+                onSubmit={(event) => {
+                  void signUpForm.handleSubmit(handleSignUp)(event);
+                }}
                 className="space-y-4"
               >
                 <div className="space-y-2">

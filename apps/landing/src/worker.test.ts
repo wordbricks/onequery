@@ -11,9 +11,9 @@ type WorkerRequest = Parameters<WorkerFetchHandler>[0];
 function createExecutionContext(): WorkerExecutionContext {
   return {
     exports: {} as WorkerExecutionContext["exports"],
-    passThroughOnException: vi.fn(),
+    passThroughOnException: vi.fn(() => {}),
     props: {},
-    waitUntil: vi.fn(),
+    waitUntil: vi.fn(() => {}),
   };
 }
 

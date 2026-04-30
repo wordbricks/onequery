@@ -11,8 +11,8 @@ describe("query logging", () => {
       ...extra,
     })
   );
-  const logCliEvent = vi.fn();
-  const recordCliCounterMetric = vi.fn();
+  const logCliEvent = vi.fn(() => {});
+  const recordCliCounterMetric = vi.fn(() => {});
   const logging = createCliQueryLogging({
     buildCliRequestLogDetails,
     logCliEvent,

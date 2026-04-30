@@ -414,7 +414,7 @@ describe("self-host lifecycle lease", () => {
       close: vi.fn(async () => {}),
       name: "server-storage",
     };
-    const exitProcess = vi.fn();
+    const exitProcess = vi.fn(() => {});
 
     attachGracefulShutdownHandlers({
       exitProcess,
@@ -465,7 +465,7 @@ describe("self-host lifecycle lease", () => {
       failureCode: "checkpoint_failed" as const,
       name: "server-storage",
     };
-    const exitProcess = vi.fn();
+    const exitProcess = vi.fn(() => {});
 
     attachGracefulShutdownHandlers({
       exitProcess,
@@ -515,7 +515,7 @@ describe("self-host lifecycle lease", () => {
       }),
       name: "supervisor-control",
     };
-    const exitProcess = vi.fn();
+    const exitProcess = vi.fn(() => {});
 
     attachGracefulShutdownHandlers({
       exitProcess,
@@ -562,7 +562,7 @@ describe("self-host lifecycle lease", () => {
       close: vi.fn(() => new Promise<void>(() => undefined)),
       name: "server-storage",
     };
-    const exitProcess = vi.fn();
+    const exitProcess = vi.fn(() => {});
     const controller = attachGracefulShutdownHandlers({
       exitProcess,
       lease,
@@ -629,7 +629,9 @@ describe("self-host lifecycle lease", () => {
         reason: "manual",
       })
     ).rejects.toBeInstanceOf(RuntimeShutdownError);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 10);
+    });
     expect(server.stop).not.toHaveBeenCalled();
 
     await lease.release({
@@ -664,7 +666,7 @@ describe("self-host lifecycle lease", () => {
       close: vi.fn(async () => {}),
       name: "server-storage",
     };
-    const exitProcess = vi.fn();
+    const exitProcess = vi.fn(() => {});
     const controller = attachGracefulShutdownHandlers({
       exitProcess,
       lease,
@@ -799,7 +801,9 @@ async function waitUntil(
       return;
     } catch (error) {
       lastError = error;
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await new Promise((resolve) => {
+        setTimeout(resolve, 10);
+      });
     }
   }
 

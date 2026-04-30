@@ -85,7 +85,9 @@ const supervisorSession = openSupervisorRuntimeSession({
         // was awaiting an intentionally pending graceful stop. Force the fixture
         // process out after the supervisor has time to observe the terminate phase;
         // graceful session cleanup can outlive the test terminate deadline.
-        await new Promise((resolve) => setTimeout(resolve, 250));
+        await new Promise((resolve) => {
+          setTimeout(resolve, 250);
+        });
         forceExitSoon(0);
       }
       return new Promise<never>(() => undefined);
@@ -164,7 +166,9 @@ const readyDelayMs = Number(
   readyDelayArg?.slice("--ready-delay-ms=".length) ?? 0
 );
 if (Number.isFinite(readyDelayMs) && readyDelayMs > 0) {
-  await new Promise((resolve) => setTimeout(resolve, readyDelayMs));
+  await new Promise((resolve) => {
+    setTimeout(resolve, readyDelayMs);
+  });
 }
 
 await lease.transition(RuntimePhase.READY);

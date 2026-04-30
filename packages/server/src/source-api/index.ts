@@ -4,7 +4,7 @@ export * from "./errors";
 export * from "./execute";
 export * from "./normalize";
 export * from "./registry";
-export * from "./types";
+export type * from "./types";
 export * from "./helpers/continuation-token";
 export * from "./helpers/header-policy";
 export * from "./helpers/http-rest";
