@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { logCliEvent as logCliEventFn } from "../../../observability";
 import { createCliQueryLogging } from "./logging";
 
 describe("query logging", () => {
@@ -11,7 +12,7 @@ describe("query logging", () => {
       ...extra,
     })
   );
-  const logCliEvent = vi.fn(() => {});
+  const logCliEvent = vi.fn<typeof logCliEventFn>();
   const recordCliCounterMetric = vi.fn(() => {});
   const logging = createCliQueryLogging({
     buildCliRequestLogDetails,
