@@ -227,7 +227,7 @@
   ],
   "overrides": [
     {
-      "files": ["apps/web/src/**/*.{ts,tsx,js,jsx}"],
+      "files": ["apps/dashboard/src/**/*.{ts,tsx,js,jsx}"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -265,7 +265,7 @@
       },
     },
     {
-      "files": ["apps/web/src/server/**/*.{ts,tsx,js,jsx}"],
+      "files": ["apps/dashboard/src/server/**/*.{ts,tsx,js,jsx}"],
       "rules": {
         "no-restricted-imports": "off",
       },

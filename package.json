@@ -90,7 +90,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "turbo run test:e2e",
-    "test:e2e:ui": "cd apps/web && bun run test:e2e:ui",
+    "test:e2e:ui": "cd apps/dashboard && bun run test:e2e:ui",
     "typecheck": "turbo run typecheck typecheck:root",
     "typecheck:root": "tsgo --noEmit -p tsconfig.scripts.json",
     "proto:generate": "bun run proto:generate:cli && bun run proto:generate:runtime && bun run proto:generate:workflow",

@@ -48,17 +48,17 @@ const WORKSPACE_ROOT = path.resolve(CLI_ROOT, "..", "..");
 const WORKSPACE_MANIFEST_PATH = path.join(WORKSPACE_ROOT, "package.json");
 const workspacePackageRequireCache = new Map();
 let workspacePackageManifestPathIndexPromise = null;
-let buildWebAssetsPromise = null;
-const WEB_BUILD_ROOT = path.join(WORKSPACE_ROOT, "apps", "web");
-const WEB_DIST_DIR = path.join(WEB_BUILD_ROOT, "dist");
-const WEB_DIST_ENTRY = getRuntimeBundleEntryConfig("webDist");
-if (!WEB_DIST_ENTRY.requiredFile) {
+let buildDashboardAssetsPromise = null;
+const DASHBOARD_BUILD_ROOT = path.join(WORKSPACE_ROOT, "apps", "dashboard");
+const DASHBOARD_DIST_DIR = path.join(DASHBOARD_BUILD_ROOT, "dist");
+const DASHBOARD_DIST_ENTRY = getRuntimeBundleEntryConfig("webDist");
+if (!DASHBOARD_DIST_ENTRY.requiredFile) {
   throw new Error(
     "Expected runtime bundle webDist entry to declare requiredFile."
   );
 }
 
-const WEB_INDEX_FILENAME = WEB_DIST_ENTRY.requiredFile;
+const DASHBOARD_INDEX_FILENAME = DASHBOARD_DIST_ENTRY.requiredFile;
 const DB_MIGRATIONS_DIR = path.join(
   WORKSPACE_ROOT,
   "packages",
@@ -404,14 +404,14 @@ async function restorePackagedExecutableModes({ targetRoot, targetTriple }) {
 }
 
 export async function stagePackagedRuntime({ runtimeRoot }) {
-  await ensureWebAssetsBuilt();
+  await ensureDashboardAssetsBuilt();
 
   const migrationsOutDir = resolvePackagedRuntimeEntryDir(
     runtimeRoot,
     "migrations"
   );
   const webOutDir = resolvePackagedRuntimeEntryDir(runtimeRoot, "webDist");
-  const builtWebDistDir = await resolveBuiltWebDistDir();
+  const builtDashboardDistDir = await resolveBuiltDashboardDistDir();
 
   await mkdir(runtimeRoot, { recursive: true });
   await Promise.all(
@@ -422,7 +422,7 @@ export async function stagePackagedRuntime({ runtimeRoot }) {
   await Promise.all([
     cp(DB_MIGRATIONS_DIR, migrationsOutDir, { recursive: true }),
     stageRuntimeAssets({ runtimeRoot }),
-    cp(builtWebDistDir, webOutDir, { recursive: true }),
+    cp(builtDashboardDistDir, webOutDir, { recursive: true }),
   ]);
 }
 
@@ -677,13 +677,13 @@ export const __internal = {
   stageRuntimeAssets,
 };
 
-async function buildWebAssets() {
-  // Comment: Build the web package through Turbo so its workspace
+async function buildDashboardAssets() {
+  // Comment: Build the dashboard package through Turbo so its workspace
   // prerequisites (notably repo-local packages that export generated `dist/`
   // entrypoints) are materialized on clean CI runners before npm staging.
   const result = spawnSync(
     "bun",
-    ["x", "turbo", "run", "build", "--filter=@onequery/web"],
+    ["x", "turbo", "run", "build", "--filter=@onequery/dashboard"],
     {
       cwd: WORKSPACE_ROOT,
       encoding: "utf8",
@@ -701,31 +701,33 @@ async function buildWebAssets() {
       .trim();
     const message =
       output.length > 0
-        ? `failed to build apps/web for npm packaging\n${output}`
-        : "failed to build apps/web for npm packaging";
+        ? `failed to build apps/dashboard for npm packaging\n${output}`
+        : "failed to build apps/dashboard for npm packaging";
 
     throw new Error(message);
   }
 }
 
-async function ensureWebAssetsBuilt() {
-  if (!buildWebAssetsPromise) {
-    buildWebAssetsPromise = buildWebAssets().catch((error) => {
-      buildWebAssetsPromise = null;
+async function ensureDashboardAssetsBuilt() {
+  if (!buildDashboardAssetsPromise) {
+    buildDashboardAssetsPromise = buildDashboardAssets().catch((error) => {
+      buildDashboardAssetsPromise = null;
       throw error;
     });
   }
 
-  await buildWebAssetsPromise;
+  await buildDashboardAssetsPromise;
 }
 
-async function resolveBuiltWebDistDir() {
-  const indexPath = path.join(WEB_DIST_DIR, WEB_INDEX_FILENAME);
+async function resolveBuiltDashboardDistDir() {
+  const indexPath = path.join(DASHBOARD_DIST_DIR, DASHBOARD_INDEX_FILENAME);
   try {
     await access(indexPath);
-    return WEB_DIST_DIR;
+    return DASHBOARD_DIST_DIR;
   } catch {
-    throw new Error(`failed to locate built web assets; expected ${indexPath}`);
+    throw new Error(
+      `failed to locate built dashboard assets; expected ${indexPath}`
+    );
   }
 }
 

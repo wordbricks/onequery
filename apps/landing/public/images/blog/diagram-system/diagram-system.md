@@ -5,7 +5,7 @@ OneQuery blog diagrams.
 
 Use the `ONEQUERY ICON` sample in `diagram-system-reference.png` whenever a
 diagram needs to represent OneQuery as a node, product, service, or actor. The
-sample is a simplified line version of `apps/web/public/onequery.svg` adapted to
+sample is a simplified line version of `apps/dashboard/public/onequery.svg` adapted to
 the Diagram System.
 
 ## Visual Language

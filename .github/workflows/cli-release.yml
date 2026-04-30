@@ -344,7 +344,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # COMMENT: npm staging builds apps/web and packages the self-host runtime,
+          # COMMENT: npm staging builds apps/dashboard and packages the self-host runtime,
           # so this release job also needs the workspace dependencies hydrated.
           bun ci
 

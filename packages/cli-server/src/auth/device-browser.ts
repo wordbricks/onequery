@@ -92,7 +92,7 @@ export function createDeviceAuthorizationBrowserRoute(
         return c.redirect(buildDevicePageUrl(c.req.url, userCode), 302);
       })
       // Comment: browser presentation for the CLI device flow now lives in
-      // `apps/web`; this worker route only exposes JSON state/effect endpoints.
+      // `apps/dashboard`; this worker route only exposes JSON state/effect endpoints.
       .get("/verify", async (c) => {
         const userCode = normalizeUserCode(c.req.query("user_code"));
         if (!userCode) {

@@ -59,7 +59,7 @@ jobs:
                   cli_code=true
                 fi
                 ;;
-              .github/workflows/cli-release.yml|.github/workflows/cli-cargo-audit.yml|.github/workflows/ci.yml|package.json|turbo.json|packages/server/scripts/generate-cli-auth-openapi.ts|packages/server/package.json|packages/server/scripts/generate-cli-openapi.ts|packages/server/src/app.ts|packages/server/src/auth.ts|packages/server/src/env.ts|packages/server/src/problem-details/*|packages/server/src/routes/cli/*|apps/web/src/lib/check-authenticated-redirect.ts|apps/web/src/lib/check-authenticated-redirect.test.ts|apps/web/src/server/cli-auth-login-session.ts)
+              .github/workflows/cli-release.yml|.github/workflows/cli-cargo-audit.yml|.github/workflows/ci.yml|package.json|turbo.json|packages/server/scripts/generate-cli-auth-openapi.ts|packages/server/package.json|packages/server/scripts/generate-cli-openapi.ts|packages/server/src/app.ts|packages/server/src/auth.ts|packages/server/src/env.ts|packages/server/src/problem-details/*|packages/server/src/routes/cli/*|apps/dashboard/src/lib/check-authenticated-redirect.ts|apps/dashboard/src/lib/check-authenticated-redirect.test.ts|apps/dashboard/src/server/cli-auth-login-session.ts)
                 cli_code=true
                 ;;
             esac

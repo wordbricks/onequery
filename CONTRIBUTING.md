@@ -6,7 +6,7 @@ Thank you for your interest in OneQuery.
 
 **We only accept pull requests for new data source integrations.**
 
-The core platform (server, web UI, CLI, database schema) is not open to external contributions at this time. If you have a request for core functionality, please open an issue instead — see [Feature Requests](#feature-requests) below.
+The core platform (server, dashboard UI, CLI, database schema) is not open to external contributions at this time. If you have a request for core functionality, please open an issue instead — see [Feature Requests](#feature-requests) below.
 
 ### What counts as a data source integration
 
@@ -88,7 +88,7 @@ bun run test
 
 ## Feature Requests
 
-For any feature request outside of data source integrations — new platform capabilities, CLI commands, web UI features, API changes, etc. — please **open a GitHub issue** with a title starting with:
+For any feature request outside of data source integrations — new platform capabilities, CLI commands, dashboard UI features, API changes, etc. — please **open a GitHub issue** with a title starting with:
 
 ```
 [Feature Request] <your title here>
@@ -106,8 +106,8 @@ Open a GitHub issue with a clear description of the problem, steps to reproduce,
 apps/
   cli/              # Rust CLI workspace
   connector/        # Customer-side connector agent
+  dashboard/        # React dashboard SPA
   landing/          # Marketing site
-  web/              # React SPA
 
 packages/
   base/             # Shared types and org permission helpers

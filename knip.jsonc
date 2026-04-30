@@ -11,7 +11,7 @@
   // The full Knip run reports it as unlisted without this ignore.
   "ignoreBinaries": ["just"],
   "ignoreIssues": {
-    "apps/web/src/server/auth-rate-limit.ts": ["unlisted"],
+    "apps/dashboard/src/server/auth-rate-limit.ts": ["unlisted"],
     ".github/workflows/cli-release.yml": ["binaries"],
     "packages/cli-server/generated/**/*.ts": ["exports", "types"],
   },
@@ -36,7 +36,7 @@
       ],
       "project": ["bin/*.js", "scripts/*.js"],
     },
-    "apps/web": {
+    "apps/dashboard": {
       "project": [
         "src/**/*.{ts,tsx}",
         "!src/**/*.test.{ts,tsx}",

@@ -11,7 +11,7 @@
     "./packaged-entry": "./src/node-entry.ts"
   },
   "scripts": {
-    "build:web": "bun run --cwd ../../apps/web build",
+    "build:web": "bun run --cwd ../../apps/dashboard build",
     "dev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-runtime.ts --dev",
     "start": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-smoke.ts serve",
     "serve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-smoke.ts serve",

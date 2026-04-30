@@ -113,8 +113,8 @@
         "tailwindcss": "catalog:tooling",
       },
     },
-    "apps/web": {
-      "name": "@onequery/web",
+    "apps/dashboard": {
+      "name": "@onequery/dashboard",
       "version": "0.0.0",
       "dependencies": {
         "@hookform/resolvers": "5.2.2",
@@ -1141,7 +1141,7 @@
 
     "@onequery/ui": ["@onequery/ui@workspace:packages/ui"],
 
-    "@onequery/web": ["@onequery/web@workspace:apps/web"],
+    "@onequery/dashboard": ["@onequery/dashboard@workspace:apps/dashboard"],
 
     "@open-draft/deferred-promise": ["@open-draft/deferred-promise@2.2.0", "", {}, "sha512-CecwLWx3rhxVQF6V4bAgPS5t+So2sTbPgAzafKkVizyi7tlwpcFpdFqq+wqF2OwNBmqFuu6tOyouTuxgpMfzmA=="],
 

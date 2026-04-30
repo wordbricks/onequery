@@ -92,9 +92,9 @@ describe("spa asset binding", () => {
     expect(response.status).toBe(404);
   });
 
-  it("uses apps/web/dist as the workspace-dev build output path", () => {
+  it("uses apps/dashboard/dist as the workspace-dev build output path", () => {
     expect(getDefaultSpaBuildDir("/workspace/root")).toBe(
-      "/workspace/root/apps/web/dist"
+      "/workspace/root/apps/dashboard/dist"
     );
   });
 });
