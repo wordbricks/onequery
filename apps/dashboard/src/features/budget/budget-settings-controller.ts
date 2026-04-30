@@ -2,6 +2,7 @@ import { useActor } from "@xstate/react";
 import { Result, TaggedError } from "better-result";
 import { toast } from "sonner";
 import { assertEvent, assign, fromPromise, setup } from "xstate";
+import type { SnapshotFrom } from "xstate";
 
 import type { SaveStatus } from "@/lib/use-auto-save";
 import type { OrganizationSettings } from "@/queries/organization-queries";
@@ -24,6 +25,13 @@ const BUDGET_SETTINGS_EVENT = {
 
 const BUDGET_SETTINGS_STATE = {
   EDITING: "editing",
+  ERROR: "error",
+  SAVED: "saved",
+  SAVING: "saving",
+} as const;
+
+const BUDGET_SETTINGS_TAG = {
+  EDITABLE: "editable",
   ERROR: "error",
   SAVED: "saved",
   SAVING: "saving",
@@ -58,9 +66,14 @@ type BudgetSettingsTypes = {
   input: BudgetSettingsMachineInput;
 };
 
-type SaveBudgetActorInput = {
+export type SaveBudgetActorInput = {
   nextBudgetUsd: number | null;
 };
+
+export type SaveBudgetActorOutput = Pick<
+  OrganizationSettings,
+  "monthlyBudgetUsd"
+>;
 
 type SaveBudgetRequestInput = SaveBudgetActorInput & {
   errorMessage: string;
@@ -123,18 +136,16 @@ function canClearBudget(context: BudgetSettingsContext): boolean {
   );
 }
 
-function toSaveStatus(state: {
-  hasTag: (
-    tag: (typeof BUDGET_SETTINGS_STATE)[keyof typeof BUDGET_SETTINGS_STATE]
-  ) => boolean;
-}): SaveStatus {
-  if (state.hasTag(BUDGET_SETTINGS_STATE.SAVING)) {
+export function readBudgetSaveStatus(
+  state: SnapshotFrom<ReturnType<typeof createBudgetSettingsMachine>>
+): SaveStatus {
+  if (state.hasTag(BUDGET_SETTINGS_TAG.SAVING)) {
     return "saving";
   }
-  if (state.hasTag(BUDGET_SETTINGS_STATE.SAVED)) {
+  if (state.hasTag(BUDGET_SETTINGS_TAG.SAVED)) {
     return "saved";
   }
-  if (state.hasTag(BUDGET_SETTINGS_STATE.ERROR)) {
+  if (state.hasTag(BUDGET_SETTINGS_TAG.ERROR)) {
     return "error";
   }
   return "idle";
@@ -199,7 +210,7 @@ const budgetSettingsMachine = setup({
     },
   },
   actors: {
-    saveBudget: fromPromise(
+    saveBudget: fromPromise<SaveBudgetActorOutput, SaveBudgetActorInput>(
       async ({ input }: { input: SaveBudgetActorInput }) =>
         Promise.resolve({
           monthlyBudgetUsd: input.nextBudgetUsd,
@@ -221,7 +232,7 @@ const budgetSettingsMachine = setup({
   initial: BUDGET_SETTINGS_STATE.EDITING,
   states: {
     [BUDGET_SETTINGS_STATE.EDITING]: {
-      tags: [BUDGET_SETTINGS_STATE.EDITING],
+      tags: [BUDGET_SETTINGS_TAG.EDITABLE],
       on: {
         [BUDGET_SETTINGS_EVENT.INPUT_CHANGED]: {
           actions: {
@@ -244,7 +255,7 @@ const budgetSettingsMachine = setup({
       },
     },
     [BUDGET_SETTINGS_STATE.SAVING]: {
-      tags: [BUDGET_SETTINGS_STATE.SAVING],
+      tags: [BUDGET_SETTINGS_TAG.SAVING],
       invoke: {
         src: "saveBudget",
         input: ({ context, event }) => {
@@ -297,7 +308,7 @@ const budgetSettingsMachine = setup({
       },
     },
     [BUDGET_SETTINGS_STATE.SAVED]: {
-      tags: [BUDGET_SETTINGS_STATE.SAVED],
+      tags: [BUDGET_SETTINGS_TAG.EDITABLE, BUDGET_SETTINGS_TAG.SAVED],
       after: {
         savedIdle: BUDGET_SETTINGS_STATE.EDITING,
       },
@@ -324,7 +335,7 @@ const budgetSettingsMachine = setup({
       },
     },
     [BUDGET_SETTINGS_STATE.ERROR]: {
-      tags: [BUDGET_SETTINGS_STATE.ERROR],
+      tags: [BUDGET_SETTINGS_TAG.EDITABLE, BUDGET_SETTINGS_TAG.ERROR],
       after: {
         errorIdle: BUDGET_SETTINGS_STATE.EDITING,
       },
@@ -404,7 +415,7 @@ export function useBudgetSettingsController(
   const saveEvent = { type: BUDGET_SETTINGS_EVENT.SAVE } as const;
   const clearEvent = { type: BUDGET_SETTINGS_EVENT.CLEAR } as const;
   const parsedBudgetInput = parseBudgetInput(state.context.budgetInput);
-  const isSavePending = state.hasTag(BUDGET_SETTINGS_STATE.SAVING);
+  const isSavePending = state.hasTag(BUDGET_SETTINGS_TAG.SAVING);
 
   return {
     budgetInput: state.context.budgetInput,
@@ -418,7 +429,7 @@ export function useBudgetSettingsController(
     save: () => {
       send(saveEvent);
     },
-    saveStatus: toSaveStatus(state),
+    saveStatus: readBudgetSaveStatus(state),
     setBudgetInput: (value: string) => {
       send({
         type: BUDGET_SETTINGS_EVENT.INPUT_CHANGED,

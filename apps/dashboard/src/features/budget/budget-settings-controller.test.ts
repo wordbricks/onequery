@@ -3,7 +3,14 @@ import { createActor, fromPromise, waitFor } from "xstate";
 
 import type { OrganizationSettings } from "@/queries/organization-queries";
 
-import { createBudgetSettingsMachine } from "./budget-settings-controller";
+import {
+  createBudgetSettingsMachine,
+  readBudgetSaveStatus,
+} from "./budget-settings-controller";
+import type {
+  SaveBudgetActorInput,
+  SaveBudgetActorOutput,
+} from "./budget-settings-controller";
 
 const SAVED_IDLE_DELAY_MS = 100;
 const ERROR_IDLE_DELAY_MS = 100;
@@ -19,14 +26,9 @@ function createTestMachine(
     savedIdleDelayMs: SAVED_IDLE_DELAY_MS,
   }).provide({
     actors: {
-      saveBudget: fromPromise(
-        async ({
-          input,
-        }: {
-          input: {
-            nextBudgetUsd: number | null;
-          };
-        }) => saveBudget(input.nextBudgetUsd)
+      saveBudget: fromPromise<SaveBudgetActorOutput, SaveBudgetActorInput>(
+        async ({ input }: { input: SaveBudgetActorInput }) =>
+          saveBudget(input.nextBudgetUsd)
       ),
     },
   });
@@ -214,7 +216,8 @@ describe("createBudgetSettingsMachine", () => {
 
     actor.start();
 
-    expect(actor.getSnapshot().hasTag("editing")).toBe(true);
+    expect(actor.getSnapshot().hasTag("editable")).toBe(true);
+    expect(readBudgetSaveStatus(actor.getSnapshot())).toBe("idle");
 
     actor.send({
       type: "budgetSettings/inputChanged",
@@ -223,6 +226,7 @@ describe("createBudgetSettingsMachine", () => {
     actor.send({ type: "budgetSettings/save" });
 
     expect(actor.getSnapshot().hasTag("saving")).toBe(true);
+    expect(readBudgetSaveStatus(actor.getSnapshot())).toBe("saving");
 
     const savedState = await waitFor(
       actor,
@@ -231,5 +235,7 @@ describe("createBudgetSettingsMachine", () => {
     );
 
     expect(savedState.hasTag("saved")).toBe(true);
+    expect(savedState.hasTag("editable")).toBe(true);
+    expect(readBudgetSaveStatus(savedState)).toBe("saved");
   });
 });
