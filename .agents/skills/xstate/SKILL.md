@@ -36,7 +36,7 @@ Use XState when the domain has meaningful modes, transitions, async lifecycle, c
 
 Read only the references needed for the task:
 
-- [Modeling](references/modeling.md): states, context, events, guards, tags, delays.
+- [Modeling](references/modeling.md): states, state types, context, events, guards, tags, delays.
 - [Transitions](references/transitions.md): guarded, eventless, delayed, and pure transitions.
 - [Actors](references/actors.md): async work, actor choice, invocation, outputs, cancellation.
 - [Promises](references/promises.md): `fromPromise`, request input, output, errors, abort signals.

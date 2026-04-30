@@ -14,6 +14,38 @@ Use states for:
 
 If a boolean changes which events are legal, it is probably a state. If two booleans can combine into an impossible situation, they are probably states.
 
+## State Types
+
+Use the state node type that matches the workflow shape:
+
+- atomic: no child states; this is the default
+- compound: one active child state, with `initial` and `states`
+- parallel: multiple active child regions, with `type: "parallel"`
+- final: terminal state for a completed workflow or nested phase, with `type: "final"`
+
+```ts
+states: {
+  checkout: {
+    initial: "shipping",
+    states: {
+      shipping: {},
+      payment: {},
+      complete: { type: "final" },
+    },
+    onDone: "submitted",
+  },
+  syncing: {
+    type: "parallel",
+    states: {
+      profile: {},
+      billing: {},
+    },
+  },
+}
+```
+
+Use final states for domain endpoints such as `submitted`, `accepted`, `completed`, `canceled`, or `failed`. A root final state completes the machine actor with snapshot status `"done"`. A nested final state completes its parent and raises the parent's `onDone`; a parallel parent completes after every region reaches a final state.
+
 ## Context
 
 Context holds durable facts.
