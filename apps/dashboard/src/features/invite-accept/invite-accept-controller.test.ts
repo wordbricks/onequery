@@ -1,16 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
-import { createActor } from "xstate";
-import { getPathsFromEvents, getShortestPaths } from "xstate/graph";
+import { createActor, fromPromise, waitFor } from "xstate";
 
 import {
   createInviteAcceptMachine,
   readInviteAcceptErrorMessage,
   readInviteAcceptStatus,
 } from "@/features/invite-accept/invite-accept-controller";
+import type {
+  AcceptInvitationActorInput,
+  InviteAcceptRedirectTarget,
+  NavigateToInviteTargetActorInput,
+  ResolveRedirectActorInput,
+} from "@/features/invite-accept/invite-accept-controller";
 
 const SUCCESS_REDIRECT_DELAY_MS = 100;
 const ACCEPT_ERROR_MESSAGE = "You are not the recipient of the invitation";
 const NAVIGATION_ERROR_MESSAGE = "Redirect blocked";
+const INVITATION_ID = "invite_123";
+const ACCEPTED_ORGANIZATION_ID = "org_123";
+const ORGANIZATION_REDIRECT_TARGET: InviteAcceptRedirectTarget = {
+  kind: "organization",
+  organizationSlug: "acme",
+};
+const HOME_REDIRECT_TARGET: InviteAcceptRedirectTarget = { kind: "home" };
+
+type AcceptInvitationActorOutput = {
+  acceptedOrganizationId: string;
+};
 
 function createTestMachine() {
   return createInviteAcceptMachine({
@@ -18,102 +34,8 @@ function createTestMachine() {
   });
 }
 
-function buildInviteAcceptShortestPaths() {
-  return getShortestPaths(createTestMachine(), {
-    events: (state) => {
-      if (state.matches("accepting")) {
-        const pendingAcceptRequest = state.context.pendingAcceptRequest;
-
-        if (pendingAcceptRequest === null) {
-          return [];
-        }
-
-        return [
-          {
-            type: "inviteAccept/acceptSucceeded" as const,
-            acceptedOrganizationId: "org_123",
-            requestId: pendingAcceptRequest.requestId,
-          },
-          {
-            type: "inviteAccept/acceptFailed" as const,
-            message: ACCEPT_ERROR_MESSAGE,
-            requestId: pendingAcceptRequest.requestId,
-          },
-        ];
-      }
-
-      if (state.matches("refreshingOrganizations")) {
-        const pendingRedirectResolution =
-          state.context.pendingRedirectResolution;
-
-        if (pendingRedirectResolution === null) {
-          return [];
-        }
-
-        return [
-          {
-            type: "inviteAccept/redirectResolved" as const,
-            redirectTarget: {
-              kind: "organization" as const,
-              organizationSlug: "acme",
-            },
-            requestId: pendingRedirectResolution.requestId,
-          },
-          {
-            type: "inviteAccept/redirectResolutionFailed" as const,
-            requestId: pendingRedirectResolution.requestId,
-          },
-        ];
-      }
-
-      if (state.matches("navigating")) {
-        const navigation = state.context.navigation;
-
-        if (navigation === null) {
-          return [];
-        }
-
-        return [
-          {
-            type: "inviteAccept/navigationStarted" as const,
-            id: navigation.id,
-          },
-          {
-            type: "inviteAccept/navigationCompleted" as const,
-            id: navigation.id,
-          },
-          {
-            type: "inviteAccept/navigationFailed" as const,
-            id: navigation.id,
-            message: NAVIGATION_ERROR_MESSAGE,
-          },
-        ];
-      }
-
-      if (state.matches("error")) {
-        return [{ type: "inviteAccept/goHome" as const }];
-      }
-
-      return [
-        { type: "inviteAccept/accept" as const },
-        { type: "inviteAccept/decline" as const },
-      ];
-    },
-    filterEvents: (state, event) => state.can(event),
-    stopWhen: (state) =>
-      state.matches("successPendingRedirect") ||
-      state.matches("error") ||
-      (state.matches("ready") && state.context.nextNavigationId > 1),
-  });
-}
-
-function describeGraphPath(path: {
-  state: { value: unknown };
-  steps: Array<{ event: { type: string } }>;
-}) {
-  return `${JSON.stringify(path.state.value)} via ${path.steps
-    .map((step) => step.event.type)
-    .join(" -> ")}`;
+function createNeverSettlingPromise() {
+  return new Promise<undefined>(() => {});
 }
 
 async function advanceTimersByTime(ms: number) {
@@ -122,160 +44,254 @@ async function advanceTimersByTime(ms: number) {
 }
 
 describe("createInviteAcceptMachine", () => {
-  it("keeps the error presentation while navigating home after an accept failure", () => {
-    const [path] = getPathsFromEvents(createTestMachine(), [
+  it("keeps the error presentation while navigating home after an accept failure", async () => {
+    const actor = createActor(
+      createTestMachine().provide({
+        actors: {
+          acceptInvitation: fromPromise<
+            AcceptInvitationActorOutput,
+            AcceptInvitationActorInput
+          >(async () => {
+            throw new Error(ACCEPT_ERROR_MESSAGE);
+          }),
+          navigateToInviteTarget: fromPromise<
+            undefined,
+            NavigateToInviteTargetActorInput
+          >(async () => createNeverSettlingPromise()),
+        },
+      }),
       {
-        type: "inviteAccept/accept",
-      },
+        input: {
+          invitationId: INVITATION_ID,
+        },
+      }
+    ).start();
+
+    actor.send({ type: "inviteAccept/accept" });
+
+    const failed = await waitFor(
+      actor,
+      (snapshot) => snapshot.matches("error"),
       {
-        type: "inviteAccept/acceptFailed",
-        message: ACCEPT_ERROR_MESSAGE,
-        requestId: 1,
-      },
-      {
-        type: "inviteAccept/goHome",
-      },
-    ]);
+        timeout: 1000,
+      }
+    );
 
-    expect(path).toBeDefined();
+    expect(readInviteAcceptStatus(failed)).toBe("error");
+    expect(readInviteAcceptErrorMessage(failed)).toBe(ACCEPT_ERROR_MESSAGE);
 
-    if (!path) {
-      throw new Error("expected a graph path for the invite failure flow");
-    }
+    actor.send({ type: "inviteAccept/goHome" });
 
-    expect(path.state.matches("navigating")).toBe(true);
-    expect(readInviteAcceptStatus(path.state)).toBe("error");
-    expect(readInviteAcceptErrorMessage(path.state)).toBe(ACCEPT_ERROR_MESSAGE);
+    expect(actor.getSnapshot().matches("navigating")).toBe(true);
+    expect(readInviteAcceptStatus(actor.getSnapshot())).toBe("error");
+    expect(readInviteAcceptErrorMessage(actor.getSnapshot())).toBe(
+      ACCEPT_ERROR_MESSAGE
+    );
+
+    actor.stop();
   });
 
   it("stays in the ready presentation while declining to home", () => {
-    const [path] = getPathsFromEvents(createTestMachine(), [
+    const actor = createActor(
+      createTestMachine().provide({
+        actors: {
+          navigateToInviteTarget: fromPromise<
+            undefined,
+            NavigateToInviteTargetActorInput
+          >(async () => createNeverSettlingPromise()),
+        },
+      }),
       {
-        type: "inviteAccept/decline",
-      },
-    ]);
+        input: {
+          invitationId: INVITATION_ID,
+        },
+      }
+    ).start();
 
-    expect(path).toBeDefined();
+    actor.send({ type: "inviteAccept/decline" });
 
-    if (!path) {
-      throw new Error("expected a graph path for the invite decline flow");
-    }
+    expect(actor.getSnapshot().matches("navigating")).toBe(true);
+    expect(actor.getSnapshot().context.redirectTarget).toEqual(
+      HOME_REDIRECT_TARGET
+    );
+    expect(readInviteAcceptStatus(actor.getSnapshot())).toBe("ready");
 
-    expect(path.state.matches("navigating")).toBe(true);
-    expect(readInviteAcceptStatus(path.state)).toBe("ready");
+    actor.stop();
   });
 
-  it("reports success only after the invitation has been accepted and redirect resolved", () => {
-    const [path] = getPathsFromEvents(createTestMachine(), [
-      {
-        type: "inviteAccept/accept",
-      },
-      {
-        type: "inviteAccept/acceptSucceeded",
-        acceptedOrganizationId: "org_123",
-        requestId: 1,
-      },
-      {
-        type: "inviteAccept/redirectResolved",
-        redirectTarget: {
-          kind: "organization",
-          organizationSlug: "acme",
+  it("reports success only after the invitation has been accepted and redirect resolved", async () => {
+    const actor = createActor(
+      createTestMachine().provide({
+        actors: {
+          acceptInvitation: fromPromise<
+            AcceptInvitationActorOutput,
+            AcceptInvitationActorInput
+          >(async () => ({
+            acceptedOrganizationId: ACCEPTED_ORGANIZATION_ID,
+          })),
+          resolveRedirect: fromPromise<
+            InviteAcceptRedirectTarget,
+            ResolveRedirectActorInput
+          >(async () => ORGANIZATION_REDIRECT_TARGET),
         },
-        requestId: 2,
-      },
-    ]);
+      }),
+      {
+        input: {
+          invitationId: INVITATION_ID,
+        },
+      }
+    ).start();
 
-    expect(path).toBeDefined();
+    actor.send({ type: "inviteAccept/accept" });
 
-    if (!path) {
-      throw new Error("expected a graph path for the invite success flow");
-    }
+    const successPendingRedirect = await waitFor(
+      actor,
+      (snapshot) => snapshot.matches("successPendingRedirect"),
+      {
+        timeout: 1000,
+      }
+    );
 
-    expect(path.state.matches("successPendingRedirect")).toBe(true);
-    expect(path.state.context.redirectTarget).toEqual({
-      kind: "organization",
-      organizationSlug: "acme",
+    expect(successPendingRedirect.context.outcome).toEqual({
+      kind: "accepted",
+      organizationId: ACCEPTED_ORGANIZATION_ID,
     });
-    expect(readInviteAcceptStatus(path.state)).toBe("success");
+    expect(successPendingRedirect.context.redirectTarget).toEqual(
+      ORGANIZATION_REDIRECT_TARGET
+    );
+    expect(readInviteAcceptStatus(successPendingRedirect)).toBe("success");
+
+    actor.stop();
+  });
+
+  it("falls back to home when redirect resolution fails after acceptance", async () => {
+    const actor = createActor(
+      createTestMachine().provide({
+        actors: {
+          acceptInvitation: fromPromise<
+            AcceptInvitationActorOutput,
+            AcceptInvitationActorInput
+          >(async () => ({
+            acceptedOrganizationId: ACCEPTED_ORGANIZATION_ID,
+          })),
+          resolveRedirect: fromPromise<
+            InviteAcceptRedirectTarget,
+            ResolveRedirectActorInput
+          >(async () => {
+            throw new Error("organization list lagged");
+          }),
+        },
+      }),
+      {
+        input: {
+          invitationId: INVITATION_ID,
+        },
+      }
+    ).start();
+
+    actor.send({ type: "inviteAccept/accept" });
+
+    const successPendingRedirect = await waitFor(
+      actor,
+      (snapshot) => snapshot.matches("successPendingRedirect"),
+      {
+        timeout: 1000,
+      }
+    );
+
+    expect(successPendingRedirect.context.redirectTarget).toEqual(
+      HOME_REDIRECT_TARGET
+    );
+    expect(readInviteAcceptStatus(successPendingRedirect)).toBe("success");
+
+    actor.stop();
   });
 
   it("queues navigation after the success redirect delay", async () => {
     vi.useFakeTimers();
 
-    const actor = createActor(createTestMachine());
+    const navigationTargets: unknown[] = [];
+    const actor = createActor(
+      createTestMachine().provide({
+        actors: {
+          acceptInvitation: fromPromise<
+            AcceptInvitationActorOutput,
+            AcceptInvitationActorInput
+          >(async () => ({
+            acceptedOrganizationId: ACCEPTED_ORGANIZATION_ID,
+          })),
+          navigateToInviteTarget: fromPromise<
+            undefined,
+            NavigateToInviteTargetActorInput
+          >(async ({ input }) => {
+            navigationTargets.push(input.target);
+            return createNeverSettlingPromise();
+          }),
+          resolveRedirect: fromPromise<
+            InviteAcceptRedirectTarget,
+            ResolveRedirectActorInput
+          >(async () => ORGANIZATION_REDIRECT_TARGET),
+        },
+      }),
+      {
+        input: {
+          invitationId: INVITATION_ID,
+        },
+      }
+    ).start();
 
-    actor.start();
     actor.send({ type: "inviteAccept/accept" });
-    actor.send({
-      acceptedOrganizationId: "org_123",
-      requestId: 1,
-      type: "inviteAccept/acceptSucceeded",
-    });
 
-    const pendingRedirectResolution =
-      actor.getSnapshot().context.pendingRedirectResolution;
+    await waitFor(actor, (snapshot) =>
+      snapshot.matches("successPendingRedirect")
+    );
 
-    expect(pendingRedirectResolution).not.toBeNull();
-
-    actor.send({
-      redirectTarget: {
-        kind: "organization",
-        organizationSlug: "acme",
-      },
-      requestId: pendingRedirectResolution?.requestId ?? 0,
-      type: "inviteAccept/redirectResolved",
-    });
-
-    expect(actor.getSnapshot().matches("successPendingRedirect")).toBe(true);
+    const navigating = waitFor(actor, (snapshot) =>
+      snapshot.matches("navigating")
+    );
 
     await advanceTimersByTime(SUCCESS_REDIRECT_DELAY_MS);
+    await navigating;
 
-    expect(actor.getSnapshot().matches("navigating")).toBe(true);
-    expect(actor.getSnapshot().context.navigation?.target).toEqual({
-      kind: "organization",
-      organizationSlug: "acme",
-    });
+    expect(readInviteAcceptStatus(actor.getSnapshot())).toBe("success");
+    expect(navigationTargets).toEqual([ORGANIZATION_REDIRECT_TARGET]);
 
+    actor.stop();
     vi.useRealTimers();
   });
 
-  describe("graph coverage", () => {
-    for (const path of buildInviteAcceptShortestPaths()) {
-      it(describeGraphPath(path), () => {
-        if (path.state.matches("ready")) {
-          expect(path.state.context.navigation).toBeNull();
-          return;
-        }
+  it("stores navigation failures as user-visible errors", async () => {
+    const actor = createActor(
+      createTestMachine().provide({
+        actors: {
+          navigateToInviteTarget: fromPromise<
+            undefined,
+            NavigateToInviteTargetActorInput
+          >(async () => {
+            throw new Error(NAVIGATION_ERROR_MESSAGE);
+          }),
+        },
+      }),
+      {
+        input: {
+          invitationId: INVITATION_ID,
+        },
+      }
+    ).start();
 
-        if (path.state.matches("accepting")) {
-          expect(path.state.context.pendingAcceptRequest).not.toBeNull();
-          return;
-        }
+    actor.send({ type: "inviteAccept/decline" });
 
-        if (path.state.matches("refreshingOrganizations")) {
-          expect(path.state.context.outcome).toEqual({
-            kind: "accepted",
-            organizationId: "org_123",
-          });
-          expect(path.state.context.pendingRedirectResolution).not.toBeNull();
-          return;
-        }
+    const failed = await waitFor(
+      actor,
+      (snapshot) => snapshot.matches("error"),
+      {
+        timeout: 1000,
+      }
+    );
 
-        if (path.state.matches("successPendingRedirect")) {
-          expect(readInviteAcceptStatus(path.state)).toBe("success");
-          expect(path.state.context.pendingRedirectResolution).toBeNull();
-          return;
-        }
+    expect(readInviteAcceptStatus(failed)).toBe("error");
+    expect(readInviteAcceptErrorMessage(failed)).toBe(NAVIGATION_ERROR_MESSAGE);
 
-        if (path.state.matches("navigating")) {
-          expect(path.state.context.navigation).not.toBeNull();
-          return;
-        }
-
-        expect(path.state.matches("error")).toBe(true);
-        expect(readInviteAcceptStatus(path.state)).toBe("error");
-        expect(readInviteAcceptErrorMessage(path.state)).not.toBeNull();
-      });
-    }
+    actor.stop();
   });
 });

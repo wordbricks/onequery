@@ -1,4 +1,4 @@
-import { useMachine } from "@xstate/react";
+import { useActor } from "@xstate/react";
 import { useCallback } from "react";
 import { assign, setup } from "xstate";
 
@@ -155,7 +155,7 @@ export const teamRoleSelectionMachine = setup({
 export function useTeamRoleSelectionController(input: {
   initialRoleNames: readonly AssignableTeamRoleName[];
 }): TeamRoleSelectionController {
-  const [state, send] = useMachine(teamRoleSelectionMachine, {
+  const [state, send] = useActor(teamRoleSelectionMachine, {
     input: {
       initialRoleNames: resolveAssignableTeamRoleNames(input.initialRoleNames),
     },
