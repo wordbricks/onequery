@@ -18,7 +18,7 @@ import {
 } from "@/lib/app-routes";
 import { organization } from "@/lib/auth-client";
 
-const routeApi = getRouteApi(INVITE_ROUTE);
+export const inviteAcceptRouteApi = getRouteApi(INVITE_ROUTE);
 
 const DEFAULT_ACCEPT_ERROR_MESSAGE = "Failed to accept invitation";
 const DEFAULT_NAVIGATION_ERROR_MESSAGE =
@@ -576,8 +576,8 @@ function readNavigationErrorMessage(error: unknown): string {
 export function useInviteAcceptController(): InviteAcceptController {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { invitationId } = routeApi.useParams();
-  const { auth, refetchSession } = routeApi.useRouteContext();
+  const { invitationId } = inviteAcceptRouteApi.useParams();
+  const { auth, refetchSession } = inviteAcceptRouteApi.useRouteContext();
   const userId = auth.session?.user.id;
 
   // Comment: invite acceptance mutates persisted membership data, so the
