@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "babysit-pr": {
+      "source": "openai/codex",
+      "sourceType": "github",
+      "computedHash": "c37bfc53784be78de6ca2de5940556b78b1ab2e1d862c848ef561d663ce6e2a3"
+    },
     "better-result-adopt": {
       "source": "dmmulroy/better-result",
       "sourceType": "github",

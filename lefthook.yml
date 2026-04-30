@@ -1,7 +1,7 @@
 pre-commit:
   commands:
     lint:
-      run: bunx oxlint --fix {staged_files}
+      run: bunx oxlint --fix --no-error-on-unmatched-pattern {staged_files}
       glob:
         - "*.{js,jsx,ts,tsx,mjs,cjs}"
         - "*.{json,jsonc,json5}"
