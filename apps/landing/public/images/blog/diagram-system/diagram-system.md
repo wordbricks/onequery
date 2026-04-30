@@ -11,7 +11,6 @@ the Diagram System.
 ## Visual Language
 
 - White canvas with generous margins.
-- Black sans-serif title in the top-left.
 - Thin charcoal strokes for all containers, arrows, and dividers.
 - Pale gray or translucent gray fills for modules and grouped containers.
 - Subtle gray halftone dot texture inside emphasized groups.
@@ -28,8 +27,7 @@ the Diagram System.
 - Keep the icon unfilled except for the small eye dot.
 - Use the same stroke weight as other diagram icons.
 - Do not use the filled app icon in diagrams.
-- Do not add the OneQuery wordmark unless the image explicitly needs a title or
-  caption outside the diagram.
+- Do not add the OneQuery wordmark in diagrams.
 
 ## Color Tokens
 
@@ -48,7 +46,7 @@ Create a minimal technical architecture diagram in the OneQuery blog diagram
 system.
 
 Canvas:
-white background, generous margins, black bold title in the top-left, no logo.
+white background, generous margins, no title, no heading, no logo.
 
 Style:
 thin charcoal outlines, pale gray translucent fills, rounded rectangles, subtle
@@ -64,10 +62,11 @@ Composition:
 [Describe the nodes, groups, arrows, and hierarchy.]
 
 Text:
-Use short uppercase module labels. Keep captions tiny and minimal.
+Use short uppercase module labels only where needed. Do not add a diagram title
+or headline.
 
 Avoid:
 blue primary colors, colorful icons, logos, watermarks, photorealism, 3D,
-glossy glass, heavy shadows, decorative blobs, dense dashboards, and long
-paragraphs.
+glossy glass, heavy shadows, decorative blobs, dense dashboards, titles,
+headlines, and long paragraphs.
 ```
