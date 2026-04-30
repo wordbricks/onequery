@@ -9,6 +9,7 @@
 "npm:@antfu/ni" = "30.0.0"
 "npm:@hono/cli" = "0.1.10"
 "npm:agent-browser" = "0.26.0"
+"npm:ts-morph" = "26.0.0"
 
 [settings]
 npm.bun = true
