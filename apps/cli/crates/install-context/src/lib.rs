@@ -28,8 +28,10 @@ pub enum StandalonePlatform {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum InstallContext {
     Standalone {
-        /// The managed standalone release directory, for example
+        /// The managed standalone CLI release directory, for example
         /// `~/.onequery/packages/standalone/releases/0.111.0-x86_64-unknown-linux-musl`.
+        /// This installer-owned path is intentionally separate from the
+        /// self-host runtime's `~/.onequery/releases` directory.
         release_dir: PathBuf,
         /// The platform of the standalone release, either `Unix` or `Windows`.
         platform: StandalonePlatform,

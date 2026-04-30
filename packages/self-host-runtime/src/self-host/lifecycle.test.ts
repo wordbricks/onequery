@@ -730,7 +730,7 @@ describe("self-host lifecycle lease", () => {
       viewServerLaunchConfig(
         createSelfHostLaunchConfig({
           runtimePaths: createSelfHostRuntimePaths({
-            backupsDir: join(root, "backups"),
+            backupsDir: join(root, "data", "backups"),
             dataDir: paths.dataDir,
             lifecycleEventLogPath: paths.lifecycleEventLogPath,
             logsDir: paths.logsDir,

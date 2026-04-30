@@ -83,8 +83,8 @@ exports[`createServerRuntimeConfig > maps smtp and pglite launch settings withou
     },
   },
   "storage": {
-    "connectionString": "pglite:/tmp/runtime/pglite/onequery",
-    "dir": "/tmp/runtime/pglite/onequery",
+    "connectionString": "pglite:/tmp/runtime/data/pglite/onequery",
+    "dir": "/tmp/runtime/data/pglite/onequery",
     "kind": "pglite",
   },
 }

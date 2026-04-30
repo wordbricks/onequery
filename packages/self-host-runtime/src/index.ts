@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import {
   serverLaunchApiRateLimitStorageLabel,
@@ -245,8 +245,7 @@ function resolveApiRateLimitStorageResult(
     createStorage({
       driver: fsLiteDriver({
         base: join(
-          launchView.runtimePaths.dataDir,
-          "..",
+          dirname(launchView.runtimePaths.runDir),
           "cache",
           RUNTIME_RATE_LIMIT_STORAGE_DIRNAME,
           RUNTIME_RATE_LIMIT_API_DIRNAME
