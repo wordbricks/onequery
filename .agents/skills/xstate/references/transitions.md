@@ -52,7 +52,50 @@ setup({
 });
 ```
 
-Use guard params when the same policy needs different thresholds or names.
+## Action and Guard Params
+
+Use dynamic `params` for named actions and guards that should stay reusable and independent from a specific machine shape. Prefer params over reading `event` directly inside action and guard implementations; use `assertEvent(...)` there only when params are infeasible.
+
+```ts
+import { setup } from "xstate";
+
+const feedbackMachine = setup({
+  types: {
+    context: {} as {
+      user: { name: string };
+    },
+  },
+  actions: {
+    greet: (_, params: { name: string }) => {
+      console.log(`Hello, ${params.name}`);
+    },
+  },
+  guards: {
+    hasName: (_, params: { name: string }) => params.name.length > 0,
+  },
+}).createMachine({
+  context: {
+    user: { name: "David" },
+  },
+  entry: {
+    type: "greet",
+    params: ({ context }) => ({
+      name: context.user.name,
+    }),
+  },
+  on: {
+    submit: {
+      guard: {
+        type: "hasName",
+        params: ({ context }) => ({
+          name: context.user.name,
+        }),
+      },
+      target: "submitted",
+    },
+  },
+});
+```
 
 ## Eventless Transitions
 

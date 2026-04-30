@@ -183,6 +183,7 @@
         "@connectrpc/connect-node": "catalog:",
         "@connectrpc/validate": "catalog:",
         "@hono/node-server": "catalog:",
+        "@hono/zod-validator": "catalog:",
         "@onequery/base": "workspace:*",
         "@onequery/codecs": "workspace:*",
         "@onequery/db": "workspace:*",

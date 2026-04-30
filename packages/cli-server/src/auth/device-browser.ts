@@ -1,5 +1,7 @@
+import { zValidator } from "@hono/zod-validator";
 import { normalizeDeviceUserCode } from "@onequery/base/device-auth";
 import type { Auth } from "@onequery/server/auth";
+import { zodProblemHook } from "@onequery/server/problem-details/zod-problem-hook";
 import type { Context } from "hono";
 import { z } from "zod";
 
@@ -21,6 +23,27 @@ const BrowserSessionSchema = z.object({
 const DeviceVerifySchema = z.object({
   status: z.enum(["pending", "approved", "denied"]),
   user_code: z.string(),
+});
+
+const DeviceUserCodeSchema = z.string().transform((value, context) => {
+  const userCode = normalizeUserCode(value);
+  if (!userCode) {
+    context.addIssue({
+      code: "custom",
+      message: "Enter the code shown in your terminal to continue.",
+    });
+    return z.NEVER;
+  }
+
+  return userCode;
+});
+
+const DeviceUserCodeQuerySchema = z.object({
+  user_code: DeviceUserCodeSchema,
+});
+
+const DeviceUserCodeFormSchema = z.object({
+  user_code: DeviceUserCodeSchema,
 });
 
 type DeviceVerificationResult =
@@ -93,80 +116,72 @@ export function createDeviceAuthorizationBrowserRoute(
       })
       // Comment: browser presentation for the CLI device flow now lives in
       // `apps/dashboard`; this worker route only exposes JSON state/effect endpoints.
-      .get("/verify", async (c) => {
-        const userCode = normalizeUserCode(c.req.query("user_code"));
-        if (!userCode) {
-          return c.json(
-            {
-              error: "Enter the code shown in your terminal to continue.",
-            },
-            400
+      .get(
+        "/verify",
+        zValidator("query", DeviceUserCodeQuerySchema, zodProblemHook()),
+        async (c) => {
+          const { user_code: userCode } = c.req.valid("query");
+          const verification = await verifyDeviceCode(
+            c.var.storage.auth,
+            c.req.raw,
+            userCode
           );
-        }
+          if (verification.kind === "invalid") {
+            logCliEvent({
+              details: buildCliRequestLogDetails(c, {
+                userCode,
+              }),
+              event: "auth.device.verify_failed",
+              level: "warn",
+            });
+            return c.json(
+              {
+                error: verification.message,
+              },
+              400
+            );
+          }
 
-        const verification = await verifyDeviceCode(
-          c.var.storage.auth,
-          c.req.raw,
-          userCode
-        );
-        if (verification.kind === "invalid") {
-          logCliEvent({
-            details: buildCliRequestLogDetails(c, {
-              userCode,
+          return c.json(
+            DeviceVerifyApiResponseSchema.parse({
+              status: verification.status,
+              userCode: verification.userCode,
             }),
-            event: "auth.device.verify_failed",
-            level: "warn",
-          });
-          return c.json(
-            {
-              error: verification.message,
-            },
-            400
+            200
           );
         }
-
-        return c.json(
-          DeviceVerifyApiResponseSchema.parse({
-            status: verification.status,
-            userCode: verification.userCode,
-          }),
-          200
-        );
-      })
-      .post("/approve", async (c) =>
-        handleDeviceDecision(c, {
-          successEvent: "auth.device.approved",
-          successMessage:
-            "Return to your terminal to continue. You can close this tab.",
-          successTitle: "Device Approved",
-          targetPath: "/api/auth/device/approve",
-        })
       )
-      .post("/deny", async (c) =>
-        handleDeviceDecision(c, {
-          successEvent: "auth.device.denied",
-          successMessage: "The terminal login request was denied.",
-          successTitle: "Device Denied",
-          targetPath: "/api/auth/device/deny",
-        })
+      .post(
+        "/approve",
+        zValidator("form", DeviceUserCodeFormSchema, zodProblemHook()),
+        async (c) =>
+          handleDeviceDecision(c, c.req.valid("form").user_code, {
+            successEvent: "auth.device.approved",
+            successMessage:
+              "Return to your terminal to continue. You can close this tab.",
+            successTitle: "Device Approved",
+            targetPath: "/api/auth/device/approve",
+          })
+      )
+      .post(
+        "/deny",
+        zValidator("form", DeviceUserCodeFormSchema, zodProblemHook()),
+        async (c) =>
+          handleDeviceDecision(c, c.req.valid("form").user_code, {
+            successEvent: "auth.device.denied",
+            successMessage: "The terminal login request was denied.",
+            successTitle: "Device Denied",
+            targetPath: "/api/auth/device/deny",
+          })
       )
   );
 }
 
 async function handleDeviceDecision(
   c: CliBrowserContext,
+  userCode: string,
   config: DeviceDecisionConfig
 ) {
-  const userCode = normalizeUserCode(await readPostedUserCode(c.req.raw));
-  if (!userCode) {
-    return c.json(
-      {
-        error: "Enter the code shown in your terminal to continue.",
-      },
-      400
-    );
-  }
-
   const browserSession = await readBrowserSession(
     c.var.storage.auth,
     c.req.raw.headers
@@ -365,13 +380,6 @@ function buildRelativeDevicePath(requestUrl: string, userCode: string) {
   const url = new URL(DEVICE_PAGE_PATH, requestUrl);
   url.searchParams.set("user_code", userCode);
   return `${url.pathname}${url.search}`;
-}
-
-async function readPostedUserCode(request: Request) {
-  const formData = await request.formData();
-  const value = formData.get("user_code");
-
-  return typeof value === "string" ? value : null;
 }
 
 function normalizeUserCode(value: string | null | undefined) {

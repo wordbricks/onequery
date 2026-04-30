@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { createActor } from "xstate";
+import { createActor, fromPromise, waitFor } from "xstate";
 import { getPathsFromEvents } from "xstate/graph";
 
 import {
+  DeviceActorRequestError,
   deviceAuthMachine,
   readDeviceAuthErrorMessage,
   readDeviceAuthResult,
   readNavigationErrorMessage,
   readPanelView,
   readSessionEmail,
+} from "./device-auth-machine";
+import type {
+  VerifyDeviceActorInput,
+  VerifyDeviceActorOutput,
 } from "./device-auth-machine";
 
 const USER_CODE_INPUT = "ABCD-1234";
@@ -25,72 +30,164 @@ describe("deviceAuthMachine", () => {
     ).toBe("Couldn't update the device URL. Try the same action again.");
   });
 
-  it("stages verification when the route syncs to a new device code", () => {
-    const [path] = getPathsFromEvents(deviceAuthMachine, [
-      {
-        type: "deviceAuth/routeSynced",
-        userCode: USER_CODE,
+  it("stages verification from the initial device code", () => {
+    const actor = createActor(deviceAuthMachine, {
+      input: {
+        initialSession: {
+          kind: "signedOut",
+        },
+        initialUserCode: USER_CODE,
       },
-    ]);
+    });
 
-    expect(path).toBeDefined();
+    actor.start();
 
-    if (!path) {
-      throw new Error("expected a graph path for route-driven verification");
-    }
+    const snapshot = actor.getSnapshot();
 
-    expect(path.state.matches("verifying")).toBe(true);
-    expect(readPanelView(path.state)).toBe("verifying");
-    expect(path.state.context.pendingVerification).toEqual({
+    expect(snapshot.matches("verifying")).toBe(true);
+    expect(readPanelView(snapshot)).toBe("verifying");
+    expect(snapshot.context.pendingVerification).toEqual({
       requestId: 1,
       userCode: USER_CODE,
     });
   });
 
-  it("returns verification failures to entry with the visible error message", () => {
-    const [path] = getPathsFromEvents(deviceAuthMachine, [
+  it("uses the invoked verification actor output", async () => {
+    const actor = createActor(
+      deviceAuthMachine.provide({
+        actors: {
+          verifyDevice: fromPromise<
+            VerifyDeviceActorOutput,
+            VerifyDeviceActorInput
+          >(async () => ({
+            requestId: 1,
+            status: "pending",
+            userCode: USER_CODE,
+          })),
+        },
+      }),
       {
-        type: "deviceAuth/routeSynced",
-        userCode: USER_CODE,
-      },
-      {
-        type: "deviceAuth/verificationFailed",
-        message: VERIFY_ERROR_MESSAGE,
-        requestId: 1,
-      },
-    ]);
+        input: {
+          initialSession: {
+            email: SESSION_EMAIL,
+            kind: "signedIn",
+          },
+          initialUserCode: USER_CODE,
+        },
+      }
+    );
 
-    expect(path).toBeDefined();
+    actor.start();
 
-    if (!path) {
-      throw new Error("expected a graph path for device verification failure");
-    }
+    const snapshot = await waitFor(
+      actor,
+      (state) => state.matches({ pending: "review" }),
+      { timeout: 1000 }
+    );
 
-    expect(path.state.matches("entry")).toBe(true);
-    expect(readPanelView(path.state)).toBe("entry");
-    expect(readDeviceAuthErrorMessage(path.state)).toBe(VERIFY_ERROR_MESSAGE);
+    expect(readPanelView(snapshot)).toBe("review");
+    expect(snapshot.context.pendingVerification).toBeNull();
   });
 
-  it("moves a verified signed-in device request through review into the result state", () => {
-    const actor = createActor(deviceAuthMachine);
+  it("uses invoked verification actor errors", async () => {
+    const actor = createActor(
+      deviceAuthMachine.provide({
+        actors: {
+          verifyDevice: fromPromise<
+            VerifyDeviceActorOutput,
+            VerifyDeviceActorInput
+          >(async () => {
+            throw new DeviceActorRequestError({
+              message: VERIFY_ERROR_MESSAGE,
+              requestId: 1,
+            });
+          }),
+        },
+      }),
+      {
+        input: {
+          initialSession: {
+            kind: "signedOut",
+          },
+          initialUserCode: USER_CODE,
+        },
+      }
+    );
+
+    actor.start();
+
+    const snapshot = await waitFor(actor, (state) => state.matches("entry"), {
+      timeout: 1000,
+    });
+
+    expect(readPanelView(snapshot)).toBe("entry");
+    expect(readDeviceAuthErrorMessage(snapshot)).toBe(VERIFY_ERROR_MESSAGE);
+  });
+
+  it("uses actor input for the initial route and session snapshots", () => {
+    const actor = createActor(deviceAuthMachine, {
+      input: {
+        initialSession: {
+          email: SESSION_EMAIL,
+          kind: "signedIn",
+        },
+        initialUserCode: USER_CODE,
+      },
+    });
+
+    actor.start();
+
+    const snapshot = actor.getSnapshot();
+
+    expect(snapshot.matches("verifying")).toBe(true);
+    expect(snapshot.context.pendingVerification).toEqual({
+      requestId: 1,
+      userCode: USER_CODE,
+    });
+    expect(readSessionEmail(snapshot)).toBe(SESSION_EMAIL);
+  });
+
+  it("returns verification failures to entry with the visible error message", () => {
+    const actor = createActor(deviceAuthMachine, {
+      input: {
+        initialSession: {
+          kind: "signedOut",
+        },
+        initialUserCode: USER_CODE,
+      },
+    });
 
     actor.start();
     actor.send({
-      type: "deviceAuth/routeSynced",
-      userCode: USER_CODE,
+      type: "deviceAuth/verificationFailed",
+      message: VERIFY_ERROR_MESSAGE,
+      requestId: 1,
     });
+
+    const snapshot = actor.getSnapshot();
+
+    expect(snapshot.matches("entry")).toBe(true);
+    expect(readPanelView(snapshot)).toBe("entry");
+    expect(readDeviceAuthErrorMessage(snapshot)).toBe(VERIFY_ERROR_MESSAGE);
+  });
+
+  it("moves a verified signed-in device request through review into the result state", () => {
+    const actor = createActor(deviceAuthMachine, {
+      input: {
+        initialSession: {
+          email: SESSION_EMAIL,
+          kind: "signedIn",
+        },
+        initialUserCode: USER_CODE,
+      },
+    });
+
+    actor.start();
     actor.send({
       type: "deviceAuth/verificationSucceeded",
       requestId: 1,
       status: "pending",
       userCode: USER_CODE,
-    });
-    actor.send({
-      type: "deviceAuth/sessionSynced",
-      session: {
-        email: SESSION_EMAIL,
-        kind: "signedIn",
-      },
     });
     actor.send({
       type: "deviceAuth/approve",
@@ -117,25 +214,22 @@ describe("deviceAuthMachine", () => {
   });
 
   it("stages an approval request when the signed-in reviewer approves", () => {
-    const actor = createActor(deviceAuthMachine);
+    const actor = createActor(deviceAuthMachine, {
+      input: {
+        initialSession: {
+          email: SESSION_EMAIL,
+          kind: "signedIn",
+        },
+        initialUserCode: USER_CODE,
+      },
+    });
 
     actor.start();
-    actor.send({
-      type: "deviceAuth/routeSynced",
-      userCode: USER_CODE,
-    });
     actor.send({
       type: "deviceAuth/verificationSucceeded",
       requestId: 1,
       status: "pending",
       userCode: USER_CODE,
-    });
-    actor.send({
-      type: "deviceAuth/sessionSynced",
-      session: {
-        email: SESSION_EMAIL,
-        kind: "signedIn",
-      },
     });
     actor.send({
       type: "deviceAuth/approve",
@@ -152,55 +246,46 @@ describe("deviceAuthMachine", () => {
   });
 
   it("shows the sign-in-required panel when the pending request has no session", () => {
-    const [path] = getPathsFromEvents(deviceAuthMachine, [
-      {
-        type: "deviceAuth/routeSynced",
-        userCode: USER_CODE,
-      },
-      {
-        type: "deviceAuth/verificationSucceeded",
-        requestId: 1,
-        status: "pending",
-        userCode: USER_CODE,
-      },
-      {
-        type: "deviceAuth/sessionSynced",
-        session: {
+    const actor = createActor(deviceAuthMachine, {
+      input: {
+        initialSession: {
           kind: "signedOut",
         },
+        initialUserCode: USER_CODE,
       },
-    ]);
-
-    expect(path).toBeDefined();
-
-    if (!path) {
-      throw new Error("expected a graph path for signed-out device review");
-    }
-
-    expect(path.state.matches({ pending: "signInRequired" })).toBe(true);
-    expect(readPanelView(path.state)).toBe("signInRequired");
-  });
-
-  it("returns to entry with the active code after a failed device decision", () => {
-    const actor = createActor(deviceAuthMachine);
+    });
 
     actor.start();
-    actor.send({
-      type: "deviceAuth/routeSynced",
-      userCode: USER_CODE,
-    });
     actor.send({
       type: "deviceAuth/verificationSucceeded",
       requestId: 1,
       status: "pending",
       userCode: USER_CODE,
     });
-    actor.send({
-      type: "deviceAuth/sessionSynced",
-      session: {
-        email: SESSION_EMAIL,
-        kind: "signedIn",
+
+    const snapshot = actor.getSnapshot();
+
+    expect(snapshot.matches({ pending: "signInRequired" })).toBe(true);
+    expect(readPanelView(snapshot)).toBe("signInRequired");
+  });
+
+  it("returns to entry with the active code after a failed device decision", () => {
+    const actor = createActor(deviceAuthMachine, {
+      input: {
+        initialSession: {
+          email: SESSION_EMAIL,
+          kind: "signedIn",
+        },
+        initialUserCode: USER_CODE,
       },
+    });
+
+    actor.start();
+    actor.send({
+      type: "deviceAuth/verificationSucceeded",
+      requestId: 1,
+      status: "pending",
+      userCode: USER_CODE,
     });
     actor.send({
       type: "deviceAuth/deny",
@@ -247,9 +332,47 @@ describe("deviceAuthMachine", () => {
     expect(path.state.context.activeUserCode).toBe(CANONICAL_USER_CODE);
     expect(path.state.context.navigation).toEqual({
       id: 2,
-      phase: "pending",
       replace: true,
       userCode: CANONICAL_USER_CODE,
     });
+  });
+
+  it("keeps in-flight same-code navigation observable after verification succeeds", () => {
+    const actor = createActor(deviceAuthMachine, {
+      input: {
+        initialSession: {
+          email: SESSION_EMAIL,
+          kind: "signedIn",
+        },
+        initialUserCode: null,
+      },
+    });
+
+    actor.start();
+    actor.send({
+      type: "deviceAuth/inputChanged",
+      value: USER_CODE_INPUT,
+    });
+    actor.send({
+      type: "deviceAuth/submit",
+    });
+    actor.send({
+      type: "deviceAuth/verificationSucceeded",
+      requestId: 1,
+      status: "pending",
+      userCode: USER_CODE,
+    });
+    actor.send({
+      id: 1,
+      message: "Couldn't update the device URL. Try the same action again.",
+      type: "deviceAuth/navigationFailed",
+    });
+
+    const snapshot = actor.getSnapshot();
+
+    expect(snapshot.matches({ pending: "review" })).toBe(true);
+    expect(readDeviceAuthErrorMessage(snapshot)).toBe(
+      "Couldn't update the device URL. Try the same action again."
+    );
   });
 });

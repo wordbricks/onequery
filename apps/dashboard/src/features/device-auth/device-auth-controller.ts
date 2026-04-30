@@ -1,7 +1,6 @@
-import { normalizeDeviceUserCode } from "@onequery/base/device-auth";
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { useActorRef, useSelector } from "@xstate/react";
-import { useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useActor } from "@xstate/react";
+import { fromPromise } from "xstate";
 
 import { buildDeviceAuthPath, DEVICE_ROUTE } from "@/lib/app-routes";
 
@@ -10,17 +9,23 @@ import {
   readDeviceAuthErrorMessage,
   readDeviceAuthResult,
   readNavigationErrorMessage,
-  submitDeviceDecisionRequest,
   readPanelView,
   readSessionEmail,
-  readSessionSnapshot,
-  verifyDeviceRequest,
+  submitDeviceDecisionActorRequest,
+  verifyDeviceActorRequest,
 } from "./device-auth-machine";
-import type { DevicePanelView, DeviceResult } from "./device-auth-machine";
+import type {
+  DeviceNavigationTarget,
+  DevicePanelView,
+  DeviceResult,
+  DeviceSession,
+  SubmitDeviceDecisionActorInput,
+  SubmitDeviceDecisionActorOutput,
+  VerifyDeviceActorInput,
+  VerifyDeviceActorOutput,
+} from "./device-auth-machine";
 import { getPanelMeta } from "./device-auth-ui";
 import type { PanelMeta } from "./device-auth-ui";
-
-const routeApi = getRouteApi(DEVICE_ROUTE);
 
 export type DeviceAuthController = {
   panelView: DevicePanelView;
@@ -41,191 +46,99 @@ export type DeviceAuthController = {
   onUseDifferentCode: () => void;
 };
 
-export function useDeviceAuthController(): DeviceAuthController {
+export type DeviceAuthControllerInput = {
+  initialSession: DeviceSession;
+  onboardingOrganizationId: string | null;
+  requestedUserCode: string | null;
+};
+
+export function useDeviceAuthController({
+  initialSession,
+  onboardingOrganizationId,
+  requestedUserCode,
+}: DeviceAuthControllerInput): DeviceAuthController {
   const navigate = useNavigate();
-  const { orgId, user_code } = routeApi.useSearch();
-  const { auth } = routeApi.useRouteContext();
-  const onboardingOrganizationId = orgId ?? null;
-  const requestedUserCode = normalizeDeviceUserCode(user_code ?? null) ?? null;
-  const actorRef = useActorRef(deviceAuthMachine);
-  const panelView = useSelector(actorRef, readPanelView);
-  const inputCode = useSelector(
-    actorRef,
-    (snapshot) => snapshot.context.inputCode
+  const [state, send] = useActor(
+    deviceAuthMachine.provide({
+      actions: {
+        navigateToDeviceRoute: (
+          { self },
+          target: DeviceNavigationTarget | null
+        ) => {
+          if (target === null) {
+            return;
+          }
+
+          // Comment: keep the bootstrap orgId attached only while the device
+          // code is present so URL-driven router sync stays canonical.
+          navigate({
+            replace: target.replace,
+            search:
+              target.userCode === null
+                ? {}
+                : {
+                    user_code: target.userCode,
+                    ...(onboardingOrganizationId
+                      ? { orgId: onboardingOrganizationId }
+                      : {}),
+                  },
+            to: DEVICE_ROUTE,
+          })
+            .then(() => {
+              self.send({
+                id: target.id,
+                type: "deviceAuth/navigationCompleted",
+              });
+            })
+            .catch((error: unknown) => {
+              console.error("[device-auth] failed to sync device route", {
+                errorName: readErrorName(error),
+                navigationId: target.id,
+                replace: target.replace,
+              });
+              self.send({
+                id: target.id,
+                message: readNavigationErrorMessage(error),
+                type: "deviceAuth/navigationFailed",
+              });
+            });
+        },
+      },
+      actors: {
+        submitDeviceDecision: fromPromise<
+          SubmitDeviceDecisionActorOutput,
+          SubmitDeviceDecisionActorInput
+        >(async ({ input, signal }) =>
+          submitDeviceDecisionActorRequest(input, { signal })
+        ),
+        verifyDevice: fromPromise<
+          VerifyDeviceActorOutput,
+          VerifyDeviceActorInput
+        >(async ({ input, signal }) =>
+          verifyDeviceActorRequest(input, { signal })
+        ),
+      },
+    }),
+    {
+      input: {
+        initialSession,
+        initialUserCode: requestedUserCode,
+      },
+    }
   );
-  const activeUserCode = useSelector(
-    actorRef,
-    (snapshot) => snapshot.context.activeUserCode
-  );
-  const errorMessage = useSelector(actorRef, readDeviceAuthErrorMessage);
-  const result = useSelector(actorRef, readDeviceAuthResult);
-  const sessionEmail = useSelector(actorRef, readSessionEmail);
-  const navigation = useSelector(
-    actorRef,
-    (snapshot) => snapshot.context.navigation
-  );
-  const pendingVerification = useSelector(
-    actorRef,
-    (snapshot) => snapshot.context.pendingVerification
-  );
-  const pendingDecision = useSelector(
-    actorRef,
-    (snapshot) => snapshot.context.pendingDecision
-  );
-  const isPendingFlow = useSelector(actorRef, (snapshot) =>
-    snapshot.matches("pending")
-  );
-  const isVerifying = useSelector(actorRef, (snapshot) =>
-    snapshot.matches("verifying")
-  );
-  const isSubmittingDecision = useSelector(actorRef, (snapshot) =>
-    snapshot.matches({ pending: "submittingDecision" })
-  );
+  const panelView = readPanelView(state);
+  const inputCode = state.context.inputCode;
+  const activeUserCode = state.context.activeUserCode;
+  const errorMessage = readDeviceAuthErrorMessage(state);
+  const result = readDeviceAuthResult(state);
+  const sessionEmail = readSessionEmail(state);
+  const pendingDecision = state.context.pendingDecision;
+  const isSubmittingDecision = state.matches({
+    pending: "submittingDecision",
+  });
   const currentCode = activeUserCode ?? requestedUserCode;
   const resumePath = buildDeviceAuthPath(currentCode, onboardingOrganizationId);
   const panelMeta = getPanelMeta({ panelView, result });
-
-  useEffect(() => {
-    actorRef.send({
-      type: "deviceAuth/routeSynced",
-      userCode: requestedUserCode,
-    });
-  }, [actorRef, requestedUserCode]);
-
-  useEffect(() => {
-    if (!isVerifying || pendingVerification === null) {
-      return;
-    }
-
-    let isCancelled = false;
-
-    void verifyDeviceRequest(pendingVerification.userCode).then((result) => {
-      if (isCancelled) {
-        return;
-      }
-
-      if (result.isErr()) {
-        actorRef.send({
-          message: result.error.message,
-          requestId: pendingVerification.requestId,
-          type: "deviceAuth/verificationFailed",
-        });
-        return;
-      }
-
-      actorRef.send({
-        requestId: pendingVerification.requestId,
-        status: result.value.status,
-        type: "deviceAuth/verificationSucceeded",
-        userCode: result.value.userCode,
-      });
-    });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [actorRef, isVerifying, pendingVerification]);
-
-  useEffect(() => {
-    if (!isPendingFlow) {
-      return;
-    }
-
-    // Comment: App bootstrap already waits for the initial Better Auth read,
-    // so device auth can consume a settled session snapshot from router context.
-    actorRef.send({
-      session: readSessionSnapshot({
-        isSessionPending: false,
-        email: auth.session?.user.email ?? null,
-      }),
-      type: "deviceAuth/sessionSynced",
-    });
-  }, [actorRef, auth.session?.user.email, isPendingFlow]);
-
-  useEffect(() => {
-    if (!isSubmittingDecision || pendingDecision === null) {
-      return;
-    }
-
-    let isCancelled = false;
-
-    void submitDeviceDecisionRequest({
-      action: pendingDecision.action,
-      userCode: pendingDecision.userCode,
-    }).then((result) => {
-      if (isCancelled) {
-        return;
-      }
-
-      if (result.isErr()) {
-        actorRef.send({
-          message: result.error.message,
-          requestId: pendingDecision.requestId,
-          type: "deviceAuth/decisionFailed",
-        });
-        return;
-      }
-
-      actorRef.send({
-        message: result.value.message,
-        requestId: pendingDecision.requestId,
-        title: result.value.title,
-        tone: result.value.tone,
-        type: "deviceAuth/decisionSucceeded",
-      });
-    });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [actorRef, isSubmittingDecision, pendingDecision]);
-
-  useEffect(() => {
-    if (navigation === null || navigation.phase !== "pending") {
-      return;
-    }
-
-    actorRef.send({
-      id: navigation.id,
-      type: "deviceAuth/navigationStarted",
-    });
-
-    // Comment: keep the bootstrap orgId attached only while the device code is
-    // present so URL-driven router sync stays canonical and deterministic.
-    // Comment: TanStack navigation only exists in React, so the machine
-    // models completion/failure while this effect remains the bridge.
-    navigate({
-      replace: navigation.replace,
-      search:
-        navigation.userCode === null
-          ? {}
-          : {
-              user_code: navigation.userCode,
-              ...(onboardingOrganizationId
-                ? { orgId: onboardingOrganizationId }
-                : {}),
-            },
-      to: DEVICE_ROUTE,
-    })
-      .then(() => {
-        actorRef.send({
-          id: navigation.id,
-          type: "deviceAuth/navigationCompleted",
-        });
-      })
-      .catch((error: unknown) => {
-        console.error("[device-auth] failed to sync device route", {
-          errorName: readErrorName(error),
-          navigationId: navigation.id,
-          replace: navigation.replace,
-        });
-        actorRef.send({
-          id: navigation.id,
-          message: readNavigationErrorMessage(error),
-          type: "deviceAuth/navigationFailed",
-        });
-      });
-  }, [actorRef, navigate, navigation, onboardingOrganizationId]);
 
   return {
     activeUserCode,
@@ -237,22 +150,22 @@ export function useDeviceAuthController(): DeviceAuthController {
       isSubmittingDecision && pendingDecision?.action === "deny",
     onboardingOrganizationId,
     onApprove: () => {
-      actorRef.send({ type: "deviceAuth/approve" });
+      send({ type: "deviceAuth/approve" });
     },
     onDeny: () => {
-      actorRef.send({ type: "deviceAuth/deny" });
+      send({ type: "deviceAuth/deny" });
     },
     onInputChange: (value) => {
-      actorRef.send({
+      send({
         type: "deviceAuth/inputChanged",
         value: value.toUpperCase(),
       });
     },
     onSubmit: () => {
-      actorRef.send({ type: "deviceAuth/submit" });
+      send({ type: "deviceAuth/submit" });
     },
     onUseDifferentCode: () => {
-      actorRef.send({ type: "deviceAuth/useDifferentCode" });
+      send({ type: "deviceAuth/useDifferentCode" });
     },
     panelMeta,
     panelView,
