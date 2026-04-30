@@ -14,7 +14,7 @@
       "relativePath": "runtime/migrations"
     },
     "webDist": {
-      "relativePath": "runtime/web",
+      "relativePath": "runtime/dashboard",
       "requiredFile": "index.html"
     }
   },

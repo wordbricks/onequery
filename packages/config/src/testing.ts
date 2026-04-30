@@ -52,7 +52,8 @@ export function createWorkspaceDevLaunchConfig(input?: {
       case: "workspaceDev",
       value: create(WorkspaceDevServerLaunchConfigSchema, {
         common: createServerLaunchCommonConfig({
-          assetsDistDir: input?.assetsDistDir ?? "/tmp/onequery/runtime/web",
+          assetsDistDir:
+            input?.assetsDistDir ?? "/tmp/onequery/runtime/dashboard",
           authSecret: input?.authSecret ?? "workspace-auth-secret",
           connectorEnrollmentToken:
             input?.connectorEnrollmentToken ?? "connector-token",
@@ -177,7 +178,8 @@ export function createSelfHostLaunchConfig(input?: {
       case: "selfHost",
       value: create(SelfHostServerLaunchConfigSchema, {
         common: createServerLaunchCommonConfig({
-          assetsDistDir: input?.assetsDistDir ?? "/tmp/onequery/runtime/web",
+          assetsDistDir:
+            input?.assetsDistDir ?? "/tmp/onequery/runtime/dashboard",
           authSecret: input?.authSecret ?? "self-host-auth-secret",
           connectorEnrollmentToken:
             input?.connectorEnrollmentToken ?? "connector-token",

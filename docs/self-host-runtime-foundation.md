@@ -62,13 +62,13 @@ vendor/<target>/
   server/
     onequery-server.mjs
   runtime/
+    dashboard/
     migrations/
-    web/
     pglite/
 ```
 
 `onequery gateway` and `onequery gateway start` resolve `vendor/<target>` from
-`current_exe()` and then read `runtime/web`, `runtime/migrations`, and
+`current_exe()` and then read `runtime/dashboard`, `runtime/migrations`, and
 `server/` from that bundle root only. There is no repo-local asset fallback and
 no alternate self-host launch path in the gateway command surface.
 
