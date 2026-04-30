@@ -4,8 +4,8 @@ import { getRouteApi } from "@tanstack/react-router";
 import { DEVICE_ROUTE } from "@/lib/app-routes";
 
 import { useDeviceAuthController } from "./device-auth-controller";
-import { readSessionSnapshot } from './device-auth-machine';
-import type { DeviceSession } from './device-auth-machine';
+import { readSessionSnapshot } from "./device-auth-machine";
+import type { DeviceSession } from "./device-auth-machine";
 import { DeviceAuthView } from "./device-auth-view";
 
 const routeApi = getRouteApi(DEVICE_ROUTE);

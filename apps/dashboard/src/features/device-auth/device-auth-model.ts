@@ -73,33 +73,10 @@ export type DeviceAuthMachineInput = {
 export type DeviceAuthEvent =
   | { type: "deviceAuth/inputChanged"; value: string }
   | { type: "deviceAuth/submit" }
-  | {
-      type: "deviceAuth/verificationFailed";
-      message: string;
-      requestId: number;
-    }
-  | {
-      type: "deviceAuth/verificationSucceeded";
-      requestId: number;
-      status: "pending" | "approved" | "denied";
-      userCode: string;
-    }
   | { type: "deviceAuth/navigationCompleted"; id: number }
   | { type: "deviceAuth/navigationFailed"; id: number; message: string }
   | { type: "deviceAuth/approve" }
   | { type: "deviceAuth/deny" }
-  | {
-      type: "deviceAuth/decisionFailed";
-      message: string;
-      requestId: number;
-    }
-  | {
-      type: "deviceAuth/decisionSucceeded";
-      message: string;
-      requestId: number;
-      title: string;
-      tone: DeviceResultTone;
-    }
   | { type: "deviceAuth/useDifferentCode" };
 
 export type DeviceAuthTypes = {
