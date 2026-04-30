@@ -4,7 +4,7 @@ import type { BlogPost } from "../blog-types";
 export const usingLlmTelemetryToImprovePromptsWithGepaPost: BlogPost = {
   body: [
     "GEPA is most useful when the reflection step can see more than pass/fail labels. If a prompt optimizer can inspect the actual LLM trajectories behind failures, it can propose changes from evidence instead of guessing from aggregate scores.",
-    "This use case shows how OneQuery can sit between a GEPA reflection agent and Laminar telemetry. The agent keeps the optimization loop small, OneQuery gives it a controlled way to query traces, and Laminar keeps the solve and review calls inspectable.",
+    "This use case shows how OneQuery can sit between a GEPA reflection agent and Laminar telemetry (https://laminar.sh/). The agent keeps the optimization loop small, OneQuery gives it a controlled way to query traces, and Laminar keeps the solve and review calls inspectable.",
   ],
   category: "Usecase",
   date: "Apr 30, 2026",
@@ -14,31 +14,39 @@ export const usingLlmTelemetryToImprovePromptsWithGepaPost: BlogPost = {
   readTime: "9 min read",
   sections: [
     {
+      id: "what-is-gepa",
+      imageAlt:
+        "GEPA pipeline diagram showing executor, reflector, and curator stages with a feedback loop to the next candidate.",
+      imageSrc: "/images/blog/gepa-pipeline-diagram.png",
+      paragraphs: [
+        "GEPA, short for Genetic-Pareto, is a text evolution engine for optimizing prompts, code, agent architectures, configurations, policies, and other artifacts that can be represented as text. The core idea is to use LLM-based reflection over execution traces, then keep candidates through a Pareto-efficient search process instead of collapsing everything into one aggregate score.",
+        "That makes GEPA especially useful when failures come with diagnostic context. A reflection model can inspect why a candidate failed, propose a targeted change, and preserve candidates that solve different subsets of the task. The official GEPA guides are here: https://gepa-ai.github.io/gepa/guides/",
+        "In practice, the loop has three roles. The executor runs a candidate on tasks and records full traces. The reflector reads those traces to diagnose failure modes and causal patterns. The curator turns those diagnostic insights into an improved candidate, then sends it back through the loop for the next evaluation round.",
+      ],
+      title: "What is GEPA?",
+    },
+    {
       id: "why-telemetry-matters",
       paragraphs: [
         "Prompt optimization often starts with a simple loop: run a program on examples, score the outputs, collect failures, and ask an LLM to rewrite the instruction. That works better than manual prompt editing, but it leaves useful evidence on the table.",
         "A wrong answer is rarely just a wrong final token. The useful signal is in the trajectory: which prompt was used, what reasoning the model wrote, whether the first solve call was already wrong, whether the review call caught the mistake, which examples were similar, and whether failures came from arithmetic, counting, formatting, or an unsupported shortcut.",
-        "LLM telemetry systems such as Laminar capture that evidence. The question is how to let an optimization agent use it without handing the agent raw credentials, direct database access, or an unbounded query surface. That is where OneQuery fits.",
+        "LLM telemetry systems such as Laminar (https://laminar.sh/) capture that evidence. The question is how to let an optimization agent use it without handing the agent raw credentials, direct database access, or an unbounded query surface. That is where OneQuery fits.",
       ],
       title: "Why telemetry matters for GEPA",
     },
     {
       id: "the-experiment-shape",
+      imageAlt:
+        "Diagram showing an AIME run split into solve and review prompts, Laminar trace spans, OneQuery trace lookup, and GEPA reflection.",
+      imagePlacement: "after-title",
+      imageSrc: "/images/blog/gepa-aime-experiment-shape.png",
       paragraphs: [
-        "The experiment used an AIME-style math solver with two LLM calls per problem. The first call solved the problem and produced an initial answer. The second call reviewed the initial answer and produced the final answer. Both calls ran under the same Laminar trace so a single problem trajectory could be inspected as a parent span plus solve and review child spans.",
-        "The GEPA loop optimized two DSPy predictors: solve.predict and review.predict. For each candidate prompt, GEPA evaluated examples, built a reflective dataset from successes and failures, and asked a reflection agent to propose an improved instruction.",
+        "The original GEPA AIME experiment solved each problem with a single LLM step. This experiment intentionally split the same AIME-style task into two LLM calls to show a different point: when a workflow has multiple LLM steps, connecting LLM telemetry to the reflection loop is enough to make the GEPA methodology easy to apply.",
+        "The first call solved the problem and produced an initial answer. The second call reviewed the initial answer and produced the final answer. Both calls ran under the same Laminar trace so a single problem trajectory could be inspected as a parent span plus solve and review child spans.",
+        "The GEPA loop optimized two DSPy predictors: solve.predict and review.predict. That means both the solver prompt and the review prompt were improved through LLM telemetry-backed reflection, rather than treating the workflow as one opaque prompt. For each candidate prompt, GEPA evaluated examples, built a reflective dataset from successes and failures, and asked a reflection agent to propose an improved instruction.",
         "The important difference from a plain GEPA run was that the reflection agent had a OneQuery tool. Before proposing an instruction, it queried Laminar spans through OneQuery using the problem hash from the feedback. That let it inspect the exact solve and review telemetry for the examples GEPA was reflecting on.",
       ],
       title: "The experiment shape",
-    },
-    {
-      id: "where-onequery-fits",
-      paragraphs: [
-        "OneQuery provided the controlled data access path. The reflection agent did not receive a Laminar API key or a direct warehouse connection. It received an org, a source key, and permission to request bounded read-only SQL through OneQuery.",
-        "In the run, the Laminar source was exposed as a OneQuery source named laminar-aime-gepa. The agent queried the spans table with narrow filters on telemetry metadata such as oq_gepa_problem_hash and oq_gepa_stage. OneQuery handled source access, execution controls, row limits, and auditability.",
-        "A typical query looked up the spans for one reflected problem: select span_id, name, trace_id, input, output, attributes from spans where attributes like a specific problem hash, ordered by start time and limited to a small number of rows. The result included the parent predict span plus the solve and review spans, including model outputs and metadata.",
-      ],
-      title: "Where OneQuery fits",
     },
     {
       id: "what-the-agent-saw",
@@ -51,30 +59,78 @@ export const usingLlmTelemetryToImprovePromptsWithGepaPost: BlogPost = {
     },
     {
       id: "sample-setup",
-      paragraphs: [
-        "A meaningful run used 24 training examples, 12 validation examples, and 15 test examples, with max-metric-calls set to 72. Because each problem evaluation used a solve call and a review call, this represented more LLM calls than the metric budget alone suggests.",
-        "The run disabled the DSPy cache so Laminar would receive fresh telemetry. It enabled the OneQuery reflection agent with the onequery-demo org and the laminar-aime-gepa source. It also wrote reflection transcripts so the team could inspect which SQL the agent requested and what telemetry came back.",
-        "The relevant command shape was: run the tutorial in GEPA mode, set train, val, and test limits, set max-metric-calls, add no-cache, enable reflection-agent-onequery, pass the OneQuery org and Laminar source, and write result JSON, a markdown report, a progress plot, and reflection transcripts.",
-      ],
+      paragraphs: [],
+      table: {
+        headers: ["Setting", "Value"],
+        rows: [
+          ["Task", "AIME-style math problems with solve and review LLM calls"],
+          [
+            "Dataset split",
+            "24 train examples, 12 validation examples, 15 test examples",
+          ],
+          ["Optimization budget", "max-metric-calls set to 72"],
+          [
+            "Telemetry",
+            "DSPy cache disabled so Laminar received fresh solve and review traces",
+          ],
+          [
+            "OneQuery access",
+            "Reflection agent enabled for the onequery-demo org and laminar-aime-gepa source",
+          ],
+          [
+            "Artifacts",
+            "Experiment repo, result JSON, markdown report, progress plot, and reflection transcripts: https://github.com/wordbricks/onequery-gepa",
+          ],
+        ],
+      },
       title: "A sample setup",
     },
     {
-      id: "what-happened",
-      paragraphs: [
-        "In the larger run, the base prompt scored 3 out of 12 on the validation set. GEPA then generated candidate prompts using OneQuery-backed telemetry reflection. The first accepted solve candidate improved validation performance to 4 out of 12. A later solve candidate improved validation performance again to 5 out of 12.",
-        "That is the key signal: the reflection agent was not just editing prompts from pass/fail labels. It queried Laminar spans through OneQuery, inspected the actual trajectories, and produced prompt changes that improved validation performance from 25 percent to about 42 percent.",
-        "The final test score was still modest at 5 out of 15. That is expected for a small, noisy AIME-style experiment with limited optimization budget. The point of the use case is not that telemetry magically solves prompt optimization. The point is that telemetry gives the reflection loop a better substrate for diagnosis.",
+      id: "results",
+      images: [
+        {
+          alt: "Graph showing best validation score rising from 25.00 to 33.33 to 41.67 percent across metric calls, with selected test score at 33.33 percent.",
+          src: "/images/blog/gepa-result-summary.png",
+        },
       ],
-      title: "What happened",
+      paragraphs: [
+        "The experiment repo is available at https://github.com/wordbricks/onequery-gepa. Its report shows a small but clear validation improvement. The base program solved 3 out of 12 validation examples. After OneQuery-backed telemetry reflection, the first accepted candidate reached 4 out of 12, and a later candidate reached 5 out of 12.",
+        "The prompt changes were not generic rewrites. The base solve prompt simply asked the model to derive an initial answer, while the accepted reflected solve prompt pushed it to reduce problems into clean cases, verify invariants, and avoid unsupported symmetry assumptions. Review prompt candidates were generated during reflection, but the saved accepted candidate kept the review prompt unchanged.",
+        "The final test result was 5 out of 15, or 33.33 percent. That is still modest, but it is the useful signal for this use case: telemetry did not make AIME easy, but it gave GEPA better evidence for diagnosing failures and producing targeted prompt candidates.",
+      ],
+      inlineImages: [
+        {
+          alt: "Diagram showing the actual initial and accepted GEPA prompt text for solve.predict and review.predict.",
+          beforeParagraphIndex: 1,
+          src: "/images/blog/gepa-actual-prompt-changes.png",
+        },
+      ],
+      table: {
+        headers: ["Checkpoint", "Result"],
+        rows: [
+          ["Base validation", "3/12 correct, 25%"],
+          ["First accepted candidate", "4/12 correct, 33%"],
+          ["Later accepted candidate", "5/12 correct, about 42%"],
+          ["Final test report", "5/15 correct, 33.33%"],
+        ],
+      },
+      title: "Results",
     },
     {
       id: "lessons-learned",
       paragraphs: [
-        "The first lesson is that telemetry schema matters. The reflection agent initially made wrong assumptions about where metadata lived. Once the prompt included the actual Laminar schema, the agent reliably queried spans by attributes and received rows for the relevant trajectories.",
-        "The second lesson is that solve and review should be separate. A single LLM call that both solves and reviews tends to blur the failure mode. Splitting the program into solve and review calls made it clear whether the initial answer was wrong or the verifier failed to catch it.",
-        "The third lesson is that optimization needs auditability. The reflection transcripts showed the exact SQL the agent requested, whether OneQuery returned rows, which prompt candidate was proposed, and whether the candidate improved subsample and validation scores.",
+        "Optimization needs auditability. The reflection transcripts showed the exact SQL the agent requested, whether OneQuery returned rows, which prompt candidate was proposed, and whether the candidate improved subsample and validation scores.",
       ],
       title: "Lessons learned",
+    },
+    {
+      id: "what-comes-next",
+      paragraphs: [
+        "There are better examples where telemetry and the GEPA methodology should have even more room to improve prompts. Browser automation is one of them. A single task can involve many LLM decisions, repeated tool calls, page observations, retries, and partial failures, so pass/fail labels alone are a thin signal.",
+        "For those workflows, LLM telemetry is what makes self-reflection practical. The agent needs to inspect which page state it saw, which tool call it chose, what failed, and how the later steps recovered or compounded the mistake. Once those traces are available, GEPA can optimize prompts against the actual trajectory instead of only the final outcome.",
+        "We wanted to run those experiments too, but did not have enough time and budget for this pass. When Codex App Server supports LLM telemetry, we plan to revisit the experiment with richer multi-step agent workflows.",
+      ],
+      title: "What comes next",
     },
     {
       id: "why-this-is-a-good-onequery-use-case",

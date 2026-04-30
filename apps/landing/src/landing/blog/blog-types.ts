@@ -24,8 +24,22 @@ export interface BlogPost {
 
 export interface BlogPostSection {
   imageAlt?: string;
+  imagePlacement?: "after-title" | "after-paragraphs";
   imageSrc?: string;
+  inlineImages?: {
+    alt: string;
+    beforeParagraphIndex: number;
+    src: string;
+  }[];
+  images?: {
+    alt: string;
+    src: string;
+  }[];
   id: string;
   paragraphs: string[];
+  table?: {
+    headers: string[];
+    rows: string[][];
+  };
   title: string;
 }

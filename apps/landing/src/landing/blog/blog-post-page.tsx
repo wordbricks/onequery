@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Fragment } from "react";
 
 import { SiteFooter, SiteHeader } from "./blog-page";
 import { blogPosts } from "./blog-posts";
@@ -46,6 +47,86 @@ function renderParagraphWithLinks(paragraph: string) {
       </a>
     );
   });
+}
+
+function renderSectionImage(section: BlogPostSection) {
+  if (!section.imageSrc) {
+    return null;
+  }
+
+  const className =
+    section.imagePlacement === "after-title"
+      ? "blog-post-figure blog-post-figure-after-title"
+      : "blog-post-figure";
+
+  return (
+    <figure className={className}>
+      <img src={section.imageSrc} alt={section.imageAlt ?? ""} />
+    </figure>
+  );
+}
+
+function renderSectionImages(section: BlogPostSection) {
+  if (!section.images?.length) {
+    return null;
+  }
+
+  return section.images.map((image) => (
+    <figure className="blog-post-figure" key={image.src}>
+      <img src={image.src} alt={image.alt} />
+    </figure>
+  ));
+}
+
+function renderInlineSectionImages(
+  section: BlogPostSection,
+  beforeParagraphIndex: number
+) {
+  const images = section.inlineImages?.filter(
+    (image) => image.beforeParagraphIndex === beforeParagraphIndex
+  );
+
+  if (!images?.length) {
+    return null;
+  }
+
+  return images.map((image) => (
+    <figure
+      className="blog-post-figure blog-post-figure-inline"
+      key={image.src}
+    >
+      <img src={image.src} alt={image.alt} />
+    </figure>
+  ));
+}
+
+function renderSectionTable(section: BlogPostSection) {
+  if (!section.table) {
+    return null;
+  }
+
+  return (
+    <div className="blog-post-table-wrap">
+      <table className="blog-post-table">
+        <thead>
+          <tr>
+            {section.table.headers.map((header) => (
+              <th key={header}>{header}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {section.table.rows.map((row) => (
+            <tr key={row.join("|")}>
+              {row.map((cell) => (
+                <td key={cell}>{renderParagraphWithLinks(cell)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export function BlogPostPage({ post }: { post: BlogPost }) {
@@ -104,17 +185,20 @@ export function BlogPostPage({ post }: { post: BlogPost }) {
               {sections.map((section) => (
                 <section key={section.id} id={section.id}>
                   <h2>{section.title}</h2>
-                  {section.paragraphs.map((paragraph) => (
-                    <p key={paragraph}>{renderParagraphWithLinks(paragraph)}</p>
+                  {section.imagePlacement === "after-title"
+                    ? renderSectionImage(section)
+                    : null}
+                  {section.paragraphs.map((paragraph, paragraphIndex) => (
+                    <Fragment key={paragraph}>
+                      {renderInlineSectionImages(section, paragraphIndex)}
+                      <p>{renderParagraphWithLinks(paragraph)}</p>
+                    </Fragment>
                   ))}
-                  {section.imageSrc ? (
-                    <figure className="blog-post-figure">
-                      <img
-                        src={section.imageSrc}
-                        alt={section.imageAlt ?? ""}
-                      />
-                    </figure>
-                  ) : null}
+                  {renderSectionTable(section)}
+                  {renderSectionImages(section)}
+                  {section.imagePlacement !== "after-title"
+                    ? renderSectionImage(section)
+                    : null}
                 </section>
               ))}
             </div>
