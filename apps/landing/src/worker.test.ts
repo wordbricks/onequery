@@ -89,4 +89,57 @@ describe("landing worker", () => {
     expect(response.headers.get("content-type")).toBe("text/html");
     expect(await response.text()).toBe("<html>asset payload</html>");
   });
+
+  it("injects post-specific share metadata into blog post HTML", async () => {
+    const assets = createAssetsBinding();
+    assets.fetch.mockResolvedValue(
+      new Response(
+        `<!doctype html>
+<html>
+  <head>
+    <link rel="canonical" href="https://onequery.dev/" />
+    <meta name="description" content="Static landing description" />
+    <meta property="og:title" content="Static title" />
+    <meta property="og:image" content="https://onequery.dev/og.png" />
+    <meta name="twitter:image" content="https://onequery.dev/og.png" />
+    <title>OneQuery static title</title>
+  </head>
+  <body><div id="root"></div></body>
+</html>`,
+        {
+          headers: { "content-type": "text/html; charset=utf-8" },
+          status: 200,
+        }
+      )
+    );
+
+    const request = createWorkerRequest(
+      "https://onequery.dev/blog/do-not-give-agents-production-keys"
+    );
+    const response = await fetchHandler(
+      request,
+      {
+        ASSETS: assets.assets,
+      } as WorkerEnv,
+      createExecutionContext()
+    );
+    const body = await response.text();
+
+    expect(assets.fetch).toHaveBeenCalledWith(request);
+    expect(body).toContain(
+      "<title>Do not give agents the keys to production | OneQuery Blog</title>"
+    );
+    expect(body).toContain(
+      '<link rel="canonical" href="https://onequery.dev/blog/do-not-give-agents-production-keys" />'
+    );
+    expect(body).toContain('<meta property="og:type" content="article" />');
+    expect(body).toContain(
+      '<meta property="og:image" content="https://onequery.dev/images/blog/do-not-give-agents-production-keys-icon.png" />'
+    );
+    expect(body).toContain(
+      '<meta name="twitter:description" content="Why autonomous agents should never hold raw production access, and how OneQuery removes that class of risk from data workflows." />'
+    );
+    expect(body).not.toContain("Static landing description");
+    expect(body).not.toContain("Static title");
+  });
 });

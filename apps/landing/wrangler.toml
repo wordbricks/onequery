@@ -15,7 +15,7 @@ routes = [{ pattern = "onequery.dev", custom_domain = true }]
 # declare routing and binding intent.
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*"]
+run_worker_first = ["/api/*", "/blog/*"]
 
 [observability]
 enabled = true

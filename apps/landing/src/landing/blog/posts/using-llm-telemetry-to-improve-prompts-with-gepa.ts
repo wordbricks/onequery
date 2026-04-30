@@ -52,6 +52,10 @@ export const usingLlmTelemetryToImprovePromptsWithGepaPost: BlogPost = {
     },
     {
       id: "what-the-agent-saw",
+      imageAlt:
+        "Laminar trace view showing AIME GEPA spans, timeline, transcript, input, model output, and problem solver span details.",
+      imagePlacement: "after-title",
+      imageSrc: "/images/blog/laminar-aime-gepa-trace-screenshot.png",
       paragraphs: [
         "The Laminar spans made the failure mode visible. For a given problem, the agent could see whether the solve stage produced a plausible but unsupported answer, whether the review stage merely rubber-stamped it, or whether the review correctly identified an inconsistency.",
         "That distinction matters because the remedy is different. If solve is hallucinating a counting formula, the solve instruction needs stronger casework and verification. If solve is mostly right but review fails to catch arithmetic mistakes, the review instruction needs to behave more like an independent verifier.",

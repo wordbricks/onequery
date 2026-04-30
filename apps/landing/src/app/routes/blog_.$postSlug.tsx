@@ -2,6 +2,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 
 import { BlogPostPage } from "../../landing/blog/blog-post-page";
 import { getBlogPostBySlug } from "../../landing/blog/blog-posts";
+import { getBlogPostHeadMeta } from "../../landing/blog/blog-share-metadata";
 
 export const Route = createFileRoute("/blog_/$postSlug")({
   component: BlogPostRouteComponent,
@@ -12,6 +13,23 @@ export const Route = createFileRoute("/blog_/$postSlug")({
     }
 
     return { post };
+  },
+  head: ({ loaderData }) => {
+    if (!loaderData) {
+      return {};
+    }
+
+    return {
+      links: [
+        {
+          href: `https://onequery.dev/blog/${loaderData.post.slug}`,
+          rel: "canonical",
+        },
+      ],
+      // Comment: TanStack Router renders `{ title }` entries at runtime, but
+      // the React route type currently narrows `meta` to only `<meta>` props.
+      meta: getBlogPostHeadMeta(loaderData.post) as never,
+    };
   },
 });
 
