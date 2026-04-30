@@ -27,6 +27,16 @@ const TEAM_ROLE_SELECTION_EVENT = {
   TOGGLE_ROLE: "teamRoleSelection/toggleRole",
 } as const;
 
+const TEAM_ROLE_SELECTION_STATE = {
+  CLEAN: "clean",
+  DIRTY: "dirty",
+  EVALUATING: "evaluating",
+} as const;
+
+const TEAM_ROLE_SELECTION_TAG = {
+  DIRTY: "dirty",
+} as const;
+
 type TeamRoleSelectionContext = {
   selectedRoleNames: AssignableTeamRoleName[];
   sourceRoleNames: AssignableTeamRoleName[];
@@ -78,10 +88,21 @@ export function resolveAssignableTeamRoleNames(
   );
 }
 
+function createTeamRoleSelectionContext(
+  roleNames: readonly OrganizationRoleName[]
+): TeamRoleSelectionContext {
+  const initialRoleNames = resolveAssignableTeamRoleNames(roleNames);
+
+  return {
+    selectedRoleNames: [...initialRoleNames],
+    sourceRoleNames: [...initialRoleNames],
+  };
+}
+
 export const teamRoleSelectionMachine = setup({
   actions: {
     resetSelectedRoleNames: assign({
-      selectedRoleNames: ({ context }) => context.sourceRoleNames,
+      selectedRoleNames: ({ context }) => [...context.sourceRoleNames],
     }),
     syncSourceRoleNames: assign({
       selectedRoleNames: (
@@ -112,23 +133,21 @@ export const teamRoleSelectionMachine = setup({
       },
     }),
   },
+  guards: {
+    hasRoleSelectionChanges: ({ context }) =>
+      serializeOrganizationRoleNames(context.selectedRoleNames) !==
+      serializeOrganizationRoleNames(context.sourceRoleNames),
+  },
   types: {} as TeamRoleSelectionTypes,
 }).createMachine({
-  context: ({ input }) => {
-    const initialRoleNames = resolveAssignableTeamRoleNames(
-      input.initialRoleNames
-    );
-
-    return {
-      selectedRoleNames: initialRoleNames,
-      sourceRoleNames: initialRoleNames,
-    };
-  },
+  context: ({ input }) =>
+    createTeamRoleSelectionContext(input.initialRoleNames),
   id: "teamRoleSelection",
-  initial: "ready",
+  initial: TEAM_ROLE_SELECTION_STATE.EVALUATING,
   on: {
     [TEAM_ROLE_SELECTION_EVENT.RESET]: {
       actions: "resetSelectedRoleNames",
+      target: `.${TEAM_ROLE_SELECTION_STATE.EVALUATING}`,
     },
     [TEAM_ROLE_SELECTION_EVENT.SOURCE_ROLE_NAMES_SYNCED]: {
       actions: {
@@ -137,6 +156,7 @@ export const teamRoleSelectionMachine = setup({
           roleNames: resolveAssignableTeamRoleNames(event.roleNames),
         }),
       },
+      target: `.${TEAM_ROLE_SELECTION_STATE.EVALUATING}`,
     },
     [TEAM_ROLE_SELECTION_EVENT.TOGGLE_ROLE]: {
       actions: {
@@ -145,10 +165,25 @@ export const teamRoleSelectionMachine = setup({
           roleName: event.roleName,
         }),
       },
+      target: `.${TEAM_ROLE_SELECTION_STATE.EVALUATING}`,
     },
   },
   states: {
-    ready: {},
+    [TEAM_ROLE_SELECTION_STATE.EVALUATING]: {
+      always: [
+        {
+          guard: "hasRoleSelectionChanges",
+          target: TEAM_ROLE_SELECTION_STATE.DIRTY,
+        },
+        {
+          target: TEAM_ROLE_SELECTION_STATE.CLEAN,
+        },
+      ],
+    },
+    [TEAM_ROLE_SELECTION_STATE.CLEAN]: {},
+    [TEAM_ROLE_SELECTION_STATE.DIRTY]: {
+      tags: TEAM_ROLE_SELECTION_TAG.DIRTY,
+    },
   },
 });
 
@@ -161,15 +196,8 @@ export function useTeamRoleSelectionController(input: {
     },
   });
 
-  const selectedRoleKey = serializeOrganizationRoleNames(
-    state.context.selectedRoleNames
-  );
-  const sourceRoleKey = serializeOrganizationRoleNames(
-    state.context.sourceRoleNames
-  );
-
   return {
-    hasChanges: selectedRoleKey !== sourceRoleKey,
+    hasChanges: state.hasTag(TEAM_ROLE_SELECTION_TAG.DIRTY),
     isSelectionEmpty: state.context.selectedRoleNames.length === 0,
     reset: useCallback(() => {
       send({ type: TEAM_ROLE_SELECTION_EVENT.RESET });

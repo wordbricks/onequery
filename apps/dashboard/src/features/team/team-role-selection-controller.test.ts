@@ -13,6 +13,7 @@ describe("teamRoleSelectionMachine", () => {
 
     actor.start();
 
+    expect(actor.getSnapshot().matches("clean")).toBe(true);
     expect(actor.getSnapshot().context.selectedRoleNames).toEqual(["member"]);
     expect(actor.getSnapshot().context.sourceRoleNames).toEqual(["member"]);
 
@@ -21,6 +22,7 @@ describe("teamRoleSelectionMachine", () => {
       roleName: "admin",
     });
 
+    expect(actor.getSnapshot().matches("dirty")).toBe(true);
     expect(actor.getSnapshot().context.selectedRoleNames).toEqual([
       "admin",
       "member",
@@ -38,6 +40,7 @@ describe("teamRoleSelectionMachine", () => {
       roleNames: ["member", "admin", "member"],
     });
 
+    expect(actor.getSnapshot().matches("clean")).toBe(true);
     expect(actor.getSnapshot().context.selectedRoleNames).toEqual([
       "admin",
       "member",
@@ -52,12 +55,14 @@ describe("teamRoleSelectionMachine", () => {
       roleName: "member",
     });
 
+    expect(actor.getSnapshot().matches("dirty")).toBe(true);
     expect(actor.getSnapshot().context.selectedRoleNames).toEqual(["admin"]);
 
     actor.send({
       type: "teamRoleSelection/reset",
     });
 
+    expect(actor.getSnapshot().matches("clean")).toBe(true);
     expect(actor.getSnapshot().context.selectedRoleNames).toEqual([
       "admin",
       "member",
