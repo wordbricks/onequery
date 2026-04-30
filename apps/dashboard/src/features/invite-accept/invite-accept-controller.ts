@@ -36,9 +36,19 @@ const INVITE_ACCEPT_STATE = {
   ACCEPTING: "accepting",
   ERROR: "error",
   NAVIGATING: "navigating",
+  NAVIGATING_FROM_ERROR: "fromError",
+  NAVIGATING_FROM_READY: "fromReady",
+  NAVIGATING_FROM_SUCCESS: "fromSuccess",
   READY: "ready",
   REFRESHING_ORGANIZATIONS: "refreshingOrganizations",
   SUCCESS_PENDING_REDIRECT: "successPendingRedirect",
+} as const;
+
+const INVITE_ACCEPT_TAG = {
+  ACCEPTING: "accepting",
+  ERROR: "error",
+  READY: "ready",
+  SUCCESS: "success",
 } as const;
 
 type InviteAcceptStatus = "ready" | "accepting" | "success" | "error";
@@ -438,6 +448,7 @@ const inviteAcceptMachineLogic = setup({
   initial: INVITE_ACCEPT_STATE.READY,
   states: {
     [INVITE_ACCEPT_STATE.READY]: {
+      tags: INVITE_ACCEPT_TAG.READY,
       on: {
         [INVITE_ACCEPT_EVENT.ACCEPT]: {
           actions: "prepareAcceptRequest",
@@ -445,11 +456,12 @@ const inviteAcceptMachineLogic = setup({
         },
         [INVITE_ACCEPT_EVENT.DECLINE]: {
           actions: "setHomeRedirectTarget",
-          target: INVITE_ACCEPT_STATE.NAVIGATING,
+          target: `${INVITE_ACCEPT_STATE.NAVIGATING}.${INVITE_ACCEPT_STATE.NAVIGATING_FROM_READY}`,
         },
       },
     },
     [INVITE_ACCEPT_STATE.ACCEPTING]: {
+      tags: INVITE_ACCEPT_TAG.ACCEPTING,
       invoke: {
         src: "acceptInvitation",
         input: ({ context }) => ({
@@ -476,6 +488,7 @@ const inviteAcceptMachineLogic = setup({
       },
     },
     [INVITE_ACCEPT_STATE.REFRESHING_ORGANIZATIONS]: {
+      tags: INVITE_ACCEPT_TAG.SUCCESS,
       invoke: {
         src: "resolveRedirect",
         input: ({ context }) => ({
@@ -497,11 +510,13 @@ const inviteAcceptMachineLogic = setup({
       },
     },
     [INVITE_ACCEPT_STATE.SUCCESS_PENDING_REDIRECT]: {
+      tags: INVITE_ACCEPT_TAG.SUCCESS,
       after: {
-        successRedirect: INVITE_ACCEPT_STATE.NAVIGATING,
+        successRedirect: `${INVITE_ACCEPT_STATE.NAVIGATING}.${INVITE_ACCEPT_STATE.NAVIGATING_FROM_SUCCESS}`,
       },
     },
     [INVITE_ACCEPT_STATE.NAVIGATING]: {
+      initial: INVITE_ACCEPT_STATE.NAVIGATING_FROM_READY,
       invoke: {
         src: "navigateToInviteTarget",
         input: ({ context }) => ({
@@ -521,12 +536,24 @@ const inviteAcceptMachineLogic = setup({
           target: INVITE_ACCEPT_STATE.ERROR,
         },
       },
+      states: {
+        [INVITE_ACCEPT_STATE.NAVIGATING_FROM_ERROR]: {
+          tags: INVITE_ACCEPT_TAG.ERROR,
+        },
+        [INVITE_ACCEPT_STATE.NAVIGATING_FROM_READY]: {
+          tags: INVITE_ACCEPT_TAG.READY,
+        },
+        [INVITE_ACCEPT_STATE.NAVIGATING_FROM_SUCCESS]: {
+          tags: INVITE_ACCEPT_TAG.SUCCESS,
+        },
+      },
     },
     [INVITE_ACCEPT_STATE.ERROR]: {
+      tags: INVITE_ACCEPT_TAG.ERROR,
       on: {
         [INVITE_ACCEPT_EVENT.GO_HOME]: {
           actions: "setHomeRedirectTarget",
-          target: INVITE_ACCEPT_STATE.NAVIGATING,
+          target: `${INVITE_ACCEPT_STATE.NAVIGATING}.${INVITE_ACCEPT_STATE.NAVIGATING_FROM_ERROR}`,
         },
       },
     },
@@ -538,24 +565,13 @@ export const inviteAcceptMachine = createInviteAcceptMachine();
 export function readInviteAcceptStatus(
   state: SnapshotFrom<ReturnType<typeof createInviteAcceptMachine>>
 ): InviteAcceptStatus {
-  if (state.matches(INVITE_ACCEPT_STATE.ACCEPTING)) {
+  if (state.hasTag(INVITE_ACCEPT_TAG.ACCEPTING)) {
     return "accepting";
   }
-  if (state.matches(INVITE_ACCEPT_STATE.ERROR)) {
+  if (state.hasTag(INVITE_ACCEPT_TAG.ERROR)) {
     return "error";
   }
-  if (
-    state.matches(INVITE_ACCEPT_STATE.NAVIGATING) &&
-    state.context.outcome.kind === "error"
-  ) {
-    return "error";
-  }
-  if (
-    state.matches(INVITE_ACCEPT_STATE.REFRESHING_ORGANIZATIONS) ||
-    state.matches(INVITE_ACCEPT_STATE.SUCCESS_PENDING_REDIRECT) ||
-    (state.matches(INVITE_ACCEPT_STATE.NAVIGATING) &&
-      state.context.outcome.kind === "accepted")
-  ) {
+  if (state.hasTag(INVITE_ACCEPT_TAG.SUCCESS)) {
     return "success";
   }
   return "ready";
