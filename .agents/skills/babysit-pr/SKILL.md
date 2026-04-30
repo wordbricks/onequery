@@ -44,19 +44,19 @@ Accept any of the following:
 ### One-shot snapshot
 
 ```bash
-python3 .codex/skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --once
+python3 .agents/skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --once
 ```
 
 ### Continuous watch (JSONL)
 
 ```bash
-python3 .codex/skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --watch
+python3 .agents/skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --watch
 ```
 
 ### Trigger flaky retry cycle (only when watcher indicates)
 
 ```bash
-python3 .codex/skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --retry-failed-now
+python3 .agents/skills/babysit-pr/scripts/gh_pr_watch.py --pr auto --retry-failed-now
 ```
 
 ### Explicit PR target
@@ -183,5 +183,5 @@ Provide concise progress updates while monitoring and a final summary that inclu
 
 ## References
 
-- Heuristics and decision tree: `.codex/skills/babysit-pr/references/heuristics.md`
-- GitHub CLI/API details used by the watcher: `.codex/skills/babysit-pr/references/github-api-notes.md`
+- Heuristics and decision tree: `.agents/skills/babysit-pr/references/heuristics.md`
+- GitHub CLI/API details used by the watcher: `.agents/skills/babysit-pr/references/github-api-notes.md`
