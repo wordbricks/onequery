@@ -1,27 +1,27 @@
 ---
-name: codex-bug
-description: Diagnose GitHub bug reports in openai/codex. Use when given a GitHub issue URL from openai/codex and asked to decide next steps such as verifying against the repo, requesting more info, or explaining why it is not a bug; follow any additional user-provided instructions.
+name: onequery-bug
+description: Diagnose GitHub bug reports in wordbricks/onequery. Use when given a GitHub issue URL from wordbricks/onequery and asked to decide next steps such as verifying against the repo, requesting more info, or explaining why it is not a bug; follow any additional user-provided instructions.
 ---
 
-# Codex Bug
+# OneQuery Bug
 
 ## Overview
 
-Diagnose a Codex GitHub bug report and decide the next action: verify against sources, request more info, or explain why it is not a bug.
+Diagnose a OneQuery GitHub bug report and decide the next action: verify against sources, request more info, or explain why it is not a bug.
 
 ## Workflow
 
 1. Confirm the input
 
-- Require a GitHub issue URL that points to `github.com/openai/codex/issues/…`.
+- Require a GitHub issue URL that points to `github.com/wordbricks/onequery/issues/…`.
 - If the URL is missing or not in the right repo, ask the user for the correct link.
 
 2. Network access
 
 - Always access the issue over the network immediately, even if you think access is blocked or unavailable.
 - Prefer the GitHub API over HTML pages because the HTML is noisy:
-  - Issue: `https://api.github.com/repos/openai/codex/issues/<number>`
-  - Comments: `https://api.github.com/repos/openai/codex/issues/<number>/comments`
+  - Issue: `https://api.github.com/repos/wordbricks/onequery/issues/<number>`
+  - Comments: `https://api.github.com/repos/wordbricks/onequery/issues/<number>/comments`
 - If the environment requires explicit approval, request it on demand via the tool and continue without additional user prompting.
 - Only if the network attempt fails after requesting approval, explain what you can do offline (e.g., draft a response template) and ask how to proceed.
 
