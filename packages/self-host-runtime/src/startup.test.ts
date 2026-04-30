@@ -80,7 +80,7 @@ describe("packaged server startup", () => {
       },
       mode: "self-host",
       runtimePaths: {
-        dataDir: "/tmp/onequery",
+        dataDir: "/tmp/onequery/data",
       },
     });
   });

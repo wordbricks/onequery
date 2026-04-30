@@ -26,7 +26,7 @@ use self::layers::origins_for_layer_stack;
 use self::layers::raw_cli_overrides_layer;
 pub(crate) use onequery_core::app_paths::config_dir;
 use onequery_core::app_paths::config_path;
-pub(crate) use onequery_core::app_paths::data_dir;
+pub(crate) use onequery_core::app_paths::state_dir;
 use onequery_core::error::CliError;
 use onequery_core::error::ErrorStage;
 use onequery_core::private_files;

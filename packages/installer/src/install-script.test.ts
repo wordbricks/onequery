@@ -72,10 +72,14 @@ describe("install script surface", () => {
       `ONEQUERY_HOME="${dollar}{ONEQUERY_HOME:-$HOME/.onequery}"`
     );
     expect(script).toContain(
-      `INSTALL_ROOT="${dollar}{ONEQUERY_INSTALL_ROOT:-$ONEQUERY_HOME/packages/standalone}"`
+      `INSTALL_RELEASES_ROOT="${dollar}{ONEQUERY_INSTALL_RELEASES_ROOT:-${dollar}{ONEQUERY_INSTALL_ROOT:+$ONEQUERY_INSTALL_ROOT/releases}}"`
     );
     expect(script).toContain(
-      'install_dir="$INSTALL_ROOT/releases/$release_name"'
+      'INSTALL_RELEASES_ROOT="$' +
+        '{INSTALL_RELEASES_ROOT:-$ONEQUERY_HOME/packages/standalone/releases}"'
+    );
+    expect(script).toContain(
+      'install_dir="$INSTALL_RELEASES_ROOT/$release_name"'
     );
     expect(script).toContain(
       'ln -sfn "$install_dir/bin/onequery" "$BIN_DIR/onequery"'

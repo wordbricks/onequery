@@ -81,7 +81,7 @@ fn execute_with_paths(
     let mut archived_items = 0usize;
 
     archive
-        .append_path_with_name(&paths.config_path, "config/self-host/config.toml")
+        .append_path_with_name(&paths.config_path, "self-host/config.toml")
         .map_err(|error| {
             archive_error(
                 "failed to archive self-host config",
@@ -93,7 +93,7 @@ fn execute_with_paths(
 
     if args.include_secrets && paths.secrets_path.is_file() {
         archive
-            .append_path_with_name(&paths.secrets_path, "config/self-host/secrets.toml")
+            .append_path_with_name(&paths.secrets_path, "self-host/secrets.toml")
             .map_err(|error| {
                 archive_error(
                     "failed to archive secrets config",
@@ -109,6 +109,30 @@ fn execute_with_paths(
         &paths.data_dir,
         Path::new("data"),
         true,
+        &context.command_line,
+    )?;
+
+    archived_items += append_directory_tree(
+        &mut archive,
+        &paths.releases_dir,
+        Path::new("releases"),
+        false,
+        &context.command_line,
+    )?;
+
+    archived_items += append_directory_tree(
+        &mut archive,
+        &paths.state_dir,
+        Path::new("state"),
+        false,
+        &context.command_line,
+    )?;
+
+    archived_items += append_directory_tree(
+        &mut archive,
+        &paths.logs_dir,
+        Path::new("logs"),
+        false,
         &context.command_line,
     )?;
 
@@ -295,10 +319,8 @@ mod tests {
         ] {
             let temp_root =
                 std::env::temp_dir().join(format!("{temp_dir_name}-{}", Uuid::new_v4()));
-            let paths = SelfHostRuntimePaths::from_dirs(
-                temp_root.join("config").join("self-host"),
-                temp_root.join("data"),
-            );
+            let paths =
+                SelfHostRuntimePaths::from_dirs(temp_root.join("self-host"), temp_root.clone());
             seed_runtime_fixture(&paths, true);
             let archive_path = temp_root.join("artifacts").join(if include_secrets {
                 "backup-with-secrets.tar.gz"
@@ -328,30 +350,27 @@ mod tests {
                     .and_then(serde_json::Value::as_bool),
                 Some(include_secrets)
             );
+            assert_eq!(entries.contains(&"self-host/config.toml".to_owned()), true);
             assert_eq!(
-                entries.contains(&"config/self-host/config.toml".to_owned()),
-                true
-            );
-            assert_eq!(
-                entries.contains(&"config/self-host/secrets.toml".to_owned()),
+                entries.contains(&"self-host/secrets.toml".to_owned()),
                 include_secrets
             );
             assert_eq!(
                 entries.contains(&"data/pglite/onequery/PG_VERSION".to_owned()),
                 true
             );
-            assert_eq!(entries.contains(&"data/logs/server.log".to_owned()), true);
-            assert_eq!(entries.contains(&"data/state/cache.json".to_owned()), true);
+            assert_eq!(entries.contains(&"logs/server.log".to_owned()), true);
+            assert_eq!(entries.contains(&"state/cache.json".to_owned()), true);
             assert_eq!(
                 entries.contains(&"data/backups/old-backup.tar.gz".to_owned()),
                 false
             );
             assert_eq!(
-                entries.contains(&"data/run/runtime.status.json".to_owned()),
+                entries.contains(&"run/runtime.status.json".to_owned()),
                 false
             );
             assert_eq!(
-                entries.contains(&"data/run/runtime.lease.json".to_owned()),
+                entries.contains(&"run/runtime.lease.json".to_owned()),
                 false
             );
 
@@ -378,7 +397,7 @@ mod tests {
             .unwrap_or_else(|error| panic!("expected pglite dir creation to succeed: {error}"));
         fs::create_dir_all(&paths.logs_dir)
             .unwrap_or_else(|error| panic!("expected logs dir creation to succeed: {error}"));
-        fs::create_dir_all(paths.data_dir.join("state"))
+        fs::create_dir_all(&paths.state_dir)
             .unwrap_or_else(|error| panic!("expected state dir creation to succeed: {error}"));
         fs::create_dir_all(&paths.backups_dir)
             .unwrap_or_else(|error| panic!("expected backups dir creation to succeed: {error}"));
@@ -407,11 +426,8 @@ mod tests {
             .unwrap_or_else(|error| panic!("expected pglite fixture write to succeed: {error}"));
         fs::write(&paths.server_log_path, "listening\n")
             .unwrap_or_else(|error| panic!("expected log fixture write to succeed: {error}"));
-        fs::write(
-            paths.data_dir.join("state").join("cache.json"),
-            "{\"ok\":true}",
-        )
-        .unwrap_or_else(|error| panic!("expected runtime file write to succeed: {error}"));
+        fs::write(paths.state_dir.join("cache.json"), "{\"ok\":true}")
+            .unwrap_or_else(|error| panic!("expected runtime file write to succeed: {error}"));
         fs::write(paths.backups_dir.join("old-backup.tar.gz"), "skip")
             .unwrap_or_else(|error| panic!("expected backup fixture write to succeed: {error}"));
         fs::write(&paths.runtime_status_snapshot_path, "{}\n")

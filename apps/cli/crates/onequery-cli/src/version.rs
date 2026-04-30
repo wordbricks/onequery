@@ -102,7 +102,10 @@ pub(crate) async fn run_cache_refresh(plan: VersionCacheRefreshPlan) -> VersionR
 }
 
 fn version_path_for_config(config_path: &Path) -> PathBuf {
-    config_path.with_file_name(CLI_VERSION_CACHE_FILENAME)
+    config_path
+        .parent()
+        .map(|home| home.join("state").join(CLI_VERSION_CACHE_FILENAME))
+        .unwrap_or_else(|| config_path.with_file_name(CLI_VERSION_CACHE_FILENAME))
 }
 
 fn read_version_info(version_file: &Path) -> VersionResult<VersionInfo> {
@@ -328,7 +331,7 @@ mod tests {
         assert_eq!(
             super::plan_cache_refresh_for_config_at(config_path, now),
             VersionCacheRefreshPlanning::Refresh(VersionCacheRefreshPlan::new(PathBuf::from(
-                "/tmp/onequery/version.json"
+                "/tmp/onequery/state/version.json"
             )))
         );
     }

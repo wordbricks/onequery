@@ -87,8 +87,8 @@ export function createSelfHostRuntimePaths(input?: {
   runtimeStatusSnapshotPath?: string;
 }): ServerLaunchRuntimePathsConfig {
   return create(ServerLaunchRuntimePathsConfigSchema, {
-    backupsDir: input?.backupsDir ?? "/tmp/onequery/backups",
-    dataDir: input?.dataDir ?? "/tmp/onequery",
+    backupsDir: input?.backupsDir ?? "/tmp/onequery/data/backups",
+    dataDir: input?.dataDir ?? "/tmp/onequery/data",
     lifecycleEventLogPath:
       input?.lifecycleEventLogPath ?? "/tmp/onequery/run/lifecycle.events.pb",
     logsDir: input?.logsDir ?? "/tmp/onequery/logs",
@@ -194,7 +194,7 @@ export function createSelfHostLaunchConfig(input?: {
           rateLimitStorage: input?.rateLimit?.storage ?? "persistent",
           smtp: input?.smtp,
           storage: createPgliteStorageConfig({
-            dir: input?.storageDir ?? "/tmp/onequery/pglite/onequery",
+            dir: input?.storageDir ?? "/tmp/onequery/data/pglite/onequery",
           }),
         }),
         launchId: input?.launchId ?? "test-self-host-launch",

@@ -101,7 +101,7 @@ async function prepareSelfHostRuntime(prefix: string): Promise<{
 }
 
 function writeSelfHostConfig(homeDir: string, port: number): void {
-  const configDir = join(homeDir, "config", "self-host");
+  const configDir = join(homeDir, "self-host");
   mkdirSync(configDir, { recursive: true });
   writeFileSync(
     join(configDir, "config.toml"),
@@ -110,7 +110,7 @@ function writeSelfHostConfig(homeDir: string, port: number): void {
 }
 
 function writeInvalidSecrets(homeDir: string): void {
-  const configDir = join(homeDir, "config", "self-host");
+  const configDir = join(homeDir, "self-host");
   mkdirSync(configDir, { recursive: true });
   writeFileSync(
     join(configDir, "secrets.toml"),
@@ -726,8 +726,8 @@ async function stopGatewayProcess(input: {
 
   const stopOutput =
     `${stopResult.stdout ?? ""}${stopResult.stderr ?? ""}`.trim();
-  const statusPath = join(input.homeDir, "data", "run", "runtime.status.json");
-  const leasePath = join(input.homeDir, "data", "run", "runtime.lease.json");
+  const statusPath = join(input.homeDir, "run", "runtime.status.json");
+  const leasePath = join(input.homeDir, "run", "runtime.lease.json");
 
   try {
     const exit = await waitForExit(input.child, SHUTDOWN_TIMEOUT_MS);
@@ -766,8 +766,8 @@ describe("CLI self-host smoke", () => {
   it("starts and stops the packaged gateway in background", async () => {
     const { baseUrl, env, homeDir, port, stagedBundleRoot } =
       await prepareSelfHostRuntime("onequery-cli-background-gateway-home-");
-    const statusPath = join(homeDir, "data", "run", "runtime.status.json");
-    const leasePath = join(homeDir, "data", "run", "runtime.lease.json");
+    const statusPath = join(homeDir, "run", "runtime.status.json");
+    const leasePath = join(homeDir, "run", "runtime.lease.json");
 
     writeSelfHostConfig(homeDir, port);
 
@@ -859,8 +859,8 @@ describe("CLI self-host smoke", () => {
   it("stops the packaged gateway using durable lifecycle records", async () => {
     const { baseUrl, env, homeDir, port, stagedBundleRoot } =
       await prepareSelfHostRuntime("onequery-cli-durable-lifecycle-home-");
-    const statusPath = join(homeDir, "data", "run", "runtime.status.json");
-    const leasePath = join(homeDir, "data", "run", "runtime.lease.json");
+    const statusPath = join(homeDir, "run", "runtime.status.json");
+    const leasePath = join(homeDir, "run", "runtime.lease.json");
 
     writeSelfHostConfig(homeDir, port);
 
@@ -933,9 +933,9 @@ describe("CLI self-host smoke", () => {
   it("fails gateway start when another process already listens on the configured port", async () => {
     const { env, homeDir, port, stagedBundleRoot } =
       await prepareSelfHostRuntime("onequery-cli-occupied-gateway-port-home-");
-    const statusPath = join(homeDir, "data", "run", "runtime.status.json");
-    const leasePath = join(homeDir, "data", "run", "runtime.lease.json");
-    const logPath = join(homeDir, "data", "logs", "server.log");
+    const statusPath = join(homeDir, "run", "runtime.status.json");
+    const leasePath = join(homeDir, "run", "runtime.lease.json");
+    const logPath = join(homeDir, "logs", "server.log");
     const portBlocker = createServer();
 
     writeSelfHostConfig(homeDir, port);
@@ -1601,9 +1601,9 @@ describe("CLI self-host smoke", () => {
       expect(exit.code).not.toBe(0);
       expect(output).toContain("invalid self-host secrets config");
       expect(output).toContain("crypto.master_encryption_key");
-      expect(
-        existsSync(join(homeDir, "data", "run", "runtime.status.json"))
-      ).toBe(false);
+      expect(existsSync(join(homeDir, "run", "runtime.status.json"))).toBe(
+        false
+      );
     } finally {
       rmSync(homeDir, {
         force: true,

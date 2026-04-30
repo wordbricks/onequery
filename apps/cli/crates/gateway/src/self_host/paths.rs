@@ -26,6 +26,8 @@ const UPGRADE_TRANSACTION_FILENAME: &str = "upgrade-transaction.json";
 pub struct SelfHostRuntimePaths {
     pub config_dir: PathBuf,
     pub data_dir: PathBuf,
+    pub state_dir: PathBuf,
+    pub cache_dir: PathBuf,
     pub config_path: PathBuf,
     pub secrets_path: PathBuf,
     pub pglite_dir: PathBuf,
@@ -45,21 +47,24 @@ pub struct SelfHostRuntimePaths {
 }
 
 impl SelfHostRuntimePaths {
-    pub fn from_dirs(config_dir: PathBuf, data_dir: PathBuf) -> Self {
+    pub fn from_dirs(config_dir: PathBuf, onequery_home: PathBuf) -> Self {
+        let data_dir = onequery_home.join("data");
+        let state_dir = onequery_home.join("state");
+        let cache_dir = onequery_home.join("cache");
         let config_path = config_dir.join(CONFIG_FILENAME);
         let secrets_path = config_dir.join(SECRETS_CONFIG_FILENAME);
         let pglite_dir = data_dir.join("pglite").join(PGLITE_DIRNAME);
-        let logs_dir = data_dir.join("logs");
+        let logs_dir = onequery_home.join("logs");
         let server_log_path = logs_dir.join(SERVER_LOG_FILENAME);
         let backups_dir = data_dir.join("backups");
-        let run_dir = data_dir.join("run");
+        let run_dir = onequery_home.join("run");
         let supervisor_control_socket_path =
             supervisor_control_socket_path_for_runtime(data_dir.as_path(), run_dir.as_path());
         let runtime_lease_path = run_dir.join(RUNTIME_LEASE_FILENAME);
         let runtime_status_snapshot_path = run_dir.join(RUNTIME_STATUS_SNAPSHOT_FILENAME);
         let supervisor_status_snapshot_path = run_dir.join(SUPERVISOR_STATUS_SNAPSHOT_FILENAME);
         let lifecycle_event_log_path = run_dir.join(LIFECYCLE_EVENT_LOG_FILENAME);
-        let releases_dir = data_dir.join(RELEASES_DIR_NAME);
+        let releases_dir = onequery_home.join(RELEASES_DIR_NAME);
         let active_release_path = releases_dir.join(ACTIVE_RELEASE_FILENAME);
         let recovery_points_dir = data_dir.join(RECOVERY_POINTS_DIR_NAME);
         let upgrade_transaction_path = run_dir.join(UPGRADE_TRANSACTION_FILENAME);
@@ -67,6 +72,8 @@ impl SelfHostRuntimePaths {
         Self {
             config_dir,
             data_dir,
+            state_dir,
+            cache_dir,
             config_path,
             secrets_path,
             pglite_dir,
@@ -88,9 +95,14 @@ impl SelfHostRuntimePaths {
 }
 
 pub fn self_host_runtime_paths(command_line: &str) -> Result<SelfHostRuntimePaths, CliError> {
+    let data_dir = data_dir(command_line)?;
+    let onequery_home = data_dir
+        .parent()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| data_dir.clone());
     Ok(SelfHostRuntimePaths::from_dirs(
         config_dir(command_line)?.join(SELF_HOST_CONFIG_DIR_NAME),
-        data_dir(command_line)?,
+        onequery_home,
     ))
 }
 

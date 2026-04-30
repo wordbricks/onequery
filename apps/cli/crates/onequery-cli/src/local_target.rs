@@ -324,13 +324,10 @@ mod tests {
     fn test_paths() -> SelfHostRuntimePaths {
         let root =
             std::env::temp_dir().join(format!("onequery-local-target-test-{}", Uuid::new_v4()));
-        let config_dir = root.join("config");
-        let data_dir = root.join("data");
+        let config_dir = root.join("self-host");
         fs::create_dir_all(&config_dir)
             .unwrap_or_else(|error| panic!("expected config dir creation to succeed: {error}"));
-        fs::create_dir_all(&data_dir)
-            .unwrap_or_else(|error| panic!("expected data dir creation to succeed: {error}"));
-        SelfHostRuntimePaths::from_dirs(config_dir, data_dir)
+        SelfHostRuntimePaths::from_dirs(config_dir, root)
     }
 
     fn test_context(base_url: &str, command_line: &str) -> CommandContext {

@@ -44,8 +44,8 @@ function createPaths(root: string): SelfHostLifecyclePaths & {
   statusPath: string;
 } {
   const dataDir = join(root, "data");
-  const logsDir = join(dataDir, "logs");
-  const runDir = join(dataDir, "run");
+  const logsDir = join(root, "logs");
+  const runDir = join(root, "run");
 
   return {
     controlEndpoint: createSelfHostSupervisorControl({
@@ -730,7 +730,7 @@ describe("self-host lifecycle lease", () => {
       viewServerLaunchConfig(
         createSelfHostLaunchConfig({
           runtimePaths: createSelfHostRuntimePaths({
-            backupsDir: join(root, "backups"),
+            backupsDir: join(root, "data", "backups"),
             dataDir: paths.dataDir,
             lifecycleEventLogPath: paths.lifecycleEventLogPath,
             logsDir: paths.logsDir,

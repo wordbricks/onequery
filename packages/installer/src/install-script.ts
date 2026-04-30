@@ -69,7 +69,8 @@ RELEASE_BASE_URL="\${ONEQUERY_RELEASE_BASE_URL:-${RELEASE_BASE_URL}}"
 MANAGED_NODE_VERSION="${MANAGED_NODE_VERSION}"
 NODE_DIST_BASE_URL="\${ONEQUERY_NODE_DIST_BASE_URL:-${MANAGED_NODE_DIST_BASE_URL}}"
 ONEQUERY_HOME="\${ONEQUERY_HOME:-$HOME/.onequery}"
-INSTALL_ROOT="\${ONEQUERY_INSTALL_ROOT:-$ONEQUERY_HOME/packages/standalone}"
+INSTALL_RELEASES_ROOT="\${ONEQUERY_INSTALL_RELEASES_ROOT:-\${ONEQUERY_INSTALL_ROOT:+$ONEQUERY_INSTALL_ROOT/releases}}"
+INSTALL_RELEASES_ROOT="\${INSTALL_RELEASES_ROOT:-$ONEQUERY_HOME/packages/standalone/releases}"
 BIN_DIR="\${ONEQUERY_BIN_DIR:-$HOME/.local/bin}"
 
 need_cmd() {
@@ -259,8 +260,8 @@ fi
 
 version="$(read_package_version "$package_dir")"
 release_name="$version-$target_triple"
-install_dir="$INSTALL_ROOT/releases/$release_name"
-staging_dir="$INSTALL_ROOT/releases/$release_name.tmp.$$"
+install_dir="$INSTALL_RELEASES_ROOT/$release_name"
+staging_dir="$INSTALL_RELEASES_ROOT/$release_name.tmp.$$"
 managed_node_required=0
 
 if should_install_managed_node; then
@@ -268,7 +269,7 @@ if should_install_managed_node; then
 fi
 
 rm -rf "$staging_dir"
-mkdir -p "$INSTALL_ROOT/releases" "$BIN_DIR"
+mkdir -p "$INSTALL_RELEASES_ROOT" "$BIN_DIR"
 mv "$package_dir" "$staging_dir"
 if [ "$managed_node_required" -eq 1 ]; then
   install_managed_node "$staging_dir" "$managed_node_archive_suffix"

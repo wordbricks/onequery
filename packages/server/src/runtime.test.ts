@@ -29,7 +29,7 @@ describe("createServerRuntimeConfig", () => {
         migrationsDir: "/tmp/migrations",
         publicOrigin: "https://onequery.example.com",
         runtimePaths: createSelfHostRuntimePaths({
-          backupsDir: "/tmp/runtime/backups",
+          backupsDir: "/tmp/runtime/data/backups",
           dataDir: "/tmp/runtime/data",
           lifecycleEventLogPath: "/tmp/runtime/run/lifecycle.events.pb",
           logsDir: "/tmp/runtime/logs",
@@ -43,7 +43,7 @@ describe("createServerRuntimeConfig", () => {
           secure: true,
           username: "smtp-user",
         }),
-        storageDir: "/tmp/runtime/pglite/onequery",
+        storageDir: "/tmp/runtime/data/pglite/onequery",
       })
     );
 
