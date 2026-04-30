@@ -11,9 +11,6 @@ rounded tile.
 ```text
 Create a square 1:1 blog thumbnail using the OneQuery blog diagram system.
 
-Article title:
-"[ARTICLE_TITLE]"
-
 Article idea:
 [ARTICLE_IDEA]
 
@@ -30,8 +27,8 @@ texture in grouped containers, thin black arrows with small arrowheads.
 
 OneQuery icon:
 if OneQuery appears as a node, service, product, or actor, use the simplified
-line seal/whale icon shown in the `ONEQUERY ICON` sample. Do not use the filled
-app icon or wordmark.
+line seal icon shown in the `ONEQUERY ICON` sample. Do not use a whale, the
+filled app icon, or wordmark.
 
 Composition:
 use one simple icon-first diagrammatic metaphor. All visual elements must be
@@ -41,7 +38,8 @@ legible at thumbnail size.
 
 Text:
 avoid readable text inside the image. Prefer icons, simple line symbols, arrows,
-and containers. Do not use module labels unless absolutely necessary.
+and containers. Do not add a title, headline, or module labels unless absolutely
+necessary.
 
 Color:
 use the Diagram System neutrals for lines and components: white, black,
@@ -52,6 +50,6 @@ blush, peach, sage, or mint. Keep it low contrast and quiet.
 Avoid:
 bright saturated colors, colorful icons, logos, watermarks, harsh gradients,
 photorealism, 3D, glossy glass, heavy shadows, decorative blobs, dense
-dashboards, long labels, off-center compositions, and complex multi-step
-workflows.
+dashboards, titles, headlines, long labels, off-center compositions, and complex
+multi-step workflows.
 ```
