@@ -127,7 +127,12 @@ export function CreateOrgPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={(event) => {
+              void form.handleSubmit(onSubmit)(event);
+            }}
+            className="space-y-4"
+          >
             <div className="space-y-2">
               <Label htmlFor="name">Organization name</Label>
               <Input

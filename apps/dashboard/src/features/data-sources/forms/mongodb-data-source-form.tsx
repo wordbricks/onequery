@@ -123,7 +123,12 @@ export function MongoDBDataSourceForm({
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <form
+      onSubmit={(event) => {
+        void form.handleSubmit(onSubmit)(event);
+      }}
+      className="space-y-4"
+    >
       <div className="space-y-2">
         <Label htmlFor="mongodb-name">Data Source Name</Label>
         <Input

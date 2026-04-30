@@ -43,5 +43,8 @@
     "pino": "catalog:",
     "unstorage": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
   }
 }

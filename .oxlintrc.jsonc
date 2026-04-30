@@ -102,8 +102,11 @@
     "typescript/promise-function-async": "off",
     "typescript/require-await": "off",
     "typescript/unbound-method": "off",
+    "typescript/prefer-readonly-parameter-types": "off",
+    "typescript/no-unnecessary-type-parameters": "off",
 
-    // TEMP: type-aware rules to fix incrementally
+    // TEMP: type-aware rules to fix incrementally. `files` counts come from
+    // focused `bunx oxlint . -A all -D <rule> --type-aware --format json` runs.
     "typescript/strict-boolean-expressions": "off", // TEMP ~293
     "typescript/no-unsafe-member-access": "off", // TEMP ~121
     "typescript/no-unsafe-assignment": "off", // TEMP ~160
@@ -114,6 +117,8 @@
     "no-void": "off", // `typescript/no-floating-promises` needs explicit `void`
     "typescript/prefer-nullish-coalescing": "off", // TEMP ~13
     "typescript/no-unnecessary-type-arguments": "off", // TEMP ~8
+    "typescript/consistent-return": "off", // TEMP ~34 files
+    "typescript/explicit-member-accessibility": "off", // TEMP ~22 files
     "typescript/no-misused-promises": [
       "error",
       {

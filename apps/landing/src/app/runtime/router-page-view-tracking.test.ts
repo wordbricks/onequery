@@ -38,7 +38,7 @@ describe("registerRouterPageViewTracking", () => {
         return unsubscribe;
       }),
     };
-    const trackResolvedPageView = vi.fn();
+    const trackResolvedPageView = vi.fn(() => {});
 
     const stopTracking = registerRouterPageViewTracking(
       router,

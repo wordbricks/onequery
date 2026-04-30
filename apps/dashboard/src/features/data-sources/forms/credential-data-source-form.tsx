@@ -264,29 +264,31 @@ export function CredentialDataSourceForm({
 
   return (
     <form
-      onSubmit={form.handleSubmit((data) => {
-        setCredentialsError(null);
-        const credentialsText = data.credentialsText ?? "";
-        if (!credentialsText.trim()) {
-          setCredentialsError("Provide a credentials file or JSON.");
-          return;
-        }
-        const parsed = parseCredentialsInput(credentialsText, provider);
-        if ("error" in parsed) {
-          setCredentialsError(parsed.error);
-          return;
-        }
-        const enhanced = applyProviderFields(
-          parsed.credentials,
-          provider,
-          data
-        );
-        if ("error" in enhanced) {
-          setCredentialsError(enhanced.error);
-          return;
-        }
-        mutation.mutate({ ...data, credentials: enhanced.credentials });
-      })}
+      onSubmit={(event) => {
+        void form.handleSubmit((data) => {
+          setCredentialsError(null);
+          const credentialsText = data.credentialsText ?? "";
+          if (!credentialsText.trim()) {
+            setCredentialsError("Provide a credentials file or JSON.");
+            return;
+          }
+          const parsed = parseCredentialsInput(credentialsText, provider);
+          if ("error" in parsed) {
+            setCredentialsError(parsed.error);
+            return;
+          }
+          const enhanced = applyProviderFields(
+            parsed.credentials,
+            provider,
+            data
+          );
+          if ("error" in enhanced) {
+            setCredentialsError(enhanced.error);
+            return;
+          }
+          mutation.mutate({ ...data, credentials: enhanced.credentials });
+        })(event);
+      }}
       className="space-y-4 py-4"
     >
       <div className="space-y-2">

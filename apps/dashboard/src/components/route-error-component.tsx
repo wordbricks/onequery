@@ -12,8 +12,8 @@ export function RouteErrorComponent({ error }: ErrorComponentProps) {
   const message =
     error instanceof Error ? error.message : "An unexpected error occurred";
 
-  const handleRetry = async () => {
-    await router.invalidate();
+  const handleRetry = () => {
+    void router.invalidate();
   };
 
   return (

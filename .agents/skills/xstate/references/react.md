@@ -1,129 +1,149 @@
-# React Integration
+# React
 
-Use this reference after the machine design is settled and you need React-specific wiring detail beyond `references/adapters.md`.
+React owns rendering. XState owns process behavior.
 
-For the shared-actor pattern with `createActorContext(...)`, see `references/examples.md`. For inspector wiring (`createBrowserInspector(...)`), see `references/observables-and-inspection.md`.
+## Local Actors
 
-## Hook surface
+Use `useActor(logic, options)` for local component-owned actors that the component reads. It creates, starts, subscribes, and returns `[snapshot, send, actorRef]`.
 
-| Hook | Use when |
-|------|----------|
-| `useMachine(machine, options?)` | The component **owns** a local actor; lifecycle is tied to the component. |
-| `useActor(actorRef)` | You already have an actor ref (from a parent, prop, or context) and want `[snapshot, send]`. |
-| `useActorRef(machine, options?)` | You need to send events but do not want the component to re-render on snapshot changes. |
-| `useSelector(actorRef, selector)` | You have a shared actor ref and want to re-render only when a specific slice changes. |
+```ts
+import { useActor } from "@xstate/react";
+import { fromPromise } from "xstate";
 
-Prefer `useActorRef` + `useSelector` over `useActor` when the actor is shared or when broad rerenders matter. `useActor` is best reserved for small child components that legitimately need `[snapshot, send]` against a passed-in ref.
+const [snapshot, send] = useActor(
+  machine.provide({
+    actors: {
+      saveBudget: fromPromise(({ input }) => saveBudget(input.nextBudgetUsd)),
+    },
+  }),
+  {
+    input: { initialBudgetUsd },
+  }
+);
+```
 
-## Passing initial context via `input`
+Use root actor `input` for initialization. It is evaluated once for that actor instance. If the machine declares `types.input`, pass `options.input` when creating the actor.
 
-When the machine uses `input` to seed context, pass it through `useMachine`:
+## Actor Identity and Rerenders
+
+`useActor(...)`, `useMachine(...)`, and `useActorRef(...)` create, start, and stop an actor with the component. A normal React rerender should keep that actor.
+
+The identity boundary is the machine config:
+
+- Stable config: keeps the actor.
+- Changed implementations via `machine.provide(...)`: keeps the actor and refreshes closures.
+- Changed machine config: replaces the actor from the previous persisted snapshot.
+- New process: use a React `key` or move the actor owner so remounting is intentional.
+
+Keep machine definitions out of render unless replacement is the point:
 
 ```tsx
-import { useMachine } from '@xstate/react';
-import { assign, setup } from 'xstate';
+// Avoid: render creates a new config identity.
+const [snapshot, send] = useActor(
+  setup({}).createMachine({
+    context: { projectId },
+    // ...
+  })
+);
 
-const counterMachine = setup({
-  types: {} as {
-    context: { count: number };
-    input: { initialCount: number };
-    events: { type: 'count.incremented' };
-  }
-}).createMachine({
-  context: ({ input }) => ({ count: input.initialCount }),
-  on: {
-    'count.incremented': {
-      actions: assign({ count: ({ context }) => context.count + 1 })
-    }
-  }
+// Prefer: stable machine plus per-instance input.
+const [snapshot, send] = useActor(projectMachine, {
+  input: { projectId },
 });
 
-export function Counter({ initialCount }: { initialCount: number }) {
-  const [snapshot, send] = useMachine(counterMachine, {
-    input: { initialCount }
-  });
+// Also OK: stable machine logic with current React closures provided in render.
+const [snapshot, send] = useActor(
+  projectMachine.provide({
+    actions: {
+      notifySaved: () => toast.success("Saved"),
+    },
+  }),
+  { input: { projectId } }
+);
+```
 
-  return (
-    <button onClick={() => send({ type: 'count.incremented' })}>
-      {snapshot.context.count}
-    </button>
-  );
+If a prop changes after the actor starts, `input` will not be re-read. Decide the policy explicitly: send a domain event, invoke a subscription actor, or remount with a React `key`.
+
+## Event Handlers
+
+Keep UI event handlers thin. Send domain events from render-time closures:
+
+```tsx
+<button
+  onClick={() => send({ type: "budget.save" })}
+  disabled={!snapshot.can({ type: "budget.save" })}
+>
+  Save
+</button>
+```
+
+Use provided actions or invoked actors for async work, navigation, toasts, and service calls that happen after transitions.
+
+For async actor choices, read [Promises](promises.md) and [Callbacks](callbacks.md).
+
+## Provided Implementations
+
+Use `.provide(...)` in render for implementations that depend on current React closures. Apply it to stable machine logic so implementations refresh without resetting actor state.
+
+Good candidates:
+
+- mutation functions
+- toast actions
+- navigation actions
+- analytics actions
+- permission guards
+- test doubles
+
+## Shared Actors
+
+Use `useActorRef` when the current component owns the actor but should not rerender for every snapshot. Read selected values with `useSelector`.
+
+```ts
+import { useActorRef, useSelector } from "@xstate/react";
+
+const actorRef = useActorRef(machine, { input });
+const canSave = useSelector(actorRef, (snapshot) =>
+  snapshot.can({ type: "budget.save" })
+);
+```
+
+For shared actors, own the actor once in an owner or provider, then pass the actor ref or consume it through context. Read externally owned actor refs with `useSelector`. Use `useActor(...)` or `useMachine(...)` when the component should rerender on every actor snapshot.
+
+Define selectors outside the component when possible. If a selector returns an object or array, either preserve the reference or pass a comparator such as `shallowEqual`.
+
+```tsx
+import { shallowEqual, useActorRef, useSelector } from "@xstate/react";
+import type { SnapshotFrom } from "xstate";
+
+const selectCanSave = (snapshot: SnapshotFrom<typeof projectMachine>) =>
+  snapshot.can({ type: "project.save" });
+const selectUser = (snapshot: SnapshotFrom<typeof projectMachine>) =>
+  snapshot.context.user;
+
+function ProjectOwner({ projectId }: { projectId: string }) {
+  const actorRef = useActorRef(projectMachine, { input: { projectId } });
+  const canSave = useSelector(actorRef, selectCanSave);
+  const user = useSelector(actorRef, selectUser, shallowEqual);
+
+  return <ProjectForm actorRef={actorRef} canSave={canSave} user={user} />;
 }
 ```
 
-Prefer `input` over reading props inside `assign(...)`. Context is seeded once from `input`; later prop changes should be modeled as events.
+Use `createActorContext(logic)` when one actor should be app- or feature-scoped. Put the provider at the ownership boundary, then consume with `Context.useActorRef()` and `Context.useSelector(...)`.
 
-## Matching nested states
+## Snapshot-Driven UI
 
-`snapshot.matches(...)` accepts both dot-string and object forms for hierarchical states. Both are valid; pick whichever reads more clearly locally.
+Use:
 
-```tsx
-if (snapshot.matches('processing.validating')) { /* ... */ }
-if (snapshot.matches({ processing: 'confirming' })) { /* ... */ }
-```
+- `snapshot.matches(...)` for concrete state
+- `snapshot.hasTag(...)` for semantic state
+- `snapshot.can(event)` for enabled commands
+- selectors for context slices
 
-For parallel states, use the object form for the specific region you care about, and prefer tags when several regions should answer a single UI question like "is anything loading?".
+Derive display values in render or selectors. Keep machine-owned values in snapshots and context.
 
-## Snapshot-driven UI
+## External Changes
 
-Prefer driving JSX directly from the snapshot and actor, not from duplicated local state:
+Changed props leave the running actor intact. Choose the external-change policy in [Actor Identity and Rerenders](#actor-identity-and-rerenders) deliberately.
 
-```tsx
-function AuthFlow() {
-  const [snapshot, send] = useMachine(authMachine);
-
-  if (snapshot.hasTag('loading')) return <LoadingSpinner />;
-  if (snapshot.matches('authenticated')) return <Dashboard user={snapshot.context.user} />;
-  if (snapshot.matches('error')) {
-    return (
-      <ErrorDisplay
-        message={snapshot.context.error}
-        onRetry={() => send({ type: 'auth.retried' })}
-      />
-    );
-  }
-
-  return (
-    <LoginForm
-      canSubmit={snapshot.can({ type: 'auth.login', email: '', password: '' })}
-      onSubmit={(email, password) => send({ type: 'auth.login', email, password })}
-    />
-  );
-}
-```
-
-Reach for `snapshot.can(...)` for enablement checks on buttons and inputs, not extra booleans in context.
-
-## Custom hook pattern
-
-When a component tree repeatedly pulls the same slices from a machine, a thin wrapper hook can keep the call sites small without duplicating machine truth. Keep the wrapper close to derived values and event helpers; do not let it accumulate component state.
-
-```tsx
-import { useMachine } from '@xstate/react';
-import { authMachine } from './authMachine';
-
-export function useAuth() {
-  const [snapshot, send, actorRef] = useMachine(authMachine);
-
-  return {
-    isAuthenticated: snapshot.matches('signedIn'),
-    isLoading: snapshot.hasTag('loading'),
-    user: snapshot.context.user,
-    error: snapshot.context.error,
-    login: (email: string, password: string) =>
-      send({ type: 'auth.login', email, password }),
-    logout: () => send({ type: 'auth.logout' }),
-    actorRef,
-    snapshot
-  };
-}
-```
-
-Prefer this pattern only for locally owned actors. For shared actors, build the same ergonomics with `createActorContext(...)` plus `useSelector(...)` so that reads are selective.
-
-## Ownership heuristic
-
-- **Component-local actor**: `useMachine(...)`.
-- **Shared actor across a subtree**: `createActorContext(...)` + `useSelector(...)` (see `references/examples.md`).
-- **Actor handed down as a prop or ref**: `useActor(actorRef)` for small leaves, or `useSelector(actorRef, ...)` when rerender pressure matters.
-- **Send-only component**: `useActorRef(...)` so the component does not subscribe.
+For subscription actors, read [Callbacks](callbacks.md) and [Observables](observables.md).

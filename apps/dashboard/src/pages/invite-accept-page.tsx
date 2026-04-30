@@ -9,9 +9,18 @@ import {
 } from "@onequery/ui/components/card";
 import { IconCheck, IconLoader2, IconX } from "@tabler/icons-react";
 
-import { useInviteAcceptController } from "@/features/invite-accept/invite-accept-controller";
+import {
+  inviteAcceptRouteApi,
+  useInviteAcceptController,
+} from "@/features/invite-accept/invite-accept-controller";
 
 export function InviteAcceptPage() {
+  const { invitationId } = inviteAcceptRouteApi.useParams();
+
+  return <InviteAcceptPanel key={invitationId} />;
+}
+
+function InviteAcceptPanel() {
   const { accept, decline, errorMessage, goHome, status } =
     useInviteAcceptController();
 

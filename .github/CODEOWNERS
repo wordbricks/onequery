@@ -1,1 +1,5 @@
-* @siisee11 @lentil32
+/proto @lentil32
+/apps/cli @lentil32
+
+# Keep ownership changes reviewed by the same team.
+/.github/CODEOWNERS @lentil32 @siisee11

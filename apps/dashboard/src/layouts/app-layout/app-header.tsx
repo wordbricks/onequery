@@ -73,10 +73,12 @@ export function AppHeader() {
   const userInitials = getInitials(userName);
   const baseLabel = getCurrentLabel(location.pathname);
 
-  async function handleSignOut() {
-    await signOut();
-    await router.invalidate();
-    await navigate({ to: "/" });
+  function handleSignOut() {
+    void (async () => {
+      await signOut();
+      await router.invalidate();
+      await navigate({ to: "/" });
+    })();
   }
 
   return (

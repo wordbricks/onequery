@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "babysit-pr": {
+      "source": "openai/codex",
+      "sourceType": "github",
+      "computedHash": "c37bfc53784be78de6ca2de5940556b78b1ab2e1d862c848ef561d663ce6e2a3"
+    },
     "better-result-adopt": {
       "source": "dmmulroy/better-result",
       "sourceType": "github",
@@ -25,11 +30,6 @@
       "source": "deckardger/tanstack-agent-skills",
       "sourceType": "github",
       "computedHash": "65764bc7b90e47f6023cb7f89b3af93eaaafc517754f10b9382e184d4646a77d"
-    },
-    "xstate": {
-      "source": "seed-hypermedia/seed",
-      "sourceType": "github",
-      "computedHash": "e034dbd0ac001ff771daf0f01c979cb0e91f3996728449b2efcfbf30b7adcd93"
     }
   }
 }

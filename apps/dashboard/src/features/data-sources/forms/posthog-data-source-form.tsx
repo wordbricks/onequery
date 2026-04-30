@@ -90,7 +90,11 @@ export function PostHogDataSourceForm({
 
   return (
     <form
-      onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
+      onSubmit={(event) => {
+        void form.handleSubmit((data) => {
+          mutation.mutate(data);
+        })(event);
+      }}
       className="space-y-4"
     >
       <div className="space-y-2">

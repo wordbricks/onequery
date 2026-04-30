@@ -426,7 +426,9 @@ describe("startServer", () => {
     expect(mocks.shutdownController.shutdown).not.toHaveBeenCalled();
 
     resolveClosed?.();
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
 
     expect(mocks.shutdownController.shutdown).toHaveBeenCalledWith({
       completion: "cleanup_and_exit",
@@ -460,7 +462,9 @@ describe("startServer", () => {
     expect(mocks.shutdownController.shutdown).not.toHaveBeenCalled();
 
     rejectClosed?.(new Error("session failed"));
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
 
     expect(mocks.shutdownController.shutdown).toHaveBeenCalledWith({
       completion: "cleanup_and_exit",

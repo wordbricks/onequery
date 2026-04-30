@@ -189,7 +189,9 @@ export function InviteMemberDialog({
           </>
         ) : (
           <form
-            onSubmit={form.handleSubmit(onSubmit)}
+            onSubmit={(event) => {
+              void form.handleSubmit(onSubmit)(event);
+            }}
             className="space-y-4 pt-4"
           >
             <div className="space-y-2">

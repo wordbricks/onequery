@@ -10,7 +10,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  cargo-deny:
+    uses: ./.github/workflows/cargo-deny.yml
+
   tag-check:
+    needs: cargo-deny
     runs-on: ubuntu-latest
     outputs:
       publish_tag: ${{ steps.validate.outputs.publish_tag }}

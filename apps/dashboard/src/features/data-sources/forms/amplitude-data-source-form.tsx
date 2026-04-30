@@ -104,7 +104,11 @@ export function AmplitudeDataSourceForm({
 
   return (
     <form
-      onSubmit={form.handleSubmit((d) => mutation.mutate(d))}
+      onSubmit={(event) => {
+        void form.handleSubmit((data) => {
+          mutation.mutate(data);
+        })(event);
+      }}
       className="space-y-4"
     >
       <div className="space-y-2">

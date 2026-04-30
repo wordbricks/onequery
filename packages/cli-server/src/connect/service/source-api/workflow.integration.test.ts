@@ -269,7 +269,7 @@ function createDependencies(
     encodeSourceApiContinuationToken,
     executePreparedSourceApi: vi.fn().mockResolvedValue(firstPageResult),
     getCliLogLevelForStatus: vi.fn((): "info" => "info"),
-    logCliEvent: vi.fn(),
+    logCliEvent: vi.fn(() => {}),
     prepareDataSourceCredentials: vi.fn().mockResolvedValue(
       Result.ok({
         credentials: preparedSource.credentials,
