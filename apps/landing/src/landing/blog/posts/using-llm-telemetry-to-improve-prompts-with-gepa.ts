@@ -11,6 +11,8 @@ export const usingLlmTelemetryToImprovePromptsWithGepaPost: BlogPost = {
   description:
     "A practical workflow for using OneQuery to let a GEPA reflection agent inspect Laminar LLM telemetry while improving prompts.",
   icon: FlaskIcon,
+  imageSrc:
+    "/images/blog/using-llm-telemetry-to-improve-prompts-with-gepa-icon.png",
   readTime: "9 min read",
   sections: [
     {
