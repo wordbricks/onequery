@@ -1,5 +1,8 @@
 use std::time::Duration;
 
+use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
+
 use crate::identifiers::OrgSlug;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_client_build_failure;
@@ -21,6 +24,8 @@ use onequery_core::error::ErrorStage;
 
 use super::CommandContext;
 use super::Runtime;
+
+const SESSION_REFRESH_SKEW: time::Duration = time::Duration::minutes(5);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct PersistedLogin {
@@ -45,12 +50,23 @@ enum AuthSessionState {
 #[derive(Debug)]
 enum AuthSessionEvent {
     Start,
-    CurrentSessionMissing { try_next: Vec<String> },
-    CurrentSessionFound { access_token: String },
-    SessionRefreshed { completion: LoginCompletion },
-    SessionRefreshFailed { error: CliError },
+    CurrentSessionMissing {
+        try_next: Vec<String>,
+    },
+    CurrentSessionFound {
+        access_token: String,
+        refresh_required: bool,
+    },
+    SessionRefreshed {
+        completion: LoginCompletion,
+    },
+    SessionRefreshFailed {
+        error: CliError,
+    },
     SessionPersisted,
-    SessionPersistFailed { error: CliError },
+    SessionPersistFailed {
+        error: CliError,
+    },
 }
 
 #[derive(Debug)]
@@ -176,12 +192,17 @@ fn reduce_auth_session(
                     error: not_logged_in_error(context, try_next),
                 })
             }
-            AuthSessionEvent::CurrentSessionFound { access_token } => {
-                Transition::continue_with_effect(
-                    AuthSessionState::RefreshingSession,
-                    AuthSessionEffect::RefreshRemote { access_token },
-                )
-            }
+            AuthSessionEvent::CurrentSessionFound {
+                access_token,
+                refresh_required: true,
+            } => Transition::continue_with_effect(
+                AuthSessionState::RefreshingSession,
+                AuthSessionEffect::RefreshRemote { access_token },
+            ),
+            AuthSessionEvent::CurrentSessionFound {
+                refresh_required: false,
+                ..
+            } => Transition::done(AuthSessionTerminalState::Authenticated),
             AuthSessionEvent::Start
             | AuthSessionEvent::SessionRefreshed { .. }
             | AuthSessionEvent::SessionRefreshFailed { .. }
@@ -250,7 +271,10 @@ async fn execute_auth_session_effect<B, T>(
     match effect {
         AuthSessionEffect::InspectCurrent => {
             match runtime.auth_session.access_token().map(str::to_owned) {
-                Some(access_token) => AuthSessionEvent::CurrentSessionFound { access_token },
+                Some(access_token) => AuthSessionEvent::CurrentSessionFound {
+                    access_token,
+                    refresh_required: auth_session_refresh_required(runtime),
+                },
                 None => AuthSessionEvent::CurrentSessionMissing {
                     try_next: missing_auth_try_next(context),
                 },
@@ -294,6 +318,18 @@ async fn execute_auth_session_effect<B, T>(
             Err(error) => AuthSessionEvent::SessionPersistFailed { error },
         },
     }
+}
+
+fn auth_session_refresh_required<B, T>(runtime: &Runtime<B, T>) -> bool {
+    let Some(expires_at) = runtime.auth_session.metadata().expires_at() else {
+        return false;
+    };
+
+    let Ok(expires_at) = OffsetDateTime::parse(expires_at, &Rfc3339) else {
+        return true;
+    };
+
+    expires_at <= OffsetDateTime::now_utc() + SESSION_REFRESH_SKEW
 }
 
 pub(crate) fn authenticated_api_client<B, T>(
@@ -450,6 +486,14 @@ mod tests {
     }
 
     fn sample_login_completion(access_token: &str, email: &str) -> LoginCompletion {
+        sample_login_completion_with_expiry(access_token, email, "2000-03-17T00:00:00Z")
+    }
+
+    fn sample_login_completion_with_expiry(
+        access_token: &str,
+        email: &str,
+        expires_at: &str,
+    ) -> LoginCompletion {
         LoginCompletion {
             access_token: access_token.to_owned(),
             auth_mode: Some("bearer_token".to_owned()),
@@ -459,7 +503,7 @@ mod tests {
                 display_name: "Alice".to_owned(),
             },
             issued_at: Some("2026-03-10T00:00:00Z".to_owned()),
-            expires_at: Some("2026-03-17T00:00:00Z".to_owned()),
+            expires_at: Some(expires_at.to_owned()),
         }
     }
 
@@ -670,52 +714,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ensure_authenticated_keeps_env_sourced_tokens_in_memory_only() {
-        let listener =
-            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
-        let address = listener
-            .local_addr()
-            .expect("expected test listener address");
-        let (request_tx, request_rx) = mpsc::channel();
-
-        std::thread::spawn(move || {
-            let (mut stream, _) = listener
-                .accept()
-                .expect("expected CLI request to connect to test listener");
-
-            let mut request_bytes = Vec::new();
-            let mut chunk = [0_u8; 1024];
-            loop {
-                let read = stream
-                    .read(&mut chunk)
-                    .expect("expected request bytes from CLI");
-                if read == 0 {
-                    break;
-                }
-
-                request_bytes.extend_from_slice(&chunk[..read]);
-                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
-                    break;
-                }
-            }
-
-            let request = String::from_utf8_lossy(&request_bytes).into_owned();
-            request_tx
-                .send(request)
-                .expect("expected captured request receiver");
-
-            let response_body = refresh_session_response_body(
-                "token_refreshed",
-                Some("acme"),
-                1_773_187_200,
-                1_773_792_000,
-            );
-            write_proto_response(&mut stream, "req_refresh", &response_body)
-                .expect("expected proto response write to CLI");
-        });
-
-        let base_url = format!("http://{address}");
-        let context = test_context(base_url, "onequery org list");
+    async fn ensure_authenticated_skips_refresh_when_expiry_is_not_known() {
+        let context = test_context("http://127.0.0.1:9".to_owned(), "onequery org list");
         let credentials_path = std::env::temp_dir()
             .join(format!("onequery-auth-session-{}", Uuid::new_v4()))
             .join("auth.json");
@@ -727,29 +727,49 @@ mod tests {
         ensure_authenticated(&context, &mut runtime)
             .await
             .unwrap_or_else(|error| {
-                panic!("expected env auth session workflow to succeed: {error}")
+                panic!("expected auth session workflow to accept the stored token: {error}")
             });
-
-        let request = request_rx
-            .recv_timeout(Duration::from_secs(2))
-            .expect("expected captured refresh request");
 
         assert_eq!(
             (
-                request
-                    .to_ascii_lowercase()
-                    .contains("authorization: bearer token_from_env"),
                 runtime.auth_session.access_token(),
                 runtime.auth_session.metadata().principal_email(),
                 credentials_path.exists(),
             ),
-            (
-                true,
-                Some("token_refreshed"),
-                Some("alice@example.com"),
-                false,
-            )
+            (Some("token_from_env"), None, false)
         );
+    }
+
+    #[tokio::test]
+    async fn ensure_authenticated_skips_refresh_for_unexpired_sessions() {
+        let context = test_context(
+            "http://127.0.0.1:9".to_owned(),
+            "onequery query exec --source warehouse --sql \"select 1\"",
+        );
+        let credentials_path = std::env::temp_dir()
+            .join(format!("onequery-auth-session-{}", Uuid::new_v4()))
+            .join("auth.json");
+        let mut auth_session =
+            AuthSessionStore::with_file_access_token_for_test(credentials_path, None);
+        auth_session
+            .persist_login_completion(
+                &sample_login_completion_with_expiry(
+                    "token_current",
+                    "alice@example.com",
+                    "2099-03-17T00:00:00Z",
+                ),
+                "onequery auth login",
+            )
+            .unwrap_or_else(|error| panic!("expected test auth session persistence: {error}"));
+        let mut runtime = test_runtime(auth_session);
+
+        ensure_authenticated(&context, &mut runtime)
+            .await
+            .unwrap_or_else(|error| {
+                panic!("expected auth session workflow to skip remote refresh: {error}")
+            });
+
+        assert_eq!(runtime.auth_session.access_token(), Some("token_current"));
     }
 
     #[tokio::test]
@@ -889,12 +909,18 @@ mod tests {
             "onequery org list --request-id req_cli_123",
             "req_cli_123",
         );
-        let mut runtime = test_runtime(AuthSessionStore::with_env_access_token_for_test(
-            std::env::temp_dir()
-                .join(format!("onequery-auth-session-{}", Uuid::new_v4()))
-                .join("auth.json"),
-            "token_from_env".to_owned(),
-        ));
+        let credentials_path = std::env::temp_dir()
+            .join(format!("onequery-auth-session-{}", Uuid::new_v4()))
+            .join("auth.json");
+        let mut auth_session =
+            AuthSessionStore::with_file_access_token_for_test(credentials_path, None);
+        auth_session
+            .persist_login_completion(
+                &sample_login_completion("token_from_file", "alice@example.com"),
+                "onequery auth login",
+            )
+            .unwrap_or_else(|error| panic!("expected test auth session persistence: {error}"));
+        let mut runtime = test_runtime(auth_session);
 
         ensure_authenticated(&context, &mut runtime)
             .await
