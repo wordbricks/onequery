@@ -44,32 +44,66 @@ const saved = await waitFor(actor, (snapshot) => snapshot.matches("saved"), {
 
 Use resolving and rejecting test actors to cover `onDone` and `onError`.
 
+Test standalone promise logic with `createActor(fromPromise(...), { input })` and `waitFor(actor, (snapshot) => snapshot.status === "done")` for output.
+
+Use `toPromise(actor)` or an error observer for rejected promise actors.
+
+```ts
+import { toPromise } from "xstate";
+```
+
+For cancellation tests, use an abortable fake that records `signal.addEventListener("abort", ...)`; start the actor, leave the invoking state, then assert the abort handler ran.
+
 ## Timing
 
 Provide short named delays in tests with `.provide({ delays })`. Install the wait before advancing fake timers when a transition may happen quickly.
 
-## State-Space Tests
+## Pure Transitions
 
-Use `xstate/graph` for synchronous state-space coverage: legal paths, guarded transitions, and state invariants.
+Use `initialTransition(...)` and `transition(...)` for deterministic checks of guards, eventless routing, delayed-transition configuration, and selected actions.
 
 ```ts
-import { getShortestPaths } from "xstate/graph";
+import { initialTransition, transition } from "xstate";
 
-const paths = getShortestPaths(machine, {
-  events: (snapshot) => [
+const [initial] = initialTransition(machine, { initialBudgetUsd: 10 });
+const [next] = transition(machine, initial, { type: "budget.save" });
+
+expect(next.matches("saving")).toBe(true);
+```
+
+Use actor tests for executed actions, invoked actors, timers, and emitted events.
+
+For transition modeling, read [Transitions](transitions.md).
+
+## State-Space Tests
+
+Use `xstate/graph` for synchronous state-space coverage: legal paths, guarded transitions, tags, `can(...)`, and state invariants.
+
+```ts
+import { getShortestPaths, getSimplePaths } from "xstate/graph";
+
+const graphOptions = {
+  events: () => [
     { type: "budget.inputChanged", value: "25" },
     { type: "budget.save" },
     { type: "budget.clear" },
   ],
   filterEvents: (snapshot, event) => snapshot.can(event),
-});
+};
 
-for (const path of paths) {
+const shortestPaths = getShortestPaths(machine, graphOptions);
+const simplePaths = getSimplePaths(machine, graphOptions);
+
+for (const path of [...shortestPaths, ...simplePaths]) {
   expect(path.state.context.input).toBeDefined();
 }
 ```
 
-Graph tests explore external events. Use actor tests for invoked actor success, failure, cancellation, and delayed completion.
+Use shortest paths for representative coverage. Use simple paths when branch combinations carry important risk.
+
+Graph tests explore external events and synchronous transitions. Use actor tests for invoked actor success, failure, cancellation, emitted events, and delayed completion.
+
+For promise actor cases, read [Promises](promises.md).
 
 ## Coverage Targets
 

@@ -24,6 +24,23 @@ const [snapshot, send] = useActor(
 
 Use root actor `input` for initialization. It is evaluated once for that actor instance. If the machine declares `types.input`, pass `options.input` when creating the actor.
 
+## Event Handlers
+
+Keep UI event handlers thin. Send domain events from render-time closures:
+
+```tsx
+<button
+  onClick={() => send({ type: "budget.save" })}
+  disabled={!snapshot.can({ type: "budget.save" })}
+>
+  Save
+</button>
+```
+
+Use provided actions or invoked actors for async work, navigation, toasts, and service calls that happen after transitions.
+
+For async actor choices, read [Promises](promises.md) and [Callbacks](callbacks.md).
+
 ## Provided Implementations
 
 Use `.provide(...)` in render for implementations that depend on current React closures. Apply it to stable machine logic so implementations refresh without resetting actor state.
@@ -61,14 +78,16 @@ Use:
 - `snapshot.can(event)` for enabled commands
 - selectors for context slices
 
-Derive display values in render or selectors. Do not mirror machine state into React state.
+Derive display values in render or selectors. Keep machine-owned values in snapshots and context.
 
 ## External Changes
 
-Changed props do not reinitialize a running actor. Changed closures inside `.provide(...)` are refreshed. Changed machine config creates a new actor from the previous persisted snapshot.
+Changed props leave the running actor intact. Changed closures inside `.provide(...)` are refreshed. Changed machine config creates a new actor from the previous persisted snapshot.
 
 Choose the external-change policy deliberately:
 
 - key the actor owner when the process should restart
 - send a domain event when an external fact updates the current process
 - invoke a subscription actor when the machine owns an external stream
+
+For subscription actors, read [Callbacks](callbacks.md) and [Observables](observables.md).

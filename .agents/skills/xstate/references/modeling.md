@@ -27,7 +27,7 @@ Use context for:
 - data returned by actors
 - error details the UI must render after a transition
 
-Do not store data that can be derived from current state and context. Prefer helpers and selectors for derived values.
+Use helpers and selectors for data derived from current state and context.
 
 ## Events
 
@@ -41,19 +41,13 @@ Good event names:
 - `device.verificationSubmitted`
 - `invite.accepted`
 
-Event payloads should carry domain data captured at the boundary. Implementation dependencies belong in `.provide(...)`, not event payloads.
+Event payloads should carry domain data captured at the boundary. Implementation dependencies belong in `.provide(...)`.
 
 ## Guards
 
 Use guards to decide whether a transition is legal from the current context and event.
 
-Guards should be named when they encode policy:
-
-```ts
-guards: {
-  canSubmit: ({ context }) => context.input.trim().length > 0,
-}
-```
+Name guards when they encode policy.
 
 Use `snapshot.can(event)` in UI when button enablement should mirror machine legality.
 
@@ -74,24 +68,6 @@ Prefer `snapshot.hasTag("saving")` for UI status and `snapshot.matches("saving")
 
 ## Delays
 
-Use named delays.
+Use named delays for delayed transitions.
 
-```ts
-import { setup } from "xstate";
-
-setup({
-  delays: {
-    savedIdle: 2000,
-  },
-}).createMachine({
-  states: {
-    saved: {
-      after: {
-        savedIdle: "editing",
-      },
-    },
-  },
-});
-```
-
-Reference them by name in `after`. Override them with `.provide({ delays })` in tests.
+Reference named delays from `after`. Override them with `.provide({ delays })` in tests.

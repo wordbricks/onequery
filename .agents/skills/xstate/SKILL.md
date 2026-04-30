@@ -6,7 +6,12 @@ description: >
   actor systems, or machine-driven React behavior.
 references:
   - references/modeling.md
+  - references/transitions.md
   - references/actors.md
+  - references/promises.md
+  - references/callbacks.md
+  - references/observables.md
+  - references/child-actors.md
   - references/react.md
   - references/testing.md
 ---
@@ -32,7 +37,12 @@ Use XState when the domain has meaningful modes, transitions, async lifecycle, c
 Read only the references needed for the task:
 
 - [Modeling](references/modeling.md): states, context, events, guards, tags, delays.
+- [Transitions](references/transitions.md): guarded, eventless, delayed, and pure transitions.
 - [Actors](references/actors.md): async work, actor choice, invocation, outputs, cancellation.
+- [Promises](references/promises.md): `fromPromise`, request input, output, errors, abort signals.
+- [Callbacks](references/callbacks.md): subscriptions, imperative APIs, `sendBack`, `receive`, cleanup.
+- [Observables](references/observables.md): observable snapshots and observable event streams.
+- [Child Actors](references/child-actors.md): `invoke`, `spawn`, `spawnChild`, child ownership, inspection.
 - [React](references/react.md): `@xstate/react`, `.provide(...)`, actor input, selectors.
 - [Testing](references/testing.md): actor tests, `waitFor`, provided implementations, timing.
 
