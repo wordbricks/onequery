@@ -67,16 +67,18 @@ fn runtime_paths_follow_self_host_layout_contract() {
 
     let expected = SelfHostRuntimePaths {
         config_dir: PathBuf::from("/home/alice/.onequery/self-host"),
-        data_dir: PathBuf::from("/home/alice/.onequery"),
+        data_dir: PathBuf::from("/home/alice/.onequery/data"),
+        state_dir: PathBuf::from("/home/alice/.onequery/state"),
+        cache_dir: PathBuf::from("/home/alice/.onequery/cache"),
         config_path: PathBuf::from("/home/alice/.onequery/self-host/config.toml"),
         secrets_path: PathBuf::from("/home/alice/.onequery/self-host/secrets.toml"),
-        pglite_dir: PathBuf::from("/home/alice/.onequery/pglite/onequery"),
+        pglite_dir: PathBuf::from("/home/alice/.onequery/data/pglite/onequery"),
         logs_dir: PathBuf::from("/home/alice/.onequery/logs"),
         server_log_path: PathBuf::from("/home/alice/.onequery/logs/server.log"),
-        backups_dir: PathBuf::from("/home/alice/.onequery/backups"),
+        backups_dir: PathBuf::from("/home/alice/.onequery/data/backups"),
         run_dir: PathBuf::from("/home/alice/.onequery/run"),
         supervisor_control_socket_path: supervisor_control_socket_path_for_runtime(
-            PathBuf::from("/home/alice/.onequery").as_path(),
+            PathBuf::from("/home/alice/.onequery/data").as_path(),
             PathBuf::from("/home/alice/.onequery/run").as_path(),
         ),
         runtime_lease_path: PathBuf::from("/home/alice/.onequery/run/runtime.lease.json"),
@@ -89,7 +91,7 @@ fn runtime_paths_follow_self_host_layout_contract() {
         lifecycle_event_log_path: PathBuf::from("/home/alice/.onequery/run/lifecycle.events.pb"),
         releases_dir: PathBuf::from("/home/alice/.onequery/releases"),
         active_release_path: PathBuf::from("/home/alice/.onequery/releases/active.json"),
-        recovery_points_dir: PathBuf::from("/home/alice/.onequery/recovery-points"),
+        recovery_points_dir: PathBuf::from("/home/alice/.onequery/data/recovery-points"),
         upgrade_transaction_path: PathBuf::from(
             "/home/alice/.onequery/run/upgrade-transaction.json",
         ),
@@ -112,6 +114,8 @@ fn bootstrap_creates_self_host_config_files_and_runtime_directories() {
     assert_eq!(bootstrap.paths, paths);
     assert!(paths.config_dir.is_dir());
     assert!(paths.data_dir.is_dir());
+    assert!(paths.state_dir.is_dir());
+    assert!(paths.cache_dir.is_dir());
     assert!(paths.logs_dir.is_dir());
     assert!(paths.backups_dir.is_dir());
     assert!(paths.releases_dir.is_dir());

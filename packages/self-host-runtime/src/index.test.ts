@@ -52,7 +52,7 @@ function createTempSelfHostRuntimePaths() {
   // Comment: self-host rate-limit storage is filesystem-backed, so this test
   // must not reuse the shared defaults from @onequery/config/testing.
   return createSelfHostRuntimePaths({
-    backupsDir: join(root, "backups"),
+    backupsDir: join(root, "data", "backups"),
     dataDir: join(root, "data"),
     lifecycleEventLogPath: join(root, "run", "lifecycle.events.pb"),
     logsDir: join(root, "logs"),

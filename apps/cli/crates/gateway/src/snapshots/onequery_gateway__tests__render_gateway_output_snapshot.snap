@@ -4,7 +4,7 @@ expression: "output.lines.join(\"\\n\")"
 ---
 Gateway foundation ready.
 Config dir: /tmp/onequery/self-host
-Data dir: /tmp/onequery
+Data dir: /tmp/onequery/data
 Listen: 127.0.0.1:5656
 Created self-host config.toml: yes
 Created secrets.toml: yes

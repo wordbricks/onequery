@@ -246,6 +246,8 @@ function resolveApiRateLimitStorageResult(
       driver: fsLiteDriver({
         base: join(
           launchView.runtimePaths.dataDir,
+          "..",
+          "cache",
           RUNTIME_RATE_LIMIT_STORAGE_DIRNAME,
           RUNTIME_RATE_LIMIT_API_DIRNAME
         ),

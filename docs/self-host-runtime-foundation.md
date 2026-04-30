@@ -38,9 +38,15 @@ The runtime-managed files under that root are:
 
 - `self-host/config.toml`
 - `self-host/secrets.toml`
-- `pglite/onequery/`
+- `data/pglite/onequery/`
+- `data/backups/`
+- `releases/`
+- `data/recovery-points/`
+- `state/version.json`
+- `state/last-error.json`
+- `state/reports/`
+- `state/supervisor-generations/`
 - `logs/server.log`
-- `backups/`
 - `run/launch.json`
 - `run/runtime.lease.json`
 - `run/runtime.status.json`

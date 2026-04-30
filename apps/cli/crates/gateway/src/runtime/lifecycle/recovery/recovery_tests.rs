@@ -25,8 +25,8 @@ use crate::supervisor_control_proto::types;
 fn test_paths() -> (tempfile::TempDir, SelfHostRuntimePaths) {
     let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
     let paths = SelfHostRuntimePaths::from_dirs(
-        temp_dir.path().join("config").join("self-host"),
-        temp_dir.path().join("data"),
+        temp_dir.path().join("self-host"),
+        temp_dir.path().to_path_buf(),
     );
 
     fs::create_dir_all(&paths.run_dir)

@@ -1,6 +1,5 @@
 use dirs::home_dir;
 use onequery_utils_absolute_path::AbsolutePathBuf;
-#[cfg(unix)]
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -70,6 +69,7 @@ fn find_onequery_home_from_env_with_home(
                         format!("failed to canonicalize {ONEQUERY_HOME_ENV_VAR} {val:?}: {err}"),
                     )
                 })?;
+                migrate_onequery_home_layout(canonical.as_path())?;
                 AbsolutePathBuf::from_absolute_path(canonical)
             }
         }
@@ -82,6 +82,7 @@ fn find_onequery_home_from_env_with_home(
             })?;
             let path = default_onequery_home(home);
             migrate_legacy_default_onequery_home(home, &path)?;
+            migrate_onequery_home_layout(path.as_path())?;
             AbsolutePathBuf::from_absolute_path(path)
         }
     }
@@ -89,6 +90,61 @@ fn find_onequery_home_from_env_with_home(
 
 fn default_onequery_home(home: &Path) -> PathBuf {
     home.join(ONEQUERY_HOME_DIR_NAME)
+}
+
+fn migrate_onequery_home_layout(onequery_home: &Path) -> io::Result<()> {
+    if !onequery_home.exists() {
+        return Ok(());
+    }
+
+    for (source, target) in [
+        ("config/config.toml", "config.toml"),
+        ("secrets/auth.json", "auth.json"),
+        ("config/self-host/config.toml", "self-host/config.toml"),
+        ("secrets/self-host/secrets.toml", "self-host/secrets.toml"),
+        ("pglite", "data/pglite"),
+        ("backups", "data/backups"),
+        ("recovery-points", "data/recovery-points"),
+        ("version.json", "state/version.json"),
+        ("last-error.json", "state/last-error.json"),
+        ("reports", "state/reports"),
+        ("supervisor-generations", "state/supervisor-generations"),
+    ] {
+        move_home_entry_if_present(onequery_home, source, target)?;
+    }
+
+    remove_dir_if_empty(onequery_home.join("config").join("self-host").as_path())?;
+    remove_dir_if_empty(onequery_home.join("secrets").join("self-host").as_path())?;
+    remove_dir_if_empty(onequery_home.join("packages").join("standalone").as_path())?;
+    remove_dir_if_empty(onequery_home.join("packages").as_path())?;
+    remove_dir_if_empty(onequery_home.join("config").as_path())?;
+    remove_dir_if_empty(onequery_home.join("secrets").as_path())?;
+
+    Ok(())
+}
+
+fn move_home_entry_if_present(onequery_home: &Path, source: &str, target: &str) -> io::Result<()> {
+    let source_path = onequery_home.join(source);
+    if !source_path.exists() {
+        return Ok(());
+    }
+
+    let target_path = onequery_home.join(target);
+    if target_path.exists() {
+        return Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            format!(
+                "cannot migrate onequery path {} because {} already exists",
+                source_path.display(),
+                target_path.display()
+            ),
+        ));
+    }
+
+    if let Some(parent) = target_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::rename(source_path, target_path)
 }
 
 #[cfg(unix)]
@@ -147,7 +203,6 @@ fn move_legacy_children(source_dir: &Path, target_dir: &Path) -> io::Result<()> 
     }
 }
 
-#[cfg(unix)]
 fn remove_dir_if_empty(path: &Path) -> io::Result<()> {
     match fs::remove_dir(path) {
         Ok(()) => Ok(()),
@@ -235,6 +290,48 @@ mod tests {
         let expected = temp_home.path().join(super::ONEQUERY_HOME_DIR_NAME);
         let expected = AbsolutePathBuf::from_absolute_path(expected).expect("absolute home");
         assert_eq!(resolved, expected);
+    }
+
+    #[test]
+    fn migrate_onequery_home_layout_moves_nested_config_secrets_data_and_state() {
+        let temp_home = TempDir::new().expect("temp home");
+        let onequery_home = temp_home.path().join("onequery-home");
+        fs::create_dir_all(onequery_home.join("config/self-host")).expect("config self-host");
+        fs::create_dir_all(onequery_home.join("secrets/self-host")).expect("secrets self-host");
+        fs::create_dir_all(onequery_home.join("pglite")).expect("pglite");
+        fs::create_dir_all(onequery_home.join("backups")).expect("backups");
+        fs::create_dir_all(onequery_home.join("reports")).expect("reports");
+        fs::write(onequery_home.join("config/config.toml"), "config").expect("config");
+        fs::write(onequery_home.join("secrets/auth.json"), "{}").expect("auth");
+        fs::write(
+            onequery_home.join("config/self-host/config.toml"),
+            "self-host",
+        )
+        .expect("self-host config");
+        fs::write(
+            onequery_home.join("secrets/self-host/secrets.toml"),
+            "secrets",
+        )
+        .expect("self-host secrets");
+        fs::write(onequery_home.join("version.json"), "{}").expect("version");
+
+        super::migrate_onequery_home_layout(onequery_home.as_path()).expect("home migration");
+
+        assert_eq!(
+            (
+                onequery_home.join("config.toml").is_file(),
+                onequery_home.join("auth.json").is_file(),
+                onequery_home.join("self-host/config.toml").is_file(),
+                onequery_home.join("self-host/secrets.toml").is_file(),
+                onequery_home.join("data/pglite").is_dir(),
+                onequery_home.join("data/backups").is_dir(),
+                onequery_home.join("state/reports").is_dir(),
+                onequery_home.join("state/version.json").is_file(),
+                onequery_home.join("config").exists(),
+                onequery_home.join("secrets").exists(),
+            ),
+            (true, true, true, true, true, true, true, true, false, false)
+        );
     }
 
     #[cfg(unix)]

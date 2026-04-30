@@ -184,7 +184,7 @@ mod tests {
                     "onequery query exec --source warehouse --sql \"select 1\"",
                     ErrorStage::LoadConfig,
                     "invalid self-host config",
-                    vec!["remove or fix config/self-host/config.toml".to_owned()],
+                    vec!["remove or fix self-host/config.toml".to_owned()],
                 ),
             ))),
         );

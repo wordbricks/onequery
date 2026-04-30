@@ -272,6 +272,8 @@ pub(super) fn paths_json(paths: &SelfHostRuntimePaths) -> serde_json::Value {
     json!({
         "configDir": paths.config_dir.display().to_string(),
         "dataDir": paths.data_dir.display().to_string(),
+        "stateDir": paths.state_dir.display().to_string(),
+        "cacheDir": paths.cache_dir.display().to_string(),
         "configPath": paths.config_path.display().to_string(),
         "secretsPath": paths.secrets_path.display().to_string(),
         "pgliteDir": paths.pglite_dir.display().to_string(),

@@ -1039,8 +1039,8 @@ mod tests {
             let temp_dir =
                 tempdir().unwrap_or_else(|error| panic!("expected supervisor temp dir: {error}"));
             let paths = SelfHostRuntimePaths::from_dirs(
-                temp_dir.path().join("config").join("self-host"),
-                temp_dir.path().join("data"),
+                temp_dir.path().join("self-host"),
+                temp_dir.path().to_path_buf(),
             );
             fs::create_dir_all(&paths.run_dir)
                 .unwrap_or_else(|error| panic!("expected run dir creation: {error}"));

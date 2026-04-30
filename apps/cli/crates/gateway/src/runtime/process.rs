@@ -507,8 +507,8 @@ mod tests {
     fn background_start_reads_ready_runtime_pid_from_matching_supervisor_snapshot() {
         let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
         let paths = SelfHostRuntimePaths::from_dirs(
-            temp_dir.path().join("config").join("self-host"),
-            temp_dir.path().join("data"),
+            temp_dir.path().join("self-host"),
+            temp_dir.path().to_path_buf(),
         );
         fs::create_dir_all(&paths.run_dir)
             .unwrap_or_else(|error| panic!("expected run dir creation: {error}"));
@@ -537,8 +537,8 @@ mod tests {
     fn background_start_ignores_supervisor_snapshot_for_other_launch() {
         let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
         let paths = SelfHostRuntimePaths::from_dirs(
-            temp_dir.path().join("config").join("self-host"),
-            temp_dir.path().join("data"),
+            temp_dir.path().join("self-host"),
+            temp_dir.path().to_path_buf(),
         );
         fs::create_dir_all(&paths.run_dir)
             .unwrap_or_else(|error| panic!("expected run dir creation: {error}"));

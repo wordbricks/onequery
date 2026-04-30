@@ -289,8 +289,8 @@ async fn expected_child_exit_advances_terminal_runtime_sequence_from_live_status
 fn terminal_runtime_status_snapshot_records_unexpected_child_exit_identity_and_failure() {
     let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
     let paths = SelfHostRuntimePaths::from_dirs(
-        temp_dir.path().join("config").join("self-host"),
-        temp_dir.path().join("data"),
+        temp_dir.path().join("self-host"),
+        temp_dir.path().to_path_buf(),
     );
     fs::create_dir_all(&paths.run_dir)
         .unwrap_or_else(|error| panic!("expected run dir creation: {error}"));
@@ -440,8 +440,8 @@ fn terminal_runtime_status_snapshot_records_unexpected_child_exit_identity_and_f
 fn supervisor_transition_event_log_records_ordered_transition_evidence() {
     let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
     let paths = SelfHostRuntimePaths::from_dirs(
-        temp_dir.path().join("config").join("self-host"),
-        temp_dir.path().join("data"),
+        temp_dir.path().join("self-host"),
+        temp_dir.path().to_path_buf(),
     );
     fs::create_dir_all(&paths.run_dir)
         .unwrap_or_else(|error| panic!("expected run dir creation: {error}"));
@@ -654,8 +654,8 @@ fn test_supervisor_identity(supervisor_pid: u32) -> types::SupervisorIdentity {
 fn test_paths() -> (tempfile::TempDir, SelfHostRuntimePaths) {
     let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
     let paths = SelfHostRuntimePaths::from_dirs(
-        temp_dir.path().join("config").join("self-host"),
-        temp_dir.path().join("data"),
+        temp_dir.path().join("self-host"),
+        temp_dir.path().to_path_buf(),
     );
     fs::create_dir_all(&paths.run_dir)
         .unwrap_or_else(|error| panic!("expected run dir creation: {error}"));

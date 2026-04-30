@@ -10,7 +10,7 @@ use onequery_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::config::data_dir;
+use crate::config::state_dir;
 use crate::explain::ExplainSupportKind;
 use crate::explain::explanation_for_error_code;
 use onequery_core::private_files;
@@ -87,7 +87,7 @@ pub(crate) struct DiagnosticsPaths {
 
 impl DiagnosticsPaths {
     pub(crate) fn resolve(command_line: &str) -> Result<Self, CliError> {
-        let data_dir = data_dir(command_line)?;
+        let data_dir = state_dir(command_line)?;
         Ok(Self {
             last_error_path: data_dir.join(LAST_ERROR_FILENAME),
             reports_dir: data_dir.join(REPORTS_DIR_NAME),

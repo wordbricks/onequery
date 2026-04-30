@@ -118,8 +118,27 @@ fn execute_with_paths(
         )
     })?;
 
-    let extracted_config_dir = extract_root.join("config").join("self-host");
+    let extracted_config_dir = if extract_root.join("self-host").join("config.toml").is_file() {
+        extract_root.join("self-host")
+    } else {
+        extract_root.join("config").join("self-host")
+    };
     let extracted_data_dir = extract_root.join("data");
+    let extracted_releases_dir = if extract_root.join("releases").is_dir() {
+        extract_root.join("releases")
+    } else {
+        extract_root.join("data").join("releases")
+    };
+    let extracted_state_dir = if extract_root.join("state").is_dir() {
+        extract_root.join("state")
+    } else {
+        extract_root.join("data").join("state")
+    };
+    let extracted_logs_dir = if extract_root.join("logs").is_dir() {
+        extract_root.join("logs")
+    } else {
+        extract_root.join("data").join("logs")
+    };
     let extracted_config_path = extracted_config_dir.join("config.toml");
     let extracted_secrets_path = extracted_config_dir.join("secrets.toml");
 
@@ -136,6 +155,9 @@ fn execute_with_paths(
     let restored_secrets = extracted_secrets_path.is_file();
     remove_if_present(paths.config_dir.as_path(), &context.command_line)?;
     remove_if_present(paths.data_dir.as_path(), &context.command_line)?;
+    remove_if_present(paths.releases_dir.as_path(), &context.command_line)?;
+    remove_if_present(paths.state_dir.as_path(), &context.command_line)?;
+    remove_if_present(paths.logs_dir.as_path(), &context.command_line)?;
     copy_dir_recursive(
         &extracted_config_dir,
         paths.config_dir.as_path(),
@@ -146,6 +168,29 @@ fn execute_with_paths(
         paths.data_dir.as_path(),
         &context.command_line,
     )?;
+    copy_dir_recursive(
+        &extracted_releases_dir,
+        paths.releases_dir.as_path(),
+        &context.command_line,
+    )?;
+    copy_dir_recursive(
+        &extracted_state_dir,
+        paths.state_dir.as_path(),
+        &context.command_line,
+    )?;
+    if !extract_root.join("state").is_dir() {
+        copy_legacy_home_state_entries(
+            &extracted_data_dir,
+            paths.state_dir.as_path(),
+            &context.command_line,
+        )?;
+    }
+    copy_dir_recursive(
+        &extracted_logs_dir,
+        paths.logs_dir.as_path(),
+        &context.command_line,
+    )?;
+    remove_legacy_home_entries_from_data_dir(paths.data_dir.as_path(), &context.command_line)?;
     let bootstrap = bootstrap_foundation(paths, &context.command_line)?;
 
     Ok(CommandOutput::structured(
@@ -281,6 +326,65 @@ fn copy_file(source: &Path, destination: &Path, command_line: &str) -> Result<()
     Ok(())
 }
 
+fn copy_legacy_home_state_entries(
+    legacy_home_dir: &Path,
+    state_dir: &Path,
+    command_line: &str,
+) -> Result<(), CliError> {
+    for name in [
+        "version.json",
+        "last-error.json",
+        "reports",
+        "supervisor-generations",
+    ] {
+        let source = legacy_home_dir.join(name);
+        let destination = state_dir.join(name);
+        if source.is_dir() {
+            copy_dir_recursive(source.as_path(), destination.as_path(), command_line)?;
+        } else if source.is_file() {
+            copy_file(source.as_path(), destination.as_path(), command_line)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn remove_legacy_home_entries_from_data_dir(
+    data_dir: &Path,
+    command_line: &str,
+) -> Result<(), CliError> {
+    for name in [
+        "releases",
+        "state",
+        "logs",
+        "version.json",
+        "last-error.json",
+        "reports",
+        "supervisor-generations",
+    ] {
+        let path = data_dir.join(name);
+        if path.is_dir() {
+            fs::remove_dir_all(path.as_path()).map_err(|error| {
+                restore_error(
+                    "failed to remove legacy restored data directory",
+                    command_line,
+                    format!("{error} ({})", path.display()),
+                )
+            })?;
+        } else if path.is_file() {
+            fs::remove_file(path.as_path()).map_err(|error| {
+                restore_error(
+                    "failed to remove legacy restored data file",
+                    command_line,
+                    format!("{error} ({})", path.display()),
+                )
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
 fn restore_error(title: &str, command_line: &str, error: impl std::fmt::Display) -> CliError {
     CliError::new(
         title,
@@ -325,10 +429,8 @@ mod tests {
             } else {
                 "backup-no-secrets.tar.gz"
             });
-            let paths = SelfHostRuntimePaths::from_dirs(
-                temp_root.join("config").join("self-host"),
-                temp_root.join("data"),
-            );
+            let paths =
+                SelfHostRuntimePaths::from_dirs(temp_root.join("self-host"), temp_root.clone());
             write_backup_archive(&archive_path, include_secrets);
             seed_existing_runtime(&paths);
 
@@ -350,10 +452,7 @@ mod tests {
             assert_eq!(paths.config_path.is_file(), true);
             assert_eq!(paths.pglite_dir.join("PG_VERSION").is_file(), true);
             assert_eq!(paths.server_log_path.is_file(), true);
-            assert_eq!(
-                paths.data_dir.join("state").join("cache.json").is_file(),
-                true
-            );
+            assert_eq!(paths.state_dir.join("cache.json").is_file(), true);
             assert_eq!(paths.config_dir.join("stale.txt").exists(), false);
             assert_eq!(
                 paths.data_dir.join("obsolete").join("stale.bin").exists(),
@@ -385,6 +484,57 @@ mod tests {
             fs::remove_dir_all(temp_root)
                 .unwrap_or_else(|error| panic!("expected restore test temp dir cleanup: {error}"));
         }
+    }
+
+    #[test]
+    fn restore_migrates_legacy_home_entries_from_data_archive() {
+        let temp_root =
+            std::env::temp_dir().join(format!("onequery-restore-legacy-{}", Uuid::new_v4()));
+        let archive_path = temp_root.join("fixtures").join("legacy-backup.tar.gz");
+        let paths = SelfHostRuntimePaths::from_dirs(temp_root.join("self-host"), temp_root.clone());
+        write_legacy_layout_backup_archive(&archive_path);
+
+        execute_with_paths(
+            archive_path.as_path(),
+            &sample_context("onequery restore"),
+            &paths,
+            bootstrap_self_host_foundation,
+        )
+        .unwrap_or_else(|error| panic!("expected legacy restore to succeed: {error}"));
+
+        assert_eq!(paths.pglite_dir.join("PG_VERSION").is_file(), true);
+        assert_eq!(paths.server_log_path.is_file(), true);
+        assert_eq!(paths.state_dir.join("version.json").is_file(), true);
+        assert_eq!(paths.state_dir.join("last-error.json").is_file(), true);
+        assert_eq!(paths.state_dir.join("state-cache.json").is_file(), true);
+        assert_eq!(
+            paths
+                .state_dir
+                .join("reports")
+                .join("doctor.json")
+                .is_file(),
+            true
+        );
+        assert_eq!(
+            paths
+                .state_dir
+                .join("supervisor-generations")
+                .join("generation-00000000000000000001.json")
+                .is_file(),
+            true
+        );
+        assert_eq!(paths.data_dir.join("logs").exists(), false);
+        assert_eq!(paths.data_dir.join("version.json").exists(), false);
+        assert_eq!(paths.data_dir.join("last-error.json").exists(), false);
+        assert_eq!(paths.data_dir.join("state").exists(), false);
+        assert_eq!(paths.data_dir.join("reports").exists(), false);
+        assert_eq!(
+            paths.data_dir.join("supervisor-generations").exists(),
+            false
+        );
+
+        fs::remove_dir_all(temp_root)
+            .unwrap_or_else(|error| panic!("expected restore test temp dir cleanup: {error}"));
     }
 
     fn sample_context(command_line: &str) -> CommandContext {
@@ -420,15 +570,17 @@ mod tests {
     fn write_backup_archive(archive_path: &Path, include_secrets: bool) {
         let source_root =
             std::env::temp_dir().join(format!("onequery-restore-source-{}", Uuid::new_v4()));
-        let config_dir = source_root.join("config").join("self-host");
+        let config_dir = source_root.join("self-host");
         let data_dir = source_root.join("data");
+        let logs_dir = source_root.join("logs");
+        let state_dir = source_root.join("state");
         fs::create_dir_all(&config_dir)
             .unwrap_or_else(|error| panic!("expected source config dir creation: {error}"));
         fs::create_dir_all(data_dir.join("pglite").join("onequery"))
             .unwrap_or_else(|error| panic!("expected source pglite dir creation: {error}"));
-        fs::create_dir_all(data_dir.join("logs"))
+        fs::create_dir_all(&logs_dir)
             .unwrap_or_else(|error| panic!("expected source logs dir creation: {error}"));
-        fs::create_dir_all(data_dir.join("state"))
+        fs::create_dir_all(&state_dir)
             .unwrap_or_else(|error| panic!("expected source state dir creation: {error}"));
         fs::write(
             config_dir.join("config.toml"),
@@ -452,13 +604,10 @@ mod tests {
             "16",
         )
         .unwrap_or_else(|error| panic!("expected source pglite write: {error}"));
-        fs::write(data_dir.join("logs").join("server.log"), "server-log")
+        fs::write(logs_dir.join("server.log"), "server-log")
             .unwrap_or_else(|error| panic!("expected source log write: {error}"));
-        fs::write(
-            data_dir.join("state").join("cache.json"),
-            "{\"cache\":true}",
-        )
-        .unwrap_or_else(|error| panic!("expected source runtime file write: {error}"));
+        fs::write(state_dir.join("cache.json"), "{\"cache\":true}")
+            .unwrap_or_else(|error| panic!("expected source runtime file write: {error}"));
 
         if let Some(parent) = archive_path.parent() {
             fs::create_dir_all(parent).unwrap_or_else(|error| {
@@ -471,22 +620,103 @@ mod tests {
         let encoder = GzEncoder::new(archive_file, Compression::default());
         let mut archive = Builder::new(encoder);
         archive
-            .append_path_with_name(
-                config_dir.join("config.toml"),
-                "config/self-host/config.toml",
-            )
+            .append_path_with_name(config_dir.join("config.toml"), "self-host/config.toml")
             .unwrap_or_else(|error| panic!("expected server config archive append: {error}"));
         if include_secrets {
             archive
-                .append_path_with_name(
-                    config_dir.join("secrets.toml"),
-                    "config/self-host/secrets.toml",
-                )
+                .append_path_with_name(config_dir.join("secrets.toml"), "self-host/secrets.toml")
                 .unwrap_or_else(|error| panic!("expected secrets archive append: {error}"));
         }
         archive
             .append_dir_all("data", &data_dir)
             .unwrap_or_else(|error| panic!("expected data dir archive append: {error}"));
+        archive
+            .append_dir_all("state", &state_dir)
+            .unwrap_or_else(|error| panic!("expected state dir archive append: {error}"));
+        archive
+            .append_dir_all("logs", &logs_dir)
+            .unwrap_or_else(|error| panic!("expected logs dir archive append: {error}"));
+        archive
+            .into_inner()
+            .unwrap_or_else(|error| panic!("expected archive finalization: {error}"))
+            .finish()
+            .unwrap_or_else(|error| panic!("expected gzip finalization: {error}"));
+
+        fs::remove_dir_all(source_root)
+            .unwrap_or_else(|error| panic!("expected source fixture cleanup: {error}"));
+    }
+
+    fn write_legacy_layout_backup_archive(archive_path: &Path) {
+        let source_root =
+            std::env::temp_dir().join(format!("onequery-restore-legacy-source-{}", Uuid::new_v4()));
+        let config_dir = source_root.join("self-host");
+        let legacy_home_dir = source_root.join("data");
+        fs::create_dir_all(&config_dir)
+            .unwrap_or_else(|error| panic!("expected source config dir creation: {error}"));
+        fs::create_dir_all(legacy_home_dir.join("pglite").join("onequery"))
+            .unwrap_or_else(|error| panic!("expected source pglite dir creation: {error}"));
+        fs::create_dir_all(legacy_home_dir.join("logs"))
+            .unwrap_or_else(|error| panic!("expected source logs dir creation: {error}"));
+        fs::create_dir_all(legacy_home_dir.join("reports"))
+            .unwrap_or_else(|error| panic!("expected source reports dir creation: {error}"));
+        fs::create_dir_all(legacy_home_dir.join("state"))
+            .unwrap_or_else(|error| panic!("expected source state dir creation: {error}"));
+        fs::create_dir_all(legacy_home_dir.join("supervisor-generations")).unwrap_or_else(
+            |error| panic!("expected source supervisor generations dir creation: {error}"),
+        );
+        fs::write(
+            config_dir.join("config.toml"),
+            format!(
+                "[server]\nlisten_host = \"0.0.0.0\"\nport = {}\n",
+                default_port()
+            ),
+        )
+        .unwrap_or_else(|error| panic!("expected source server config write: {error}"));
+        fs::write(
+            legacy_home_dir
+                .join("pglite")
+                .join("onequery")
+                .join("PG_VERSION"),
+            "16",
+        )
+        .unwrap_or_else(|error| panic!("expected source pglite write: {error}"));
+        fs::write(
+            legacy_home_dir.join("logs").join("server.log"),
+            "server-log",
+        )
+        .unwrap_or_else(|error| panic!("expected source log write: {error}"));
+        fs::write(legacy_home_dir.join("version.json"), "{}")
+            .unwrap_or_else(|error| panic!("expected source version write: {error}"));
+        fs::write(legacy_home_dir.join("last-error.json"), "{}")
+            .unwrap_or_else(|error| panic!("expected source last error write: {error}"));
+        fs::write(legacy_home_dir.join("state").join("state-cache.json"), "{}")
+            .unwrap_or_else(|error| panic!("expected source nested state write: {error}"));
+        fs::write(legacy_home_dir.join("reports").join("doctor.json"), "{}")
+            .unwrap_or_else(|error| panic!("expected source report write: {error}"));
+        fs::write(
+            legacy_home_dir
+                .join("supervisor-generations")
+                .join("generation-00000000000000000001.json"),
+            "{}",
+        )
+        .unwrap_or_else(|error| panic!("expected source supervisor generation write: {error}"));
+
+        if let Some(parent) = archive_path.parent() {
+            fs::create_dir_all(parent).unwrap_or_else(|error| {
+                panic!("expected archive parent dir creation to succeed: {error}")
+            });
+        }
+
+        let archive_file = File::create(archive_path)
+            .unwrap_or_else(|error| panic!("expected archive file creation: {error}"));
+        let encoder = GzEncoder::new(archive_file, Compression::default());
+        let mut archive = Builder::new(encoder);
+        archive
+            .append_path_with_name(config_dir.join("config.toml"), "self-host/config.toml")
+            .unwrap_or_else(|error| panic!("expected server config archive append: {error}"));
+        archive
+            .append_dir_all("data", &legacy_home_dir)
+            .unwrap_or_else(|error| panic!("expected legacy data dir archive append: {error}"));
         archive
             .into_inner()
             .unwrap_or_else(|error| panic!("expected archive finalization: {error}"))

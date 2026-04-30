@@ -511,8 +511,8 @@ mod tests {
     async fn startup_timeout_cleanup_terminates_child_before_returning() {
         let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
         let paths = SelfHostRuntimePaths::from_dirs(
-            temp_dir.path().join("config").join("self-host"),
-            temp_dir.path().join("data"),
+            temp_dir.path().join("self-host"),
+            temp_dir.path().to_path_buf(),
         );
         fs::create_dir_all(&paths.run_dir)
             .unwrap_or_else(|error| panic!("expected run dir: {error}"));

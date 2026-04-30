@@ -114,9 +114,15 @@ Files under that root:
 
 - `self-host/config.toml`
 - `self-host/secrets.toml`
-- `pglite/onequery/`
+- `data/pglite/onequery/`
+- `data/backups/`
+- `releases/`
+- `data/recovery-points/`
+- `state/version.json`
+- `state/last-error.json`
+- `state/reports/`
+- `state/supervisor-generations/`
 - `logs/server.log`
-- `backups/`
 - `run/launch.json`
 - `run/runtime.lease.json`
 - `run/runtime.status.json`
@@ -157,7 +163,7 @@ Without `public_origin`, OneQuery falls back to the listen address.
 
 Self-host currently supports PGlite only:
 
-- database path: `pglite/onequery/` under the OneQuery data root
+- database path: `data/pglite/onequery/` under the OneQuery home
 - no external database dependency
 - `onequery gateway` and `onequery gateway start` ignore ambient `DATABASE_URL`
 

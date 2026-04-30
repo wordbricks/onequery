@@ -30,6 +30,8 @@ pub fn bootstrap_self_host_foundation(
     for (path, label) in [
         (&paths.config_dir, "config"),
         (&paths.data_dir, "data"),
+        (&paths.state_dir, "state"),
+        (&paths.cache_dir, "cache"),
         (&paths.pglite_dir, "pglite"),
         (&paths.logs_dir, "logs"),
         (&paths.backups_dir, "backups"),

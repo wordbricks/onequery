@@ -44,8 +44,8 @@ function createPaths(root: string): SelfHostLifecyclePaths & {
   statusPath: string;
 } {
   const dataDir = join(root, "data");
-  const logsDir = join(dataDir, "logs");
-  const runDir = join(dataDir, "run");
+  const logsDir = join(root, "logs");
+  const runDir = join(root, "run");
 
   return {
     controlEndpoint: createSelfHostSupervisorControl({

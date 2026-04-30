@@ -101,7 +101,7 @@ async function prepareSelfHostRuntime(prefix: string): Promise<{
 }
 
 function writeSelfHostConfig(homeDir: string, port: number): void {
-  const configDir = join(homeDir, "config", "self-host");
+  const configDir = join(homeDir, "self-host");
   mkdirSync(configDir, { recursive: true });
   writeFileSync(
     join(configDir, "config.toml"),
@@ -110,7 +110,7 @@ function writeSelfHostConfig(homeDir: string, port: number): void {
 }
 
 function writeInvalidSecrets(homeDir: string): void {
-  const configDir = join(homeDir, "config", "self-host");
+  const configDir = join(homeDir, "self-host");
   mkdirSync(configDir, { recursive: true });
   writeFileSync(
     join(configDir, "secrets.toml"),

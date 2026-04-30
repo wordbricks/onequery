@@ -58,7 +58,7 @@ pub(super) fn allocate_supervisor_generation(
 }
 
 fn supervisor_generation_ledger_dir(paths: &SelfHostRuntimePaths) -> PathBuf {
-    paths.data_dir.join(SUPERVISOR_GENERATION_DIR_NAME)
+    paths.state_dir.join(SUPERVISOR_GENERATION_DIR_NAME)
 }
 
 fn next_supervisor_generation_candidate(
@@ -405,8 +405,8 @@ mod tests {
     fn test_paths() -> (tempfile::TempDir, SelfHostRuntimePaths) {
         let temp_dir = tempdir().unwrap_or_else(|error| panic!("expected temp dir: {error}"));
         let paths = SelfHostRuntimePaths::from_dirs(
-            temp_dir.path().join("config").join("self-host"),
-            temp_dir.path().join("data"),
+            temp_dir.path().join("self-host"),
+            temp_dir.path().to_path_buf(),
         );
 
         (temp_dir, paths)
