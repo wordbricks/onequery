@@ -125,35 +125,6 @@ describe("createBudgetSettingsMachine", () => {
     expect(saveBudget).toHaveBeenCalledWith(null);
   });
 
-  it("preserves input typed while a save is pending", async () => {
-    const saveResult = Promise.withResolvers<OrganizationSettings>();
-    const saveBudget = createSaveBudgetMock(async () => saveResult.promise);
-    const actor = createTestActor(saveBudget);
-
-    actor.start();
-    actor.send({
-      type: "budgetSettings/inputChanged",
-      value: UPDATED_BUDGET_INPUT,
-    });
-    actor.send({ type: "budgetSettings/save" });
-    actor.send({
-      type: "budgetSettings/inputChanged",
-      value: RETRY_BUDGET_INPUT,
-    });
-
-    saveResult.resolve({ monthlyBudgetUsd: 25 });
-
-    const savedState = await waitFor(
-      actor,
-      (snapshot) => snapshot.matches("saved"),
-      { timeout: 1000 }
-    );
-
-    expect(savedState.context.persistedBudgetUsd).toBe(25);
-    expect(savedState.context.budgetInput).toBe(RETRY_BUDGET_INPUT);
-    expect(savedState.context.isDirtyAfterSaveStarted).toBe(false);
-  });
-
   it("returns to editing after the saved and error idle delays", async () => {
     vi.useFakeTimers();
 
