@@ -111,7 +111,7 @@ async function createFileResponse(
 }
 
 export function getDefaultSpaBuildDir(rootDir: string): string {
-  return resolve(rootDir, "apps/web/dist");
+  return resolve(rootDir, "apps/dashboard/dist");
 }
 
 export function createSpaAssetBindingResult(options: {
@@ -125,7 +125,7 @@ export function createSpaAssetBindingResult(options: {
       new SpaBuildOutputMissingError({
         assetDir,
         expectedPath: spaEntryPath,
-        message: `SPA build output missing: expected ${spaEntryPath}. Build apps/web before starting the packaged server runtime.`,
+        message: `SPA build output missing: expected ${spaEntryPath}. Build apps/dashboard before starting the packaged server runtime.`,
       })
     );
   }

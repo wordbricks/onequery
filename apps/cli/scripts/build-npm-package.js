@@ -683,7 +683,7 @@ async function buildWebAssets() {
   // entrypoints) are materialized on clean CI runners before npm staging.
   const result = spawnSync(
     "bun",
-    ["x", "turbo", "run", "build", "--filter=@onequery/web"],
+    ["x", "turbo", "run", "build", "--filter=@onequery/dashboard"],
     {
       cwd: WORKSPACE_ROOT,
       encoding: "utf8",
@@ -701,8 +701,8 @@ async function buildWebAssets() {
       .trim();
     const message =
       output.length > 0
-        ? `failed to build apps/web for npm packaging\n${output}`
-        : "failed to build apps/web for npm packaging";
+        ? `failed to build apps/dashboard for npm packaging\n${output}`
+        : "failed to build apps/dashboard for npm packaging";
 
     throw new Error(message);
   }

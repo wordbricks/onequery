@@ -23,7 +23,7 @@ description: Write and update GitHub PR titles and PR bodies with repository tem
 ## Type And Scope Mapping
 See the following example:
 
-- `feat(web):` for user-visible frontend behavior in `apps/web`, `packages/ui`, routing/UI/UX changes.
+- `feat(web):` for user-visible frontend behavior in `apps/dashboard`, `packages/ui`, routing/UI/UX changes.
 - `fix(web):` for frontend bug fixes.
 - `feat(server):` for backend/API behavior changes in `packages/server`.
 - `fix(server):` for backend/API bug fixes.

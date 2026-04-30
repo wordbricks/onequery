@@ -1,2 +1,3 @@
 *.snap
 packages/db/src/migrations/meta/
+worker-configuration.d.ts
