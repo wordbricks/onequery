@@ -1,0 +1,4 @@
+interface:
+  display_name: "OneQuery Blog Images"
+  short_description: "Generate OneQuery blog thumbnails and diagrams"
+  default_prompt: "Use $onequery-blog-images to generate a OneQuery blog thumbnail or diagram image."
