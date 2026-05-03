@@ -10,6 +10,7 @@ import {
 } from "./journal";
 import type {
   WorkflowJournalEntry,
+  WorkflowJournalCursor,
   WorkflowJournalEventEntry,
   WorkflowJournalStore,
 } from "./journal";
@@ -109,6 +110,12 @@ function appendTestBatch(
     >[0]["checkpoints"];
     commandInvocationId: string;
     commandPayload: TestCommand;
+    currentCursor?: WorkflowJournalCursor<
+      TestState,
+      TestCommand,
+      TestEvent,
+      TestEffect
+    >;
     effectCompletions?: Parameters<
       typeof appendWorkflowJournalBatch
     >[0]["effectCompletions"];
@@ -127,6 +134,7 @@ function appendTestBatch(
     checkpoints: input.checkpoints,
     commandInvocationId: input.commandInvocationId,
     commandPayload: input.commandPayload,
+    currentCursor: input.currentCursor,
     effectCompletions: input.effectCompletions,
     effectFailures: input.effectFailures,
     effectStarts: input.effectStarts,
@@ -282,6 +290,98 @@ describe("workflow journal core", () => {
       streamId: "action_1",
     });
     expect(store.loadAllEntries()).toHaveLength(first.entries.length);
+  });
+
+  it("appends from a carried cursor without preloading command idempotency or stream state", async () => {
+    const store = createTestStore();
+    let commandLookupCount = 0;
+    let streamLoadCount = 0;
+    const countedStore: TestStore = {
+      ...store,
+      loadEntriesByCommandInvocation: async (input) => {
+        commandLookupCount += 1;
+        return store.loadEntriesByCommandInvocation(input);
+      },
+      loadStream: async (input) => {
+        streamLoadCount += 1;
+        return store.loadStream(input);
+      },
+    };
+
+    const started = unwrap(
+      await appendTestBatch(countedStore, {
+        commandInvocationId: "cmd-start",
+        commandPayload: {
+          name: "query",
+          type: "start",
+        },
+        effects: [
+          {
+            name: "query",
+            type: "prepare",
+          },
+        ],
+        events: [
+          {
+            name: "query",
+            type: "started",
+          },
+        ],
+        expectedStreamPosition: 0,
+      })
+    );
+    expect(commandLookupCount).toBe(1);
+    expect(streamLoadCount).toBe(1);
+
+    const prepared = unwrap(
+      await appendTestBatch(countedStore, {
+        commandInvocationId: "cmd-prepared",
+        commandPayload: {
+          name: "prepared query",
+          type: "record",
+        },
+        currentCursor: started.cursor,
+        effectCompletions: [
+          {
+            effectId: expectSingle(started.freshEffects).effectId,
+          },
+        ],
+        effects: [
+          {
+            name: "prepared query",
+            type: "persist",
+          },
+        ],
+        events: [
+          {
+            name: "prepared query",
+            type: "prepared",
+          },
+        ],
+        expectedStreamPosition: started.cursor.streamPosition,
+      })
+    );
+
+    expect(commandLookupCount).toBe(1);
+    expect(streamLoadCount).toBe(1);
+    expect(prepared.cursor.streamPosition).toBeGreaterThan(
+      started.cursor.streamPosition
+    );
+    expect(prepared.cursor.commands.map((entry) => entry.commandType)).toEqual([
+      "start",
+      "record",
+    ]);
+    expect(prepared.cursor.events.map((entry) => entry.event.type)).toEqual([
+      "started",
+      "prepared",
+    ]);
+    expect(prepared.cursor.effects.map((effect) => effect.status)).toEqual([
+      "completed",
+      "scheduled",
+    ]);
+    expect(prepared.freshEffects.map((effect) => effect.effect.type)).toEqual([
+      "persist",
+    ]);
   });
 
   it("folds journal events and checkpoints into a replay cursor", async () => {

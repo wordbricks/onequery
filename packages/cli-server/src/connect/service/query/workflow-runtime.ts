@@ -222,6 +222,7 @@ async function runJournalQueryActionEffect<
     commandInvocationId: resultCommandInvocationId,
     commandPayload: outcome.commandPayload,
     completedEffectId: input.effect.id,
+    currentCursor: input.currentDecision.cursor,
     db: input.db,
     organizationId: input.organizationId,
     requestId: input.requestId,
@@ -238,6 +239,7 @@ async function runJournalQueryActionEffect<
 export async function storeAcceptedQueryActionCommand(
   input: Omit<QueryActionCommand, "family" | "observedAt"> & {
     completedEffectId?: string;
+    currentCursor?: StoredAcceptedQueryActionDecision["cursor"];
     db: Database;
   }
 ): Promise<StoredAcceptedQueryActionDecision> {
@@ -248,6 +250,7 @@ export async function storeAcceptedQueryActionCommand(
       observedAt: new Date(),
     },
     completedEffectId: input.completedEffectId,
+    currentCursor: input.currentCursor,
     db: input.db,
   });
 

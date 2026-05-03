@@ -9,9 +9,11 @@ import type {
   QueryActionCommandPayload,
   QueryActionEffect,
   QueryActionEvent,
+  QueryActionState,
   QueryActionSourceDescriptor,
   StoredWorkflowDecision,
   WorkflowActorSnapshot,
+  WorkflowJournalCursor,
   WorkflowJournalEffectToken,
 } from "../../../audit";
 import type {
@@ -54,6 +56,12 @@ export type StoredAcceptedQueryActionDecision = Extract<
   StoredWorkflowDecision<"query_action", QueryActionEvent, string>,
   { kind: "accepted" }
 > & {
+  cursor: WorkflowJournalCursor<
+    QueryActionState,
+    QueryActionCommandPayload,
+    QueryActionEvent,
+    QueryActionEffect
+  >;
   freshEffects?: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
   journalEffects?: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
 };

@@ -281,6 +281,7 @@ export async function appendWorkflowJournalBatch<
   commandPayload: CommandPayload;
   commandType?: string;
   createId?: () => string;
+  currentCursor?: WorkflowJournalCursor<State, CommandPayload, Event, Effect>;
   effectCompletions?: readonly WorkflowJournalEffectCompletionIntent[];
   effectFailures?: readonly WorkflowJournalEffectFailureIntent[];
   effectStarts?: readonly WorkflowJournalEffectStartIntent[];
@@ -305,24 +306,43 @@ export async function appendWorkflowJournalBatch<
   >
 > {
   const createId = input.createId ?? ulid;
-  const existingEntries = await input.store.loadEntriesByCommandInvocation({
-    commandInvocationId: input.commandInvocationId,
-    family: input.family,
-  });
-
-  if (existingEntries !== null) {
-    return replayWorkflowJournalBatch({
-      batchEntries: existingEntries,
-      reduce: input.reduce,
-      store: input.store,
-    });
+  if (
+    input.currentCursor?.streamId !== undefined &&
+    input.currentCursor.streamId !== input.streamId
+  ) {
+    return Result.err(
+      new WorkflowJournalCorruptStreamError({
+        detail: `workflow journal append received cursor for stream ${input.currentCursor.streamId}, expected ${input.streamId}`,
+        family: input.family,
+        streamId: input.streamId,
+      })
+    );
   }
 
-  const streamEntries = await input.store.loadStream({
-    family: input.family,
-    streamId: input.streamId,
-  });
-  const currentStreamPosition = getLastStreamPosition(streamEntries);
+  if (input.currentCursor === undefined) {
+    const existingEntries = await input.store.loadEntriesByCommandInvocation({
+      commandInvocationId: input.commandInvocationId,
+      family: input.family,
+    });
+
+    if (existingEntries !== null) {
+      return replayWorkflowJournalBatch({
+        batchEntries: existingEntries,
+        reduce: input.reduce,
+        store: input.store,
+      });
+    }
+  }
+
+  const streamEntries =
+    input.currentCursor === undefined
+      ? await input.store.loadStream({
+          family: input.family,
+          streamId: input.streamId,
+        })
+      : [];
+  const currentStreamPosition =
+    input.currentCursor?.streamPosition ?? getLastStreamPosition(streamEntries);
   if (currentStreamPosition !== input.expectedStreamPosition) {
     return Result.err(
       new WorkflowJournalExpectedPositionConflictError({
@@ -372,7 +392,11 @@ export async function appendWorkflowJournalBatch<
   switch (appended.kind) {
     case "appended": {
       const cursor = foldWorkflowJournalEntries({
-        entries: [...streamEntries, ...entries],
+        entries:
+          input.currentCursor === undefined
+            ? [...streamEntries, ...entries]
+            : entries,
+        initialCursor: input.currentCursor,
         reduce: input.reduce,
         streamId: input.streamId,
       });
@@ -417,6 +441,7 @@ export function foldWorkflowJournalEntries<
   ReduceError extends Error,
 >(input: {
   entries: readonly WorkflowJournalEntry<CommandPayload, Event, Effect>[];
+  initialCursor?: WorkflowJournalCursor<State, CommandPayload, Event, Effect>;
   initialState?: State | null;
   initialStreamPosition?: number;
   reduce: (
@@ -429,17 +454,32 @@ export function foldWorkflowJournalEntries<
   ReduceError | WorkflowJournalCorruptStreamError
 > {
   const sortedEntries = sortJournalEntries(input.entries);
-  const commands: WorkflowJournalCommandEntry<CommandPayload>[] = [];
-  const events: WorkflowJournalEventEntry<Event>[] = [];
+  const commands: WorkflowJournalCommandEntry<CommandPayload>[] = [
+    ...(input.initialCursor?.commands ?? []),
+  ];
+  const events: WorkflowJournalEventEntry<Event>[] = [
+    ...(input.initialCursor?.events ?? []),
+  ];
   const effectsById = new Map<
     string,
     MutableWorkflowJournalEffectState<Effect>
   >();
   const effectOrder: string[] = [];
-  let checkpoint: WorkflowJournalCheckpointEntry | null = null;
-  let currentState: State | null = input.initialState ?? null;
-  let streamId = input.streamId ?? sortedEntries[0]?.streamId ?? null;
-  let streamPosition = input.initialStreamPosition ?? 0;
+  for (const effect of input.initialCursor?.effects ?? []) {
+    effectsById.set(effect.effectId, { ...effect });
+    effectOrder.push(effect.effectId);
+  }
+  let checkpoint: WorkflowJournalCheckpointEntry | null =
+    input.initialCursor?.checkpoint ?? null;
+  let currentState: State | null =
+    input.initialCursor?.state ?? input.initialState ?? null;
+  let streamId =
+    input.initialCursor?.streamId ??
+    input.streamId ??
+    sortedEntries[0]?.streamId ??
+    null;
+  let streamPosition =
+    input.initialCursor?.streamPosition ?? input.initialStreamPosition ?? 0;
 
   for (const entry of sortedEntries) {
     if (streamId === null) {

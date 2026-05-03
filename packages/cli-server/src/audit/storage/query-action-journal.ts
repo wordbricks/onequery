@@ -52,6 +52,7 @@ import type {
   WorkflowJournalEffectToken,
   WorkflowJournalEntry,
   WorkflowJournalEventEntry,
+  WorkflowJournalCursor,
   WorkflowJournalStore,
 } from "./journal";
 import { createDbWorkflowJournalStore } from "./journal-db";
@@ -93,6 +94,13 @@ type StoredQueryActionJournalCommand = {
   decision: StoredQueryActionJournalDecision;
 };
 
+type QueryActionJournalCursor = WorkflowJournalCursor<
+  QueryActionState,
+  QueryActionCommandPayload,
+  QueryActionEvent,
+  QueryActionEffect
+>;
+
 type RejectedDecisionCheckpointPayload = {
   actionId: string | null;
   rejectCode: QueryActionRejectCode;
@@ -116,6 +124,7 @@ type StoredQueryActionJournalDecision =
       >,
       { kind: "accepted" }
     > & {
+      cursor: QueryActionJournalCursor;
       freshEffects?: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
       journalEffects?: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
     });
@@ -145,35 +154,28 @@ const queryActionJournalPayloadCodec: WorkflowJournalPayloadCodec<
 export async function storeQueryActionCommandViaJournal(input: {
   command: QueryActionCommand;
   completedEffectId?: string;
+  currentCursor?: QueryActionJournalCursor;
   db: Database;
 }): Promise<
   ResultType<StoredQueryActionJournalDecision, QueryActionJournalStorageError>
 > {
   const { command, db } = input;
-
-  const existing = await loadQueryActionCommandViaJournal({
-    commandInvocationId: command.commandInvocationId,
-    db,
-  });
-  if (existing.isErr()) {
-    return Result.err(existing.error);
-  }
-  if (existing.value !== null) {
-    return Result.ok(existing.value.decision);
-  }
+  let carriedCursor = input.currentCursor;
 
   for (let attempt = 1; attempt <= MAX_STORAGE_COMMIT_ATTEMPTS; attempt += 1) {
-    const actionId = command.actionId ?? ulid();
+    const actionId = command.actionId ?? carriedCursor?.streamId ?? ulid();
     const store = createQueryActionJournalStore({ db });
-    const streamEntries = await store.loadStream({
-      family: "query_action",
-      streamId: actionId,
-    });
-    const cursor = foldWorkflowJournalEntries({
-      entries: streamEntries,
-      reduce: reduceQueryActionJournalEvent,
-      streamId: actionId,
-    });
+    const cursor =
+      carriedCursor?.streamId === actionId
+        ? Result.ok(carriedCursor)
+        : foldWorkflowJournalEntries({
+            entries: await store.loadStream({
+              family: "query_action",
+              streamId: actionId,
+            }),
+            reduce: reduceQueryActionJournalEvent,
+            streamId: actionId,
+          });
     if (cursor.isErr()) {
       return Result.err(cursor.error);
     }
@@ -210,6 +212,8 @@ export async function storeQueryActionCommandViaJournal(input: {
       },
       commandPayload: command.commandPayload,
       commandType: getQueryActionCommandPayloadType(command.commandPayload),
+      currentCursor:
+        carriedCursor?.streamId === actionId ? carriedCursor : undefined,
       effectCompletions:
         decision.value.kind !== "accepted" ||
         input.completedEffectId === undefined
@@ -234,6 +238,7 @@ export async function storeQueryActionCommandViaJournal(input: {
       if (
         appended.error instanceof WorkflowJournalExpectedPositionConflictError
       ) {
+        carriedCursor = undefined;
         continue;
       }
 
@@ -1042,6 +1047,7 @@ function toStoredQueryActionJournalCommand(
     decision: {
       actionId: commandEntry.streamId,
       commandId: commandEntry.entryId,
+      cursor: input.cursor,
       events,
       family: "query_action",
       freshEffects: input.freshEffects,
