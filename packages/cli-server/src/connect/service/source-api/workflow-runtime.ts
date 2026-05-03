@@ -2,8 +2,7 @@ import {
   and,
   asc,
   eq,
-  sourceApiActionEvents,
-  workflowCommands,
+  ne,
   workflowEffectDispatches,
 } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
@@ -14,7 +13,10 @@ import type {
 } from "@onequery/server/source-api";
 import { Result, isPanic } from "better-result";
 
-import { storeSourceApiActionCommand } from "../../../audit";
+import {
+  loadSourceApiActionCommandViaJournal,
+  storeSourceApiActionCommand,
+} from "../../../audit";
 import type {
   SourceApiActionCommand,
   SourceApiActionCommandPayload,
@@ -23,11 +25,7 @@ import type {
   SourceApiActionSourceDescriptor,
   WorkflowActorSnapshot,
 } from "../../../audit";
-import {
-  decodeSourceApiActionCommandPayload,
-  decodeSourceApiActionEffectPayload,
-  decodeSourceApiActionEventPayload,
-} from "../../../audit/source-api-action-family/protobuf-codec";
+import { decodeSourceApiActionEffectPayload } from "../../../audit/source-api-action-family/protobuf-codec";
 import { isCliFailure } from "../../../domain/failures";
 import { toCliErrorMessage } from "../../../observability";
 import { createCliServiceFailure } from "../result";
@@ -73,6 +71,25 @@ export async function dispatchStoredSourceApiActionEffect<
     result: TResult;
   }>;
 }): Promise<DispatchedSourceApiActionEffect<EffectType, TResult>> {
+  const fresh = findFreshSourceApiActionEffect(input);
+  if (fresh !== null) {
+    return dispatchFreshSourceApiActionEffect({
+      ...input,
+      effect: fresh,
+    });
+  }
+
+  const replayed = findJournalSourceApiActionEffect(input);
+  if (replayed !== null) {
+    const replay = await replayJournalSourceApiActionEffect({
+      ...input,
+      effect: replayed,
+    });
+    if (replay !== null) {
+      return replay;
+    }
+  }
+
   return dispatchStoredWorkflowEffect<
     SourceApiActionEffect,
     EffectType,
@@ -92,8 +109,89 @@ export async function dispatchStoredSourceApiActionEffect<
   });
 }
 
+async function replayJournalSourceApiActionEffect<
+  EffectType extends SourceApiActionEffect["type"],
+  TResult,
+>(input: {
+  db: Database;
+  effect: LoadedSourceApiActionEffect<EffectType>;
+  replay: (input: {
+    effect: Extract<SourceApiActionEffect, { type: EffectType }>;
+    stored: StoredAcceptedSourceApiActionResultCommand;
+  }) => Promise<TResult> | TResult;
+}): Promise<DispatchedSourceApiActionEffect<EffectType, TResult> | null> {
+  const resultCommandInvocationId = `${input.effect.effectKey}:result`;
+  const stored = await loadStoredAcceptedSourceApiActionResultCommand({
+    commandInvocationId: resultCommandInvocationId,
+    db: input.db,
+  });
+  if (stored === null) {
+    return null;
+  }
+
+  if (!stored.completedEffectIds.includes(input.effect.id)) {
+    throw createSourceApiAuditCorruptionFailure(
+      `source_api_action stored result command for effect ${input.effect.id} is missing its journal completion`
+    );
+  }
+
+  await completeSourceApiActionEffectProjectionIfPresent({
+    db: input.db,
+    effectId: input.effect.id,
+  });
+
+  return {
+    decision: stored.decision,
+    effect: input.effect.effect,
+    result: await input.replay({
+      effect: input.effect.effect,
+      stored,
+    }),
+  };
+}
+
+async function dispatchFreshSourceApiActionEffect<
+  EffectType extends SourceApiActionEffect["type"],
+  TResult,
+>(input: {
+  actorSnapshot: WorkflowActorSnapshot;
+  currentDecision: StoredAcceptedSourceApiActionDecision;
+  db: Database;
+  effect: LoadedSourceApiActionEffect<EffectType>;
+  organizationId: string;
+  requestId: string;
+  run: (
+    effect: Extract<SourceApiActionEffect, { type: EffectType }>
+  ) => Promise<{
+    commandPayload: SourceApiActionCommandPayload;
+    result: TResult;
+  }>;
+}): Promise<DispatchedSourceApiActionEffect<EffectType, TResult>> {
+  const resultCommandInvocationId = `${input.effect.effectKey}:result`;
+  const outcome = await input.run(input.effect.effect);
+  const decision = await storeAcceptedSourceApiActionCommand({
+    actionId: input.currentDecision.actionId,
+    actorSnapshot: input.actorSnapshot,
+    causedByEventId: input.effect.originEventId,
+    commandInvocationId: resultCommandInvocationId,
+    commandPayload: outcome.commandPayload,
+    completedEffectId: input.effect.id,
+    db: input.db,
+    organizationId: input.organizationId,
+    requestId: input.requestId,
+    surface: "system",
+  });
+
+  return {
+    decision,
+    effect: input.effect.effect,
+    result: outcome.result,
+  };
+}
+
 export async function storeAcceptedSourceApiActionCommand(
   input: Omit<SourceApiActionCommand, "family" | "observedAt"> & {
+    completedEffectId?: string;
     db: Database;
   }
 ): Promise<StoredAcceptedSourceApiActionDecision> {
@@ -107,6 +205,7 @@ export async function storeAcceptedSourceApiActionCommand(
       family: "source_api_action",
       observedAt: new Date(),
     },
+    completedEffectId: input.completedEffectId,
     db: input.db,
   });
 
@@ -387,6 +486,87 @@ export function createSourceApiAuditCorruptionFailure(
   });
 }
 
+function findFreshSourceApiActionEffect<
+  EffectType extends SourceApiActionEffect["type"],
+>(input: {
+  currentDecision: StoredAcceptedSourceApiActionDecision;
+  expectedEffectType: EffectType;
+}): LoadedSourceApiActionEffect<EffectType> | null {
+  return findSourceApiActionJournalEffect({
+    currentDecision: input.currentDecision,
+    effects: input.currentDecision.freshEffects ?? [],
+    expectedEffectType: input.expectedEffectType,
+  });
+}
+
+function findJournalSourceApiActionEffect<
+  EffectType extends SourceApiActionEffect["type"],
+>(input: {
+  currentDecision: StoredAcceptedSourceApiActionDecision;
+  expectedEffectType: EffectType;
+}): LoadedSourceApiActionEffect<EffectType> | null {
+  return findSourceApiActionJournalEffect({
+    currentDecision: input.currentDecision,
+    expectedEffectType: input.expectedEffectType,
+    effects: input.currentDecision.journalEffects ?? [],
+  });
+}
+
+function findSourceApiActionJournalEffect<
+  EffectType extends SourceApiActionEffect["type"],
+>(input: {
+  currentDecision: StoredAcceptedSourceApiActionDecision;
+  effects: StoredAcceptedSourceApiActionDecision["journalEffects"];
+  expectedEffectType: EffectType;
+}): LoadedSourceApiActionEffect<EffectType> | null {
+  const effects = input.effects ?? [];
+  const effectIndex = effects.findIndex(
+    (effect) => effect.effect.type === input.expectedEffectType
+  );
+  if (effectIndex === -1) {
+    return null;
+  }
+
+  const effect = effects[effectIndex];
+  if (effect === undefined) {
+    return null;
+  }
+  const originEvent = requireLastCommittedEvent(input.currentDecision);
+
+  return {
+    attemptCount: 0,
+    effect: effect.effect as Extract<
+      SourceApiActionEffect,
+      { type: EffectType }
+    >,
+    effectKey: `source_api_action:${originEvent.id}:${effectIndex + 1}`,
+    id: effect.effectId,
+    originEventId: originEvent.id,
+    status: "pending",
+  };
+}
+
+async function completeSourceApiActionEffectProjectionIfPresent(input: {
+  db: Database;
+  effectId: string;
+}) {
+  await input.db
+    .update(workflowEffectDispatches)
+    .set({
+      completedAt: new Date(),
+      lastErrorCode: null,
+      lastErrorDetail: null,
+      leasedUntil: null,
+      status: "completed",
+    })
+    .where(
+      and(
+        eq(workflowEffectDispatches.id, input.effectId),
+        ne(workflowEffectDispatches.status, "completed")
+      )
+    );
+}
+
 async function loadRequiredSourceApiActionEffect<
   EffectType extends SourceApiActionEffect["type"],
 >(input: {
@@ -451,78 +631,30 @@ async function loadStoredAcceptedSourceApiActionResultCommand(input: {
   commandInvocationId: string;
   db: Database;
 }): Promise<StoredAcceptedSourceApiActionResultCommand | null> {
-  const storedCommand = await input.db.query.workflowCommands.findFirst({
-    where: and(
-      eq(workflowCommands.family, "source_api_action"),
-      eq(workflowCommands.commandInvocationId, input.commandInvocationId)
-    ),
+  const stored = await loadSourceApiActionCommandViaJournal({
+    commandInvocationId: input.commandInvocationId,
+    db: input.db,
   });
+  if (stored.isErr()) {
+    throw createSourceApiAuditCorruptionFailure(
+      `source_api_action stored result command ${input.commandInvocationId} could not be replayed from the journal`,
+      stored.error
+    );
+  }
 
-  if (storedCommand === undefined) {
+  if (stored.value === null) {
     return null;
   }
 
-  if (storedCommand.decisionKind !== "accepted") {
+  if (stored.value.decision.kind !== "accepted") {
     throw createSourceApiAuditCorruptionFailure(
       `source_api_action stored result command ${input.commandInvocationId} was unexpectedly rejected`
     );
   }
 
-  if (storedCommand.actionId === null) {
-    throw createSourceApiAuditCorruptionFailure(
-      `source_api_action stored result command ${input.commandInvocationId} is missing its action id`
-    );
-  }
-
-  const events = await input.db
-    .select()
-    .from(sourceApiActionEvents)
-    .where(eq(sourceApiActionEvents.commandId, storedCommand.id))
-    .orderBy(asc(sourceApiActionEvents.sequence));
-
-  const commandPayload = decodeSourceApiActionCommandPayload(
-    storedCommand.commandPayloadBytes,
-    {
-      actionId: storedCommand.actionId,
-      commandId: storedCommand.id,
-      payloadType: storedCommand.commandType,
-    }
-  );
-  if (commandPayload.isErr()) {
-    throw createSourceApiAuditCorruptionFailure(
-      `source_api_action stored result command ${input.commandInvocationId} has a corrupt command payload`,
-      commandPayload.error
-    );
-  }
-
   return {
-    commandPayload: commandPayload.value,
-    decision: {
-      actionId: storedCommand.actionId,
-      commandId: storedCommand.id,
-      events: events.map((row) => {
-        const decoded = decodeSourceApiActionEventPayload(row.payloadBytes, {
-          actionId: row.actionId,
-          commandId: row.commandId,
-          payloadType: row.eventType,
-        });
-        if (decoded.isErr()) {
-          throw createSourceApiAuditCorruptionFailure(
-            `source_api_action stored result command ${input.commandInvocationId} has a corrupt ${row.eventType} event payload`,
-            decoded.error
-          );
-        }
-
-        return {
-          ...decoded.value,
-          id: row.id,
-          occurredAt: row.occurredAt,
-          sequence: row.sequence,
-        };
-      }),
-      family: "source_api_action",
-      idempotency: "replayed" as const,
-      kind: "accepted" as const,
-    },
+    commandPayload: stored.value.commandPayload,
+    completedEffectIds: stored.value.completedEffectIds,
+    decision: stored.value.decision,
   };
 }

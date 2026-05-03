@@ -224,6 +224,8 @@ Recovery must not depend on old lease, retry, action, or audit tables. Those tab
 - [x] Run fresh query effects directly from append-returned journal tokens.
 - [x] Replay completed duplicate query effects from journal state.
 - [x] Record failed query effects and retry claims in journal state.
+- [x] Route query and source-api command storage APIs through journal.
+- [x] Run and replay source-api effects from journal state.
 - [ ] Build journal-derived projections for action state, audit feed, and pending effects.
 - [ ] Move recovery and duplicate command replay to journal state.
 - [ ] Remove old workflow/audit tables from the correctness path.

@@ -16,6 +16,7 @@ import type {
   SourceApiActionRequestDescriptor,
   StoredWorkflowDecision,
   WorkflowActorSnapshot,
+  WorkflowJournalEffectToken,
 } from "../../../audit";
 import type { CliHonoContext } from "../types";
 import type { SourceApiServiceDependencies } from "./dependencies";
@@ -56,10 +57,14 @@ export type SourceApiExecuteSuccess = {
 export type StoredAcceptedSourceApiActionDecision = Extract<
   StoredWorkflowDecision<"source_api_action", SourceApiActionEvent, string>,
   { kind: "accepted" }
->;
+> & {
+  freshEffects?: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
+  journalEffects?: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
+};
 
 export type StoredAcceptedSourceApiActionResultCommand = {
   commandPayload: SourceApiActionCommandPayload;
+  completedEffectIds: readonly string[];
   decision: StoredAcceptedSourceApiActionDecision;
 };
 

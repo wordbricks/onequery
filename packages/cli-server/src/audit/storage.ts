@@ -34,6 +34,10 @@ export {
   storeQueryActionCommandViaJournal,
 } from "./storage/query-action-journal";
 export {
+  loadSourceApiActionCommandViaJournal,
+  storeSourceApiActionCommandViaJournal,
+} from "./storage/source-api-action-journal";
+export {
   storeQueryActionCommand,
   storeSourceApiActionCommand,
 } from "./storage/store";
