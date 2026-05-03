@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <script type="module">
+      import { grid, renderPage, section, tokens } from "./components.js";
+
+      const radiusSample = ([name, value]) => `<div class="oq-stack">
+        <div class="oq-radius-sample" style="border-radius: ${value}">${value}</div>
+        <span class="oq-code">${name}</span>
+      </div>`;
+
+      renderPage({
+        title: "Radii",
+        description:
+          "Radii stay compact and utilitarian. Use 8px for common controls, 12-14px for framed product surfaces, and pill radius only for badges.",
+        sections: [
+          section({
+            title: "Radius scale",
+            description: "Stable dimensions prevent controls and product frames from shifting between states.",
+            content: grid(Object.entries(tokens.radii).map(radiusSample), 4),
+          }),
+        ],
+      });
+    </script>
+  </body>
+</html>
