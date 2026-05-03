@@ -71,8 +71,8 @@
   },
   "scripts": {
     "prepare": "test -d .git && lefthook install || true",
-    "dev": "bun run dev:setup && turbo dev --filter='!@onequery/connector'",
-    "dev:with-connector": "bun run dev:setup && turbo dev",
+    "dev": "bun run dev:setup && turbo workspace:dev --filter='!@onequery/connector'",
+    "dev:with-connector": "bun run dev:setup && turbo workspace:dev",
     "dev:setup": "bun run scripts/dev-setup.ts",
     "landing:build": "bunx turbo build --filter @onequery/landing",
     "landing:deploy": "bun run --cwd apps/landing deploy",

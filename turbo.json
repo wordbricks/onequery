@@ -23,6 +23,17 @@
         "ONEQUERY_RUNTIME_ROOT"
       ]
     },
+    "workspace:dev": {
+      "cache": false,
+      "persistent": true,
+      "passThroughEnv": [
+        "LOCAL_AGENT",
+        "CONNECTOR_ABORT_ON_AUTH_FAILURE",
+        "CONNECTOR_ABORT_ON_PREREQ_FAILURE",
+        "DATABASE_URL",
+        "ONEQUERY_RUNTIME_ROOT"
+      ]
+    },
     "dev:container": {
       "cache": false,
       "persistent": true
