@@ -1,9 +1,5 @@
 import { create, toBinary } from "@bufbuild/protobuf";
-import {
-  organization,
-  queryActionEvents,
-  workflowCommands,
-} from "@onequery/db/server";
+import { organization, workflowJournal } from "@onequery/db/server";
 import { pgliteTestDb } from "@onequery/db/testing/setup";
 import {
   QueryActionEventPayloadSchema,
@@ -48,8 +44,8 @@ describe("audit feed projection", () => {
       name: "Audit Feed Test",
       slug: "audit-feed-test",
     });
-    await db.insert(workflowCommands).values({
-      actionId,
+    const commitId = "workflow_commit_corrupt_payload";
+    await db.insert(workflowJournal).values({
       actorSnapshotJson: {
         authMode: "api_key",
         email: "owner@example.com",
@@ -58,27 +54,35 @@ describe("audit feed projection", () => {
       },
       causedByEventId: null,
       commandInvocationId: "query_action_corrupt_payload:start_execute",
-      commandPayloadBytes: Buffer.concat([
+      commitId,
+      entryKind: "command",
+      family: "query_action",
+      id: commandId,
+      occurredAt: new Date("2026-04-26T00:00:00.000Z"),
+      organizationId: "org_audit_feed_corrupt_payload",
+      payloadBytes: Buffer.concat([
         Buffer.from([0xff]),
         Buffer.from(rawCommandBody),
       ]),
-      commandType: "start_execute",
-      createdAt: new Date("2026-04-26T00:00:00.000Z"),
-      decisionKind: "accepted",
-      family: "query_action",
-      id: commandId,
-      organizationId: "org_audit_feed_corrupt_payload",
+      payloadType: "start_execute",
       requestId: "request_audit_feed_corrupt_payload",
+      streamId: actionId,
+      streamPosition: 1,
       surface: "cli",
     });
-    await db.insert(queryActionEvents).values({
-      actionId,
-      commandId,
+    await db.insert(workflowJournal).values({
+      commitId,
+      entryKind: "event",
       eventType: "action_received",
+      eventId,
+      family: "query_action",
       id: eventId,
       occurredAt: new Date("2026-04-26T00:00:00.000Z"),
+      organizationId: "org_audit_feed_corrupt_payload",
       payloadBytes: encodeQueryActionReceivedEventPayload(),
-      sequence: 1,
+      payloadType: "action_received",
+      streamId: actionId,
+      streamPosition: 2,
     });
 
     let error: unknown;

@@ -1,8 +1,5 @@
 import type { QueryActionSourceDescriptor } from "../../../audit";
-import type {
-  CliPersistUsageEffectResult,
-  CliValidateQueryEffectResult,
-} from "../../../domain/effects";
+import type { CliPersistUsageEffectResult } from "../../../domain/effects";
 import type {
   CliQuerySourceRecord,
   CliSourceRecord,
@@ -12,98 +9,99 @@ import {
   requireLastCommittedEvent,
 } from "./workflow-runtime";
 import type {
-  QueryCredentialsLoadResult,
   QueryExecutionEffectResult,
-  QuerySourceLookupResult,
+  QueryPreparationEffectResult,
   StoredAcceptedQueryActionDecision,
   StoredAcceptedQueryActionResultCommand,
 } from "./workflow-types";
 
-export function toStoredQuerySourceLookupResult(input: {
+export function toStoredQueryPreparationResult(input: {
+  commandPayload: StoredAcceptedQueryActionResultCommand["commandPayload"];
   decision: StoredAcceptedQueryActionDecision;
   orgSlug: string;
   requestId: string;
   sourceName: string;
-}): QuerySourceLookupResult {
-  const event = requireLastCommittedEvent(input.decision);
-
-  switch (event.type) {
-    case "source_loaded":
-      return {
-        kind: "source_query_interface_loaded",
-      };
-    case "source_not_found":
-      return {
-        kind: "source_not_found",
-        orgSlug: input.orgSlug,
-        requestId: input.requestId,
-        sourceName: input.sourceName,
-      };
-    case "source_query_interface_missing":
-      return {
-        kind: "source_query_interface_missing",
-        provider: event.provider,
-        requestId: input.requestId,
-        sourceName: input.sourceName,
-        status: event.sourceStatus,
-      };
+}): QueryPreparationEffectResult {
+  switch (input.commandPayload.type) {
+    case "record_validate_preparation":
+      switch (input.commandPayload.kind) {
+        case "accepted":
+          return {
+            kind: "query_ready",
+            normalizedSql: input.commandPayload.validatedQuery,
+            source: input.commandPayload.source,
+            truncated: input.commandPayload.truncated,
+          };
+        case "rejected":
+          return {
+            detail: input.commandPayload.detail,
+            kind: "query_rejected",
+          };
+        case "not_found":
+          return {
+            kind: "source_not_found",
+            orgSlug: input.orgSlug,
+            requestId: input.requestId,
+            sourceName: input.sourceName,
+          };
+        case "query_interface_missing":
+          return {
+            kind: "source_query_interface_missing",
+            provider: input.commandPayload.provider,
+            requestId: input.requestId,
+            sourceName: input.sourceName,
+            status: input.commandPayload.sourceStatus,
+          };
+        case "failed":
+          return {
+            detail: input.commandPayload.detail,
+            hint: input.commandPayload.hint,
+            kind: "query_preparation_failed",
+          };
+        default:
+          return assertNever(input.commandPayload);
+      }
+    case "record_execute_preparation":
+      switch (input.commandPayload.kind) {
+        case "succeeded":
+          return {
+            kind: "query_ready",
+            normalizedSql: input.commandPayload.validatedQuery,
+            source: input.commandPayload.source,
+            truncated: input.commandPayload.truncated,
+          };
+        case "rejected":
+          return {
+            detail: input.commandPayload.detail,
+            kind: "query_rejected",
+          };
+        case "not_found":
+          return {
+            kind: "source_not_found",
+            orgSlug: input.orgSlug,
+            requestId: input.requestId,
+            sourceName: input.sourceName,
+          };
+        case "query_interface_missing":
+          return {
+            kind: "source_query_interface_missing",
+            provider: input.commandPayload.provider,
+            requestId: input.requestId,
+            sourceName: input.sourceName,
+            status: input.commandPayload.sourceStatus,
+          };
+        case "failed":
+          return {
+            detail: input.commandPayload.detail,
+            hint: input.commandPayload.hint,
+            kind: "query_preparation_failed",
+          };
+        default:
+          return assertNever(input.commandPayload);
+      }
     default:
       throw createQueryAuditCorruptionProblem(
-        `query_action replay expected a source lookup event but loaded ${event.type}`
-      );
-  }
-}
-
-export function toStoredQueryValidationResult(
-  commandPayload: StoredAcceptedQueryActionResultCommand["commandPayload"]
-): CliValidateQueryEffectResult {
-  if (commandPayload.type !== "record_query_validation") {
-    throw createQueryAuditCorruptionProblem(
-      `query_action replay expected a validation result command but loaded ${commandPayload.type}`
-    );
-  }
-
-  switch (commandPayload.kind) {
-    case "accepted":
-      return {
-        kind: "query_ready",
-        normalizedSql: commandPayload.validatedQuery,
-        truncated: commandPayload.truncated,
-      };
-    case "rejected":
-      return {
-        detail: commandPayload.detail,
-        kind: "query_rejected",
-      };
-    case "preparation_failed":
-      return {
-        detail: commandPayload.detail,
-        hint: commandPayload.hint,
-        kind: "query_preparation_failed",
-      };
-    default:
-      return assertNever(commandPayload);
-  }
-}
-
-export function toStoredQueryCredentialsLoadResult(
-  decision: StoredAcceptedQueryActionDecision
-): QueryCredentialsLoadResult {
-  const event = requireLastCommittedEvent(decision);
-
-  switch (event.type) {
-    case "credentials_loaded":
-      return {
-        kind: "loaded",
-      };
-    case "query_preparation_failed":
-      return {
-        detail: event.detail,
-        kind: "credentials_invalid",
-      };
-    default:
-      throw createQueryAuditCorruptionProblem(
-        `query_action replay expected a credentials load event but loaded ${event.type}`
+        `query_action replay expected a preparation result command but loaded ${input.commandPayload.type}`
       );
   }
 }

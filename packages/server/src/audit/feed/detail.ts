@@ -13,11 +13,10 @@ import {
   asc,
   auditFeedEntries,
   eq,
-  queryActionEvents,
+  inArray,
   queryActions,
-  sourceApiActionEvents,
   sourceApiActions,
-  workflowCommands,
+  workflowJournal,
 } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import {
@@ -32,6 +31,20 @@ import {
 import { serializeAuditFeedItem } from "./list";
 import { syncAuditFeedProjection } from "./projection";
 import { decodeValidatedAuditFeedPayload } from "./workflow-payload-codec";
+
+const REJECTED_DECISION_CHECKPOINT = "decision_rejected";
+
+type CommandDecision =
+  | {
+      decisionKind: "accepted";
+      rejectCode: null;
+      rejectDetail: null;
+    }
+  | {
+      decisionKind: "rejected";
+      rejectCode: string;
+      rejectDetail: string | null;
+    };
 
 function serializeBytes(bytes: Buffer | Uint8Array) {
   const buffer = Buffer.from(bytes);
@@ -85,61 +98,146 @@ function serializeDecodedPayload(input: {
   }
 }
 
-function serializeCommand(row: typeof workflowCommands.$inferSelect) {
+function requireJournalValue<T>(value: T | null, label: string): T {
+  if (value === null) {
+    throw new Error(`missing ${label}`);
+  }
+
+  return value;
+}
+
+function decodeJsonCheckpointPayload(input: {
+  label: string;
+  payloadBytes: Buffer | Uint8Array;
+}): unknown {
+  try {
+    return JSON.parse(Buffer.from(input.payloadBytes).toString("utf8"));
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${input.label} has invalid JSON payload: ${message}`, {
+      cause: error,
+    });
+  }
+}
+
+function serializeRejectedCommandDecision(
+  row: typeof workflowJournal.$inferSelect
+): CommandDecision {
+  const payload = decodeJsonCheckpointPayload({
+    label: `workflow_journal checkpoint ${row.id}`,
+    payloadBytes: requireJournalValue(
+      row.payloadBytes,
+      `workflow_journal checkpoint ${row.id} payload`
+    ),
+  });
+
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("rejectCode" in payload)
+  ) {
+    throw new Error(
+      `workflow_journal checkpoint ${row.id} has invalid rejected decision payload`
+    );
+  }
+
+  const rejectCode = payload.rejectCode;
+  const rejectDetail = "rejectDetail" in payload ? payload.rejectDetail : null;
+  if (
+    typeof rejectCode !== "string" ||
+    (rejectDetail !== null && typeof rejectDetail !== "string")
+  ) {
+    throw new Error(
+      `workflow_journal checkpoint ${row.id} has invalid rejected decision fields`
+    );
+  }
+
   return {
-    actor: auditOriginActorSchema.parse(row.actorSnapshotJson),
+    decisionKind: "rejected",
+    rejectCode,
+    rejectDetail,
+  };
+}
+
+function serializeCommand(
+  row: typeof workflowJournal.$inferSelect,
+  decision: CommandDecision
+) {
+  const commandType = requireJournalValue(
+    row.payloadType,
+    `workflow_journal command ${row.id} payload type`
+  );
+  const payloadBytes = requireJournalValue(
+    row.payloadBytes,
+    `workflow_journal command ${row.id} payload`
+  );
+
+  return {
+    actor: auditOriginActorSchema.parse(
+      requireJournalValue(
+        row.actorSnapshotJson,
+        `workflow_journal command ${row.id} actor snapshot`
+      )
+    ),
     causedByEventId: row.causedByEventId,
-    commandInvocationId: row.commandInvocationId,
-    commandPayload: serializeBytes(row.commandPayloadBytes),
-    commandType: row.commandType,
-    createdAt: row.createdAt.toISOString(),
+    commandInvocationId: requireJournalValue(
+      row.commandInvocationId,
+      `workflow_journal command ${row.id} invocation id`
+    ),
+    commandPayload: serializeBytes(payloadBytes),
+    commandType,
+    createdAt: row.occurredAt.toISOString(),
     decodedPayload: serializeDecodedPayload({
-      bytes: row.commandPayloadBytes,
+      bytes: payloadBytes,
       entity: "command",
       family: row.family,
     }),
-    decisionKind: row.decisionKind,
+    decisionKind: decision.decisionKind,
     id: row.id,
-    rejectCode: row.rejectCode,
-    rejectDetail: row.rejectDetail,
-    requestId: row.requestId,
-    surface: row.surface,
+    rejectCode: decision.rejectCode,
+    rejectDetail: decision.rejectDetail,
+    requestId: requireJournalValue(
+      row.requestId,
+      `workflow_journal command ${row.id} request id`
+    ),
+    surface: requireJournalValue(
+      row.surface,
+      `workflow_journal command ${row.id} surface`
+    ),
   };
 }
 
-function serializeQueryEvent(row: typeof queryActionEvents.$inferSelect) {
-  return {
-    commandId: row.commandId,
-    commitPosition: row.commitPosition.toString(),
-    eventType: row.eventType,
-    id: row.id,
-    occurredAt: row.occurredAt.toISOString(),
-    payload: serializeBytes(row.payloadBytes),
-    decodedPayload: serializeDecodedPayload({
-      bytes: row.payloadBytes,
-      entity: "event",
-      family: "query_action",
-    }),
-    sequence: row.sequence,
-  };
-}
+function serializeEvent(input: {
+  commandId: string;
+  family: AuditFamily;
+  row: typeof workflowJournal.$inferSelect;
+  sequence: number;
+}) {
+  const eventType = requireJournalValue(
+    input.row.eventType,
+    `workflow_journal event ${input.row.id} event type`
+  );
+  const payloadBytes = requireJournalValue(
+    input.row.payloadBytes,
+    `workflow_journal event ${input.row.id} payload`
+  );
 
-function serializeSourceApiEvent(
-  row: typeof sourceApiActionEvents.$inferSelect
-) {
   return {
-    commandId: row.commandId,
-    commitPosition: row.commitPosition.toString(),
-    eventType: row.eventType,
-    id: row.id,
-    occurredAt: row.occurredAt.toISOString(),
-    payload: serializeBytes(row.payloadBytes),
+    commandId: input.commandId,
+    commitPosition: input.row.commitPosition.toString(),
+    eventType,
+    id: requireJournalValue(
+      input.row.eventId,
+      `workflow_journal event ${input.row.id} event id`
+    ),
+    occurredAt: input.row.occurredAt.toISOString(),
+    payload: serializeBytes(payloadBytes),
     decodedPayload: serializeDecodedPayload({
-      bytes: row.payloadBytes,
+      bytes: payloadBytes,
       entity: "event",
-      family: "source_api_action",
+      family: input.family,
     }),
-    sequence: row.sequence,
+    sequence: input.sequence,
   };
 }
 
@@ -151,17 +249,114 @@ async function loadCommands(input: {
 }) {
   const rows = await input.db
     .select()
-    .from(workflowCommands)
+    .from(workflowJournal)
     .where(
       and(
-        eq(workflowCommands.actionId, input.actionId),
-        eq(workflowCommands.family, input.family),
-        eq(workflowCommands.organizationId, input.organizationId)
+        eq(workflowJournal.entryKind, "command"),
+        eq(workflowJournal.family, input.family),
+        eq(workflowJournal.organizationId, input.organizationId),
+        eq(workflowJournal.streamId, input.actionId)
       )
     )
-    .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    .orderBy(asc(workflowJournal.streamPosition), asc(workflowJournal.id));
 
-  return rows.map(serializeCommand);
+  if (rows.length === 0) {
+    return [];
+  }
+
+  // Comment: Rejected command decisions are stored as checkpoint rows appended
+  // in the same commit as the command, not as columns on the command row.
+  const rejectedDecisionRows = await input.db
+    .select()
+    .from(workflowJournal)
+    .where(
+      and(
+        eq(workflowJournal.entryKind, "checkpoint"),
+        eq(workflowJournal.family, input.family),
+        eq(workflowJournal.organizationId, input.organizationId),
+        eq(workflowJournal.streamId, input.actionId),
+        eq(workflowJournal.payloadType, REJECTED_DECISION_CHECKPOINT),
+        inArray(
+          workflowJournal.commitId,
+          rows.map((row) => row.commitId)
+        )
+      )
+    )
+    .orderBy(asc(workflowJournal.streamPosition), asc(workflowJournal.id));
+  const rejectedDecisionByCommitId = new Map(
+    rejectedDecisionRows.map((row) => [
+      row.commitId,
+      serializeRejectedCommandDecision(row),
+    ])
+  );
+  const acceptedDecision: CommandDecision = {
+    decisionKind: "accepted",
+    rejectCode: null,
+    rejectDetail: null,
+  };
+
+  return rows.map((row) =>
+    serializeCommand(
+      row,
+      rejectedDecisionByCommitId.get(row.commitId) ?? acceptedDecision
+    )
+  );
+}
+
+async function loadEvents(input: {
+  actionId: string;
+  db: Database;
+  family: AuditFamily;
+  organizationId: string;
+}) {
+  const rows = await input.db
+    .select()
+    .from(workflowJournal)
+    .where(
+      and(
+        eq(workflowJournal.entryKind, "event"),
+        eq(workflowJournal.family, input.family),
+        eq(workflowJournal.organizationId, input.organizationId),
+        eq(workflowJournal.streamId, input.actionId)
+      )
+    )
+    .orderBy(asc(workflowJournal.streamPosition), asc(workflowJournal.id));
+
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const commitIds = [...new Set(rows.map((row) => row.commitId))];
+  const commandRows = await input.db
+    .select({
+      commitId: workflowJournal.commitId,
+      id: workflowJournal.id,
+    })
+    .from(workflowJournal)
+    .where(
+      and(
+        eq(workflowJournal.entryKind, "command"),
+        eq(workflowJournal.family, input.family),
+        eq(workflowJournal.organizationId, input.organizationId),
+        eq(workflowJournal.streamId, input.actionId),
+        inArray(workflowJournal.commitId, commitIds)
+      )
+    );
+  const commandIdByCommitId = new Map(
+    commandRows.map((row) => [row.commitId, row.id])
+  );
+
+  return rows.map((row, index) =>
+    serializeEvent({
+      commandId: requireJournalValue(
+        commandIdByCommitId.get(row.commitId) ?? null,
+        `workflow_journal event ${row.id} command`
+      ),
+      family: input.family,
+      row,
+      sequence: index + 1,
+    })
+  );
 }
 
 async function loadFeedEntry(input: {
@@ -212,12 +407,12 @@ async function loadQueryActionDetail(input: {
       family: "query_action",
       organizationId: input.organizationId,
     }),
-    input.db
-      .select()
-      .from(queryActionEvents)
-      .where(eq(queryActionEvents.actionId, input.actionId))
-      .orderBy(asc(queryActionEvents.sequence))
-      .then((rows) => rows.map(serializeQueryEvent)),
+    loadEvents({
+      actionId: input.actionId,
+      db: input.db,
+      family: "query_action",
+      organizationId: input.organizationId,
+    }),
     loadFeedEntry({
       actionId: input.actionId,
       db: input.db,
@@ -280,12 +475,12 @@ async function loadSourceApiActionDetail(input: {
       family: "source_api_action",
       organizationId: input.organizationId,
     }),
-    input.db
-      .select()
-      .from(sourceApiActionEvents)
-      .where(eq(sourceApiActionEvents.actionId, input.actionId))
-      .orderBy(asc(sourceApiActionEvents.sequence))
-      .then((rows) => rows.map(serializeSourceApiEvent)),
+    loadEvents({
+      actionId: input.actionId,
+      db: input.db,
+      family: "source_api_action",
+      organizationId: input.organizationId,
+    }),
     loadFeedEntry({
       actionId: input.actionId,
       db: input.db,

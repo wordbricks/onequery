@@ -9,8 +9,12 @@ import type {
   QueryActionCommandPayload,
   QueryActionEffect,
   QueryActionEvent,
+  QueryActionState,
+  QueryActionSourceDescriptor,
   StoredWorkflowDecision,
   WorkflowActorSnapshot,
+  WorkflowJournalCursor,
+  WorkflowJournalEffectToken,
 } from "../../../audit";
 import type {
   AccessibleCliOrg,
@@ -51,7 +55,16 @@ export type CliQueryValidationWorkflowInput = QueryWorkflowRuntimeBaseInput & {
 export type StoredAcceptedQueryActionDecision = Extract<
   StoredWorkflowDecision<"query_action", QueryActionEvent, string>,
   { kind: "accepted" }
->;
+> & {
+  cursor: WorkflowJournalCursor<
+    QueryActionState,
+    QueryActionCommandPayload,
+    QueryActionEvent,
+    QueryActionEffect
+  >;
+  freshEffects: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
+  journalEffects: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
+};
 
 export type LoadedQueryActionEffect<
   EffectType extends QueryActionEffect["type"] = QueryActionEffect["type"],
@@ -102,6 +115,24 @@ export type QueryCredentialsLoadResult =
       kind: "credentials_invalid";
     };
 
+export type QueryPreparationEffectResult =
+  | {
+      kind: "query_ready";
+      normalizedSql: string;
+      source: QueryActionSourceDescriptor;
+      truncated: boolean;
+    }
+  | Exclude<QuerySourceLookupResult, SourceQueryInterfaceLoadedResult>
+  | {
+      detail: string;
+      kind: "query_rejected";
+    }
+  | {
+      detail: string;
+      hint: string;
+      kind: "query_preparation_failed";
+    };
+
 export type QueryExecutionEffectResult =
   | {
       kind: "succeeded";
@@ -122,6 +153,7 @@ export type QueryExecutionEffectResult =
 
 export type StoredAcceptedQueryActionResultCommand = {
   commandPayload: QueryActionCommandPayload;
+  completedEffectIds: readonly string[];
   decision: StoredAcceptedQueryActionDecision;
 };
 

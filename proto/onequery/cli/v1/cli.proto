@@ -41,9 +41,7 @@ service CliSourceService {
 }
 
 service CliSourceApiService {
-  rpc DescribeSourceApi(DescribeSourceApiRequest) returns (DescribeSourceApiResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
-  }
+  rpc DescribeSourceApi(DescribeSourceApiRequest) returns (DescribeSourceApiResponse);
   rpc PreviewSourceApi(PreviewSourceApiRequest) returns (PreviewSourceApiResponse);
   rpc ExecuteSourceApi(ExecuteSourceApiRequest) returns (ExecuteSourceApiResponse);
   rpc ResumeSourceApi(ResumeSourceApiRequest) returns (ResumeSourceApiResponse);

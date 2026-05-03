@@ -231,7 +231,6 @@ export function createCliQueryLogging(
       "source" | "rowCount" | "elapsedMs" | "truncated"
     >;
     sourceKey: string;
-    usagePersistence: CliQueryExecutionSuccess["usagePersistence"];
   }) {
     // Comment: execute already traverses validation on the same request path, so
     // re-emitting query.plan.accepted here makes validate+execute callers double
@@ -248,17 +247,6 @@ export function createCliQueryLogging(
       event: "query.execution.succeeded",
       level: "info",
     });
-
-    if (input.usagePersistence.kind === "usage_persist_failed") {
-      dependencies.logCliEvent({
-        details: dependencies.buildCliRequestLogDetails(input.c, {
-          sourceId: input.usagePersistence.sourceId,
-          detail: input.usagePersistence.detail,
-        }),
-        event: "query.usage_persist_failed",
-        level: "warn",
-      });
-    }
   }
 
   return {

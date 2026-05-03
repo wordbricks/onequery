@@ -1,4 +1,3 @@
-import type { CliPersistUsageEffectResult } from "../../../domain/effects";
 import type {
   CliQueryColumn,
   CliQueryPlanResult,
@@ -33,7 +32,6 @@ export type CliQueryExecutionWorkflowResult =
   | {
       kind: "response_ready";
       response: CliQuerySuccessResult;
-      usagePersistence: CliPersistUsageEffectResult;
     }
   | CliQueryExecutionFailureResult;
 
@@ -140,7 +138,8 @@ function normalizeCell(value: unknown): string {
   }
 
   try {
-    return JSON.stringify(value) ?? "";
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? String(value) : serialized;
   } catch {
     return String(value);
   }

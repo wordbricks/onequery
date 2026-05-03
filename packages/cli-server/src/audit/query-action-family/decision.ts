@@ -13,10 +13,7 @@ import type { SharedWorkflowRejectCode, WorkflowDecision } from "../kernel";
 import type { QueryActionCommand } from "./commands";
 import type { QueryActionEffect } from "./effects";
 import type { QueryActionEvent } from "./events";
-import {
-  requireQueryActionSourceDescriptor,
-  requireValidatedQuery,
-} from "./invariants";
+import { requireQueryActionSourceDescriptor } from "./invariants";
 import type { QueryActionState } from "./state";
 
 export type QueryActionRejectCode = SharedWorkflowRejectCode;
@@ -34,6 +31,12 @@ function okQueryDecision(
   >
 ): QueryActionDecisionResult {
   return Result.ok(decision);
+}
+
+function queryEvents(
+  events: [QueryActionEvent, ...QueryActionEvent[]]
+): [QueryActionEvent, ...QueryActionEvent[]] {
+  return events;
 }
 
 export function decideQueryAction(
@@ -54,8 +57,9 @@ export function decideQueryAction(
           effects: [
             {
               organizationId: command.organizationId,
+              queryText: command.commandPayload.queryText,
               sourceKey: command.commandPayload.sourceKey,
-              type: "load_source",
+              type: "prepare_validate_query",
             },
           ],
           events: [
@@ -78,8 +82,9 @@ export function decideQueryAction(
           effects: [
             {
               organizationId: command.organizationId,
+              queryText: command.commandPayload.queryText,
               sourceKey: command.commandPayload.sourceKey,
-              type: "load_source",
+              type: "prepare_execute_query",
             },
           ],
           events: [
@@ -92,70 +97,12 @@ export function decideQueryAction(
         })
       );
     }
-    case "record_source_lookup": {
+    case "record_validate_preparation": {
       if (state === null) {
         return okQueryDecision(rejectUnknownAction());
       }
 
-      if (state.phase !== "load_source") {
-        return okQueryDecision(rejectInvalidPhase());
-      }
-
-      if (!hasMatchingCausation(state, command.causedByEventId)) {
-        return okQueryDecision(rejectCausationMismatch());
-      }
-
-      switch (command.commandPayload.kind) {
-        case "found":
-          return okQueryDecision(
-            acceptWorkflowDecision({
-              effects: [
-                {
-                  queryText: state.queryText,
-                  source: command.commandPayload.source,
-                  type: "validate_query",
-                },
-              ],
-              events: [
-                {
-                  source: command.commandPayload.source,
-                  type: "source_loaded",
-                },
-              ],
-            })
-          );
-        case "not_found":
-          return okQueryDecision(
-            acceptWorkflowDecision({
-              events: [
-                {
-                  sourceKey: command.commandPayload.sourceKey,
-                  type: "source_not_found",
-                },
-              ],
-            })
-          );
-        case "query_interface_missing":
-          return okQueryDecision(
-            acceptWorkflowDecision({
-              events: [
-                {
-                  provider: command.commandPayload.provider,
-                  sourceStatus: command.commandPayload.sourceStatus,
-                  type: "source_query_interface_missing",
-                },
-              ],
-            })
-          );
-      }
-      break;
-    }
-    case "record_query_validation": {
-      if (state === null) {
-        return okQueryDecision(rejectUnknownAction());
-      }
-
-      if (state.phase !== "validate_query") {
+      if (state.phase !== "load_source" || state.queryMode !== "validate") {
         return okQueryDecision(rejectInvalidPhase());
       }
 
@@ -167,68 +114,93 @@ export function decideQueryAction(
 
       switch (commandPayload.kind) {
         case "accepted":
-          return Result.gen(function* decideAcceptedQueryValidation() {
-            const source =
-              state.queryMode === "execute"
-                ? yield* requireQueryActionSourceDescriptor(
-                    state,
-                    invariantContext
-                  )
-                : null;
-
-            return okQueryDecision(
-              acceptWorkflowDecision({
-                ...(source === null
-                  ? {}
-                  : {
-                      effects: [
-                        {
-                          source,
-                          type: "load_credentials" as const,
-                        },
-                      ],
-                    }),
-                events: [
-                  {
-                    type: "query_validated",
-                    validatedQuery: commandPayload.validatedQuery,
-                  },
-                ],
-              })
-            );
-          });
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: queryEvents([
+                {
+                  source: commandPayload.source,
+                  type: "source_loaded",
+                },
+                {
+                  type: "query_validated",
+                  validatedQuery: commandPayload.validatedQuery,
+                },
+              ]),
+            })
+          );
         case "rejected":
           return okQueryDecision(
             acceptWorkflowDecision({
-              events: [
+              events: queryEvents([
+                {
+                  source: commandPayload.source,
+                  type: "source_loaded",
+                },
                 {
                   detail: commandPayload.detail,
                   type: "query_rejected",
                 },
-              ],
+              ]),
             })
           );
-        case "preparation_failed":
+        case "not_found":
           return okQueryDecision(
             acceptWorkflowDecision({
               events: [
                 {
-                  detail: commandPayload.detail,
-                  hint: commandPayload.hint,
-                  type: "query_preparation_failed",
+                  sourceKey: commandPayload.sourceKey,
+                  type: "source_not_found",
                 },
               ],
+            })
+          );
+        case "query_interface_missing":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: [
+                {
+                  provider: commandPayload.provider,
+                  sourceStatus: commandPayload.sourceStatus,
+                  type: "source_query_interface_missing",
+                },
+              ],
+            })
+          );
+        case "failed":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: queryEvents(
+                commandPayload.source === undefined
+                  ? [
+                      {
+                        detail: commandPayload.detail,
+                        hint: commandPayload.hint,
+                        type: "query_preparation_failed",
+                      },
+                    ]
+                  : [
+                      {
+                        source: commandPayload.source,
+                        type: "source_loaded",
+                      },
+                      {
+                        detail: commandPayload.detail,
+                        hint: commandPayload.hint,
+                        type: "query_preparation_failed",
+                      },
+                    ]
+              ),
             })
           );
       }
       break;
     }
-    case "record_credentials_load": {
+    case "record_execute_preparation": {
       if (state === null) {
         return okQueryDecision(rejectUnknownAction());
       }
 
-      if (state.phase !== "load_credentials") {
+      if (state.phase !== "load_source" || state.queryMode !== "execute") {
         return okQueryDecision(rejectInvalidPhase());
       }
 
@@ -239,40 +211,91 @@ export function decideQueryAction(
       const commandPayload = command.commandPayload;
 
       switch (commandPayload.kind) {
-        case "loaded":
-          return Result.gen(function* decideLoadedCredentials() {
-            const source = yield* requireQueryActionSourceDescriptor(
-              state,
-              invariantContext
-            );
-            const validatedQuery = yield* requireValidatedQuery(
-              state,
-              invariantContext
-            );
-
-            return okQueryDecision(
-              acceptWorkflowDecision({
-                effects: [
-                  {
-                    source,
-                    type: "execute_query",
-                    validatedQuery,
-                  },
-                ],
-                events: [{ type: "credentials_loaded" }],
-              })
-            );
-          });
-        case "preparation_failed":
+        case "succeeded":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              effects: [
+                {
+                  source: commandPayload.source,
+                  type: "execute_query",
+                  validatedQuery: commandPayload.validatedQuery,
+                },
+              ],
+              events: queryEvents([
+                {
+                  source: commandPayload.source,
+                  type: "source_loaded",
+                },
+                {
+                  type: "query_validated",
+                  validatedQuery: commandPayload.validatedQuery,
+                },
+                { type: "credentials_loaded" },
+              ]),
+            })
+          );
+        case "rejected":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: queryEvents([
+                {
+                  source: commandPayload.source,
+                  type: "source_loaded",
+                },
+                {
+                  detail: commandPayload.detail,
+                  type: "query_rejected",
+                },
+              ]),
+            })
+          );
+        case "not_found":
           return okQueryDecision(
             acceptWorkflowDecision({
               events: [
                 {
-                  detail: commandPayload.detail,
-                  hint: commandPayload.hint,
-                  type: "query_preparation_failed",
+                  sourceKey: commandPayload.sourceKey,
+                  type: "source_not_found",
                 },
               ],
+            })
+          );
+        case "query_interface_missing":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: [
+                {
+                  provider: commandPayload.provider,
+                  sourceStatus: commandPayload.sourceStatus,
+                  type: "source_query_interface_missing",
+                },
+              ],
+            })
+          );
+        case "failed":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: queryEvents(
+                commandPayload.source === undefined
+                  ? [
+                      {
+                        detail: commandPayload.detail,
+                        hint: commandPayload.hint,
+                        type: "query_preparation_failed",
+                      },
+                    ]
+                  : [
+                      {
+                        source: commandPayload.source,
+                        type: "source_loaded",
+                      },
+                      {
+                        detail: commandPayload.detail,
+                        hint: commandPayload.hint,
+                        type: "query_preparation_failed",
+                      },
+                    ]
+              ),
             })
           );
       }

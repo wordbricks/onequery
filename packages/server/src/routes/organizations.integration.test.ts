@@ -9,11 +9,9 @@ import {
   auditFeedEntries,
   auditProjectionCheckpoints,
   createDb,
-  queryActionEvents,
   queryActions,
-  sourceApiActionEvents,
   sourceApiActions,
-  workflowCommands,
+  workflowJournal,
 } from "@onequery/db/server";
 import {
   WorkflowDataSourceStatus,
@@ -29,12 +27,11 @@ import {
   QueryActionQueryValidatedEventSchema,
   QueryActionRecordQueryExecutionResultSchema,
   QueryActionReceivedEventSchema,
-  QueryActionRecordCredentialsLoadedCommandSchema,
+  QueryActionRecordExecutePreparationSucceededCommandSchema,
   QueryActionRecordQueryExecutionSucceededCommandSchema,
-  QueryActionRecordQueryValidationAcceptedCommandSchema,
-  QueryActionRecordQueryValidationPreparationFailedCommandSchema,
-  QueryActionRecordSourceFoundCommandSchema,
   QueryActionRecordUsagePersistenceSucceededCommandSchema,
+  QueryActionRecordValidatePreparationAcceptedCommandSchema,
+  QueryActionRecordValidatePreparationFailedCommandSchema,
   QueryActionSourceDescriptorSchema,
   QueryActionSourceLoadedEventSchema,
   QueryActionUsagePersistedEventSchema,
@@ -84,6 +81,14 @@ type WorkflowActorSnapshot = {
   membershipRoles: string[];
   userId: string | null;
 };
+
+const journalStreamPositions = new Map<string, number>();
+
+function nextJournalStreamPosition(actionId: string) {
+  const next = (journalStreamPositions.get(actionId) ?? 0) + 1;
+  journalStreamPositions.set(actionId, next);
+  return next;
+}
 
 const sourceDescriptor = {
   displayName: "Warehouse",
@@ -200,45 +205,35 @@ function encodeQueryActionCommandPayload(
           })
         )
       );
-    case "record_source_lookup":
-      return Buffer.from(
-        toBinary(
-          QueryActionCommandPayloadSchema,
-          create(QueryActionCommandPayloadSchema, {
-            command: {
-              case: "recordSourceFound",
-              value: create(QueryActionRecordSourceFoundCommandSchema, {
-                source: toQuerySourceDescriptorMessage(
-                  payload.source as Record<string, unknown>
-                ),
-              }),
-            },
-          })
-        )
-      );
-    case "record_query_validation":
+    case "record_validate_preparation":
       return Buffer.from(
         toBinary(
           QueryActionCommandPayloadSchema,
           create(QueryActionCommandPayloadSchema, {
             command:
-              payload.kind === "preparation_failed"
+              payload.kind === "failed"
                 ? {
-                    case: "recordQueryValidationPreparationFailed",
+                    case: "recordValidatePreparationFailed",
                     value: create(
-                      QueryActionRecordQueryValidationPreparationFailedCommandSchema,
+                      QueryActionRecordValidatePreparationFailedCommandSchema,
                       {
                         detail: payload.detail as string,
                         hint: payload.hint as string,
+                        source: toQuerySourceDescriptorMessage(
+                          payload.source as Record<string, unknown>
+                        ),
                       }
                     ),
                   }
                 : {
-                    case: "recordQueryValidationAccepted",
+                    case: "recordValidatePreparationAccepted",
                     value: create(
-                      QueryActionRecordQueryValidationAcceptedCommandSchema,
+                      QueryActionRecordValidatePreparationAcceptedCommandSchema,
                       {
-                        truncated: false,
+                        source: toQuerySourceDescriptorMessage(
+                          payload.source as Record<string, unknown>
+                        ),
+                        truncated: Boolean(payload.truncated),
                         validatedQuery: payload.validatedQuery as string,
                       }
                     ),
@@ -246,14 +241,23 @@ function encodeQueryActionCommandPayload(
           })
         )
       );
-    case "record_credentials_load":
+    case "record_execute_preparation":
       return Buffer.from(
         toBinary(
           QueryActionCommandPayloadSchema,
           create(QueryActionCommandPayloadSchema, {
             command: {
-              case: "recordCredentialsLoaded",
-              value: create(QueryActionRecordCredentialsLoadedCommandSchema),
+              case: "recordExecutePreparationSucceeded",
+              value: create(
+                QueryActionRecordExecutePreparationSucceededCommandSchema,
+                {
+                  source: toQuerySourceDescriptorMessage(
+                    payload.source as Record<string, unknown>
+                  ),
+                  truncated: Boolean(payload.truncated),
+                  validatedQuery: payload.validatedQuery as string,
+                }
+              ),
             },
           })
         )
@@ -682,22 +686,6 @@ function encodeWorkflowEventPayload(input: {
     : encodeSourceApiActionEventPayload(input.eventType, input.payload);
 }
 
-function buildWorkflowEventRows<
-  Row extends {
-    eventType: string;
-    payload: Record<string, unknown>;
-  },
->(family: "query_action" | "source_api_action", rows: readonly Row[]) {
-  return rows.map(({ payload, ...row }) => ({
-    ...row,
-    payloadBytes: encodeWorkflowEventPayload({
-      eventType: row.eventType,
-      family,
-      payload,
-    }),
-  }));
-}
-
 async function insertAcceptedWorkflowCommand(input: {
   actionId: string;
   actorSnapshot: WorkflowActorSnapshot;
@@ -712,38 +700,135 @@ async function insertAcceptedWorkflowCommand(input: {
   requestId: string;
   surface: "cli" | "web" | "agent" | "system";
 }) {
-  await input.db.insert(workflowCommands).values({
-    actionId: input.actionId,
+  await input.db.insert(workflowJournal).values({
     actorSnapshotJson: input.actorSnapshot,
     causedByEventId: null,
     commandInvocationId: input.commandInvocationId,
-    commandPayloadBytes: encodeWorkflowCommandPayload({
+    commitId: input.commandId,
+    entryKind: "command",
+    family: input.family,
+    id: input.commandId,
+    occurredAt: input.createdAt,
+    organizationId: input.organizationId,
+    payloadBytes: encodeWorkflowCommandPayload({
       commandPayload: input.commandPayload,
       commandType: input.commandType,
       family: input.family,
     }),
-    commandType: input.commandType,
-    createdAt: input.createdAt,
-    decisionKind: "accepted",
-    family: input.family,
-    id: input.commandId,
-    organizationId: input.organizationId,
+    payloadType: input.commandType,
     requestId: input.requestId,
+    streamId: input.actionId,
+    streamPosition: nextJournalStreamPosition(input.actionId),
     surface: input.surface,
   });
+}
+
+async function insertRejectedWorkflowCommand(input: {
+  actionId: string;
+  actorSnapshot: WorkflowActorSnapshot;
+  commandId: string;
+  commandInvocationId: string;
+  commandPayload: Record<string, unknown>;
+  commandType: string;
+  createdAt: Date;
+  db: TestDatabase;
+  family: "query_action" | "source_api_action";
+  organizationId: string;
+  rejectCode: string;
+  rejectDetail: string | null;
+  requestId: string;
+  surface: "cli" | "web" | "agent" | "system";
+}) {
+  await input.db.insert(workflowJournal).values([
+    {
+      actorSnapshotJson: input.actorSnapshot,
+      causedByEventId: null,
+      commandInvocationId: input.commandInvocationId,
+      commitId: input.commandId,
+      entryKind: "command",
+      family: input.family,
+      id: input.commandId,
+      occurredAt: input.createdAt,
+      organizationId: input.organizationId,
+      payloadBytes: encodeWorkflowCommandPayload({
+        commandPayload: input.commandPayload,
+        commandType: input.commandType,
+        family: input.family,
+      }),
+      payloadType: input.commandType,
+      requestId: input.requestId,
+      streamId: input.actionId,
+      streamPosition: nextJournalStreamPosition(input.actionId),
+      surface: input.surface,
+    },
+    {
+      commitId: input.commandId,
+      entryKind: "checkpoint",
+      family: input.family,
+      id: `${input.commandId}-decision-rejected`,
+      occurredAt: input.createdAt,
+      organizationId: input.organizationId,
+      payloadBytes: Buffer.from(
+        JSON.stringify({
+          actionId: input.actionId,
+          rejectCode: input.rejectCode,
+          rejectDetail: input.rejectDetail,
+        }),
+        "utf8"
+      ),
+      payloadType: "decision_rejected",
+      streamId: input.actionId,
+      streamPosition: nextJournalStreamPosition(input.actionId),
+    },
+  ]);
+}
+
+async function insertWorkflowEventRows<
+  Row extends {
+    actionId: string;
+    commandId: string;
+    eventType: string;
+    id: string;
+    occurredAt: Date;
+    payload: Record<string, unknown>;
+  },
+>(input: {
+  db: TestDatabase;
+  family: "query_action" | "source_api_action";
+  organizationId: string;
+  rows: readonly Row[];
+}) {
+  await input.db.insert(workflowJournal).values(
+    input.rows.map((row) => ({
+      commitId: row.commandId,
+      entryKind: "event" as const,
+      eventId: row.id,
+      eventType: row.eventType,
+      family: input.family,
+      id: `${row.id}-journal`,
+      occurredAt: row.occurredAt,
+      organizationId: input.organizationId,
+      payloadBytes: encodeWorkflowEventPayload({
+        eventType: row.eventType,
+        family: input.family,
+        payload: row.payload,
+      }),
+      payloadType: row.eventType,
+      streamId: row.actionId,
+      streamPosition: nextJournalStreamPosition(row.actionId),
+    }))
+  );
 }
 
 async function seedSucceededQueryAction(input: {
   actionId: string;
   actorSnapshot: WorkflowActorSnapshot;
-  commitPositionBase?: bigint;
   db: TestDatabase;
   organizationId: string;
   requestId: string;
   startedAt: Date;
 }) {
   const actionId = input.actionId;
-  const commitPositionBase = input.commitPositionBase ?? 0n;
   const eventBase = `${actionId}-event`;
   const commandBase = `${actionId}-command`;
   const source = {
@@ -772,49 +857,16 @@ async function seedSucceededQueryAction(input: {
   await insertAcceptedWorkflowCommand({
     actionId,
     actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-source`,
-    commandInvocationId: `${actionId}:record_source_lookup`,
+    commandId: `${commandBase}-prepared`,
+    commandInvocationId: `${actionId}:record_execute_preparation`,
     commandPayload: {
-      kind: "found",
+      kind: "succeeded",
       source,
-    },
-    commandType: "record_source_lookup",
-    createdAt: new Date(input.startedAt.getTime() + 1_000),
-    db: input.db,
-    family: "query_action",
-    organizationId: input.organizationId,
-    requestId: input.requestId,
-    surface: "system",
-  });
-
-  await insertAcceptedWorkflowCommand({
-    actionId,
-    actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-validated`,
-    commandInvocationId: `${actionId}:record_query_validation`,
-    commandPayload: {
-      kind: "accepted",
+      truncated: false,
       validatedQuery: "select * from customers",
     },
-    commandType: "record_query_validation",
-    createdAt: new Date(input.startedAt.getTime() + 2_000),
-    db: input.db,
-    family: "query_action",
-    organizationId: input.organizationId,
-    requestId: input.requestId,
-    surface: "system",
-  });
-
-  await insertAcceptedWorkflowCommand({
-    actionId,
-    actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-credentials`,
-    commandInvocationId: `${actionId}:record_credentials_load`,
-    commandPayload: {
-      kind: "loaded",
-    },
-    commandType: "record_credentials_load",
-    createdAt: new Date(input.startedAt.getTime() + 3_000),
+    commandType: "record_execute_preparation",
+    createdAt: new Date(input.startedAt.getTime() + 1_000),
     db: input.db,
     family: "query_action",
     organizationId: input.organizationId,
@@ -845,7 +897,7 @@ async function seedSucceededQueryAction(input: {
       },
     },
     commandType: "record_query_execution",
-    createdAt: new Date(input.startedAt.getTime() + 4_000),
+    createdAt: new Date(input.startedAt.getTime() + 2_000),
     db: input.db,
     family: "query_action",
     organizationId: input.organizationId,
@@ -862,7 +914,7 @@ async function seedSucceededQueryAction(input: {
       kind: "succeeded",
     },
     commandType: "record_usage_persistence",
-    createdAt: new Date(input.startedAt.getTime() + 5_000),
+    createdAt: new Date(input.startedAt.getTime() + 3_000),
     db: input.db,
     family: "query_action",
     organizationId: input.organizationId,
@@ -870,8 +922,28 @@ async function seedSucceededQueryAction(input: {
     surface: "system",
   });
 
+  await insertRejectedWorkflowCommand({
+    actionId,
+    actorSnapshot: input.actorSnapshot,
+    commandId: `${commandBase}-rejected-usage-retry`,
+    commandInvocationId: `${actionId}:record_usage_persistence_rejected`,
+    commandPayload: {
+      kind: "succeeded",
+    },
+    commandType: "record_usage_persistence",
+    createdAt: new Date(input.startedAt.getTime() + 4_000),
+    db: input.db,
+    family: "query_action",
+    organizationId: input.organizationId,
+    rejectCode: "invalid_phase",
+    rejectDetail:
+      "query_action record_usage_persistence cannot run after completion",
+    requestId: input.requestId,
+    surface: "system",
+  });
+
   await input.db.insert(queryActions).values({
-    completedAt: new Date(input.startedAt.getTime() + 5_000),
+    completedAt: new Date(input.startedAt.getTime() + 3_000),
     failureCode: null,
     id: actionId,
     lastEventId: `${eventBase}-usage`,
@@ -887,12 +959,14 @@ async function seedSucceededQueryAction(input: {
     validatedQuery: "select * from customers",
   });
 
-  await input.db.insert(queryActionEvents).values(
-    buildWorkflowEventRows("query_action", [
+  await insertWorkflowEventRows({
+    db: input.db,
+    family: "query_action",
+    organizationId: input.organizationId,
+    rows: [
       {
         actionId,
         commandId: `${commandBase}-start`,
-        commitPosition: commitPositionBase + 1n,
         eventType: "action_received",
         id: `${eventBase}-start`,
         occurredAt: input.startedAt,
@@ -900,67 +974,56 @@ async function seedSucceededQueryAction(input: {
           queryMode: "execute",
           queryText: "select * from customers",
         },
-        sequence: 1,
       },
       {
         actionId,
-        commandId: `${commandBase}-source`,
-        commitPosition: commitPositionBase + 2n,
+        commandId: `${commandBase}-prepared`,
         eventType: "source_loaded",
         id: `${eventBase}-source`,
         occurredAt: new Date(input.startedAt.getTime() + 1_000),
         payload: {
           source,
         },
-        sequence: 2,
       },
       {
         actionId,
-        commandId: `${commandBase}-validated`,
-        commitPosition: commitPositionBase + 3n,
+        commandId: `${commandBase}-prepared`,
         eventType: "query_validated",
         id: `${eventBase}-validated`,
-        occurredAt: new Date(input.startedAt.getTime() + 2_000),
+        occurredAt: new Date(input.startedAt.getTime() + 1_000),
         payload: {
           validatedQuery: "select * from customers",
         },
-        sequence: 3,
       },
       {
         actionId,
-        commandId: `${commandBase}-credentials`,
-        commitPosition: commitPositionBase + 4n,
+        commandId: `${commandBase}-prepared`,
         eventType: "credentials_loaded",
         id: `${eventBase}-credentials`,
-        occurredAt: new Date(input.startedAt.getTime() + 3_000),
+        occurredAt: new Date(input.startedAt.getTime() + 1_000),
         payload: {},
-        sequence: 4,
       },
       {
         actionId,
         commandId: `${commandBase}-executed`,
-        commitPosition: commitPositionBase + 5n,
         eventType: "query_executed",
         id: `${eventBase}-executed`,
-        occurredAt: new Date(input.startedAt.getTime() + 4_000),
+        occurredAt: new Date(input.startedAt.getTime() + 2_000),
         payload: {
           elapsedMs: 412,
           rowCount: 12,
         },
-        sequence: 5,
       },
       {
         actionId,
         commandId: `${commandBase}-usage`,
-        commitPosition: commitPositionBase + 6n,
         eventType: "usage_persisted",
         id: `${eventBase}-usage`,
-        occurredAt: new Date(input.startedAt.getTime() + 5_000),
+        occurredAt: new Date(input.startedAt.getTime() + 3_000),
         payload: {},
-        sequence: 6,
       },
-    ])
-  );
+    ],
+  });
 }
 
 async function seedQueryPreparationFailedAction(input: {
@@ -1004,13 +1067,15 @@ async function seedQueryPreparationFailedAction(input: {
   await insertAcceptedWorkflowCommand({
     actionId,
     actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-source`,
-    commandInvocationId: `${actionId}:record_source_lookup`,
+    commandId: `${commandBase}-preparation-failed`,
+    commandInvocationId: `${actionId}:record_validate_preparation`,
     commandPayload: {
-      kind: "found",
+      detail: "query preparation failed",
+      hint: "add a table name",
+      kind: "failed",
       source,
     },
-    commandType: "record_source_lookup",
+    commandType: "record_validate_preparation",
     createdAt: new Date(input.startedAt.getTime() + 1_000),
     db: input.db,
     family: "query_action",
@@ -1019,27 +1084,8 @@ async function seedQueryPreparationFailedAction(input: {
     surface: "system",
   });
 
-  await insertAcceptedWorkflowCommand({
-    actionId,
-    actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-preparation-failed`,
-    commandInvocationId: `${actionId}:record_query_validation`,
-    commandPayload: {
-      detail: "query preparation failed",
-      hint: "add a table name",
-      kind: "preparation_failed",
-    },
-    commandType: "record_query_validation",
-    createdAt: new Date(input.startedAt.getTime() + 2_000),
-    db: input.db,
-    family: "query_action",
-    organizationId: input.organizationId,
-    requestId: input.requestId,
-    surface: "system",
-  });
-
   await input.db.insert(queryActions).values({
-    completedAt: new Date(input.startedAt.getTime() + 2_000),
+    completedAt: new Date(input.startedAt.getTime() + 1_000),
     failureCode: "query_preparation_failed",
     id: actionId,
     lastEventId: `${eventBase}-preparation-failed`,
@@ -1055,12 +1101,14 @@ async function seedQueryPreparationFailedAction(input: {
     validatedQuery: null,
   });
 
-  await input.db.insert(queryActionEvents).values(
-    buildWorkflowEventRows("query_action", [
+  await insertWorkflowEventRows({
+    db: input.db,
+    family: "query_action",
+    organizationId: input.organizationId,
+    rows: [
       {
         actionId,
         commandId: `${commandBase}-start`,
-        commitPosition: 7n,
         eventType: "action_received",
         id: `${eventBase}-start`,
         occurredAt: input.startedAt,
@@ -1068,35 +1116,30 @@ async function seedQueryPreparationFailedAction(input: {
           queryMode: "validate",
           queryText: "select from",
         },
-        sequence: 1,
       },
       {
         actionId,
-        commandId: `${commandBase}-source`,
-        commitPosition: 8n,
+        commandId: `${commandBase}-preparation-failed`,
         eventType: "source_loaded",
         id: `${eventBase}-source`,
         occurredAt: new Date(input.startedAt.getTime() + 1_000),
         payload: {
           source,
         },
-        sequence: 2,
       },
       {
         actionId,
         commandId: `${commandBase}-preparation-failed`,
-        commitPosition: 9n,
         eventType: "query_preparation_failed",
         id: `${eventBase}-preparation-failed`,
-        occurredAt: new Date(input.startedAt.getTime() + 2_000),
+        occurredAt: new Date(input.startedAt.getTime() + 1_000),
         payload: {
           detail: "query preparation failed",
           hint: "add a table name",
         },
-        sequence: 3,
       },
-    ])
-  );
+    ],
+  });
 }
 
 async function seedPendingSourceApiAction(input: {
@@ -1249,12 +1292,14 @@ async function seedPendingSourceApiAction(input: {
     startedAt: input.startedAt,
   });
 
-  await input.db.insert(sourceApiActionEvents).values(
-    buildWorkflowEventRows("source_api_action", [
+  await insertWorkflowEventRows({
+    db: input.db,
+    family: "source_api_action",
+    organizationId: input.organizationId,
+    rows: [
       {
         actionId,
         commandId: `${commandBase}-start`,
-        commitPosition: 1n,
         eventType: "action_received",
         id: `${eventBase}-start`,
         occurredAt: input.startedAt,
@@ -1263,48 +1308,40 @@ async function seedPendingSourceApiAction(input: {
           requestDescriptor,
           requestKind: "invoke",
         },
-        sequence: 1,
       },
       {
         actionId,
         commandId: `${commandBase}-source`,
-        commitPosition: 2n,
         eventType: "source_loaded",
         id: `${eventBase}-source`,
         occurredAt: new Date(input.startedAt.getTime() + 1_000),
         payload: {
           source: sourceApiDescriptor,
         },
-        sequence: 2,
       },
       {
         actionId,
         commandId: `${commandBase}-descriptor`,
-        commitPosition: 3n,
         eventType: "descriptor_resolved",
         id: `${eventBase}-descriptor`,
         occurredAt: new Date(input.startedAt.getTime() + 2_000),
         payload: {
           requestDescriptor,
         },
-        sequence: 3,
       },
       {
         actionId,
         commandId: `${commandBase}-prepared`,
-        commitPosition: 4n,
         eventType: "request_prepared",
         id: `${eventBase}-prepared`,
         occurredAt: new Date(input.startedAt.getTime() + 3_000),
         payload: {
           preparedRequestFingerprint: "billing-api:customers:v1",
         },
-        sequence: 4,
       },
       {
         actionId,
         commandId: `${commandBase}-fetch`,
-        commitPosition: 5n,
         eventType: "page_fetch_succeeded",
         id: `${eventBase}-fetch`,
         occurredAt: new Date("2026-03-27T11:00:00.000Z"),
@@ -1316,10 +1353,9 @@ async function seedPendingSourceApiAction(input: {
           pageIndex: 0,
           responseBytes: 16,
         },
-        sequence: 5,
       },
-    ])
-  );
+    ],
+  });
 }
 
 describe("organizations audit route", () => {
@@ -1435,6 +1471,9 @@ describe("organizations audit route", () => {
       if (!firstItem || !firstItem.preview) {
         throw new Error("first audit page must include a preview");
       }
+      if (firstItem.family !== "query_action") {
+        throw new Error("first audit page item must be a query action");
+      }
       expect(firstItem).toMatchObject({
         actionName: "execute",
         family: "query_action",
@@ -1450,8 +1489,8 @@ describe("organizations audit route", () => {
         usageRecordingStatus: "succeeded",
         validatedQuery: "select * from customers",
       });
-      expect(firstItem.preview).not.toHaveProperty("errorDetail");
-      expect(firstItem.preview).not.toHaveProperty("errorHint");
+      expect(firstItem.preview.errorDetail).toBeNull();
+      expect(firstItem.preview.errorHint).toBeNull();
       expect(firstPage.families).toEqual(["query_action"]);
       expect(firstPage.nextCursor).not.toBeNull();
 
@@ -1502,7 +1541,7 @@ describe("organizations audit route", () => {
         pageCount: 1,
         selector: "/customers",
       });
-      expect(secondItem.preview).not.toHaveProperty("errorDetail");
+      expect(secondItem.preview.errorDetail).toBeNull();
       expect(secondItem.preview).not.toHaveProperty("responseBytes");
       expect(secondPage.nextCursor).not.toBeNull();
 
@@ -1658,6 +1697,16 @@ describe("organizations audit route", () => {
           },
         },
       });
+      expect(detail.commands).toContainEqual(
+        expect.objectContaining({
+          commandInvocationId: `${detail.action.id}:record_usage_persistence_rejected`,
+          commandType: "record_usage_persistence",
+          decisionKind: "rejected",
+          rejectCode: "invalid_phase",
+          rejectDetail:
+            "query_action record_usage_persistence cannot run after completion",
+        })
+      );
       expect(detail.events[0]).toMatchObject({
         decodedPayload: {
           actionReceived: {
@@ -1809,15 +1858,9 @@ describe("organizations audit route", () => {
       };
 
       for (let index = 0; index < 168; index += 1) {
-        const commitPositionBase = BigInt(index) * 6n;
-
-        // Comment: Projection batching keys off commitPosition, so this lag test
-        // must seed monotonically increasing positions instead of the tiny fixed
-        // values the smaller helper scenarios can get away with.
         await seedSucceededQueryAction({
           actionId: `query-lag-${runId}-${index}`,
           actorSnapshot,
-          commitPositionBase,
           db,
           organizationId: organization.id as string,
           requestId: `req-query-lag-${runId}-${index}`,
@@ -1938,7 +1981,6 @@ describe("organizations audit route", () => {
       await seedSucceededQueryAction({
         actionId: `query-visible-${runId}`,
         actorSnapshot,
-        commitPositionBase: 0n,
         db,
         organizationId: visibleOrganization.id as string,
         requestId: `req-query-visible-${runId}`,
@@ -1946,15 +1988,12 @@ describe("organizations audit route", () => {
       });
 
       for (let index = 0; index < 168; index += 1) {
-        const commitPositionBase = 6n + BigInt(index) * 6n;
-
         // Comment: This second org intentionally exceeds the per-request
         // projection batch cap so the visible org only stays warning-free when
         // lag detection is scoped to the requesting organization.
         await seedSucceededQueryAction({
           actionId: `query-hidden-${runId}-${index}`,
           actorSnapshot,
-          commitPositionBase,
           db,
           organizationId: laggingOrganization.id as string,
           requestId: `req-query-hidden-${runId}-${index}`,

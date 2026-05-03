@@ -4,11 +4,14 @@ import { RESPONSE_ALREADY_SENT } from "@hono/node-server/utils/response";
 
 import { createCliApp } from "../app";
 import type { CreateCliAppOptions } from "../app";
+import { logCliEvent, toCliErrorMessage } from "../observability";
+import { runCliPersistQueryUsageEffect } from "../query/effects";
 import { createCliConnectContextValues } from "./context";
 import {
   createCliConnectHandler,
   listCliConnectRequestPaths,
 } from "./node-adapter";
+import { recoverPendingQueryUsagePersistenceEffects } from "./service/query/workflow";
 
 export interface CreateCliRouteOptions extends CreateCliAppOptions {
   requestPathPrefix?: string;
@@ -16,6 +19,7 @@ export interface CreateCliRouteOptions extends CreateCliAppOptions {
 
 export function createCliRoute(input: CreateCliRouteOptions) {
   const app = createCliApp(input);
+  scheduleQueryUsagePersistenceRecovery(input);
   const contextValuesByRequest = new WeakMap<object, ContextValues>();
   const connectHandler = createCliConnectHandler({
     contextValues(request) {
@@ -46,4 +50,34 @@ export function createCliRoute(input: CreateCliRouteOptions) {
   }
 
   return app;
+}
+
+function scheduleQueryUsagePersistenceRecovery(input: CreateCliRouteOptions) {
+  queueMicrotask(() => {
+    void recoverPendingQueryUsagePersistenceEffects({
+      actorSnapshot: {
+        authMode: null,
+        email: null,
+        membershipRoles: [],
+        userId: null,
+      },
+      db: input.storage.db,
+      dispatch: {
+        persistUsage: (effect) =>
+          runCliPersistQueryUsageEffect({
+            db: input.storage.db,
+            effect,
+          }),
+      },
+      requestId: "startup-query-usage-recovery",
+    }).catch((error: unknown) => {
+      logCliEvent({
+        details: {
+          error: toCliErrorMessage(error),
+        },
+        event: "cli.query.usage_persistence_startup_recovery_failed",
+        level: "warn",
+      });
+    });
+  });
 }

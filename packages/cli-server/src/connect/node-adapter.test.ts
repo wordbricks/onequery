@@ -67,9 +67,6 @@ describe("cli connect node integration", () => {
   });
 
   it("marks the safe read RPCs as side-effect free", () => {
-    expect(CliSourceApiService.method.describeSourceApi.idempotency).toBe(
-      MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS
-    );
     expect(CliAuthService.method.getSession.idempotency).toBe(
       MethodOptions_IdempotencyLevel.NO_SIDE_EFFECTS
     );
@@ -92,6 +89,9 @@ describe("cli connect node integration", () => {
       MethodOptions_IdempotencyLevel.IDEMPOTENCY_UNKNOWN
     );
     expect(CliSourceService.method.connectSource.idempotency).toBe(
+      MethodOptions_IdempotencyLevel.IDEMPOTENCY_UNKNOWN
+    );
+    expect(CliSourceApiService.method.describeSourceApi.idempotency).toBe(
       MethodOptions_IdempotencyLevel.IDEMPOTENCY_UNKNOWN
     );
     expect(CliQueryService.method.executeQuery.idempotency).toBe(

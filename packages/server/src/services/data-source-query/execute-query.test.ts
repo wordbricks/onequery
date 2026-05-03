@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   executeBigQueryQuery,
   executeDatabaseQuery,
+  executeValidatedDatabaseQuery,
   executeLaminarQuery,
   executePostgresQuery,
 } from "./execute-query";
@@ -113,6 +114,31 @@ describe("data source query execution", () => {
       await expectPreflightRejection(invoke, message);
     }
   );
+
+  it("executes validated SQL without repeating SQL validation", async () => {
+    const fetchSpy = vi.fn(async (_url: string | URL, _init?: RequestInit) => ({
+      json: async () => ({ data: [{ ok: true }] }),
+      ok: true,
+      status: 200,
+      text: async () => "",
+    }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const rows = await executeValidatedDatabaseQuery({
+      credentials: {
+        apiKey: "laminar-api-key",
+        type: "laminar",
+      },
+      // This trusted API is only for callers that already validated SQL.
+      normalizedSql: "DELETE FROM users",
+    });
+
+    expect(rows).toEqual([{ ok: true }]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchSpy.mock.calls[0]?.[1]?.body as string)).toEqual({
+      query: "DELETE FROM users",
+    });
+  });
 
   it("uses TLS without certificate verification for postgres sslmode=require", async () => {
     const { receivedConfigs, runner } = createPostgresRunner([]);

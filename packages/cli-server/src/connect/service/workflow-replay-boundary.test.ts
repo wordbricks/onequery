@@ -21,17 +21,17 @@ describe("workflow replay protobuf boundary", () => {
   });
 
   it("keeps stored result command loading as the protobuf decode boundary", async () => {
-    const [queryWorkflowRuntime, sourceApiWorkflowRuntime] = await Promise.all([
-      readServiceSource("./query/workflow-runtime.ts"),
-      readServiceSource("./source-api/workflow-runtime.ts"),
+    const [queryJournalStorage, sourceApiJournalStorage] = await Promise.all([
+      readServiceSource("../../audit/storage/query-action-journal.ts"),
+      readServiceSource("../../audit/storage/source-api-action-journal.ts"),
     ]);
 
-    expect(queryWorkflowRuntime).toContain("decodeQueryActionCommandPayload(");
-    expect(queryWorkflowRuntime).toContain("decodeQueryActionEventPayload(");
-    expect(sourceApiWorkflowRuntime).toContain(
+    expect(queryJournalStorage).toContain("decodeQueryActionCommandPayload(");
+    expect(queryJournalStorage).toContain("decodeQueryActionEventPayload(");
+    expect(sourceApiJournalStorage).toContain(
       "decodeSourceApiActionCommandPayload("
     );
-    expect(sourceApiWorkflowRuntime).toContain(
+    expect(sourceApiJournalStorage).toContain(
       "decodeSourceApiActionEventPayload("
     );
   });

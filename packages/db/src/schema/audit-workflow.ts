@@ -22,6 +22,18 @@ export const WORKFLOW_EFFECT_DISPATCH_STATUSES = [
 export type WorkflowEffectDispatchStatus =
   (typeof WORKFLOW_EFFECT_DISPATCH_STATUSES)[number];
 
+export const WORKFLOW_JOURNAL_ENTRY_KINDS = [
+  "command",
+  "event",
+  "effect_scheduled",
+  "effect_started",
+  "effect_completed",
+  "effect_failed",
+  "checkpoint",
+] as const;
+export type WorkflowJournalEntryKind =
+  (typeof WORKFLOW_JOURNAL_ENTRY_KINDS)[number];
+
 export type WorkflowActorSnapshotJson = {
   authMode: string | null;
   email: string | null;

@@ -14,7 +14,7 @@ import {
   QueryActionRecordQueryExecutionResultSchema,
   QueryActionRecordQueryExecutionSucceededCommandSchema,
   QueryActionQuerySourceRecordSchema,
-  QueryActionRecordSourceQueryInterfaceMissingCommandSchema,
+  QueryActionRecordValidatePreparationQueryInterfaceMissingCommandSchema,
   QueryActionStartValidateCommandSchema,
 } from "@onequery/proto-workflow/workflow/v1/query_action_pb";
 import type { Result as ResultType } from "better-result";
@@ -91,78 +91,105 @@ const commandPayloads = [
     },
   ],
   [
-    "record_source_lookup/found",
-    "record_source_found",
-    {
-      kind: "found",
-      source,
-      type: "record_source_lookup",
-    },
-  ],
-  [
-    "record_source_lookup/not_found",
-    "record_source_not_found",
-    {
-      kind: "not_found",
-      sourceKey: "warehouse",
-      type: "record_source_lookup",
-    },
-  ],
-  [
-    "record_source_lookup/query_interface_missing",
-    "record_source_query_interface_missing",
-    {
-      kind: "query_interface_missing",
-      provider: "postgres",
-      sourceStatus: "disconnected",
-      type: "record_source_lookup",
-    },
-  ],
-  [
-    "record_query_validation/accepted",
-    "record_query_validation_accepted",
+    "record_validate_preparation/accepted",
+    "record_validate_preparation_accepted",
     {
       kind: "accepted",
+      source,
       truncated: false,
-      type: "record_query_validation",
+      type: "record_validate_preparation",
       validatedQuery: "SELECT * FROM customers LIMIT 1000",
     },
   ],
   [
-    "record_query_validation/rejected",
-    "record_query_validation_rejected",
+    "record_validate_preparation/rejected",
+    "record_validate_preparation_rejected",
     {
       detail: "query is read-only only",
       kind: "rejected",
-      type: "record_query_validation",
+      source,
+      type: "record_validate_preparation",
     },
   ],
   [
-    "record_query_validation/preparation_failed",
-    "record_query_validation_preparation_failed",
+    "record_validate_preparation/failed",
+    "record_validate_preparation_failed",
     {
       detail: "validator unavailable",
       hint: "try again",
-      kind: "preparation_failed",
-      type: "record_query_validation",
+      kind: "failed",
+      source,
+      type: "record_validate_preparation",
     },
   ],
   [
-    "record_credentials_load/loaded",
-    "record_credentials_loaded",
+    "record_validate_preparation/not_found",
+    "record_validate_preparation_source_not_found",
     {
-      kind: "loaded",
-      type: "record_credentials_load",
+      kind: "not_found",
+      sourceKey: "warehouse",
+      type: "record_validate_preparation",
     },
   ],
   [
-    "record_credentials_load/preparation_failed",
-    "record_credentials_preparation_failed",
+    "record_validate_preparation/query_interface_missing",
+    "record_validate_preparation_query_interface_missing",
+    {
+      kind: "query_interface_missing",
+      provider: "postgres",
+      sourceStatus: "disconnected",
+      type: "record_validate_preparation",
+    },
+  ],
+  [
+    "record_execute_preparation/succeeded",
+    "record_execute_preparation_succeeded",
+    {
+      kind: "succeeded",
+      source,
+      truncated: false,
+      type: "record_execute_preparation",
+      validatedQuery: "SELECT * FROM customers LIMIT 1000",
+    },
+  ],
+  [
+    "record_execute_preparation/rejected",
+    "record_execute_preparation_rejected",
+    {
+      detail: "query is read-only only",
+      kind: "rejected",
+      source,
+      type: "record_execute_preparation",
+    },
+  ],
+  [
+    "record_execute_preparation/failed",
+    "record_execute_preparation_failed",
     {
       detail: "credentials unavailable",
       hint: "reconnect source",
-      kind: "preparation_failed",
-      type: "record_credentials_load",
+      kind: "failed",
+      source,
+      type: "record_execute_preparation",
+    },
+  ],
+  [
+    "record_execute_preparation/not_found",
+    "record_execute_preparation_source_not_found",
+    {
+      kind: "not_found",
+      sourceKey: "warehouse",
+      type: "record_execute_preparation",
+    },
+  ],
+  [
+    "record_execute_preparation/query_interface_missing",
+    "record_execute_preparation_query_interface_missing",
+    {
+      kind: "query_interface_missing",
+      provider: "postgres",
+      sourceStatus: "disconnected",
+      type: "record_execute_preparation",
     },
   ],
   [
@@ -325,26 +352,21 @@ const eventPayloads = [
 
 const effectPayloads = [
   [
-    "load_source",
+    "prepare_validate_query",
     {
       organizationId: "org_1",
-      sourceKey: "warehouse",
-      type: "load_source",
-    },
-  ],
-  [
-    "validate_query",
-    {
       queryText: "select * from customers",
-      source,
-      type: "validate_query",
+      sourceKey: "warehouse",
+      type: "prepare_validate_query",
     },
   ],
   [
-    "load_credentials",
+    "prepare_execute_query",
     {
-      source,
-      type: "load_credentials",
+      organizationId: "org_1",
+      queryText: "select * from customers",
+      sourceKey: "warehouse",
+      type: "prepare_execute_query",
     },
   ],
   [
@@ -647,8 +669,9 @@ describe("query action protobuf codec", () => {
   it("decodes semantic effect equality without relying on protobuf byte equality", () => {
     const effect: QueryActionEffect = {
       organizationId: "org_1",
+      queryText: "select 1",
       sourceKey: "warehouse",
-      type: "load_source",
+      type: "prepare_validate_query",
     };
     const canonicalBytes = encodeQueryActionEffectPayload(effect);
     const bytesWithUnknownField = Buffer.concat([
@@ -682,9 +705,9 @@ describe("query action protobuf codec", () => {
         QueryActionCommandPayloadSchema,
         create(QueryActionCommandPayloadSchema, {
           command: {
-            case: "recordSourceQueryInterfaceMissing",
+            case: "recordValidatePreparationQueryInterfaceMissing",
             value: create(
-              QueryActionRecordSourceQueryInterfaceMissingCommandSchema,
+              QueryActionRecordValidatePreparationQueryInterfaceMissingCommandSchema,
               {
                 provider: WorkflowSourceProvider.POSTGRES,
                 sourceStatus: WorkflowDataSourceStatus.UNSPECIFIED,
@@ -698,11 +721,11 @@ describe("query action protobuf codec", () => {
     const error = expectCorruptRow(
       decodeQueryActionCommandPayload(
         bytes,
-        decodeContext("record_source_query_interface_missing")
+        decodeContext("record_validate_preparation_query_interface_missing")
       ),
       {
         entity: "query_action_command_payload",
-        payloadType: "record_source_query_interface_missing",
+        payloadType: "record_validate_preparation_query_interface_missing",
       }
     );
 

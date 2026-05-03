@@ -7,7 +7,6 @@ import { createCliFailureForQueryWorkflowResult } from "../errors";
 import { buildCliPage, parseCliPageRequest } from "../read-controls";
 import type { CliResultServiceMethod } from "../result";
 import { liftCliServiceMethod } from "../result";
-import { syncCliQueryAuditFeedProjection } from "./audit-projection";
 import { resolveCliQueryRequestState } from "./context";
 import { createCliQueryExecutionDispatch } from "./dispatch";
 import {
@@ -50,11 +49,6 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
       timeoutMs: resolved.resultWindow.timeoutMs,
     });
 
-    await syncCliQueryAuditFeedProjection({
-      c: resolved.c,
-      sourceKey: request.sourceKey,
-    });
-
     const result = yield* workflowResult;
     const durationMs = Math.max(0, Date.now() - startedAtMs);
 
@@ -94,7 +88,6 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
       durationMs,
       response: windowedResponse,
       sourceKey: request.sourceKey,
-      usagePersistence: result.usagePersistence,
     });
 
     const page = paginateItems(windowedResponse.rows, readControls);

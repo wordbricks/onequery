@@ -7,6 +7,7 @@ We treat workflows as explicit, deterministic state machines.
 If you encounter something surprising or confusing in this project, flag it as a comment.
 
 - Runtime: Node.js mostly, (Rust for `apps/cli`).
+- Contract: Protobuf (locates at `proto/`)
 - Testing: Vitest
 - Linter/formatter: oxlint, oxfmt
 - For linting, use `bun lint --format json`. For type-aware lint, append `--type-aware` flag (takes more time then normal lint).
