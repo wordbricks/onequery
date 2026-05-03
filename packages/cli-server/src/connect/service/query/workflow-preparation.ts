@@ -11,10 +11,11 @@ import type { CliQueryWorkflowPreparationFailureResult } from "./workflow-result
 import { storeAcceptedQueryActionCommand } from "./workflow-runtime";
 import {
   createEmptyQueryWorkflowResourceCache,
-  runQuerySourceLookupStep,
-  runQueryValidationStep,
+  runQueryExecutePreparationStep,
+  runQueryValidatePreparationStep,
 } from "./workflow-steps";
 import type {
+  CliQueryExecutionDispatch,
   CliQueryValidationDispatch,
   QueryWorkflowResourceCache,
   StoredAcceptedQueryActionDecision,
@@ -28,9 +29,9 @@ type QueryWorkflowPreparationMode = Extract<
 export type PreparedCliQueryWorkflow = {
   resourceCache: QueryWorkflowResourceCache;
   normalizedSql: string;
+  preparationDecision: StoredAcceptedQueryActionDecision;
   source: QueryActionSourceDescriptor;
   truncated: boolean;
-  validationDecision: StoredAcceptedQueryActionDecision;
 };
 
 type QueryWorkflowPreparationReady = {
@@ -47,17 +48,28 @@ export type QueryWorkflowPreparationResult =
   | QueryWorkflowPreparationReady
   | QueryWorkflowPreparationFinished;
 
-export async function runPreparedCliQueryWorkflow(input: {
+type RunPreparedCliQueryWorkflowInput = {
   actorSnapshot: QueryActionCommand["actorSnapshot"];
   db: Database;
-  dispatch: CliQueryValidationDispatch;
-  mode: QueryWorkflowPreparationMode;
   org: AccessibleCliOrg;
   requestId: string;
   sourceName: string;
   sql: string;
   timeoutMs: number;
-}): Promise<QueryWorkflowPreparationResult> {
+} & (
+  | {
+      dispatch: CliQueryValidationDispatch;
+      mode: "start_validate";
+    }
+  | {
+      dispatch: CliQueryExecutionDispatch;
+      mode: "start_execute";
+    }
+);
+
+export async function runPreparedCliQueryWorkflow(
+  input: RunPreparedCliQueryWorkflowInput
+): Promise<QueryWorkflowPreparationResult> {
   let resourceCache = createEmptyQueryWorkflowResourceCache();
 
   const startDecision = await storeAcceptedQueryActionCommand({
@@ -83,40 +95,36 @@ export async function runPreparedCliQueryWorkflow(input: {
     surface: "cli",
   });
 
-  const sourceLookup = await runQuerySourceLookupStep({
-    actorSnapshot: input.actorSnapshot,
-    currentDecision: startDecision,
-    db: input.db,
-    dispatch: input.dispatch,
-    resourceCache,
-    org: input.org,
-    requestId: input.requestId,
-    sourceName: input.sourceName,
-  });
-  resourceCache = sourceLookup.resourceCache;
+  const preparation =
+    input.mode === "start_validate"
+      ? await runQueryValidatePreparationStep({
+          actorSnapshot: input.actorSnapshot,
+          currentDecision: startDecision,
+          db: input.db,
+          dispatch: input.dispatch,
+          resourceCache,
+          org: input.org,
+          requestId: input.requestId,
+          sourceName: input.sourceName,
+        })
+      : await runQueryExecutePreparationStep({
+          actorSnapshot: input.actorSnapshot,
+          currentDecision: startDecision,
+          db: input.db,
+          dispatch: input.dispatch,
+          resourceCache,
+          org: input.org,
+          requestId: input.requestId,
+          sourceName: input.sourceName,
+        });
+  resourceCache = preparation.resourceCache;
 
-  if (sourceLookup.step.result.kind !== "source_query_interface_loaded") {
-    return {
-      kind: "finished",
-      result: sourceLookup.step.result,
-    };
-  }
-
-  const validation = await runQueryValidationStep({
-    actorSnapshot: input.actorSnapshot,
-    currentDecision: sourceLookup.step.decision,
-    db: input.db,
-    dispatch: input.dispatch,
-    organizationId: input.org.id,
-    requestId: input.requestId,
-  });
-
-  if (validation.result.kind !== "query_ready") {
+  if (preparation.step.result.kind !== "query_ready") {
     return {
       kind: "finished",
       result: toCliQueryPreparationFailureResult({
         requestId: input.requestId,
-        result: validation.result,
+        result: preparation.step.result,
       }),
     };
   }
@@ -125,10 +133,10 @@ export async function runPreparedCliQueryWorkflow(input: {
     kind: "ready",
     prepared: {
       resourceCache,
-      normalizedSql: validation.result.normalizedSql,
-      source: validation.effect.source,
-      truncated: validation.result.truncated,
-      validationDecision: validation.decision,
+      normalizedSql: preparation.step.result.normalizedSql,
+      preparationDecision: preparation.step.decision,
+      source: preparation.step.result.source,
+      truncated: preparation.step.result.truncated,
     },
   };
 }

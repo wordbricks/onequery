@@ -14,6 +14,8 @@ import {
   QueryActionLoadCredentialsEffectSchema,
   QueryActionLoadSourceEffectSchema,
   QueryActionMode as ProtoQueryActionMode,
+  QueryActionPrepareExecuteQueryEffectSchema,
+  QueryActionPrepareValidateQueryEffectSchema,
   QueryActionPersistUsageEffectSchema,
   QueryActionQueryColumnSchema,
   QueryActionQueryExecutedEventSchema,
@@ -29,6 +31,9 @@ import {
   QueryActionReceivedEventSchema,
   QueryActionRecordCredentialsLoadedCommandSchema,
   QueryActionRecordCredentialsPreparationFailedCommandSchema,
+  QueryActionRecordExecutePreparationFailedCommandSchema,
+  QueryActionRecordExecutePreparationRejectedCommandSchema,
+  QueryActionRecordExecutePreparationSucceededCommandSchema,
   QueryActionRecordQueryExecutionFailedCommandSchema,
   QueryActionRecordQueryExecutionResultSchema,
   QueryActionRecordQueryExecutionSucceededCommandSchema,
@@ -42,6 +47,9 @@ import {
   QueryActionRecordSourceQueryInterfaceMissingCommandSchema,
   QueryActionRecordUsagePersistenceFailedCommandSchema,
   QueryActionRecordUsagePersistenceSucceededCommandSchema,
+  QueryActionRecordValidatePreparationAcceptedCommandSchema,
+  QueryActionRecordValidatePreparationFailedCommandSchema,
+  QueryActionRecordValidatePreparationRejectedCommandSchema,
   QueryActionSourceDescriptorSchema,
   QueryActionSourceLoadedEventSchema,
   QueryActionSourceNotFoundEventSchema,
@@ -124,6 +132,28 @@ export function getQueryActionCommandPayloadType(
           return "record_query_validation_rejected";
         case "preparation_failed":
           return "record_query_validation_preparation_failed";
+        default:
+          return assertNever(payload);
+      }
+    case "record_validate_preparation":
+      switch (payload.kind) {
+        case "accepted":
+          return "record_validate_preparation_accepted";
+        case "rejected":
+          return "record_validate_preparation_rejected";
+        case "failed":
+          return "record_validate_preparation_failed";
+        default:
+          return assertNever(payload);
+      }
+    case "record_execute_preparation":
+      switch (payload.kind) {
+        case "succeeded":
+          return "record_execute_preparation_succeeded";
+        case "rejected":
+          return "record_execute_preparation_rejected";
+        case "failed":
+          return "record_execute_preparation_failed";
         default:
           return assertNever(payload);
       }
@@ -293,6 +323,10 @@ function toQueryActionCommandMessage(payload: QueryActionCommandPayload) {
       return toQueryActionSourceLookupCommandMessage(payload);
     case "record_query_validation":
       return toQueryActionQueryValidationCommandMessage(payload);
+    case "record_validate_preparation":
+      return toQueryActionValidatePreparationCommandMessage(payload);
+    case "record_execute_preparation":
+      return toQueryActionExecutePreparationCommandMessage(payload);
     case "record_credentials_load":
       return toQueryActionCredentialsLoadCommandMessage(payload);
     case "record_query_execution":
@@ -379,6 +413,124 @@ function toQueryActionQueryValidationCommandMessage(
             {
               detail: payload.detail,
               hint: payload.hint,
+            }
+          ),
+        },
+      });
+    default:
+      return assertNever(payload);
+  }
+}
+
+function toQueryActionValidatePreparationCommandMessage(
+  payload: Extract<
+    QueryActionCommandPayload,
+    { type: "record_validate_preparation" }
+  >
+) {
+  switch (payload.kind) {
+    case "accepted":
+      return create(QueryActionCommandPayloadSchema, {
+        command: {
+          case: "recordValidatePreparationAccepted",
+          value: create(
+            QueryActionRecordValidatePreparationAcceptedCommandSchema,
+            {
+              source: toQueryActionSourceDescriptorMessage(payload.source),
+              truncated: payload.truncated,
+              validatedQuery: payload.validatedQuery,
+            }
+          ),
+        },
+      });
+    case "rejected":
+      return create(QueryActionCommandPayloadSchema, {
+        command: {
+          case: "recordValidatePreparationRejected",
+          value: create(
+            QueryActionRecordValidatePreparationRejectedCommandSchema,
+            {
+              detail: payload.detail,
+              source: toQueryActionSourceDescriptorMessage(payload.source),
+            }
+          ),
+        },
+      });
+    case "failed":
+      return create(QueryActionCommandPayloadSchema, {
+        command: {
+          case: "recordValidatePreparationFailed",
+          value: create(
+            QueryActionRecordValidatePreparationFailedCommandSchema,
+            {
+              detail: payload.detail,
+              hint: payload.hint,
+              ...(payload.source === undefined
+                ? {}
+                : {
+                    source: toQueryActionSourceDescriptorMessage(
+                      payload.source
+                    ),
+                  }),
+            }
+          ),
+        },
+      });
+    default:
+      return assertNever(payload);
+  }
+}
+
+function toQueryActionExecutePreparationCommandMessage(
+  payload: Extract<
+    QueryActionCommandPayload,
+    { type: "record_execute_preparation" }
+  >
+) {
+  switch (payload.kind) {
+    case "succeeded":
+      return create(QueryActionCommandPayloadSchema, {
+        command: {
+          case: "recordExecutePreparationSucceeded",
+          value: create(
+            QueryActionRecordExecutePreparationSucceededCommandSchema,
+            {
+              source: toQueryActionSourceDescriptorMessage(payload.source),
+              truncated: payload.truncated,
+              validatedQuery: payload.validatedQuery,
+            }
+          ),
+        },
+      });
+    case "rejected":
+      return create(QueryActionCommandPayloadSchema, {
+        command: {
+          case: "recordExecutePreparationRejected",
+          value: create(
+            QueryActionRecordExecutePreparationRejectedCommandSchema,
+            {
+              detail: payload.detail,
+              source: toQueryActionSourceDescriptorMessage(payload.source),
+            }
+          ),
+        },
+      });
+    case "failed":
+      return create(QueryActionCommandPayloadSchema, {
+        command: {
+          case: "recordExecutePreparationFailed",
+          value: create(
+            QueryActionRecordExecutePreparationFailedCommandSchema,
+            {
+              detail: payload.detail,
+              hint: payload.hint,
+              ...(payload.source === undefined
+                ? {}
+                : {
+                    source: toQueryActionSourceDescriptorMessage(
+                      payload.source
+                    ),
+                  }),
             }
           ),
         },
@@ -560,6 +712,72 @@ function fromQueryActionCommandMessage(
         kind: "preparation_failed",
         type: "record_query_validation",
       };
+    case "recordValidatePreparationAccepted":
+      return {
+        kind: "accepted",
+        source: fromQueryActionSourceDescriptorMessage(
+          payload.command.value.source
+        ),
+        truncated: payload.command.value.truncated,
+        type: "record_validate_preparation",
+        validatedQuery: payload.command.value.validatedQuery,
+      };
+    case "recordValidatePreparationRejected":
+      return {
+        detail: payload.command.value.detail,
+        kind: "rejected",
+        source: fromQueryActionSourceDescriptorMessage(
+          payload.command.value.source
+        ),
+        type: "record_validate_preparation",
+      };
+    case "recordValidatePreparationFailed":
+      return {
+        detail: payload.command.value.detail,
+        hint: payload.command.value.hint,
+        kind: "failed",
+        ...(payload.command.value.source === undefined
+          ? {}
+          : {
+              source: fromQueryActionSourceDescriptorMessage(
+                payload.command.value.source
+              ),
+            }),
+        type: "record_validate_preparation",
+      };
+    case "recordExecutePreparationSucceeded":
+      return {
+        kind: "succeeded",
+        source: fromQueryActionSourceDescriptorMessage(
+          payload.command.value.source
+        ),
+        truncated: payload.command.value.truncated,
+        type: "record_execute_preparation",
+        validatedQuery: payload.command.value.validatedQuery,
+      };
+    case "recordExecutePreparationRejected":
+      return {
+        detail: payload.command.value.detail,
+        kind: "rejected",
+        source: fromQueryActionSourceDescriptorMessage(
+          payload.command.value.source
+        ),
+        type: "record_execute_preparation",
+      };
+    case "recordExecutePreparationFailed":
+      return {
+        detail: payload.command.value.detail,
+        hint: payload.command.value.hint,
+        kind: "failed",
+        ...(payload.command.value.source === undefined
+          ? {}
+          : {
+              source: fromQueryActionSourceDescriptorMessage(
+                payload.command.value.source
+              ),
+            }),
+        type: "record_execute_preparation",
+      };
     case "recordCredentialsLoaded":
       return {
         kind: "loaded",
@@ -636,6 +854,18 @@ function getQueryActionCommandPayloadTypeFromOneofCase(
       return "record_query_validation_rejected";
     case "recordQueryValidationPreparationFailed":
       return "record_query_validation_preparation_failed";
+    case "recordValidatePreparationAccepted":
+      return "record_validate_preparation_accepted";
+    case "recordValidatePreparationRejected":
+      return "record_validate_preparation_rejected";
+    case "recordValidatePreparationFailed":
+      return "record_validate_preparation_failed";
+    case "recordExecutePreparationSucceeded":
+      return "record_execute_preparation_succeeded";
+    case "recordExecutePreparationRejected":
+      return "record_execute_preparation_rejected";
+    case "recordExecutePreparationFailed":
+      return "record_execute_preparation_failed";
     case "recordCredentialsLoaded":
       return "record_credentials_loaded";
     case "recordCredentialsPreparationFailed":
@@ -903,6 +1133,28 @@ function toQueryActionEffectMessage(effect: QueryActionEffect) {
           }),
         },
       });
+    case "prepare_validate_query":
+      return create(QueryActionEffectPayloadSchema, {
+        effect: {
+          case: "prepareValidateQuery",
+          value: create(QueryActionPrepareValidateQueryEffectSchema, {
+            organizationId: effect.organizationId,
+            queryText: effect.queryText,
+            sourceKey: effect.sourceKey,
+          }),
+        },
+      });
+    case "prepare_execute_query":
+      return create(QueryActionEffectPayloadSchema, {
+        effect: {
+          case: "prepareExecuteQuery",
+          value: create(QueryActionPrepareExecuteQueryEffectSchema, {
+            organizationId: effect.organizationId,
+            queryText: effect.queryText,
+            sourceKey: effect.sourceKey,
+          }),
+        },
+      });
     case "load_credentials":
       return create(QueryActionEffectPayloadSchema, {
         effect: {
@@ -953,6 +1205,20 @@ function fromQueryActionEffectMessage(
           payload.effect.value.source
         ),
         type: "validate_query",
+      };
+    case "prepareValidateQuery":
+      return {
+        organizationId: payload.effect.value.organizationId,
+        queryText: payload.effect.value.queryText,
+        sourceKey: payload.effect.value.sourceKey,
+        type: "prepare_validate_query",
+      };
+    case "prepareExecuteQuery":
+      return {
+        organizationId: payload.effect.value.organizationId,
+        queryText: payload.effect.value.queryText,
+        sourceKey: payload.effect.value.sourceKey,
+        type: "prepare_execute_query",
       };
     case "loadCredentials":
       return {

@@ -6,11 +6,7 @@ import { toCliQueryExecutionFailureResult } from "./workflow-outcome";
 import { runPreparedCliQueryWorkflow } from "./workflow-preparation";
 import type { CliQueryExecutionWorkflowResult } from "./workflow-result";
 import { createQueryAuditProblem } from "./workflow-runtime";
-import {
-  runQueryCredentialsLoadStep,
-  runQueryExecutionStep,
-  runQueryUsagePersistenceStep,
-} from "./workflow-steps";
+import { runQueryExecutionStep } from "./workflow-steps";
 import type { CliQueryExecutionWorkflowInput } from "./workflow-types";
 
 export async function runCliQueryExecutionWorkflowResult(
@@ -34,31 +30,11 @@ export async function runCliQueryExecutionWorkflowResult(
         return preparation.result;
       }
 
-      let resourceCache = preparation.prepared.resourceCache;
-
-      const credentials = await runQueryCredentialsLoadStep({
-        actorSnapshot: input.actorSnapshot,
-        currentDecision: preparation.prepared.validationDecision,
-        db: input.db,
-        dispatch: input.dispatch,
-        resourceCache,
-        organizationId: input.org.id,
-        requestId: input.requestId,
-      });
-      resourceCache = credentials.resourceCache;
-
-      if (credentials.step.result.kind === "credentials_invalid") {
-        return {
-          detail: credentials.step.result.detail,
-          hint: "verify the source configuration and retry",
-          kind: "query_preparation_failed",
-          requestId: input.requestId,
-        };
-      }
+      const resourceCache = preparation.prepared.resourceCache;
 
       const execution = await runQueryExecutionStep({
         actorSnapshot: input.actorSnapshot,
-        currentDecision: credentials.step.decision,
+        currentDecision: preparation.prepared.preparationDecision,
         db: input.db,
         dispatch: input.dispatch,
         resourceCache,
@@ -75,19 +51,9 @@ export async function runCliQueryExecutionWorkflowResult(
         });
       }
 
-      const usagePersistence = await runQueryUsagePersistenceStep({
-        actorSnapshot: input.actorSnapshot,
-        currentDecision: execution.decision,
-        db: input.db,
-        dispatch: input.dispatch,
-        organizationId: input.org.id,
-        requestId: input.requestId,
-      });
-
       return {
         kind: "response_ready",
         response: execution.result.response,
-        usagePersistence: usagePersistence.result,
       };
     },
     catch: (error) =>

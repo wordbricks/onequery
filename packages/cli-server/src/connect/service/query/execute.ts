@@ -94,7 +94,6 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
       durationMs,
       response: windowedResponse,
       sourceKey: request.sourceKey,
-      usagePersistence: result.usagePersistence,
     });
 
     const page = paginateItems(windowedResponse.rows, readControls);

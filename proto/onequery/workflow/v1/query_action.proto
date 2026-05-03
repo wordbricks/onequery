@@ -27,6 +27,12 @@ message QueryActionCommandPayload {
     QueryActionRecordQueryExecutionFailedCommand record_query_execution_failed = 14;
     QueryActionRecordUsagePersistenceSucceededCommand record_usage_persistence_succeeded = 15;
     QueryActionRecordUsagePersistenceFailedCommand record_usage_persistence_failed = 16;
+    QueryActionRecordValidatePreparationAcceptedCommand record_validate_preparation_accepted = 17;
+    QueryActionRecordValidatePreparationRejectedCommand record_validate_preparation_rejected = 18;
+    QueryActionRecordValidatePreparationFailedCommand record_validate_preparation_failed = 19;
+    QueryActionRecordExecutePreparationSucceededCommand record_execute_preparation_succeeded = 20;
+    QueryActionRecordExecutePreparationRejectedCommand record_execute_preparation_rejected = 21;
+    QueryActionRecordExecutePreparationFailedCommand record_execute_preparation_failed = 22;
   }
 }
 
@@ -60,6 +66,8 @@ message QueryActionEffectPayload {
     QueryActionLoadCredentialsEffect load_credentials = 3;
     QueryActionExecuteQueryEffect execute_query = 4;
     QueryActionPersistUsageEffect persist_usage = 5;
+    QueryActionPrepareValidateQueryEffect prepare_validate_query = 6;
+    QueryActionPrepareExecuteQueryEffect prepare_execute_query = 7;
   }
 }
 
@@ -202,6 +210,74 @@ message QueryActionRecordUsagePersistenceFailedCommand {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 4096
   ];
+}
+
+message QueryActionRecordValidatePreparationAcceptedCommand {
+  QueryActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
+  string validated_query = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 262144,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  bool truncated = 3 [(buf.validate.field).required = true];
+}
+
+message QueryActionRecordValidatePreparationRejectedCommand {
+  QueryActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
+  string detail = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message QueryActionRecordValidatePreparationFailedCommand {
+  string detail = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  string hint = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  QueryActionSourceDescriptor source = 3;
+}
+
+message QueryActionRecordExecutePreparationSucceededCommand {
+  QueryActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
+  string validated_query = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 262144,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  bool truncated = 3 [(buf.validate.field).required = true];
+}
+
+message QueryActionRecordExecutePreparationRejectedCommand {
+  QueryActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
+  string detail = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+}
+
+message QueryActionRecordExecutePreparationFailedCommand {
+  string detail = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  string hint = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 4096
+  ];
+  QueryActionSourceDescriptor source = 3;
 }
 
 message QueryActionReceivedEvent {
@@ -364,6 +440,46 @@ message QueryActionPersistUsageEffect {
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255
+  ];
+}
+
+message QueryActionPrepareValidateQueryEffect {
+  string query_text = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 262144,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string organization_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  string source_key = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+}
+
+message QueryActionPrepareExecuteQueryEffect {
+  string query_text = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 262144,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string organization_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255
+  ];
+  string source_key = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
 }
 

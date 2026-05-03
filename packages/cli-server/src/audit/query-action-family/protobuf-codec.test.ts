@@ -148,6 +148,70 @@ const commandPayloads = [
     },
   ],
   [
+    "record_validate_preparation/accepted",
+    "record_validate_preparation_accepted",
+    {
+      kind: "accepted",
+      source,
+      truncated: false,
+      type: "record_validate_preparation",
+      validatedQuery: "SELECT * FROM customers LIMIT 1000",
+    },
+  ],
+  [
+    "record_validate_preparation/rejected",
+    "record_validate_preparation_rejected",
+    {
+      detail: "query is read-only only",
+      kind: "rejected",
+      source,
+      type: "record_validate_preparation",
+    },
+  ],
+  [
+    "record_validate_preparation/failed",
+    "record_validate_preparation_failed",
+    {
+      detail: "validator unavailable",
+      hint: "try again",
+      kind: "failed",
+      source,
+      type: "record_validate_preparation",
+    },
+  ],
+  [
+    "record_execute_preparation/succeeded",
+    "record_execute_preparation_succeeded",
+    {
+      kind: "succeeded",
+      source,
+      truncated: false,
+      type: "record_execute_preparation",
+      validatedQuery: "SELECT * FROM customers LIMIT 1000",
+    },
+  ],
+  [
+    "record_execute_preparation/rejected",
+    "record_execute_preparation_rejected",
+    {
+      detail: "query is read-only only",
+      kind: "rejected",
+      source,
+      type: "record_execute_preparation",
+    },
+  ],
+  [
+    "record_execute_preparation/failed",
+    "record_execute_preparation_failed",
+    {
+      detail: "credentials unavailable",
+      hint: "reconnect source",
+      kind: "failed",
+      source,
+      type: "record_execute_preparation",
+    },
+  ],
+  [
     "record_credentials_load/loaded",
     "record_credentials_loaded",
     {
@@ -338,6 +402,24 @@ const effectPayloads = [
       queryText: "select * from customers",
       source,
       type: "validate_query",
+    },
+  ],
+  [
+    "prepare_validate_query",
+    {
+      organizationId: "org_1",
+      queryText: "select * from customers",
+      sourceKey: "warehouse",
+      type: "prepare_validate_query",
+    },
+  ],
+  [
+    "prepare_execute_query",
+    {
+      organizationId: "org_1",
+      queryText: "select * from customers",
+      sourceKey: "warehouse",
+      type: "prepare_execute_query",
     },
   ],
   [

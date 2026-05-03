@@ -14,6 +14,7 @@ import {
 import type {
   QueryCredentialsLoadResult,
   QueryExecutionEffectResult,
+  QueryPreparationEffectResult,
   QuerySourceLookupResult,
   StoredAcceptedQueryActionDecision,
   StoredAcceptedQueryActionResultCommand,
@@ -83,6 +84,81 @@ export function toStoredQueryValidationResult(
       };
     default:
       return assertNever(commandPayload);
+  }
+}
+
+export function toStoredQueryPreparationResult(input: {
+  commandPayload: StoredAcceptedQueryActionResultCommand["commandPayload"];
+  decision: StoredAcceptedQueryActionDecision;
+  orgSlug: string;
+  requestId: string;
+  sourceName: string;
+}): QueryPreparationEffectResult {
+  switch (input.commandPayload.type) {
+    case "record_validate_preparation":
+      switch (input.commandPayload.kind) {
+        case "accepted":
+          return {
+            kind: "query_ready",
+            normalizedSql: input.commandPayload.validatedQuery,
+            source: input.commandPayload.source,
+            truncated: input.commandPayload.truncated,
+          };
+        case "rejected":
+          return {
+            detail: input.commandPayload.detail,
+            kind: "query_rejected",
+          };
+        case "failed":
+          return {
+            detail: input.commandPayload.detail,
+            hint: input.commandPayload.hint,
+            kind: "query_preparation_failed",
+          };
+        default:
+          return assertNever(input.commandPayload);
+      }
+    case "record_execute_preparation":
+      switch (input.commandPayload.kind) {
+        case "succeeded":
+          return {
+            kind: "query_ready",
+            normalizedSql: input.commandPayload.validatedQuery,
+            source: input.commandPayload.source,
+            truncated: input.commandPayload.truncated,
+          };
+        case "rejected":
+          return {
+            detail: input.commandPayload.detail,
+            kind: "query_rejected",
+          };
+        case "failed":
+          return {
+            detail: input.commandPayload.detail,
+            hint: input.commandPayload.hint,
+            kind: "query_preparation_failed",
+          };
+        default:
+          return assertNever(input.commandPayload);
+      }
+    case "record_source_lookup": {
+      const sourceLookup = toStoredQuerySourceLookupResult({
+        decision: input.decision,
+        orgSlug: input.orgSlug,
+        requestId: input.requestId,
+        sourceName: input.sourceName,
+      });
+      if (sourceLookup.kind === "source_query_interface_loaded") {
+        throw createQueryAuditCorruptionProblem(
+          "query_action replay loaded an incomplete source lookup result for a preparation effect"
+        );
+      }
+      return sourceLookup;
+    }
+    default:
+      throw createQueryAuditCorruptionProblem(
+        `query_action replay expected a preparation result command but loaded ${input.commandPayload.type}`
+      );
   }
 }
 

@@ -1,4 +1,3 @@
-import type { CliPersistUsageEffectResult } from "../../../domain/effects";
 import type {
   CliQueryColumn,
   CliQueryPlanResult,
@@ -33,7 +32,6 @@ export type CliQueryExecutionWorkflowResult =
   | {
       kind: "response_ready";
       response: CliQuerySuccessResult;
-      usagePersistence: CliPersistUsageEffectResult;
     }
   | CliQueryExecutionFailureResult;
 

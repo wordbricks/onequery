@@ -36,6 +36,12 @@ function okQueryDecision(
   return Result.ok(decision);
 }
 
+function queryEvents(
+  events: [QueryActionEvent, ...QueryActionEvent[]]
+): [QueryActionEvent, ...QueryActionEvent[]] {
+  return events;
+}
+
 export function decideQueryAction(
   state: QueryActionState | null,
   command: QueryActionCommand
@@ -54,8 +60,9 @@ export function decideQueryAction(
           effects: [
             {
               organizationId: command.organizationId,
+              queryText: command.commandPayload.queryText,
               sourceKey: command.commandPayload.sourceKey,
-              type: "load_source",
+              type: "prepare_validate_query",
             },
           ],
           events: [
@@ -78,8 +85,9 @@ export function decideQueryAction(
           effects: [
             {
               organizationId: command.organizationId,
+              queryText: command.commandPayload.queryText,
               sourceKey: command.commandPayload.sourceKey,
-              type: "load_source",
+              type: "prepare_execute_query",
             },
           ],
           events: [
@@ -218,6 +226,164 @@ export function decideQueryAction(
                   type: "query_preparation_failed",
                 },
               ],
+            })
+          );
+      }
+      break;
+    }
+    case "record_validate_preparation": {
+      if (state === null) {
+        return okQueryDecision(rejectUnknownAction());
+      }
+
+      if (state.phase !== "load_source" || state.queryMode !== "validate") {
+        return okQueryDecision(rejectInvalidPhase());
+      }
+
+      if (!hasMatchingCausation(state, command.causedByEventId)) {
+        return okQueryDecision(rejectCausationMismatch());
+      }
+
+      const commandPayload = command.commandPayload;
+
+      switch (commandPayload.kind) {
+        case "accepted":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: queryEvents([
+                {
+                  source: commandPayload.source,
+                  type: "source_loaded",
+                },
+                {
+                  type: "query_validated",
+                  validatedQuery: commandPayload.validatedQuery,
+                },
+              ]),
+            })
+          );
+        case "rejected":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: queryEvents([
+                {
+                  source: commandPayload.source,
+                  type: "source_loaded",
+                },
+                {
+                  detail: commandPayload.detail,
+                  type: "query_rejected",
+                },
+              ]),
+            })
+          );
+        case "failed":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: queryEvents(
+                commandPayload.source === undefined
+                  ? [
+                      {
+                        detail: commandPayload.detail,
+                        hint: commandPayload.hint,
+                        type: "query_preparation_failed",
+                      },
+                    ]
+                  : [
+                      {
+                        source: commandPayload.source,
+                        type: "source_loaded",
+                      },
+                      {
+                        detail: commandPayload.detail,
+                        hint: commandPayload.hint,
+                        type: "query_preparation_failed",
+                      },
+                    ]
+              ),
+            })
+          );
+      }
+      break;
+    }
+    case "record_execute_preparation": {
+      if (state === null) {
+        return okQueryDecision(rejectUnknownAction());
+      }
+
+      if (state.phase !== "load_source" || state.queryMode !== "execute") {
+        return okQueryDecision(rejectInvalidPhase());
+      }
+
+      if (!hasMatchingCausation(state, command.causedByEventId)) {
+        return okQueryDecision(rejectCausationMismatch());
+      }
+
+      const commandPayload = command.commandPayload;
+
+      switch (commandPayload.kind) {
+        case "succeeded":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              effects: [
+                {
+                  source: commandPayload.source,
+                  type: "execute_query",
+                  validatedQuery: commandPayload.validatedQuery,
+                },
+              ],
+              events: queryEvents([
+                {
+                  source: commandPayload.source,
+                  type: "source_loaded",
+                },
+                {
+                  type: "query_validated",
+                  validatedQuery: commandPayload.validatedQuery,
+                },
+                { type: "credentials_loaded" },
+              ]),
+            })
+          );
+        case "rejected":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: queryEvents([
+                {
+                  source: commandPayload.source,
+                  type: "source_loaded",
+                },
+                {
+                  detail: commandPayload.detail,
+                  type: "query_rejected",
+                },
+              ]),
+            })
+          );
+        case "failed":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: queryEvents(
+                commandPayload.source === undefined
+                  ? [
+                      {
+                        detail: commandPayload.detail,
+                        hint: commandPayload.hint,
+                        type: "query_preparation_failed",
+                      },
+                    ]
+                  : [
+                      {
+                        source: commandPayload.source,
+                        type: "source_loaded",
+                      },
+                      {
+                        detail: commandPayload.detail,
+                        hint: commandPayload.hint,
+                        type: "query_preparation_failed",
+                      },
+                    ]
+              ),
             })
           );
       }

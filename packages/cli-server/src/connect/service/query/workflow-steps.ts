@@ -12,6 +12,7 @@ import {
   toQueryActionSourceDescriptor,
   toStoredQueryCredentialsLoadResult,
   toStoredQueryExecutionResult,
+  toStoredQueryPreparationResult,
   toStoredQuerySourceLookupResult,
   toStoredQueryValidationResult,
   toStoredUsagePersistenceResult,
@@ -28,6 +29,7 @@ import type {
   DispatchedQueryActionEffect,
   QueryCredentialsLoadResult,
   QueryExecutionEffectResult,
+  QueryPreparationEffectResult,
   QuerySourceLookupResult,
   QueryWorkflowResourceCache,
   StoredAcceptedQueryActionDecision,
@@ -41,9 +43,15 @@ type ValidationDispatch = {
   validateQuery: CliQueryExecutionDispatch["validateQuery"];
 };
 
+type ValidatePreparationDispatch = SourceLookupDispatch & ValidationDispatch;
+
 type CredentialsDispatch = {
   loadCredentials: CliQueryExecutionDispatch["loadCredentials"];
   loadSource: CliQueryExecutionDispatch["loadSource"];
+};
+
+type ExecutePreparationDispatch = ValidatePreparationDispatch & {
+  loadCredentials: CliQueryExecutionDispatch["loadCredentials"];
 };
 
 type ExecutionDispatch = {
@@ -60,6 +68,313 @@ export function createEmptyQueryWorkflowResourceCache(): QueryWorkflowResourceCa
   return {
     loadedCredentials: null,
     loadedSource: null,
+  };
+}
+
+export async function runQueryValidatePreparationStep(input: {
+  actorSnapshot: WorkflowActorSnapshot;
+  currentDecision: StoredAcceptedQueryActionDecision;
+  db: Database;
+  dispatch: ValidatePreparationDispatch;
+  resourceCache: QueryWorkflowResourceCache;
+  org: AccessibleCliOrg;
+  requestId: string;
+  sourceName: string;
+}): Promise<{
+  resourceCache: QueryWorkflowResourceCache;
+  step: DispatchedQueryActionEffect<
+    "prepare_validate_query",
+    QueryPreparationEffectResult
+  >;
+}> {
+  let loadedSource = input.resourceCache.loadedSource;
+
+  const step = await dispatchStoredQueryActionEffect<
+    "prepare_validate_query",
+    QueryPreparationEffectResult
+  >({
+    actorSnapshot: input.actorSnapshot,
+    currentDecision: input.currentDecision,
+    db: input.db,
+    expectedEffectType: "prepare_validate_query",
+    organizationId: input.org.id,
+    replay: ({ stored }) =>
+      toStoredQueryPreparationResult({
+        commandPayload: stored.commandPayload,
+        decision: stored.decision,
+        orgSlug: input.org.slug,
+        requestId: input.requestId,
+        sourceName: input.sourceName,
+      }),
+    requestId: input.requestId,
+    run: async (effect) => {
+      const source = await input.dispatch.loadSource({
+        kind: "load_source",
+        organizationId: effect.organizationId,
+        sourceKey: effect.sourceKey,
+      });
+
+      if (source.kind === "not_found") {
+        return {
+          commandPayload: {
+            kind: "not_found",
+            sourceKey: effect.sourceKey,
+            type: "record_source_lookup",
+          },
+          result: {
+            kind: "source_not_found",
+            orgSlug: input.org.slug,
+            requestId: input.requestId,
+            sourceName: input.sourceName,
+          } satisfies QueryPreparationEffectResult,
+        };
+      }
+
+      const databaseType = getCliQueryDatabaseProviderType(
+        source.source.provider,
+        source.source.status
+      );
+      if (!databaseType) {
+        return {
+          commandPayload: {
+            kind: "query_interface_missing",
+            provider: source.source.provider,
+            sourceStatus: source.source.status,
+            type: "record_source_lookup",
+          },
+          result: {
+            kind: "source_query_interface_missing",
+            provider: source.source.provider,
+            requestId: input.requestId,
+            sourceName: input.sourceName,
+            status: source.source.status,
+          } satisfies QueryPreparationEffectResult,
+        };
+      }
+
+      loadedSource = source.source;
+      const sourceDescriptor = toQueryActionSourceDescriptor(source.source);
+      const validationResult = await input.dispatch.validateQuery({
+        databaseType,
+        kind: "validate_query",
+        sql: effect.queryText,
+      });
+
+      if (validationResult.kind === "query_ready") {
+        return {
+          commandPayload: {
+            kind: "accepted",
+            source: sourceDescriptor,
+            truncated: validationResult.truncated,
+            type: "record_validate_preparation",
+            validatedQuery: validationResult.normalizedSql,
+          },
+          result: {
+            kind: "query_ready",
+            normalizedSql: validationResult.normalizedSql,
+            source: sourceDescriptor,
+            truncated: validationResult.truncated,
+          } satisfies QueryPreparationEffectResult,
+        };
+      }
+
+      if (validationResult.kind === "query_preparation_failed") {
+        return {
+          commandPayload: {
+            detail: validationResult.detail,
+            hint: validationResult.hint,
+            kind: "failed",
+            source: sourceDescriptor,
+            type: "record_validate_preparation",
+          },
+          result: validationResult satisfies QueryPreparationEffectResult,
+        };
+      }
+
+      return {
+        commandPayload: {
+          detail: validationResult.detail,
+          kind: "rejected",
+          source: sourceDescriptor,
+          type: "record_validate_preparation",
+        },
+        result: validationResult satisfies QueryPreparationEffectResult,
+      };
+    },
+  });
+
+  return {
+    resourceCache: {
+      ...input.resourceCache,
+      loadedSource,
+    },
+    step,
+  };
+}
+
+export async function runQueryExecutePreparationStep(input: {
+  actorSnapshot: WorkflowActorSnapshot;
+  currentDecision: StoredAcceptedQueryActionDecision;
+  db: Database;
+  dispatch: ExecutePreparationDispatch;
+  resourceCache: QueryWorkflowResourceCache;
+  org: AccessibleCliOrg;
+  requestId: string;
+  sourceName: string;
+}): Promise<{
+  resourceCache: QueryWorkflowResourceCache;
+  step: DispatchedQueryActionEffect<
+    "prepare_execute_query",
+    QueryPreparationEffectResult
+  >;
+}> {
+  let loadedCredentials = input.resourceCache.loadedCredentials;
+  let loadedSource = input.resourceCache.loadedSource;
+
+  const step = await dispatchStoredQueryActionEffect<
+    "prepare_execute_query",
+    QueryPreparationEffectResult
+  >({
+    actorSnapshot: input.actorSnapshot,
+    currentDecision: input.currentDecision,
+    db: input.db,
+    expectedEffectType: "prepare_execute_query",
+    organizationId: input.org.id,
+    replay: ({ stored }) =>
+      toStoredQueryPreparationResult({
+        commandPayload: stored.commandPayload,
+        decision: stored.decision,
+        orgSlug: input.org.slug,
+        requestId: input.requestId,
+        sourceName: input.sourceName,
+      }),
+    requestId: input.requestId,
+    run: async (effect) => {
+      const source = await input.dispatch.loadSource({
+        kind: "load_source",
+        organizationId: effect.organizationId,
+        sourceKey: effect.sourceKey,
+      });
+
+      if (source.kind === "not_found") {
+        return {
+          commandPayload: {
+            kind: "not_found",
+            sourceKey: effect.sourceKey,
+            type: "record_source_lookup",
+          },
+          result: {
+            kind: "source_not_found",
+            orgSlug: input.org.slug,
+            requestId: input.requestId,
+            sourceName: input.sourceName,
+          } satisfies QueryPreparationEffectResult,
+        };
+      }
+
+      const databaseType = getCliQueryDatabaseProviderType(
+        source.source.provider,
+        source.source.status
+      );
+      if (!databaseType) {
+        return {
+          commandPayload: {
+            kind: "query_interface_missing",
+            provider: source.source.provider,
+            sourceStatus: source.source.status,
+            type: "record_source_lookup",
+          },
+          result: {
+            kind: "source_query_interface_missing",
+            provider: source.source.provider,
+            requestId: input.requestId,
+            sourceName: input.sourceName,
+            status: source.source.status,
+          } satisfies QueryPreparationEffectResult,
+        };
+      }
+
+      loadedSource = source.source;
+      const sourceDescriptor = toQueryActionSourceDescriptor(source.source);
+      const validationResult = await input.dispatch.validateQuery({
+        databaseType,
+        kind: "validate_query",
+        sql: effect.queryText,
+      });
+
+      if (validationResult.kind === "query_rejected") {
+        return {
+          commandPayload: {
+            detail: validationResult.detail,
+            kind: "rejected",
+            source: sourceDescriptor,
+            type: "record_execute_preparation",
+          },
+          result: validationResult satisfies QueryPreparationEffectResult,
+        };
+      }
+
+      if (validationResult.kind === "query_preparation_failed") {
+        return {
+          commandPayload: {
+            detail: validationResult.detail,
+            hint: validationResult.hint,
+            kind: "failed",
+            source: sourceDescriptor,
+            type: "record_execute_preparation",
+          },
+          result: validationResult satisfies QueryPreparationEffectResult,
+        };
+      }
+
+      const credentialsResult = await input.dispatch.loadCredentials({
+        kind: "load_credentials",
+        source: source.source,
+      });
+
+      if (credentialsResult.kind !== "credentials_loaded") {
+        return {
+          commandPayload: {
+            detail: credentialsResult.detail,
+            hint: "verify the source configuration and retry",
+            kind: "failed",
+            source: sourceDescriptor,
+            type: "record_execute_preparation",
+          },
+          result: {
+            detail: credentialsResult.detail,
+            hint: "verify the source configuration and retry",
+            kind: "query_preparation_failed",
+          } satisfies QueryPreparationEffectResult,
+        };
+      }
+
+      loadedCredentials = credentialsResult.credentials;
+
+      return {
+        commandPayload: {
+          kind: "succeeded",
+          source: sourceDescriptor,
+          truncated: validationResult.truncated,
+          type: "record_execute_preparation",
+          validatedQuery: validationResult.normalizedSql,
+        },
+        result: {
+          kind: "query_ready",
+          normalizedSql: validationResult.normalizedSql,
+          source: sourceDescriptor,
+          truncated: validationResult.truncated,
+        } satisfies QueryPreparationEffectResult,
+      };
+    },
+  });
+
+  return {
+    resourceCache: {
+      loadedCredentials,
+      loadedSource,
+    },
+    step,
   };
 }
 

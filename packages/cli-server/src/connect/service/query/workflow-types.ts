@@ -9,6 +9,7 @@ import type {
   QueryActionCommandPayload,
   QueryActionEffect,
   QueryActionEvent,
+  QueryActionSourceDescriptor,
   StoredWorkflowDecision,
   WorkflowActorSnapshot,
 } from "../../../audit";
@@ -100,6 +101,24 @@ export type QueryCredentialsLoadResult =
   | {
       detail: string;
       kind: "credentials_invalid";
+    };
+
+export type QueryPreparationEffectResult =
+  | {
+      kind: "query_ready";
+      normalizedSql: string;
+      source: QueryActionSourceDescriptor;
+      truncated: boolean;
+    }
+  | Exclude<QuerySourceLookupResult, SourceQueryInterfaceLoadedResult>
+  | {
+      detail: string;
+      kind: "query_rejected";
+    }
+  | {
+      detail: string;
+      hint: string;
+      kind: "query_preparation_failed";
     };
 
 export type QueryExecutionEffectResult =

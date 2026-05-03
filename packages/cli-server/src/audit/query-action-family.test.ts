@@ -111,15 +111,23 @@ describe("query_action family", () => {
     if (startDecision.kind !== "accepted") {
       return;
     }
+    expect(startDecision.effects).toEqual([
+      {
+        organizationId: "org_1",
+        queryText: "select * from customers",
+        sourceKey: "warehouse",
+        type: "prepare_execute_query",
+      },
+    ]);
     state = applyQueryDecision(state, startDecision.events);
     expect(state.phase).toBe("load_source");
 
-    const sourceLookupDecision = unwrapQueryDecision(
+    const preparationDecision = unwrapQueryDecision(
       decideQueryAction(
         state,
         buildQueryCommand(
           {
-            kind: "found",
+            kind: "succeeded",
             source: {
               displayName: "Warehouse",
               name: "warehouse",
@@ -129,55 +137,35 @@ describe("query_action family", () => {
               sourceKey: "warehouse",
               sourceStatus: "active",
             },
-            type: "record_source_lookup",
-          },
-          { actionId: "action_1", causedByEventId: state.lastEventId }
-        )
-      )
-    );
-    expect(sourceLookupDecision.kind).toBe("accepted");
-    if (sourceLookupDecision.kind !== "accepted") {
-      return;
-    }
-    state = applyQueryDecision(state, sourceLookupDecision.events);
-
-    const validationDecision = unwrapQueryDecision(
-      decideQueryAction(
-        state,
-        buildQueryCommand(
-          {
-            kind: "accepted",
             truncated: false,
-            type: "record_query_validation",
+            type: "record_execute_preparation",
             validatedQuery: "SELECT * FROM customers LIMIT 1000",
           },
           { actionId: "action_1", causedByEventId: state.lastEventId }
         )
       )
     );
-    expect(validationDecision.kind).toBe("accepted");
-    if (validationDecision.kind !== "accepted") {
+    expect(preparationDecision).toMatchObject({
+      effects: [
+        {
+          type: "execute_query",
+          validatedQuery: "SELECT * FROM customers LIMIT 1000",
+        },
+      ],
+      events: [
+        { type: "source_loaded" },
+        {
+          type: "query_validated",
+          validatedQuery: "SELECT * FROM customers LIMIT 1000",
+        },
+        { type: "credentials_loaded" },
+      ],
+      kind: "accepted",
+    });
+    if (preparationDecision.kind !== "accepted") {
       return;
     }
-    state = applyQueryDecision(state, validationDecision.events);
-
-    const credentialsDecision = unwrapQueryDecision(
-      decideQueryAction(
-        state,
-        buildQueryCommand(
-          {
-            kind: "loaded",
-            type: "record_credentials_load",
-          },
-          { actionId: "action_1", causedByEventId: state.lastEventId }
-        )
-      )
-    );
-    expect(credentialsDecision.kind).toBe("accepted");
-    if (credentialsDecision.kind !== "accepted") {
-      return;
-    }
-    state = applyQueryDecision(state, credentialsDecision.events);
+    state = applyQueryDecision(state, preparationDecision.events);
 
     const executionDecision = unwrapQueryDecision(
       decideQueryAction(
@@ -224,6 +212,82 @@ describe("query_action family", () => {
       queryMode: "execute",
       usageRecordingStatus: "failed",
       validatedQuery: "SELECT * FROM customers LIMIT 1000",
+    });
+  });
+
+  it("validates through the composite preparation command", () => {
+    let state: QueryActionState | null = null;
+
+    const startDecision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand({
+          queryText: "select 1",
+          sourceKey: "warehouse",
+          type: "start_validate",
+        })
+      )
+    );
+
+    expect(startDecision).toMatchObject({
+      effects: [
+        {
+          organizationId: "org_1",
+          queryText: "select 1",
+          sourceKey: "warehouse",
+          type: "prepare_validate_query",
+        },
+      ],
+      kind: "accepted",
+    });
+    if (startDecision.kind !== "accepted") {
+      return;
+    }
+    state = applyQueryDecision(state, startDecision.events);
+
+    const preparationDecision = unwrapQueryDecision(
+      decideQueryAction(
+        state,
+        buildQueryCommand(
+          {
+            kind: "accepted",
+            source: {
+              displayName: null,
+              name: "warehouse",
+              organizationId: "org_1",
+              provider: "postgres",
+              sourceId: "source_1",
+              sourceKey: "warehouse",
+              sourceStatus: "active",
+            },
+            truncated: false,
+            type: "record_validate_preparation",
+            validatedQuery: "SELECT 1",
+          },
+          { actionId: "action_1", causedByEventId: state.lastEventId }
+        )
+      )
+    );
+
+    expect(preparationDecision).toMatchObject({
+      effects: [],
+      events: [
+        { type: "source_loaded" },
+        { type: "query_validated", validatedQuery: "SELECT 1" },
+      ],
+      kind: "accepted",
+    });
+    if (preparationDecision.kind !== "accepted") {
+      return;
+    }
+
+    state = applyQueryDecision(state, preparationDecision.events);
+    expect(state).toMatchObject({
+      failureCode: null,
+      outcome: "succeeded",
+      phase: "completed",
+      queryMode: "validate",
+      validatedQuery: "SELECT 1",
     });
   });
 

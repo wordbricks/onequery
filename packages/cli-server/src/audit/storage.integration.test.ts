@@ -142,6 +142,30 @@ function buildSourceLoadedCommand(input: {
   };
 }
 
+function buildValidatePreparationCommand(input: {
+  actionId: string;
+  causedByEventId: string;
+}): QueryActionCommand {
+  return {
+    actionId: input.actionId,
+    actorSnapshot,
+    causedByEventId: input.causedByEventId,
+    commandInvocationId: "cmd-query-validate-prepared",
+    commandPayload: {
+      kind: "accepted",
+      source: sourceDescriptor,
+      truncated: false,
+      type: "record_validate_preparation",
+      validatedQuery: "SELECT 1",
+    },
+    family: "query_action",
+    observedAt: new Date("2026-04-20T07:12:01.000Z"),
+    organizationId: "org_1",
+    requestId: "req-query-1",
+    surface: "system",
+  };
+}
+
 function buildMissingQueryActionCommand(): QueryActionCommand {
   return {
     actionId: "missing-query-action",
@@ -395,19 +419,23 @@ describe("audit workflow storage", () => {
     });
 
     const startEvent = expectFirstCommittedEvent(startDecision);
-    const sourceLoadedResult = await storeQueryActionCommand({
-      command: buildSourceLoadedCommand({
+    const preparationResult = await storeQueryActionCommand({
+      command: buildValidatePreparationCommand({
         actionId: startDecision.actionId,
         causedByEventId: startEvent.id,
       }),
       db,
     });
-    const sourceLoadedDecision = expectStoredDecision(
-      unwrapQueryResult(sourceLoadedResult),
+    const preparationDecision = expectStoredDecision(
+      unwrapQueryResult(preparationResult),
       "accepted"
     );
 
-    const sourceLoadedEvent = expectFirstCommittedEvent(sourceLoadedDecision);
+    const queryValidatedEvent = preparationDecision.events.at(-1);
+    expect(queryValidatedEvent).toBeDefined();
+    if (!queryValidatedEvent) {
+      throw new Error("expected a query_validated event");
+    }
 
     const commandRows = await selectWorkflowCommandRows(db, "query_action");
     const actionRow = await db.query.queryActions.findFirst({
@@ -435,14 +463,14 @@ describe("audit workflow storage", () => {
 
     expect(actionRow).toMatchObject({
       failureCode: null,
-      lastEventId: sourceLoadedEvent.id,
-      lastEventSequence: 2,
-      outcome: "pending",
-      phase: "validate_query",
+      lastEventId: queryValidatedEvent.id,
+      lastEventSequence: 3,
+      outcome: "succeeded",
+      phase: "completed",
       queryMode: "validate",
       queryText: "select 1",
       usageRecordingStatus: "not_started",
-      validatedQuery: null,
+      validatedQuery: "SELECT 1",
     });
 
     expect(
@@ -466,7 +494,7 @@ describe("audit workflow storage", () => {
         sequence: 1,
       },
       {
-        commandId: sourceLoadedDecision.commandId,
+        commandId: preparationDecision.commandId,
         commitPosition: 2n,
         eventType: "source_loaded",
         payload: {
@@ -474,6 +502,16 @@ describe("audit workflow storage", () => {
           type: "source_loaded",
         },
         sequence: 2,
+      },
+      {
+        commandId: preparationDecision.commandId,
+        commitPosition: 3n,
+        eventType: "query_validated",
+        payload: {
+          type: "query_validated",
+          validatedQuery: "SELECT 1",
+        },
+        sequence: 3,
       },
     ]);
 
@@ -486,22 +524,13 @@ describe("audit workflow storage", () => {
       }))
     ).toEqual([
       {
-        effectType: "load_source",
+        effectType: "prepare_validate_query",
         originEventId: startEvent.id,
         payload: {
           organizationId: "org_1",
-          sourceKey: "warehouse",
-          type: "load_source",
-        },
-        status: "pending",
-      },
-      {
-        effectType: "validate_query",
-        originEventId: sourceLoadedEvent.id,
-        payload: {
           queryText: "select 1",
-          source: sourceDescriptor,
-          type: "validate_query",
+          sourceKey: "warehouse",
+          type: "prepare_validate_query",
         },
         status: "pending",
       },
@@ -612,11 +641,12 @@ describe("audit workflow storage", () => {
       }))
     ).toEqual([
       {
-        effectType: "load_source",
+        effectType: "prepare_validate_query",
         payload: {
           organizationId: "org_1",
+          queryText: "select 1",
           sourceKey: "warehouse",
-          type: "load_source",
+          type: "prepare_validate_query",
         },
       },
     ]);

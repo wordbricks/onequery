@@ -107,11 +107,11 @@ function unwrapOk<T, E>(value: ResultType<T, E>) {
   return value.value;
 }
 
-async function loadFirstLoadSourceDispatch(db: Database) {
+async function loadFirstPrepareValidateDispatch(db: Database) {
   const [row] = await db
     .select()
     .from(workflowEffectDispatches)
-    .where(eq(workflowEffectDispatches.effectType, "load_source"))
+    .where(eq(workflowEffectDispatches.effectType, "prepare_validate_query"))
     .orderBy(
       asc(workflowEffectDispatches.createdAt),
       asc(workflowEffectDispatches.id)
@@ -119,7 +119,7 @@ async function loadFirstLoadSourceDispatch(db: Database) {
     .limit(1);
 
   if (!row) {
-    throw new Error("expected a load_source dispatch row");
+    throw new Error("expected a prepare_validate_query dispatch row");
   }
 
   return row;
@@ -210,8 +210,7 @@ describe("query workflow audit runtime", () => {
     });
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_validate",
-      "record_source_found",
-      "record_query_validation_accepted",
+      "record_validate_preparation_accepted",
     ]);
     expect(actionRow).toMatchObject({
       failureCode: null,
@@ -232,13 +231,10 @@ describe("query workflow audit runtime", () => {
         effectType: row.effectType,
         status: row.status,
       }))
-    ).toEqual([
-      { effectType: "load_source", status: "completed" },
-      { effectType: "validate_query", status: "completed" },
-    ]);
+    ).toEqual([{ effectType: "prepare_validate_query", status: "completed" }]);
   });
 
-  it("records executeQuery through query_action storage only and completes the outbox chain", async () => {
+  it("records executeQuery through query_action storage and schedules usage persistence", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -246,6 +242,11 @@ describe("query workflow audit runtime", () => {
       connectionString: "postgres://example",
       provider: "postgres",
     } as unknown as DatabaseCredentials;
+    const persistUsage = vi
+      .fn<() => Promise<CliPersistUsageEffectResult>>()
+      .mockRejectedValue(
+        new Error("persistUsage should not run before response")
+      );
 
     const result = await runCliQueryExecutionWorkflowResult({
       actorSnapshot,
@@ -265,9 +266,7 @@ describe("query workflow audit runtime", () => {
           kind: "found",
           source,
         }),
-        persistUsage: async (): Promise<CliPersistUsageEffectResult> => ({
-          kind: "usage_persisted",
-        }),
+        persistUsage,
         validateQuery: async (): Promise<CliValidateQueryEffectResult> => ({
           kind: "query_ready",
           normalizedSql: "select 42 as answer",
@@ -308,25 +307,20 @@ describe("query workflow audit runtime", () => {
         rowCount: 1,
         truncated: false,
       },
-      usagePersistence: {
-        kind: "usage_persisted",
-      },
     });
+    expect(persistUsage).not.toHaveBeenCalled();
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_execute",
-      "record_source_found",
-      "record_query_validation_accepted",
-      "record_credentials_loaded",
+      "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",
-      "record_usage_persistence_succeeded",
     ]);
     expect(actionRow).toMatchObject({
       failureCode: null,
-      outcome: "succeeded",
-      phase: "completed",
+      outcome: "pending",
+      phase: "persist_usage",
       queryMode: "execute",
       queryText: "select 42 as answer",
-      usageRecordingStatus: "succeeded",
+      usageRecordingStatus: "not_started",
       validatedQuery: "select 42 as answer",
     });
     expect(eventRows.map((row) => row.eventType)).toEqual([
@@ -335,7 +329,6 @@ describe("query workflow audit runtime", () => {
       "query_validated",
       "credentials_loaded",
       "query_executed",
-      "usage_persisted",
     ]);
     expect(
       outboxRows.map((row) => ({
@@ -343,11 +336,9 @@ describe("query workflow audit runtime", () => {
         status: row.status,
       }))
     ).toEqual([
-      { effectType: "load_source", status: "completed" },
-      { effectType: "validate_query", status: "completed" },
-      { effectType: "load_credentials", status: "completed" },
+      { effectType: "prepare_execute_query", status: "completed" },
       { effectType: "execute_query", status: "completed" },
-      { effectType: "persist_usage", status: "completed" },
+      { effectType: "persist_usage", status: "pending" },
     ]);
   });
 
@@ -404,8 +395,7 @@ describe("query workflow audit runtime", () => {
     });
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_validate",
-      "record_source_found",
-      "record_query_validation_preparation_failed",
+      "record_validate_preparation_failed",
     ]);
     expect(actionRow).toMatchObject({
       failureCode: "query_preparation_failed",
@@ -426,10 +416,7 @@ describe("query workflow audit runtime", () => {
         effectType: row.effectType,
         status: row.status,
       }))
-    ).toEqual([
-      { effectType: "load_source", status: "completed" },
-      { effectType: "validate_query", status: "completed" },
-    ]);
+    ).toEqual([{ effectType: "prepare_validate_query", status: "completed" }]);
   });
 
   it("replays completed validateQuery requests without redispatching effects", async () => {
@@ -486,8 +473,7 @@ describe("query workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_validate",
-      "record_source_found",
-      "record_query_validation_accepted",
+      "record_validate_preparation_accepted",
     ]);
 
     const dispatchRows = await db
@@ -505,8 +491,11 @@ describe("query workflow audit runtime", () => {
         status: row.status,
       }))
     ).toEqual([
-      { attemptCount: 1, effectType: "load_source", status: "completed" },
-      { attemptCount: 1, effectType: "validate_query", status: "completed" },
+      {
+        attemptCount: 1,
+        effectType: "prepare_validate_query",
+        status: "completed",
+      },
     ]);
     expect(
       dispatchRows.map((row) => ({
@@ -515,7 +504,6 @@ describe("query workflow audit runtime", () => {
         leasedUntil: row.leasedUntil,
       }))
     ).toEqual([
-      { lastErrorCode: null, lastErrorDetail: null, leasedUntil: null },
       { lastErrorCode: null, lastErrorDetail: null, leasedUntil: null },
     ]);
   });
@@ -555,11 +543,11 @@ describe("query workflow audit runtime", () => {
 
     expect(failedResult.isErr()).toBe(true);
 
-    const failedDispatch = await loadFirstLoadSourceDispatch(db);
+    const failedDispatch = await loadFirstPrepareValidateDispatch(db);
     expect(failedDispatch).toMatchObject({
       attemptCount: 1,
       completedAt: null,
-      effectType: "load_source",
+      effectType: "prepare_validate_query",
       lastErrorCode: "dispatch_failed",
       leasedUntil: null,
       status: "pending",
@@ -589,19 +577,19 @@ describe("query workflow audit runtime", () => {
     expect(loadSource).toHaveBeenCalledTimes(2);
     expect(validateQuery).toHaveBeenCalledTimes(1);
 
-    const retriedLoadSourceDispatch = await loadWorkflowEffectDispatch(
+    const retriedPreparationDispatch = await loadWorkflowEffectDispatch(
       db,
       failedDispatch.id
     );
-    expect(retriedLoadSourceDispatch).toMatchObject({
+    expect(retriedPreparationDispatch).toMatchObject({
       attemptCount: 2,
-      effectType: "load_source",
+      effectType: "prepare_validate_query",
       lastErrorCode: null,
       lastErrorDetail: null,
       leasedUntil: null,
       status: "completed",
     });
-    expect(retriedLoadSourceDispatch.completedAt).toBeInstanceOf(Date);
+    expect(retriedPreparationDispatch.completedAt).toBeInstanceOf(Date);
 
     const dispatchRows = await db
       .select()
@@ -618,8 +606,11 @@ describe("query workflow audit runtime", () => {
         status: row.status,
       }))
     ).toEqual([
-      { attemptCount: 2, effectType: "load_source", status: "completed" },
-      { attemptCount: 1, effectType: "validate_query", status: "completed" },
+      {
+        attemptCount: 2,
+        effectType: "prepare_validate_query",
+        status: "completed",
+      },
     ]);
   });
 
@@ -651,9 +642,9 @@ describe("query workflow audit runtime", () => {
       });
       const firstValue = unwrapOk(firstResult);
 
-      const loadSourceDispatch = await loadFirstLoadSourceDispatch(db);
-      expect(loadSourceDispatch).toMatchObject({
-        effectType: "load_source",
+      const preparationDispatch = await loadFirstPrepareValidateDispatch(db);
+      expect(preparationDispatch).toMatchObject({
+        effectType: "prepare_validate_query",
         status: "completed",
       });
 
@@ -668,7 +659,7 @@ describe("query workflow audit runtime", () => {
             status === "leased" ? new Date(Date.now() + 30_000) : null,
           status,
         })
-        .where(eq(workflowEffectDispatches.id, loadSourceDispatch.id));
+        .where(eq(workflowEffectDispatches.id, preparationDispatch.id));
 
       const replayResult = await runCliQueryValidationWorkflowResult({
         actorSnapshot,
@@ -696,10 +687,10 @@ describe("query workflow audit runtime", () => {
 
       const reconciledDispatch = await loadWorkflowEffectDispatch(
         db,
-        loadSourceDispatch.id
+        preparationDispatch.id
       );
       expect(reconciledDispatch).toMatchObject({
-        effectType: "load_source",
+        effectType: "prepare_validate_query",
         lastErrorCode: null,
         lastErrorDetail: null,
         leasedUntil: null,
@@ -770,15 +761,13 @@ describe("query workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_validate",
-      "record_source_found",
-      "record_query_validation_accepted",
+      "record_validate_preparation_accepted",
       "start_validate",
-      "record_source_found",
-      "record_query_validation_accepted",
+      "record_validate_preparation_accepted",
     ]);
   });
 
-  it("replays completed executeQuery requests without rerunning the query", async () => {
+  it("replays executed executeQuery requests without rerunning the query", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -859,7 +848,7 @@ describe("query workflow audit runtime", () => {
 
     expect(unwrapOk(replayResult)).toEqual(unwrapOk(firstResult));
     expect(executeSql).toHaveBeenCalledTimes(1);
-    expect(persistUsage).toHaveBeenCalledTimes(1);
+    expect(persistUsage).not.toHaveBeenCalled();
 
     const commandRows = await db
       .select()
@@ -868,11 +857,8 @@ describe("query workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_execute",
-      "record_source_found",
-      "record_query_validation_accepted",
-      "record_credentials_loaded",
+      "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",
-      "record_usage_persistence_succeeded",
     ]);
   });
 
@@ -966,7 +952,7 @@ describe("query workflow audit runtime", () => {
       },
     });
     expect(executeSql).toHaveBeenCalledTimes(2);
-    expect(persistUsage).toHaveBeenCalledTimes(2);
+    expect(persistUsage).not.toHaveBeenCalled();
 
     const commandRows = await db
       .select()
@@ -975,17 +961,11 @@ describe("query workflow audit runtime", () => {
 
     expect(commandRows.map((row) => row.commandType)).toEqual([
       "start_execute",
-      "record_source_found",
-      "record_query_validation_accepted",
-      "record_credentials_loaded",
+      "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",
-      "record_usage_persistence_succeeded",
       "start_execute",
-      "record_source_found",
-      "record_query_validation_accepted",
-      "record_credentials_loaded",
+      "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",
-      "record_usage_persistence_succeeded",
     ]);
   });
 });

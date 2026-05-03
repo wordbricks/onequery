@@ -51,6 +51,50 @@ export type QueryActionCommandPayload =
       kind: "preparation_failed";
     }
   | {
+      type: "record_validate_preparation";
+      detail?: never;
+      hint?: never;
+      kind: "accepted";
+      source: QueryActionSourceDescriptor;
+      truncated: boolean;
+      validatedQuery: string;
+    }
+  | {
+      type: "record_validate_preparation";
+      detail: string;
+      kind: "rejected";
+      source: QueryActionSourceDescriptor;
+    }
+  | {
+      type: "record_validate_preparation";
+      detail: string;
+      hint: string;
+      kind: "failed";
+      source?: QueryActionSourceDescriptor;
+    }
+  | {
+      type: "record_execute_preparation";
+      detail?: never;
+      hint?: never;
+      kind: "succeeded";
+      source: QueryActionSourceDescriptor;
+      truncated: boolean;
+      validatedQuery: string;
+    }
+  | {
+      type: "record_execute_preparation";
+      detail: string;
+      kind: "rejected";
+      source: QueryActionSourceDescriptor;
+    }
+  | {
+      type: "record_execute_preparation";
+      detail: string;
+      hint: string;
+      kind: "failed";
+      source?: QueryActionSourceDescriptor;
+    }
+  | {
       type: "record_credentials_load";
       kind: "loaded";
     }

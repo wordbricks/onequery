@@ -62,9 +62,6 @@ describe("query logging", () => {
         truncated: true,
       },
       sourceKey: "warehouse",
-      usagePersistence: {
-        kind: "usage_persisted",
-      },
     } as never);
 
     expect(logCliEvent).toHaveBeenCalledTimes(1);
