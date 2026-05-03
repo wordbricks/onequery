@@ -90,26 +90,13 @@ jobs:
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_USER: test
-        ports:
-          - 5454:5432
-        options: >-
-          --health-cmd "pg_isready -U test -d test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     env:
       TURBO_API: ${{ secrets.TURBO_API }}
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+      ONEQUERY_PGLITE_DIR: /tmp/onequery-ci/pglite/onequery
 
     steps:
       - uses: actions/checkout@v6
@@ -151,31 +138,19 @@ jobs:
         if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true' || needs.check-paths.outputs.root_code == 'true'
         run: bun ci
 
-      - name: Wait for Postgres
+      - name: Prepare PGlite database directory
         if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
-        # Comment: @onequery/bun-server still exercises Better Auth against the
-        # shared test Postgres DSN from @onequery/dev-config in the fast lane,
-        # so the main CI job must provide the matching database service.
-        run: |
-          for _ in {1..30}; do
-            if bash -lc '</dev/tcp/127.0.0.1/5454' >/dev/null 2>&1; then
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "Postgres service did not become ready on localhost:5454" >&2
-          exit 1
+        run: mkdir -p "$ONEQUERY_PGLITE_DIR"
 
       - name: Drizzle migration graph check
         if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
         run: cd packages/db && bunx drizzle-kit check
 
-      - name: Apply test database schema
+      - name: Apply PGlite test database schema
         if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true'
-        # Comment: The CI Postgres database is ephemeral, so tests only need
-        # the current Drizzle schema materialized; migration graph validation
-        # still runs separately above.
-        run: cd packages/db && DATABASE_URL=postgres://test:test@localhost:5454/test bunx drizzle-kit push --force --config drizzle.config.ts
+        # Comment: CI validates Drizzle against the same PGlite driver used by
+        # local workspace commands; migration graph validation still runs above.
+        run: cd packages/db && bunx drizzle-kit push --force --config drizzle.config.ts
 
       - name: Lint & Format
         if: github.event_name != 'pull_request' || steps.affected.outputs.has_tasks == 'true' || needs.check-paths.outputs.root_code == 'true'
