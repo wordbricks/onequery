@@ -347,8 +347,14 @@ function EvidenceDisclosure({
   title: string;
   value: unknown;
 }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
   return (
-    <details className="group rounded-md border" open={defaultOpen}>
+    <details
+      className="group rounded-md border"
+      open={isOpen}
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
+    >
       <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs font-medium">
         {title}
         <IconChevronDown
@@ -1013,6 +1019,7 @@ export function AuditPage() {
               ) : null}
               {selectedItem && detailQuery.data ? (
                 <AuditTraceDetail
+                  key={selectedItem.id}
                   detail={detailQuery.data}
                   item={selectedItem}
                 />
