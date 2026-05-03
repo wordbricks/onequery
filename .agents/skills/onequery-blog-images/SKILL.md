@@ -1,6 +1,11 @@
 ---
 name: onequery-blog-images
-description: Generate or replace OneQuery blog thumbnail images and article diagram images for apps/landing. Use when Codex needs to create blog list thumbnails, social share thumbnails, in-article architecture diagrams, update blog imageSrc references, follow the OneQuery diagram design system, or use the bundled assets/diagram-design-system.png visual reference.
+description: >-
+  Generate or replace OneQuery blog thumbnail images and article diagram images
+  for apps/landing. Use when Codex needs to create blog list thumbnails, social
+  share thumbnails, in-article architecture diagrams, update blog imageSrc
+  references, follow the OneQuery diagram design system, or use the bundled
+  assets/diagram-design-system.png visual reference.
 ---
 
 # OneQuery Blog Images
