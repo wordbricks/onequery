@@ -723,6 +723,66 @@ async function insertAcceptedWorkflowCommand(input: {
   });
 }
 
+async function insertRejectedWorkflowCommand(input: {
+  actionId: string;
+  actorSnapshot: WorkflowActorSnapshot;
+  commandId: string;
+  commandInvocationId: string;
+  commandPayload: Record<string, unknown>;
+  commandType: string;
+  createdAt: Date;
+  db: TestDatabase;
+  family: "query_action" | "source_api_action";
+  organizationId: string;
+  rejectCode: string;
+  rejectDetail: string | null;
+  requestId: string;
+  surface: "cli" | "web" | "agent" | "system";
+}) {
+  await input.db.insert(workflowJournal).values([
+    {
+      actorSnapshotJson: input.actorSnapshot,
+      causedByEventId: null,
+      commandInvocationId: input.commandInvocationId,
+      commitId: input.commandId,
+      entryKind: "command",
+      family: input.family,
+      id: input.commandId,
+      occurredAt: input.createdAt,
+      organizationId: input.organizationId,
+      payloadBytes: encodeWorkflowCommandPayload({
+        commandPayload: input.commandPayload,
+        commandType: input.commandType,
+        family: input.family,
+      }),
+      payloadType: input.commandType,
+      requestId: input.requestId,
+      streamId: input.actionId,
+      streamPosition: nextJournalStreamPosition(input.actionId),
+      surface: input.surface,
+    },
+    {
+      commitId: input.commandId,
+      entryKind: "checkpoint",
+      family: input.family,
+      id: `${input.commandId}-decision-rejected`,
+      occurredAt: input.createdAt,
+      organizationId: input.organizationId,
+      payloadBytes: Buffer.from(
+        JSON.stringify({
+          actionId: input.actionId,
+          rejectCode: input.rejectCode,
+          rejectDetail: input.rejectDetail,
+        }),
+        "utf8"
+      ),
+      payloadType: "decision_rejected",
+      streamId: input.actionId,
+      streamPosition: nextJournalStreamPosition(input.actionId),
+    },
+  ]);
+}
+
 async function insertWorkflowEventRows<
   Row extends {
     actionId: string;
@@ -858,6 +918,26 @@ async function seedSucceededQueryAction(input: {
     db: input.db,
     family: "query_action",
     organizationId: input.organizationId,
+    requestId: input.requestId,
+    surface: "system",
+  });
+
+  await insertRejectedWorkflowCommand({
+    actionId,
+    actorSnapshot: input.actorSnapshot,
+    commandId: `${commandBase}-rejected-usage-retry`,
+    commandInvocationId: `${actionId}:record_usage_persistence_rejected`,
+    commandPayload: {
+      kind: "succeeded",
+    },
+    commandType: "record_usage_persistence",
+    createdAt: new Date(input.startedAt.getTime() + 4_000),
+    db: input.db,
+    family: "query_action",
+    organizationId: input.organizationId,
+    rejectCode: "invalid_phase",
+    rejectDetail:
+      "query_action record_usage_persistence cannot run after completion",
     requestId: input.requestId,
     surface: "system",
   });
@@ -1391,6 +1471,9 @@ describe("organizations audit route", () => {
       if (!firstItem || !firstItem.preview) {
         throw new Error("first audit page must include a preview");
       }
+      if (firstItem.family !== "query_action") {
+        throw new Error("first audit page item must be a query action");
+      }
       expect(firstItem).toMatchObject({
         actionName: "execute",
         family: "query_action",
@@ -1406,8 +1489,8 @@ describe("organizations audit route", () => {
         usageRecordingStatus: "succeeded",
         validatedQuery: "select * from customers",
       });
-      expect(firstItem.preview).not.toHaveProperty("errorDetail");
-      expect(firstItem.preview).not.toHaveProperty("errorHint");
+      expect(firstItem.preview.errorDetail).toBeNull();
+      expect(firstItem.preview.errorHint).toBeNull();
       expect(firstPage.families).toEqual(["query_action"]);
       expect(firstPage.nextCursor).not.toBeNull();
 
@@ -1458,7 +1541,7 @@ describe("organizations audit route", () => {
         pageCount: 1,
         selector: "/customers",
       });
-      expect(secondItem.preview).not.toHaveProperty("errorDetail");
+      expect(secondItem.preview.errorDetail).toBeNull();
       expect(secondItem.preview).not.toHaveProperty("responseBytes");
       expect(secondPage.nextCursor).not.toBeNull();
 
@@ -1614,6 +1697,16 @@ describe("organizations audit route", () => {
           },
         },
       });
+      expect(detail.commands).toContainEqual(
+        expect.objectContaining({
+          commandInvocationId: `${detail.action.id}:record_usage_persistence_rejected`,
+          commandType: "record_usage_persistence",
+          decisionKind: "rejected",
+          rejectCode: "invalid_phase",
+          rejectDetail:
+            "query_action record_usage_persistence cannot run after completion",
+        })
+      );
       expect(detail.events[0]).toMatchObject({
         decodedPayload: {
           actionReceived: {

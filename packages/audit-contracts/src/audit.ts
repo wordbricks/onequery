@@ -407,7 +407,7 @@ export const auditWorkflowCommandTraceSchema = z
     commandType: z.string(),
     createdAt: z.iso.datetime(),
     decodedPayload: z.unknown().nullable(),
-    decisionKind: z.string(),
+    decisionKind: z.enum(["accepted", "rejected"]),
     id: z.string(),
     rejectCode: z.string().nullable(),
     rejectDetail: z.string().nullable(),

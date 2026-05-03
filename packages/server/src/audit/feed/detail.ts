@@ -13,9 +13,9 @@ import {
   asc,
   auditFeedEntries,
   eq,
+  inArray,
   queryActions,
   sourceApiActions,
-  inArray,
   workflowJournal,
 } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
@@ -31,6 +31,20 @@ import {
 import { serializeAuditFeedItem } from "./list";
 import { syncAuditFeedProjection } from "./projection";
 import { decodeValidatedAuditFeedPayload } from "./workflow-payload-codec";
+
+const REJECTED_DECISION_CHECKPOINT = "decision_rejected";
+
+type CommandDecision =
+  | {
+      decisionKind: "accepted";
+      rejectCode: null;
+      rejectDetail: null;
+    }
+  | {
+      decisionKind: "rejected";
+      rejectCode: string;
+      rejectDetail: string | null;
+    };
 
 function serializeBytes(bytes: Buffer | Uint8Array) {
   const buffer = Buffer.from(bytes);
@@ -92,7 +106,63 @@ function requireJournalValue<T>(value: T | null, label: string): T {
   return value;
 }
 
-function serializeCommand(row: typeof workflowJournal.$inferSelect) {
+function decodeJsonCheckpointPayload(input: {
+  label: string;
+  payloadBytes: Buffer | Uint8Array;
+}): unknown {
+  try {
+    return JSON.parse(Buffer.from(input.payloadBytes).toString("utf8"));
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${input.label} has invalid JSON payload: ${message}`, {
+      cause: error,
+    });
+  }
+}
+
+function serializeRejectedCommandDecision(
+  row: typeof workflowJournal.$inferSelect
+): CommandDecision {
+  const payload = decodeJsonCheckpointPayload({
+    label: `workflow_journal checkpoint ${row.id}`,
+    payloadBytes: requireJournalValue(
+      row.payloadBytes,
+      `workflow_journal checkpoint ${row.id} payload`
+    ),
+  });
+
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("rejectCode" in payload)
+  ) {
+    throw new Error(
+      `workflow_journal checkpoint ${row.id} has invalid rejected decision payload`
+    );
+  }
+
+  const rejectCode = payload.rejectCode;
+  const rejectDetail = "rejectDetail" in payload ? payload.rejectDetail : null;
+  if (
+    typeof rejectCode !== "string" ||
+    (rejectDetail !== null && typeof rejectDetail !== "string")
+  ) {
+    throw new Error(
+      `workflow_journal checkpoint ${row.id} has invalid rejected decision fields`
+    );
+  }
+
+  return {
+    decisionKind: "rejected",
+    rejectCode,
+    rejectDetail,
+  };
+}
+
+function serializeCommand(
+  row: typeof workflowJournal.$inferSelect,
+  decision: CommandDecision
+) {
   const commandType = requireJournalValue(
     row.payloadType,
     `workflow_journal command ${row.id} payload type`
@@ -122,10 +192,10 @@ function serializeCommand(row: typeof workflowJournal.$inferSelect) {
       entity: "command",
       family: row.family,
     }),
-    decisionKind: "accepted",
+    decisionKind: decision.decisionKind,
     id: row.id,
-    rejectCode: null,
-    rejectDetail: null,
+    rejectCode: decision.rejectCode,
+    rejectDetail: decision.rejectDetail,
     requestId: requireJournalValue(
       row.requestId,
       `workflow_journal command ${row.id} request id`
@@ -190,7 +260,47 @@ async function loadCommands(input: {
     )
     .orderBy(asc(workflowJournal.streamPosition), asc(workflowJournal.id));
 
-  return rows.map(serializeCommand);
+  if (rows.length === 0) {
+    return [];
+  }
+
+  // Comment: Rejected command decisions are stored as checkpoint rows appended
+  // in the same commit as the command, not as columns on the command row.
+  const rejectedDecisionRows = await input.db
+    .select()
+    .from(workflowJournal)
+    .where(
+      and(
+        eq(workflowJournal.entryKind, "checkpoint"),
+        eq(workflowJournal.family, input.family),
+        eq(workflowJournal.organizationId, input.organizationId),
+        eq(workflowJournal.streamId, input.actionId),
+        eq(workflowJournal.payloadType, REJECTED_DECISION_CHECKPOINT),
+        inArray(
+          workflowJournal.commitId,
+          rows.map((row) => row.commitId)
+        )
+      )
+    )
+    .orderBy(asc(workflowJournal.streamPosition), asc(workflowJournal.id));
+  const rejectedDecisionByCommitId = new Map(
+    rejectedDecisionRows.map((row) => [
+      row.commitId,
+      serializeRejectedCommandDecision(row),
+    ])
+  );
+  const acceptedDecision: CommandDecision = {
+    decisionKind: "accepted",
+    rejectCode: null,
+    rejectDetail: null,
+  };
+
+  return rows.map((row) =>
+    serializeCommand(
+      row,
+      rejectedDecisionByCommitId.get(row.commitId) ?? acceptedDecision
+    )
+  );
 }
 
 async function loadEvents(input: {
