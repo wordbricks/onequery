@@ -49,7 +49,6 @@ type SubmitDecisionRequestResult = ResultType<
 
 export type VerifyDeviceActorInput = DeviceVerificationRequest;
 export type VerifyDeviceActorOutput = {
-  requestId: number;
   status: "pending" | "approved" | "denied";
   userCode: string;
 };
@@ -59,23 +58,13 @@ export type SubmitDeviceDecisionActorOutput = {
   title: string;
   message: string;
   tone: DeviceResultTone;
-  requestId: number;
 };
 
 export async function verifyDeviceRequest(
-  userCode: string | null,
+  userCode: string,
   options: { signal?: AbortSignal } = {}
 ): Promise<VerifyDeviceRequestResult> {
   const deviceClient = createApiClient();
-
-  if (!userCode) {
-    return Result.err(
-      new DeviceVerificationError({
-        message: "Enter the code shown in your terminal to continue.",
-        reason: "missing_code",
-      })
-    );
-  }
 
   const responseResult = await Result.tryPromise({
     try: () =>
@@ -142,19 +131,10 @@ export async function verifyDeviceRequest(
 export async function submitDeviceDecisionRequest(input: {
   action: DeviceDecisionAction;
   signal?: AbortSignal;
-  userCode: string | null;
+  userCode: string;
 }): Promise<SubmitDecisionRequestResult> {
   const deviceClient = createApiClient();
 
-  if (!input.userCode) {
-    return Result.err(
-      new DeviceDecisionError({
-        action: input.action,
-        message: GENERIC_DEVICE_DECISION_ERROR_MESSAGE,
-        reason: "missing_code",
-      })
-    );
-  }
   const userCode = input.userCode;
 
   const submitDecision =
@@ -239,12 +219,10 @@ export async function verifyDeviceActorRequest(
   if (result.isErr()) {
     throw new DeviceActorRequestError({
       message: result.error.message,
-      requestId: input.requestId,
     });
   }
 
   return {
-    requestId: input.requestId,
     status: result.value.status,
     userCode: result.value.userCode,
   };
@@ -263,13 +241,11 @@ export async function submitDeviceDecisionActorRequest(
   if (result.isErr()) {
     throw new DeviceActorRequestError({
       message: result.error.message,
-      requestId: input.requestId,
     });
   }
 
   return {
     message: result.value.message,
-    requestId: input.requestId,
     title: result.value.title,
     tone: result.value.tone,
   };

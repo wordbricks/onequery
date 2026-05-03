@@ -15,22 +15,19 @@ export class DeviceVerificationError extends TaggedError(
 )<{
   cause?: unknown;
   message: string;
-  reason: "missing_code" | "request_failed" | "response_failed";
+  reason: "request_failed" | "response_failed";
 }>() {}
 
 export class DeviceDecisionError extends TaggedError("DeviceDecisionError")<{
   action: DeviceDecisionAction;
   cause?: unknown;
   message: string;
-  reason: "missing_code" | "request_failed" | "response_failed";
+  reason: "request_failed" | "response_failed";
 }>() {}
 
 export class DeviceActorRequestError extends Error {
-  requestId: number;
-
   constructor(input: DeviceActorFailure) {
     super(input.message);
     this.name = "DeviceActorRequestError";
-    this.requestId = input.requestId;
   }
 }
