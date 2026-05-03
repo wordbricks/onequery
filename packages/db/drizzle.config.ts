@@ -1,10 +1,19 @@
 import { defineConfig } from "drizzle-kit";
 
+const pgliteDir = process.env.ONEQUERY_PGLITE_DIR;
+
+if (!pgliteDir) {
+  throw new Error(
+    "ONEQUERY_PGLITE_DIR is required for local Drizzle commands."
+  );
+}
+
 export default defineConfig({
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "",
+    url: pgliteDir,
   },
   dialect: "postgresql",
+  driver: "pglite",
   migrations: {
     prefix: "timestamp",
   },

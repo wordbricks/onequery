@@ -22,7 +22,8 @@ The self-host startup boundary has one owner per concern:
   contract.
 
 The packaged runtime does not parse `self-host/config.toml`, does not parse
-`self-host/secrets.toml`, and does not fall back to `onequery.dev.toml`.
+`self-host/secrets.toml`, and does not fall back to repo-local workspace-dev
+state.
 
 The current parity bar is deliberate: Rust and the packaged runtime stay
 aligned through the canonical config-package validator plus focused contract

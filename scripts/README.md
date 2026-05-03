@@ -2,19 +2,18 @@
 
 ## Local Bootstrap
 
-`onequery.dev.toml` is the tracked workspace-dev config for browser, API, and
-local Postgres settings. `onequery.dev.secrets.toml` is the local untracked
-secrets file. Child tooling still gets env-style values when needed, but those
-values are projected from `@onequery/config` at process launch rather than
-authored as env-shaped config.
+Workspace-dev uses fixed repo-local defaults for browser/API ports and stores
+local state under `.onequery/dev/`. Child tooling still gets env-style values
+when needed, but those values are projected from `@onequery/config` at process
+launch rather than authored as env-shaped config.
 
 `bun dev` runs `scripts/dev-setup.ts` before starting the workspace. That setup
 step now does three things:
 
-1. Creates `onequery.dev.secrets.toml` if it is missing.
+1. Creates `.onequery/dev/secrets.toml` if it is missing.
 2. Resolves the structured workspace-dev config from `@onequery/config`.
-3. Starts the local Postgres container from the Docker projection and prepares
-   the shared test database and extensions.
+3. Creates the repo-local PGlite data directory at
+   `.onequery/dev/pglite/onequery`.
 
 It does not apply the application schema anymore. Schema convergence now
 happens during runtime startup in `bun dev` and `onequery gateway`.
@@ -27,8 +26,8 @@ bun run dev:setup
 bun dev
 ```
 
-After the first run, edit `onequery.dev.toml` for local defaults. Keep
-`onequery.dev.secrets.toml` for machine-local secrets only.
+After the first run, `.onequery/dev/` contains machine-local state and remains
+untracked.
 
 ## Runtime Commands
 
@@ -65,16 +64,15 @@ schema.
   validation, and pure projections.
 - `@onequery/config-node` owns filesystem-backed loading and local secrets-file
   bootstrap.
-- `onequery.dev.toml` is the tracked repo config for local dev defaults.
-- `onequery.dev.secrets.toml` is a local machine file and stays untracked.
+- `.onequery/dev/secrets.toml` is a local machine file and stays untracked.
 
 For a higher-level overview, see
 [`docs/env-secrets-management.md`](../docs/env-secrets-management.md).
 
 ## Remaining Scripts
 
-- `scripts/dev-setup.ts`: local Postgres bootstrap plus workspace-dev config
-  validation.
+- `scripts/dev-setup.ts`: workspace-dev config validation plus local PGlite data
+  directory bootstrap.
 - `scripts/run-self-host-runtime.ts`: workspace-dev helper that writes a temporary
   launch contract and starts the Bun API runtime for `bun dev`.
 - `packages/github-rulesets`: package that owns the repo-tracked GitHub

@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { createServerRuntimeConfig } from "./runtime";
 
 describe("createServerRuntimeConfig", () => {
-  it("maps a postgres launch contract into a typed runtime config", () => {
+  it("maps a workspace-dev PGlite launch contract into a typed runtime config", () => {
     const runtime = createServerRuntimeConfig(
       createWorkspaceDevLaunchConfig({
         assetsDistDir: "/tmp/web",

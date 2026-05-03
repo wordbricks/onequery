@@ -39,8 +39,8 @@ export function createWorkspaceDevLaunchConfig(input?: {
   host?: string;
   masterEncryptionKey?: string;
   migrationsDir?: string;
+  pgliteDir?: string;
   port?: number;
-  postgresUrl?: string;
   publicOrigin?: string;
   rateLimit?: {
     enabled?: boolean;
@@ -66,10 +66,8 @@ export function createWorkspaceDevLaunchConfig(input?: {
           publicOrigin: input?.publicOrigin ?? "http://localhost:4545",
           rateLimitEnabled: input?.rateLimit?.enabled ?? false,
           rateLimitStorage: input?.rateLimit?.storage ?? "memory",
-          storage: createPostgresStorageConfig({
-            url:
-              input?.postgresUrl ??
-              "postgres://onequery:onequery@localhost:5454/onequery",
+          storage: createPgliteStorageConfig({
+            dir: input?.pgliteDir ?? "/tmp/onequery/dev/pglite/onequery",
           }),
         }),
       }),
@@ -253,19 +251,6 @@ function createServerLaunchCommonConfig(input: {
     }),
     storage: input.storage,
     ...(input.smtp === undefined ? {} : { smtp: input.smtp }),
-  });
-}
-
-function createPostgresStorageConfig(input: {
-  url: string;
-}): ServerLaunchStorageConfig {
-  return create(ServerLaunchStorageConfigSchema, {
-    kind: {
-      case: "postgres",
-      value: {
-        url: input.url,
-      },
-    },
   });
 }
 

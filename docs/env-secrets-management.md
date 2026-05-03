@@ -18,10 +18,10 @@ development now starts from authored config files and derived projections only.
 Workspace development is split across a pure config core and an explicit Node
 shell:
 
-- `onequery.dev.toml`: tracked browser/API/Postgres defaults
-- `onequery.dev.secrets.toml`: untracked local secrets
+- fixed browser/API defaults in `@onequery/config`
+- `.onequery/dev/secrets.toml`: untracked local secrets
 - `packages/config/src/workspace-dev.ts`: schema, validation, and normalization
-- `packages/config/src/projections/*`: Vite, Docker, and Drizzle projections
+- `packages/config/src/projections/*`: Vite, runtime launch, and Drizzle projections
 - `packages/config-node/src/workspace-dev.ts`: filesystem-backed loader
 - `packages/config-node/src/workspace-dev-init.ts`: local secrets bootstrap
 
@@ -31,20 +31,18 @@ Default local ports:
 
 - browser origin: `http://localhost:4545`
 - Bun API listener: `http://127.0.0.1:4555`
-- local Postgres host port: `5454`
+- local PGlite data directory: `.onequery/dev/pglite/onequery`
 
 Flow:
 
 ```text
-onequery.dev.toml + onequery.dev.secrets.toml
+repo .onequery/dev/secrets.toml
                 |
                 v
       packages/config-node loadWorkspaceDev()
                 |
                 +--> Vite projection
-                +--> Docker projection
                 +--> Drizzle projection
-                +--> derived test profile
                 |
                 v
    scripts/run-self-host-runtime.ts writes launch contract
@@ -92,12 +90,12 @@ self-host/config.toml + self-host/secrets.toml
 
 ## Practical Rules
 
-- `bun run dev:setup` creates `onequery.dev.secrets.toml` when it is missing,
-  starts the local Postgres container, and provisions shared local
-  infra. It does not apply the application schema.
+- `bun run dev:setup` creates `.onequery/dev/secrets.toml` when it is missing and
+  prepares the local PGlite data directory. It does not apply the application
+  schema.
 - `bun dev` reads repo-local workspace config and keeps browser/API listeners
   split on purpose. Its packaged runtime applies the application schema on startup.
-- `onequery gateway` ignores `onequery.dev.toml` and starts from the resolved
+- `onequery gateway` ignores repo-local `.onequery/dev` and starts from the resolved
   self-host launch contract.
 - `publicOrigin` is the canonical public URL. Do not introduce separate public
   URL aliases alongside it.

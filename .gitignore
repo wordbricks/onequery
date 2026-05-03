@@ -59,6 +59,7 @@ onequery.local.toml
 onequery.local.env.toml
 onequery.dev.secrets.toml
 onequery.dev.secrets.toml.*
+.onequery/
 apps/connector/config/local.toml
 
 # Local agent memory (development only)

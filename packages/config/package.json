@@ -9,9 +9,7 @@
     "./server-launch": "./src/server-launch.ts",
     "./shared-secrets": "./src/shared-secrets.ts",
     "./workspace-dev": "./src/workspace-dev.ts",
-    "./test-profile": "./src/test-profile.ts",
     "./testing": "./src/testing.ts",
-    "./projections/docker": "./src/projections/docker.ts",
     "./projections/drizzle": "./src/projections/drizzle.ts",
     "./projections/server-launch": "./src/projections/server-launch.ts",
     "./projections/vite": "./src/projections/vite.ts"

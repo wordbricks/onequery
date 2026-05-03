@@ -59,6 +59,14 @@ export function parseRunMode(argv: readonly string[]): "dev" {
 export function createLaunchConfig(
   configRootDir: string = rootDir
 ): ServerLaunchConfig {
+  const workspaceDevStorageDir = resolve(
+    configRootDir,
+    ".onequery",
+    "dev",
+    "pglite",
+    "onequery"
+  );
+
   return projectWorkspaceDevServerLaunchConfig(
     loadWorkspaceDev({
       rootDir: configRootDir,
@@ -72,6 +80,7 @@ export function createLaunchConfig(
         "src",
         "migrations"
       ),
+      storageDir: workspaceDevStorageDir,
     }
   );
 }

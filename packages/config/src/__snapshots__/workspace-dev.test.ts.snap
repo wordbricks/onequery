@@ -2,20 +2,9 @@
 
 exports[`@onequery/config workspace-dev > parses workspace-dev config and produces stable projections 1`] = `
 {
-  "dockerCompose": {
-    "environment": {
-      "POSTGRES_DB": "workspace",
-      "POSTGRES_PASSWORD": "secret",
-      "POSTGRES_USER": "workspace",
-    },
-    "postgres": {
-      "containerPort": 5433,
-      "hostPort": 6500,
-      "portBinding": "6500:5433",
-    },
-  },
   "drizzle": {
-    "databaseUrl": "postgres://workspace:secret@localhost:6500/workspace",
+    "databaseUrl": "pglite:/tmp/workspace-pglite",
+    "pgliteDir": "/tmp/workspace-pglite",
   },
   "serverLaunch": {
     "workspaceDev": {
@@ -34,40 +23,29 @@ exports[`@onequery/config workspace-dev > parses workspace-dev config and produc
         },
         "listen": {
           "host": "127.0.0.1",
-          "port": 4601,
+          "port": 4555,
         },
         "migrations": {
           "dir": "/tmp/workspace-migrations",
         },
-        "publicOrigin": "http://127.0.0.1:4600",
+        "publicOrigin": "http://localhost:4545",
         "rateLimit": {
           "api": {
             "storage": "SERVER_LAUNCH_API_RATE_LIMIT_STORAGE_MEMORY",
           },
-          "enabled": true,
+          "enabled": false,
         },
         "storage": {
-          "postgres": {
-            "url": "postgres://workspace:secret@localhost:6500/workspace",
+          "pglite": {
+            "dir": "/tmp/workspace-pglite",
           },
         },
       },
     },
   },
-  "testProfile": {
-    "database": {
-      "database": "test",
-      "host": "localhost",
-      "password": "test",
-      "port": 6500,
-      "url": "postgres://test:test@localhost:6500/test",
-      "user": "test",
-    },
-    "profile": "test",
-  },
   "vite": {
-    "apiProxyTarget": "http://127.0.0.1:4601",
-    "port": 4600,
+    "apiProxyTarget": "http://127.0.0.1:4555",
+    "port": 4545,
   },
 }
 `;

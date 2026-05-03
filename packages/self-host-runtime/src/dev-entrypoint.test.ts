@@ -1,4 +1,10 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -30,31 +36,11 @@ describe("self-host runtime dev entrypoint", () => {
     );
 
     try {
+      mkdirSync(join(rootDir, ".onequery", "dev"), {
+        recursive: true,
+      });
       writeFileSync(
-        join(rootDir, "onequery.dev.toml"),
-        [
-          "[browser]",
-          'host = "localhost"',
-          "port = 4545",
-          "",
-          "[api]",
-          'host = "127.0.0.1"',
-          "port = 4555",
-          "",
-          "[postgres]",
-          "host_port = 5454",
-          "container_port = 5432",
-          'database = "onequery"',
-          'user = "onequery"',
-          'password = "onequery"',
-          "",
-          "[flags]",
-          "disable_rate_limit = true",
-        ].join("\n"),
-        "utf8"
-      );
-      writeFileSync(
-        join(rootDir, "onequery.dev.secrets.toml"),
+        join(rootDir, ".onequery", "dev", "secrets.toml"),
         [
           "[auth]",
           'secret = "workspace-auth-secret"',
