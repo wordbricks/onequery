@@ -129,7 +129,9 @@ function unwrapOk<T, E>(value: ResultType<T, E>) {
 }
 
 async function waitForFollowUpTimers() {
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await new Promise((resolve) => {
+    setTimeout(resolve, 20);
+  });
 }
 
 function buildStartQueryCommandInvocationId(input: {

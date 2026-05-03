@@ -176,6 +176,8 @@ export function serializeAuditFeedItem(
 
             return auditQueryActionPreviewSchema.parse({
               elapsedMs: storedPreview.elapsedMs,
+              errorDetail: storedPreview.errorDetail,
+              errorHint: storedPreview.errorHint,
               queryText: storedPreview.queryText,
               rowCount: storedPreview.rowCount,
               usageRecordingStatus: storedPreview.usageRecordingStatus,
@@ -228,6 +230,7 @@ export function serializeAuditFeedItem(
 
           return auditSourceApiActionPreviewSchema.parse({
             attemptNumber: storedPreview.attemptNumber,
+            errorDetail: storedPreview.errorDetail,
             httpStatus: storedPreview.httpStatus,
             invokeMode: storedPreview.invokeMode,
             method: storedPreview.method,

@@ -316,7 +316,7 @@ async function loadJournalEventSequenceOffsets(
     )
     .groupBy(workflowJournal.streamId);
 
-  return rows.map((row) => [row.actionId, Number(row.count)]);
+  return rows.map((row) => [row.actionId, row.count]);
 }
 
 function requireJournalValue<T>(value: T | null, label: string): T {
