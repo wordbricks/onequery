@@ -1,8 +1,14 @@
 import type { Database } from "@onequery/db/server";
 
 import type { WorkflowActorSnapshot } from "../../../audit";
-import type { CliPersistUsageEffectResult } from "../../../domain/effects";
-import type { AccessibleCliOrg } from "../../../domain/workflows";
+import type {
+  CliLoadSourceEffectResult,
+  CliPersistUsageEffectResult,
+} from "../../../domain/effects";
+import type {
+  AccessibleCliOrg,
+  CliQuerySourceRecord,
+} from "../../../domain/workflows";
 import { getCliQueryDatabaseProviderType } from "../../../source/model";
 import {
   toCliSourceRecord,
@@ -13,6 +19,7 @@ import {
 } from "./workflow-codec";
 import { buildCliQuerySuccessResponse } from "./workflow-result";
 import {
+  createQueryAuditProblem,
   dispatchStoredQueryActionEffect,
   loadRequiredCliQueryCredentials,
   loadRequiredCliQuerySourceRecord,
@@ -55,6 +62,35 @@ export function createEmptyQueryWorkflowResourceCache(): QueryWorkflowResourceCa
   };
 }
 
+async function loadQuerySourceForPreparation(input: {
+  cachedSource: CliQuerySourceRecord | null;
+  dispatch: Pick<ValidatePreparationDispatch, "loadSource">;
+  organizationId: string;
+  sourceKey: string;
+}): Promise<CliLoadSourceEffectResult> {
+  if (input.cachedSource !== null) {
+    if (
+      input.cachedSource.organizationId !== input.organizationId ||
+      input.cachedSource.sourceKey !== input.sourceKey
+    ) {
+      throw createQueryAuditProblem(
+        "cached query source does not match preparation effect"
+      );
+    }
+
+    return {
+      kind: "found",
+      source: input.cachedSource,
+    };
+  }
+
+  return input.dispatch.loadSource({
+    kind: "load_source",
+    organizationId: input.organizationId,
+    sourceKey: input.sourceKey,
+  });
+}
+
 export async function runQueryValidatePreparationStep(input: {
   actorSnapshot: WorkflowActorSnapshot;
   currentDecision: StoredAcceptedQueryActionDecision;
@@ -92,8 +128,9 @@ export async function runQueryValidatePreparationStep(input: {
       }),
     requestId: input.requestId,
     run: async (effect) => {
-      const source = await input.dispatch.loadSource({
-        kind: "load_source",
+      const source = await loadQuerySourceForPreparation({
+        cachedSource: loadedSource,
+        dispatch: input.dispatch,
         organizationId: effect.organizationId,
         sourceKey: effect.sourceKey,
       });
@@ -234,8 +271,9 @@ export async function runQueryExecutePreparationStep(input: {
       }),
     requestId: input.requestId,
     run: async (effect) => {
-      const source = await input.dispatch.loadSource({
-        kind: "load_source",
+      const source = await loadQuerySourceForPreparation({
+        cachedSource: loadedSource,
+        dispatch: input.dispatch,
         organizationId: effect.organizationId,
         sourceKey: effect.sourceKey,
       });

@@ -3,7 +3,10 @@ import { Result } from "better-result";
 import { resolveCliSessionIdentity } from "../../auth/session-identity";
 import { authorizeCliOrgAccess } from "../../authorization";
 import type { AuthorizedCliOrgContext, CliAction } from "../../authorization";
-import type { CliSessionIdentity } from "../../domain/workflows";
+import type {
+  CliOrgAccessResult,
+  CliSessionIdentity,
+} from "../../domain/workflows";
 import {
   buildCliRequestLogDetails,
   logCliEvent,
@@ -56,12 +59,28 @@ export async function resolveAuthorizedCliOrg(input: {
   orgSlug: string;
   action: CliAction;
 }): Promise<CliServiceResult<AuthorizedCliOrgContext>> {
-  const decision = finishCliOrgAccessWorkflow({
+  return resolveAuthorizedCliOrgFromAccess({
     access: await runCliLoadOrgAccess({
       db: input.c.var.storage.db,
       orgSlug: input.orgSlug,
       userId: input.session.user.id,
     }),
+    action: input.action,
+    c: input.c,
+    orgSlug: input.orgSlug,
+    session: input.session,
+  });
+}
+
+export function resolveAuthorizedCliOrgFromAccess(input: {
+  access: CliOrgAccessResult;
+  action: CliAction;
+  c: CliHonoContext;
+  orgSlug: string;
+  session: CliSessionIdentity;
+}): CliServiceResult<AuthorizedCliOrgContext> {
+  const decision = finishCliOrgAccessWorkflow({
+    access: input.access,
     orgSlug: input.orgSlug,
   });
 

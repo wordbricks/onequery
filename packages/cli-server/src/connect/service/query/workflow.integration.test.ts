@@ -244,6 +244,10 @@ describe("query workflow audit runtime", () => {
     const persistUsage = vi.fn().mockResolvedValue({
       kind: "usage_persisted",
     } satisfies CliPersistUsageEffectResult);
+    const loadSource = vi.fn().mockResolvedValue({
+      kind: "found",
+      source,
+    } satisfies CliLoadSourceEffectResult);
 
     const result = await runCliQueryExecutionWorkflowResult({
       actorSnapshot,
@@ -259,10 +263,7 @@ describe("query workflow audit runtime", () => {
           kind: "credentials_loaded",
           source,
         }),
-        loadSource: async (): Promise<CliLoadSourceEffectResult> => ({
-          kind: "found",
-          source,
-        }),
+        loadSource,
         persistUsage,
         validateQuery: async (): Promise<CliValidateQueryEffectResult> => ({
           kind: "query_ready",
@@ -277,6 +278,9 @@ describe("query workflow audit runtime", () => {
       timeoutMs: 30_000,
     });
 
+    if (result.isErr()) {
+      throw result.error;
+    }
     const execution = unwrapOk(result);
     expect(execution).toMatchObject({
       kind: "response_ready",
@@ -303,6 +307,7 @@ describe("query workflow audit runtime", () => {
       .orderBy(asc(pendingWorkflowEffects.scheduledAt));
 
     expect(persistUsage).toHaveBeenCalledTimes(1);
+    expect(loadSource).toHaveBeenCalledTimes(1);
     expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_execute",
       "record_execute_preparation_succeeded",
