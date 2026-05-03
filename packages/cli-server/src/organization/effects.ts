@@ -12,51 +12,50 @@ export async function runCliLoadOrgAccess(input: {
   orgSlug: string;
   userId: string;
 }): Promise<CliOrgAccessResult> {
-  const org = await input.db.query.organization.findFirst({
-    columns: {
-      id: true,
-      slug: true,
-      name: true,
-    },
-    where: eq(organization.slug, input.orgSlug),
-  });
+  const [row] = await input.db
+    .select({
+      orgId: organization.id,
+      orgName: organization.name,
+      orgSlug: organization.slug,
+      membershipId: member.id,
+      membershipRole: member.role,
+    })
+    .from(organization)
+    .leftJoin(
+      member,
+      and(
+        eq(member.organizationId, organization.id),
+        eq(member.userId, input.userId)
+      )
+    )
+    .where(eq(organization.slug, input.orgSlug))
+    .limit(1);
 
-  if (!org) {
+  if (row === undefined) {
     return { kind: "not_found" };
   }
 
-  if (typeof org.slug !== "string" || org.slug.trim().length === 0) {
+  if (row.orgSlug === null || row.orgSlug.trim().length === 0) {
     return { kind: "not_found" };
   }
 
   const accessibleOrg: AccessibleCliOrg = {
-    id: org.id,
+    id: row.orgId,
     name:
-      typeof org.name === "string" && org.name.trim().length > 0
-        ? org.name.trim()
-        : org.slug.trim(),
-    slug: org.slug.trim(),
+      row.orgName !== null && row.orgName.trim().length > 0
+        ? row.orgName.trim()
+        : row.orgSlug.trim(),
+    slug: row.orgSlug.trim(),
   };
 
-  const membership = await input.db.query.member.findFirst({
-    columns: {
-      id: true,
-      role: true,
-    },
-    where: and(
-      eq(member.userId, input.userId),
-      eq(member.organizationId, accessibleOrg.id)
-    ),
-  });
-
-  if (!membership) {
+  if (row.membershipId === null || row.membershipRole === null) {
     return { kind: "forbidden" };
   }
 
   return {
     kind: "found",
     org: accessibleOrg,
-    rawMembershipRole: membership.role,
+    rawMembershipRole: row.membershipRole,
   };
 }
 
