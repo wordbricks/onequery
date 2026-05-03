@@ -30,6 +30,8 @@ import {
   createWorkflowAuditFailure,
 } from "../workflow-audit-failure";
 import type { SourceApiServiceDependencies } from "./dependencies";
+import { loadSourceApiSourceForWorkflow } from "./resource-cache";
+import type { SourceApiWorkflowResourceCache } from "./resource-cache";
 import { prepareSourceApiDraftResult } from "./runtime";
 import type {
   DispatchedSourceApiActionEffect,
@@ -353,18 +355,18 @@ export async function loadPreparedSourceConnection(input: {
     "prepareDataSourceCredentials" | "runCliLoadSourceEffect"
   >;
   organizationId: string;
+  resourceCache: SourceApiWorkflowResourceCache;
   source: Pick<
     SourceApiActionSourceDescriptor,
     "provider" | "sourceId" | "sourceKey"
   >;
 }): Promise<LoadedPreparedSourceResult> {
-  const source = await input.dependencies.runCliLoadSourceEffect({
+  const source = await loadSourceApiSourceForWorkflow({
     db: input.c.var.storage.db,
-    effect: {
-      kind: "load_source",
-      organizationId: input.organizationId,
-      sourceKey: input.source.sourceKey,
-    },
+    dependencies: input.dependencies,
+    organizationId: input.organizationId,
+    resourceCache: input.resourceCache,
+    sourceKey: input.source.sourceKey,
   });
 
   if (source.kind === "not_found") {
@@ -416,6 +418,7 @@ export async function loadRequiredPreparedSourceConnection(input: {
     "prepareDataSourceCredentials" | "runCliLoadSourceEffect"
   >;
   organizationId: string;
+  resourceCache: SourceApiWorkflowResourceCache;
   source: Pick<
     SourceApiActionSourceDescriptor,
     "provider" | "sourceId" | "sourceKey"
@@ -439,6 +442,7 @@ export async function loadRequiredPreparedSourceApi(input: {
   descriptor: SourceApiDescriptor | null;
   draft: SourceApiDraft;
   prepared: PreparedSourceApi | null;
+  resourceCache: SourceApiWorkflowResourceCache;
   source: Pick<
     SourceApiActionSourceDescriptor,
     "provider" | "sourceId" | "sourceKey"
@@ -453,6 +457,7 @@ export async function loadRequiredPreparedSourceApi(input: {
     c: input.c,
     dependencies: input.dependencies,
     organizationId: input.actor.organizationId,
+    resourceCache: input.resourceCache,
     source: input.source,
   });
   const prepared = await prepareSourceApiDraftResult(

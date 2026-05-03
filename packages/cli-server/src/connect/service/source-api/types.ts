@@ -16,8 +16,10 @@ import type {
   SourceApiActorContext,
 } from "@onequery/server/source-api";
 
+import type { WorkflowActorSnapshot } from "../../../audit";
 import type { AuthorizedCliOrgContext } from "../../../authorization";
 import type { CliHonoContext } from "../types";
+import type { SourceApiWorkflowResourceCache } from "./resource-cache";
 
 export type DescribeSourceApiResponseInit = MessageInitShape<
   typeof DescribeSourceApiResponseSchema
@@ -65,7 +67,12 @@ export type SourceApiResumeCommand = {
 
 export type SourceApiAccessState = {
   actor: SourceApiActorContext;
+  actorSnapshot: WorkflowActorSnapshot;
   authorizedOrg: AuthorizedCliOrgContext;
   c: CliHonoContext;
+  organizationId: string;
+  orgSlug: string;
+  requestId: string;
+  resourceCache: SourceApiWorkflowResourceCache;
   source: PreparedSourceConnection;
 };

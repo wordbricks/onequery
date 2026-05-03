@@ -11,6 +11,8 @@ import { createCliSourceNotFoundFailure } from "../errors";
 import { createCliServiceFailure } from "../result";
 import type { CliServiceResult } from "../result";
 import type { SourceApiServiceDependencies } from "./dependencies";
+import { loadSourceApiSourceForWorkflow } from "./resource-cache";
+import type { SourceApiWorkflowResourceCache } from "./resource-cache";
 import {
   createSourceApiFailure,
   prepareSourceApiDraftResult,
@@ -45,6 +47,7 @@ export async function runPreparedSourceApiWorkflow(
   input: PreparedSourceApiWorkflowInput
 ): Promise<CliServiceResult<PreparedSourceApiWorkflow>> {
   const startDecision = await dispatchStartSourceApiWorkflow(input);
+  let resourceCache = input.resourceCache;
 
   const sourceLookup = await dispatchStoredSourceApiActionEffect<
     "load_source",
@@ -58,14 +61,21 @@ export async function runPreparedSourceApiWorkflow(
     replay: ({ stored }) => toStoredSourceLookupResult(stored.decision),
     requestId: input.requestId,
     run: async (effect) => {
-      const source = await input.dependencies.runCliLoadSourceEffect({
+      const source = await loadSourceApiSourceForWorkflow({
         db: input.c.var.storage.db,
-        effect: {
-          kind: "load_source",
+        dependencies: input.dependencies,
+        organizationId: effect.organizationId,
+        resourceCache,
+        sourceKey: effect.sourceKey,
+      });
+      resourceCache = {
+        ...resourceCache,
+        sourceLookup: {
           organizationId: effect.organizationId,
+          result: source,
           sourceKey: effect.sourceKey,
         },
-      });
+      };
 
       if (source.kind === "not_found") {
         return {
@@ -116,6 +126,7 @@ export async function runPreparedSourceApiWorkflow(
         c: input.c,
         dependencies: input.dependencies,
         organizationId: input.organizationId,
+        resourceCache,
         source: effect.source,
       });
 
@@ -187,6 +198,7 @@ export async function runPreparedSourceApiWorkflow(
   return Result.ok({
     decision: descriptorResolution.decision,
     descriptor: descriptorResolution.result.descriptor,
+    resourceCache,
   });
 }
 
@@ -199,6 +211,7 @@ export async function runSourceApiRequestPreparationStep(input: {
   draft: SourceApiDraft;
   organizationId: string;
   requestId: string;
+  resourceCache: SourceApiWorkflowResourceCache;
   c: PreparedSourceApiWorkflowInput["c"];
 }): Promise<{
   preparedRequest: PreparedSourceApi | null;
@@ -225,6 +238,7 @@ export async function runSourceApiRequestPreparationStep(input: {
         c: input.c,
         dependencies: input.dependencies,
         organizationId: input.organizationId,
+        resourceCache: input.resourceCache,
         source: effect.source,
       });
       const prepared = await prepareSourceApiDraftResult(

@@ -19,11 +19,18 @@ import { Result } from "better-result";
 import type { AuthorizedCliOrgContext } from "../../../authorization";
 import { isCliFailure } from "../../../domain/failures";
 import type { AuthenticatedCliConnectRequestContext } from "../../context";
+import { resolveAuthorizedCliOrgFromAccess } from "../access";
 import { createCliSourceNotFoundFailure } from "../errors";
 import type { CliServiceResult } from "../result";
 import { createCliServiceFailure } from "../result";
 import type { CliHonoContext } from "../types";
+import { buildSourceApiActor, buildSourceApiActorSnapshot } from "./context";
 import type { SourceApiServiceDependencies } from "./dependencies";
+import {
+  createSourceApiWorkflowResourceCacheFromLookup,
+  loadSourceApiSourceForWorkflow,
+} from "./resource-cache";
+import type { SourceApiWorkflowResourceCache } from "./resource-cache";
 import type { SourceApiAccessState, SourceApiFailurePhase } from "./types";
 
 export async function resolveAuthorizedSourceApiAccess(
@@ -35,22 +42,37 @@ export async function resolveAuthorizedSourceApiAccess(
   },
   dependencies: Pick<
     SourceApiServiceDependencies,
-    "prepareDataSourceCredentials" | "runCliLoadSourceEffect"
+    | "prepareDataSourceCredentials"
+    | "runCliLoadOrgAccessWithSource"
+    | "runCliLoadSourceEffect"
   >
 ): Promise<CliServiceResult<SourceApiAccessState>> {
   return Result.gen(async function* resolveAuthorizedSourceApiAccessFlow() {
-    const authorizedOrg = yield* Result.await(
-      input.requestContext.resolveAuthorizedOrg({
-        action: input.action,
-        orgSlug: input.orgSlug,
-      })
-    );
     const c = input.requestContext.honoContext;
+    const access = await dependencies.runCliLoadOrgAccessWithSource({
+      db: c.var.storage.db,
+      orgSlug: input.orgSlug,
+      sourceKey: input.sourceKey,
+      userId: input.requestContext.session.user.id,
+    });
+    const authorizedOrg = yield* resolveAuthorizedCliOrgFromAccess({
+      access: access.access,
+      action: input.action,
+      c,
+      orgSlug: input.orgSlug,
+      session: input.requestContext.session,
+    });
+    const resourceCache = createSourceApiWorkflowResourceCacheFromLookup({
+      organizationId: authorizedOrg.org.id,
+      sourceKey: input.sourceKey,
+      sourceLookup: access.source,
+    });
     const source = yield* Result.await(
       requirePreparedCliSourceApiSource(
         {
           authorizedOrg,
           c,
+          resourceCache,
           sourceKey: input.sourceKey,
         },
         dependencies
@@ -63,8 +85,16 @@ export async function resolveAuthorizedSourceApiAccess(
         requestId: input.requestContext.requestId,
         session: input.requestContext.session,
       }),
+      actorSnapshot: buildSourceApiActorSnapshot({
+        authorizedOrg,
+        session: input.requestContext.session,
+      }),
       authorizedOrg,
       c,
+      organizationId: authorizedOrg.org.id,
+      orgSlug: authorizedOrg.org.slug,
+      requestId: input.requestContext.requestId,
+      resourceCache,
       source,
     });
   });
@@ -267,6 +297,7 @@ async function requirePreparedCliSourceApiSource(
   input: {
     authorizedOrg: AuthorizedCliOrgContext;
     c: CliHonoContext;
+    resourceCache: SourceApiWorkflowResourceCache;
     sourceKey: string;
   },
   dependencies: Pick<
@@ -275,13 +306,12 @@ async function requirePreparedCliSourceApiSource(
   >
 ): Promise<CliServiceResult<PreparedSourceConnection>> {
   return Result.gen(async function* requirePreparedCliSourceApiSourceFlow() {
-    const source = await dependencies.runCliLoadSourceEffect({
+    const source = await loadSourceApiSourceForWorkflow({
       db: input.c.var.storage.db,
-      effect: {
-        kind: "load_source",
-        organizationId: input.authorizedOrg.org.id,
-        sourceKey: input.sourceKey,
-      },
+      dependencies,
+      organizationId: input.authorizedOrg.org.id,
+      resourceCache: input.resourceCache,
+      sourceKey: input.sourceKey,
     });
 
     if (source.kind === "not_found") {
@@ -317,21 +347,6 @@ async function requirePreparedCliSourceApiSource(
       sourceKey: source.source.sourceKey,
     });
   });
-}
-
-function buildSourceApiActor(input: {
-  authorizedOrg: AuthorizedCliOrgContext;
-  requestId: string;
-  session: AuthenticatedCliConnectRequestContext["session"];
-}): SourceApiActorContext {
-  return {
-    capabilities: input.authorizedOrg.capabilities,
-    membershipRoles: input.authorizedOrg.membershipRoles,
-    organizationId: input.authorizedOrg.org.id,
-    organizationSlug: input.authorizedOrg.org.slug,
-    requestId: input.requestId,
-    userId: input.session.user.id,
-  };
 }
 
 function trySourceApi<T>(

@@ -50,8 +50,14 @@ exports[`source api connect service > binds continuation tokens to execution sta
   "executePreparedSourceApiCall": {
     "actor": {
       "capabilities": [
+        "org.list",
+        "org.read",
+        "source.connect",
+        "source.list",
+        "source.read",
         "source_api.describe",
         "source_api.execute",
+        "query.execute",
       ],
       "membershipRoles": [
         "owner",
@@ -154,8 +160,14 @@ exports[`source api connect service > converts protobuf JSON draft bodies into c
 {
   "actor": {
     "capabilities": [
+      "org.list",
+      "org.read",
+      "source.connect",
+      "source.list",
+      "source.read",
       "source_api.describe",
       "source_api.execute",
+      "query.execute",
     ],
     "membershipRoles": [
       "owner",
@@ -251,8 +263,14 @@ exports[`source api connect service > describes the source API through the Conne
   "describeSourceApiCall": {
     "actor": {
       "capabilities": [
+        "org.list",
+        "org.read",
+        "source.connect",
+        "source.list",
+        "source.read",
         "source_api.describe",
         "source_api.execute",
+        "query.execute",
       ],
       "membershipRoles": [
         "owner",
@@ -272,16 +290,10 @@ exports[`source api connect service > describes the source API through the Conne
       "sourceKey": "github-prod",
     },
   },
-  "requireAuthorizedOrgCall": {
-    "action": "source_api.describe",
+  "loadOrgSourceAccessCall": {
     "orgSlug": "acme",
-    "session": {
-      "authMode": "browser_session",
-      "user": {
-        "email": "jane@example.com",
-        "id": "user-1",
-      },
-    },
+    "sourceKey": "github-prod",
+    "userId": "user-1",
   },
   "response": {
     "defaultPathOperationName": "fetch",
@@ -341,8 +353,14 @@ exports[`source api connect service > executes source API requests through the C
   "executePreparedSourceApiCall": {
     "actor": {
       "capabilities": [
+        "org.list",
+        "org.read",
+        "source.connect",
+        "source.list",
+        "source.read",
         "source_api.describe",
         "source_api.execute",
+        "query.execute",
       ],
       "membershipRoles": [
         "owner",
@@ -392,16 +410,10 @@ exports[`source api connect service > executes source API requests through the C
       "sourceKey": "github-prod",
     },
   },
-  "requireAuthorizedOrgCall": {
-    "action": "source_api.execute",
+  "loadOrgSourceAccessCall": {
     "orgSlug": "acme",
-    "session": {
-      "authMode": "browser_session",
-      "user": {
-        "email": "jane@example.com",
-        "id": "user-1",
-      },
-    },
+    "sourceKey": "github-prod",
+    "userId": "user-1",
   },
   "response": {
     "continuationToken": null,
@@ -501,11 +513,22 @@ exports[`source api connect service > preserves JSON source API response bodies 
 
 exports[`source api connect service > previews source API execution through the Connect handler 1`] = `
 {
+  "loadOrgSourceAccessCall": {
+    "orgSlug": "acme",
+    "sourceKey": "github-prod",
+    "userId": "user-1",
+  },
   "prepareSourceApiDraftCall": {
     "actor": {
       "capabilities": [
+        "org.list",
+        "org.read",
+        "source.connect",
+        "source.list",
+        "source.read",
         "source_api.describe",
         "source_api.execute",
+        "query.execute",
       ],
       "membershipRoles": [
         "owner",
@@ -596,17 +619,6 @@ exports[`source api connect service > previews source API execution through the 
       "id": "source-1",
       "provider": "github",
       "sourceKey": "github-prod",
-    },
-  },
-  "requireAuthorizedOrgCall": {
-    "action": "source_api.execute",
-    "orgSlug": "acme",
-    "session": {
-      "authMode": "browser_session",
-      "user": {
-        "email": "jane@example.com",
-        "id": "user-1",
-      },
     },
   },
   "response": {

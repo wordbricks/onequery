@@ -27,6 +27,7 @@ import {
   rebuildPendingSourceApiActionEffectsViaJournal,
 } from "../../../audit/storage";
 import type { SourceApiServiceDependencies } from "./dependencies";
+import { createEmptySourceApiWorkflowResourceCache } from "./resource-cache";
 import {
   runDescribeSourceApiWorkflowResult,
   runResumeSourceApiExecuteWorkflowResult,
@@ -305,6 +306,14 @@ function createDependencies(
       })
     ),
     prepareSourceApiDraft: vi.fn().mockResolvedValue(executePrepared),
+    runCliLoadOrgAccessWithSource: vi.fn().mockResolvedValue({
+      access: {
+        kind: "found",
+        org,
+        rawMembershipRole: "owner",
+      },
+      source: loadedSource,
+    }),
     runCliLoadSourceEffect: vi.fn().mockResolvedValue(loadedSource),
     toCliErrorMessage: vi.fn((error: unknown) =>
       error instanceof Error ? error.message : String(error)
@@ -338,6 +347,7 @@ function createWorkflowContext(
     organizationId: org.id,
     orgSlug: org.slug,
     requestId,
+    resourceCache: createEmptySourceApiWorkflowResourceCache(),
   };
 }
 
@@ -427,7 +437,7 @@ describe("source api workflow audit runtime", () => {
     expect(unwrapOk(retriedResult)).toMatchObject({
       descriptorVersion: "github-v1",
     });
-    expect(runCliLoadSourceEffect).toHaveBeenCalledTimes(3);
+    expect(runCliLoadSourceEffect).toHaveBeenCalledTimes(2);
 
     const journalRows = await db
       .select()
@@ -773,7 +783,7 @@ describe("source api workflow audit runtime", () => {
         sourceKey: "github-staging",
       },
     });
-    expect(runCliLoadSourceEffect).toHaveBeenCalledTimes(4);
+    expect(runCliLoadSourceEffect).toHaveBeenCalledTimes(2);
     expect(describeSourceApi).toHaveBeenCalledTimes(2);
 
     const commandRows = await selectSourceApiJournalCommandRows(db);

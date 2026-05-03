@@ -1,8 +1,8 @@
-import { member, organization, user } from "@onequery/db/server";
+import { dataSources, member, organization, user } from "@onequery/db/server";
 import { pgliteTestDb } from "@onequery/db/testing/setup";
 import { describe, expect, it } from "vitest";
 
-import { runCliLoadOrgAccess } from "./effects";
+import { runCliLoadOrgAccess, runCliLoadOrgAccessWithSource } from "./effects";
 
 async function insertUser(id: string) {
   await pgliteTestDb.insert(user).values({
@@ -28,6 +28,22 @@ async function insertMember(input: {
   userId: string;
 }) {
   await pgliteTestDb.insert(member).values(input);
+}
+
+async function insertDataSource(input: {
+  id: string;
+  name: string;
+  organizationId: string;
+}) {
+  await pgliteTestDb.insert(dataSources).values({
+    credentialsEncrypted: `encrypted-${input.id}`,
+    credentialsIv: `iv-${input.id}`,
+    id: input.id,
+    name: input.name,
+    organizationId: input.organizationId,
+    provider: "github",
+    status: "active",
+  });
 }
 
 describe("runCliLoadOrgAccess", () => {
@@ -131,6 +147,123 @@ describe("runCliLoadOrgAccess", () => {
         slug: "acme",
       },
       rawMembershipRole: "admin",
+    });
+  });
+});
+
+describe("runCliLoadOrgAccessWithSource", () => {
+  it("returns org access and the requested source in one lookup", async () => {
+    await insertUser("user-source-found");
+    await insertOrganization({
+      id: "org-source-found",
+      name: "Source Org",
+      slug: "source-org",
+    });
+    await insertMember({
+      id: "member-source-found",
+      organizationId: "org-source-found",
+      role: "owner",
+      userId: "user-source-found",
+    });
+    await insertDataSource({
+      id: "source-found",
+      name: "github-prod",
+      organizationId: "org-source-found",
+    });
+
+    await expect(
+      runCliLoadOrgAccessWithSource({
+        db: pgliteTestDb,
+        orgSlug: "source-org",
+        sourceKey: "github-prod",
+        userId: "user-source-found",
+      })
+    ).resolves.toEqual({
+      access: {
+        kind: "found",
+        org: {
+          id: "org-source-found",
+          name: "Source Org",
+          slug: "source-org",
+        },
+        rawMembershipRole: "owner",
+      },
+      source: {
+        kind: "found",
+        source: {
+          credentialsEncrypted: "encrypted-source-found",
+          credentialsIv: "iv-source-found",
+          displayName: null,
+          id: "source-found",
+          name: "github-prod",
+          organizationId: "org-source-found",
+          provider: "github",
+          sourceKey: "github-prod",
+          status: "active",
+        },
+      },
+    });
+  });
+
+  it("keeps source lookup scoped to an authorized org result", async () => {
+    await insertOrganization({
+      id: "org-source-forbidden",
+      name: "Forbidden Source Org",
+      slug: "source-forbidden",
+    });
+    await insertDataSource({
+      id: "source-forbidden",
+      name: "github-prod",
+      organizationId: "org-source-forbidden",
+    });
+
+    await expect(
+      runCliLoadOrgAccessWithSource({
+        db: pgliteTestDb,
+        orgSlug: "source-forbidden",
+        sourceKey: "github-prod",
+        userId: "user-without-source-access",
+      })
+    ).resolves.toEqual({
+      access: {
+        kind: "forbidden",
+      },
+      source: null,
+    });
+  });
+
+  it("returns source not_found without losing successful org access", async () => {
+    await insertUser("user-source-missing");
+    await insertOrganization({
+      id: "org-source-missing",
+      name: "Missing Source Org",
+      slug: "source-missing",
+    });
+    await insertMember({
+      id: "member-source-missing",
+      organizationId: "org-source-missing",
+      role: "owner",
+      userId: "user-source-missing",
+    });
+
+    await expect(
+      runCliLoadOrgAccessWithSource({
+        db: pgliteTestDb,
+        orgSlug: "source-missing",
+        sourceKey: "github-prod",
+        userId: "user-source-missing",
+      })
+    ).resolves.toMatchObject({
+      access: {
+        kind: "found",
+        org: {
+          id: "org-source-missing",
+          slug: "source-missing",
+        },
+      },
+      source: {
+        kind: "not_found",
+      },
     });
   });
 });
