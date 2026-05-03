@@ -32,6 +32,7 @@ export {
   loadPendingQueryActionEffectsViaJournal,
   loadQueryActionCommandViaJournal,
   recordQueryActionEffectFailureViaJournal,
+  rebuildPendingQueryActionEffectsViaJournal,
   storeQueryActionCommandViaJournal,
 } from "./storage/query-action-journal";
 export {
@@ -39,6 +40,7 @@ export {
   loadPendingSourceApiActionEffectsViaJournal,
   loadSourceApiActionCommandViaJournal,
   recordSourceApiActionEffectFailureViaJournal,
+  rebuildPendingSourceApiActionEffectsViaJournal,
   storeSourceApiActionCommandViaJournal,
 } from "./storage/source-api-action-journal";
 export {

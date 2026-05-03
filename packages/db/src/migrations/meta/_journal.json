@@ -78,6 +78,13 @@
       "when": 1777633260000,
       "tag": "20260502000100_drop_old_workflow_audit_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1777770670748,
+      "tag": "20260503011110_moaning_jack_flag",
+      "breakpoints": true
     }
   ]
 }

@@ -3,11 +3,13 @@ import {
   asc,
   eq,
   inArray,
+  pendingWorkflowEffects,
+  sql,
   sourceApiActions,
   ulid,
   workflowJournal,
 } from "@onequery/db/server";
-import type { Database } from "@onequery/db/server";
+import type { Database, NewPendingWorkflowEffect } from "@onequery/db/server";
 import type { Result as ResultType } from "better-result";
 import { Result } from "better-result";
 
@@ -299,23 +301,77 @@ export async function loadPendingSourceApiActionEffectsViaJournal(input: {
   >
 > {
   const conditions = [
-    eq(workflowJournal.family, "source_api_action"),
-    inArray(workflowJournal.entryKind, ["effect_scheduled", "effect_failed"]),
+    eq(pendingWorkflowEffects.family, "source_api_action"),
+    inArray(pendingWorkflowEffects.status, ["pending", "failed"]),
   ];
   if (input.organizationId !== undefined) {
-    conditions.push(eq(workflowJournal.organizationId, input.organizationId));
+    conditions.push(
+      eq(pendingWorkflowEffects.organizationId, input.organizationId)
+    );
+  }
+
+  const rows = await input.db
+    .select()
+    .from(pendingWorkflowEffects)
+    .where(and(...conditions))
+    .orderBy(asc(pendingWorkflowEffects.scheduledAt))
+    .limit(input.limit ?? 100);
+
+  const pending: WorkflowJournalEffectToken<SourceApiActionEffect>[] = [];
+
+  for (const row of rows) {
+    const effect = decodeSourceApiActionEffectPayload(row.payloadBytes, {
+      actionId: row.streamId,
+      payloadType: row.effectType,
+    });
+    if (effect.isErr()) {
+      return Result.err(effect.error);
+    }
+
+    pending.push({
+      effect: effect.value,
+      effectId: row.effectId,
+      effectType: row.effectType,
+      scheduledAt: row.scheduledAt,
+      scheduledByEntryId: row.scheduledByEntryId,
+      streamId: row.streamId,
+      streamPosition: row.streamPosition,
+    });
+  }
+
+  return Result.ok(pending);
+}
+
+export async function rebuildPendingSourceApiActionEffectsViaJournal(input: {
+  db: Database;
+  organizationId?: string;
+}): Promise<ResultType<void, SourceApiActionJournalStorageError>> {
+  const streamConditions = [eq(workflowJournal.family, "source_api_action")];
+  const deleteConditions = [
+    eq(pendingWorkflowEffects.family, "source_api_action"),
+  ];
+  if (input.organizationId !== undefined) {
+    streamConditions.push(
+      eq(workflowJournal.organizationId, input.organizationId)
+    );
+    deleteConditions.push(
+      eq(pendingWorkflowEffects.organizationId, input.organizationId)
+    );
   }
 
   const streamRows = await input.db
     .select({ streamId: workflowJournal.streamId })
     .from(workflowJournal)
-    .where(and(...conditions))
+    .where(and(...streamConditions))
     .groupBy(workflowJournal.streamId)
-    .orderBy(asc(workflowJournal.streamId))
-    .limit(input.limit ?? 100);
+    .orderBy(asc(workflowJournal.streamId));
 
   const store = createSourceApiActionJournalStore({ db: input.db });
-  const pending: WorkflowJournalEffectToken<SourceApiActionEffect>[] = [];
+  const projectionRows: Array<
+    Omit<NewPendingWorkflowEffect, "organizationId"> & {
+      organizationId?: string;
+    }
+  > = [];
 
   for (const row of streamRows) {
     const streamEntries = await store.loadStream({
@@ -331,13 +387,55 @@ export async function loadPendingSourceApiActionEffectsViaJournal(input: {
       return Result.err(cursor.error);
     }
 
-    pending.push(...cursor.value.pendingEffects);
-    if (pending.length >= (input.limit ?? 100)) {
-      return Result.ok(pending.slice(0, input.limit ?? 100));
-    }
+    const organizationIdByEffectId = new Map(
+      streamEntries.flatMap((entry) =>
+        entry.kind === "effect_scheduled"
+          ? [[entry.effectId, entry.organizationId] as const]
+          : []
+      )
+    );
+
+    projectionRows.push(
+      ...cursor.value.effects
+        .filter(
+          (effect) =>
+            effect.status === "scheduled" || effect.status === "failed"
+        )
+        .map((effect) => ({
+          attemptCount: effect.attemptCount,
+          effectId: effect.effectId,
+          effectType: effect.effectType,
+          family: "source_api_action" as const,
+          lastErrorCode: effect.lastErrorCode,
+          lastErrorDetail: effect.lastErrorDetail,
+          lastStartedAt: effect.startedAt,
+          organizationId: organizationIdByEffectId.get(effect.effectId),
+          payloadBytes: encodeSourceApiActionEffectPayload(effect.effect),
+          scheduledAt: effect.scheduledAt,
+          scheduledByEntryId: effect.scheduledByEntryId,
+          status:
+            effect.status === "scheduled"
+              ? ("pending" as const)
+              : ("failed" as const),
+          streamId: effect.streamId,
+          streamPosition: effect.streamPosition,
+        }))
+    );
   }
 
-  return Result.ok(pending);
+  await input.db.transaction(async (tx) => {
+    await tx.delete(pendingWorkflowEffects).where(and(...deleteConditions));
+    if (projectionRows.length > 0) {
+      await tx.insert(pendingWorkflowEffects).values(
+        projectionRows.map((row) => ({
+          ...row,
+          organizationId: requireProjectionOrganizationId(row.organizationId),
+        }))
+      );
+    }
+  });
+
+  return Result.ok(undefined);
 }
 
 export async function claimFailedSourceApiActionEffectViaJournal(input: {
@@ -531,8 +629,115 @@ function createSourceApiActionJournalStore(input: {
   return createDbWorkflowJournalStore({
     codec: sourceApiActionJournalPayloadCodec,
     db: input.db,
-    onAppendEntries: input.onAppendEntries,
+    onAppendEntries: async (appendInput) => {
+      await projectPendingSourceApiActionEffects({
+        entries: appendInput.entries,
+        tx: appendInput.tx,
+      });
+      await input.onAppendEntries?.(appendInput);
+    },
   });
+}
+
+async function projectPendingSourceApiActionEffects(input: {
+  entries: readonly WorkflowJournalEntry<
+    SourceApiActionCommandPayload,
+    SourceApiActionEvent,
+    SourceApiActionEffect
+  >[];
+  tx: DatabaseTransaction;
+}) {
+  for (const entry of input.entries) {
+    switch (entry.kind) {
+      case "effect_scheduled":
+        await input.tx
+          .insert(pendingWorkflowEffects)
+          .values({
+            effectId: entry.effectId,
+            effectType: entry.effectType,
+            family: "source_api_action",
+            organizationId: entry.organizationId,
+            payloadBytes: encodeSourceApiActionEffectPayload(entry.effect),
+            scheduledAt: entry.occurredAt,
+            scheduledByEntryId: entry.entryId,
+            status: "pending",
+            streamId: entry.streamId,
+            streamPosition: entry.streamPosition,
+          })
+          .onConflictDoUpdate({
+            set: {
+              effectType: entry.effectType,
+              organizationId: entry.organizationId,
+              payloadBytes: encodeSourceApiActionEffectPayload(entry.effect),
+              scheduledAt: entry.occurredAt,
+              scheduledByEntryId: entry.entryId,
+              status: "pending",
+              streamId: entry.streamId,
+              streamPosition: entry.streamPosition,
+            },
+            target: [
+              pendingWorkflowEffects.family,
+              pendingWorkflowEffects.effectId,
+            ],
+          });
+        break;
+      case "effect_started":
+        await input.tx
+          .update(pendingWorkflowEffects)
+          .set({
+            attemptCount: sql`${pendingWorkflowEffects.attemptCount} + 1`,
+            lastStartedAt: entry.occurredAt,
+            status: "leased",
+          })
+          .where(
+            and(
+              eq(pendingWorkflowEffects.family, "source_api_action"),
+              eq(pendingWorkflowEffects.effectId, entry.effectId)
+            )
+          );
+        break;
+      case "effect_failed":
+        await input.tx
+          .update(pendingWorkflowEffects)
+          .set({
+            lastErrorCode: entry.errorCode,
+            lastErrorDetail: entry.errorDetail,
+            status: "failed",
+          })
+          .where(
+            and(
+              eq(pendingWorkflowEffects.family, "source_api_action"),
+              eq(pendingWorkflowEffects.effectId, entry.effectId)
+            )
+          );
+        break;
+      case "effect_completed":
+        await input.tx
+          .delete(pendingWorkflowEffects)
+          .where(
+            and(
+              eq(pendingWorkflowEffects.family, "source_api_action"),
+              eq(pendingWorkflowEffects.effectId, entry.effectId)
+            )
+          );
+        break;
+      case "checkpoint":
+      case "command":
+      case "event":
+        break;
+    }
+  }
+}
+
+function requireProjectionOrganizationId(organizationId: string | undefined) {
+  if (organizationId === undefined) {
+    throw new WorkflowStorageWriteError({
+      family: "source_api_action",
+      operation: "rebuild_pending_effect_projection",
+    });
+  }
+
+  return organizationId;
 }
 
 async function replayStoredSourceApiActionJournalCommand(input: {

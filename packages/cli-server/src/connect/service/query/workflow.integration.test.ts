@@ -8,6 +8,7 @@ import {
   createDb,
   eq,
   organization,
+  pendingWorkflowEffects,
   prepareApplicationDatabase,
   workflowJournal,
 } from "@onequery/db/server";
@@ -16,6 +17,7 @@ import type { Result as ResultType } from "better-result";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { WorkflowActorSnapshot } from "../../../audit";
+import { rebuildPendingQueryActionEffectsViaJournal } from "../../../audit/storage";
 import type {
   CliLoadCredentialsEffectResult,
   CliLoadSourceEffectResult,
@@ -255,6 +257,10 @@ describe("query workflow audit runtime", () => {
       .select()
       .from(workflowJournal)
       .orderBy(asc(workflowJournal.streamPosition));
+    const pendingEffectRows = await db
+      .select()
+      .from(pendingWorkflowEffects)
+      .orderBy(asc(pendingWorkflowEffects.scheduledAt));
 
     expect(execution).toMatchObject({
       kind: "response_ready",
@@ -312,6 +318,12 @@ describe("query workflow audit runtime", () => {
       { entryKind: "effect_scheduled", payloadType: "persist_usage" },
       { entryKind: "effect_completed", payloadType: "effect_completed" },
     ]);
+    expect(
+      pendingEffectRows.map((row) => ({
+        effectType: row.effectType,
+        status: row.status,
+      }))
+    ).toEqual([{ effectType: "persist_usage", status: "pending" }]);
     expect(
       journalRows
         .map((row) => row.payloadBytes?.toString("utf8") ?? "")
@@ -471,6 +483,41 @@ describe("query workflow audit runtime", () => {
     });
 
     expect(failedResult.isErr()).toBe(true);
+    let pendingEffectRows = await db
+      .select()
+      .from(pendingWorkflowEffects)
+      .orderBy(asc(pendingWorkflowEffects.scheduledAt));
+    expect(
+      pendingEffectRows.map((row) => ({
+        attemptCount: row.attemptCount,
+        effectType: row.effectType,
+        status: row.status,
+      }))
+    ).toEqual([
+      {
+        attemptCount: 0,
+        effectType: "prepare_validate_query",
+        status: "failed",
+      },
+    ]);
+    await db.delete(pendingWorkflowEffects);
+    const rebuilt = await rebuildPendingQueryActionEffectsViaJournal({ db });
+    expect(rebuilt.isOk()).toBe(true);
+    pendingEffectRows = await db
+      .select()
+      .from(pendingWorkflowEffects)
+      .orderBy(asc(pendingWorkflowEffects.scheduledAt));
+    expect(
+      pendingEffectRows.map((row) => ({
+        effectType: row.effectType,
+        status: row.status,
+      }))
+    ).toEqual([
+      {
+        effectType: "prepare_validate_query",
+        status: "failed",
+      },
+    ]);
 
     const retriedResult = await runCliQueryValidationWorkflowResult({
       actorSnapshot,
@@ -492,6 +539,11 @@ describe("query workflow audit runtime", () => {
     });
     expect(loadSource).toHaveBeenCalledTimes(2);
     expect(validateQuery).toHaveBeenCalledTimes(1);
+    pendingEffectRows = await db
+      .select()
+      .from(pendingWorkflowEffects)
+      .orderBy(asc(pendingWorkflowEffects.scheduledAt));
+    expect(pendingEffectRows).toEqual([]);
 
     const journalRows = await db
       .select()

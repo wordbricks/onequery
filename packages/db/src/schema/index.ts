@@ -8,6 +8,7 @@ import * as dataSourceQueryCostsSchema from "./data-source-query-costs";
 import * as dataSourceTableUsageSchema from "./data-source-table-usage";
 import * as dataSourcesSchema from "./data-sources";
 import * as organizationProfilesSchema from "./organization-profiles";
+import * as pendingWorkflowEffectsSchema from "./pending-workflow-effects";
 import * as queryActionsSchema from "./query-actions";
 import * as relationsSchema from "./relations";
 import * as sourceApiActionsSchema from "./source-api-actions";
@@ -25,6 +26,7 @@ export const schema = {
   ...dataSourceTableUsageSchema,
   ...connectorsSchema,
   ...organizationProfilesSchema,
+  ...pendingWorkflowEffectsSchema,
   ...queryActionsSchema,
   ...sourceApiActionsSchema,
   ...userProfilesSchema,
@@ -42,6 +44,7 @@ export * from "./data-source-query-costs";
 export * from "./data-source-table-usage";
 export * from "./data-sources";
 export * from "./organization-profiles";
+export * from "./pending-workflow-effects";
 export * from "./query-actions";
 export * from "./relations";
 export * from "./source-api-actions";
