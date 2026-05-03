@@ -364,9 +364,9 @@ export async function runQueryExecutionStep(input: {
         clientTimeoutMs: input.timeoutMs,
         credentials: queryCredentials,
         kind: "execute_sql",
+        normalizedSql: effect.validatedQuery,
         requestId: input.requestId,
         source,
-        sql: effect.validatedQuery,
       });
 
       if (executionResult.kind === "succeeded") {
