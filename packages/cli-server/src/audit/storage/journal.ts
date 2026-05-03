@@ -2,7 +2,11 @@ import { ulid } from "@onequery/db/server";
 import { Result } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-import type { WorkflowFamily } from "../kernel";
+import type {
+  WorkflowActorSnapshot,
+  WorkflowFamily,
+  WorkflowSurface,
+} from "../kernel";
 
 export const WORKFLOW_JOURNAL_ENTRY_KINDS = [
   "command",
@@ -30,9 +34,13 @@ type WorkflowJournalEntryBase<Kind extends WorkflowJournalEntryKind> = {
 export type WorkflowJournalCommandEntry<
   CommandPayload extends { type: string },
 > = WorkflowJournalEntryBase<"command"> & {
+  actorSnapshot?: WorkflowActorSnapshot;
+  causedByEventId?: string | null;
   commandInvocationId: string;
   commandPayload: CommandPayload;
   commandType: string;
+  requestId?: string;
+  surface?: WorkflowSurface;
 };
 
 export type WorkflowJournalEventEntry<Event extends { type: string }> =
@@ -164,6 +172,13 @@ export type WorkflowJournalEffectFailureIntent = {
   errorDetail?: string | null;
 };
 
+export type WorkflowJournalCommandMetadata = {
+  actorSnapshot: WorkflowActorSnapshot;
+  causedByEventId: string | null;
+  requestId: string;
+  surface: WorkflowSurface;
+};
+
 export type WorkflowJournalCheckpointIntent = {
   checkpointName: string;
   checkpointPayload?: unknown;
@@ -260,6 +275,7 @@ export async function appendWorkflowJournalBatch<
 >(input: {
   checkpoints?: readonly WorkflowJournalCheckpointIntent[];
   commandInvocationId: string;
+  commandMetadata?: WorkflowJournalCommandMetadata;
   commandPayload: CommandPayload;
   commandType?: string;
   createId?: () => string;
@@ -319,6 +335,7 @@ export async function appendWorkflowJournalBatch<
   const entries = buildJournalBatchEntries({
     checkpoints: input.checkpoints ?? [],
     commandInvocationId: input.commandInvocationId,
+    commandMetadata: input.commandMetadata,
     commandPayload: input.commandPayload,
     commandType: input.commandType ?? input.commandPayload.type,
     commitId: createId(),
@@ -671,6 +688,7 @@ function buildJournalBatchEntries<
 >(input: {
   checkpoints: readonly WorkflowJournalCheckpointIntent[];
   commandInvocationId: string;
+  commandMetadata?: WorkflowJournalCommandMetadata;
   commandPayload: CommandPayload;
   commandType: string;
   commitId: string;
@@ -703,6 +721,7 @@ function buildJournalBatchEntries<
 
   entries.push({
     ...base("command"),
+    ...(input.commandMetadata === undefined ? {} : input.commandMetadata),
     commandInvocationId: input.commandInvocationId,
     commandPayload: input.commandPayload,
     commandType: input.commandType,

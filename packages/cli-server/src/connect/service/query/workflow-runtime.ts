@@ -79,6 +79,10 @@ export async function dispatchStoredQueryActionEffect<
     if (claimed !== null) {
       return claimed;
     }
+
+    throw createQueryAuditProblem(
+      `query_action effect ${replayed.id} is still pending in the journal`
+    );
   }
 
   return dispatchStoredWorkflowEffect<

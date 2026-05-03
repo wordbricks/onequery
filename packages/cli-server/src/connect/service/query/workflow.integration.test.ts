@@ -9,9 +9,7 @@ import {
   eq,
   organization,
   prepareApplicationDatabase,
-  queryActionEvents,
   workflowJournal,
-  workflowCommands,
   workflowEffectDispatches,
 } from "@onequery/db/server";
 import type { Database, DatabaseCredentials } from "@onequery/db/server";
@@ -99,6 +97,24 @@ async function createTestDb() {
   return db;
 }
 
+async function selectQueryJournalCommandRows(db: Database) {
+  return db
+    .select()
+    .from(workflowJournal)
+    .where(eq(workflowJournal.family, "query_action"))
+    .orderBy(asc(workflowJournal.commitPosition), asc(workflowJournal.id))
+    .then((rows) => rows.filter((row) => row.entryKind === "command"));
+}
+
+async function selectQueryJournalEventRows(db: Database) {
+  return db
+    .select()
+    .from(workflowJournal)
+    .where(eq(workflowJournal.family, "query_action"))
+    .orderBy(asc(workflowJournal.commitPosition), asc(workflowJournal.id))
+    .then((rows) => rows.filter((row) => row.entryKind === "event"));
+}
+
 function unwrapOk<T, E>(value: ResultType<T, E>) {
   expect(value.isOk()).toBe(true);
   if (value.isErr()) {
@@ -175,17 +191,11 @@ describe("query workflow audit runtime", () => {
     });
 
     const validation = unwrapOk(result);
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectQueryJournalCommandRows(db);
     const actionRow = await db.query.queryActions.findFirst({
       where: (table, { eq }) => eq(table.organizationId, org.id),
     });
-    const eventRows = await db
-      .select()
-      .from(queryActionEvents)
-      .orderBy(asc(queryActionEvents.sequence));
+    const eventRows = await selectQueryJournalEventRows(db);
     const outboxRows = await db
       .select()
       .from(workflowEffectDispatches)
@@ -209,7 +219,7 @@ describe("query workflow audit runtime", () => {
       timeoutMs: 5_000,
       truncated: false,
     });
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_validate",
       "record_validate_preparation_accepted",
     ]);
@@ -222,7 +232,7 @@ describe("query workflow audit runtime", () => {
       usageRecordingStatus: "not_started",
       validatedQuery: "select 1",
     });
-    expect(eventRows.map((row) => row.eventType)).toEqual([
+    expect(eventRows.map((row) => row.payloadType)).toEqual([
       "action_received",
       "source_loaded",
       "query_validated",
@@ -282,17 +292,11 @@ describe("query workflow audit runtime", () => {
     });
 
     const execution = unwrapOk(result);
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectQueryJournalCommandRows(db);
     const actionRow = await db.query.queryActions.findFirst({
       where: (table, { eq }) => eq(table.organizationId, org.id),
     });
-    const eventRows = await db
-      .select()
-      .from(queryActionEvents)
-      .orderBy(asc(queryActionEvents.sequence));
+    const eventRows = await selectQueryJournalEventRows(db);
     const journalRows = await db
       .select()
       .from(workflowJournal)
@@ -314,7 +318,7 @@ describe("query workflow audit runtime", () => {
       },
     });
     expect(persistUsage).not.toHaveBeenCalled();
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_execute",
       "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",
@@ -328,7 +332,7 @@ describe("query workflow audit runtime", () => {
       usageRecordingStatus: "not_started",
       validatedQuery: "select 42 as answer",
     });
-    expect(eventRows.map((row) => row.eventType)).toEqual([
+    expect(eventRows.map((row) => row.payloadType)).toEqual([
       "action_received",
       "source_loaded",
       "query_validated",
@@ -409,17 +413,11 @@ describe("query workflow audit runtime", () => {
     });
 
     const failure = unwrapOk(result);
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectQueryJournalCommandRows(db);
     const actionRow = await db.query.queryActions.findFirst({
       where: (table, { eq }) => eq(table.organizationId, org.id),
     });
-    const eventRows = await db
-      .select()
-      .from(queryActionEvents)
-      .orderBy(asc(queryActionEvents.sequence));
+    const eventRows = await selectQueryJournalEventRows(db);
     const outboxRows = await db
       .select()
       .from(workflowEffectDispatches)
@@ -434,7 +432,7 @@ describe("query workflow audit runtime", () => {
       kind: "query_preparation_failed",
       requestId: "req-validate-preparation-failed-1",
     });
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_validate",
       "record_validate_preparation_failed",
     ]);
@@ -447,7 +445,7 @@ describe("query workflow audit runtime", () => {
       usageRecordingStatus: "not_started",
       validatedQuery: null,
     });
-    expect(eventRows.map((row) => row.eventType)).toEqual([
+    expect(eventRows.map((row) => row.payloadType)).toEqual([
       "action_received",
       "source_loaded",
       "query_preparation_failed",
@@ -509,12 +507,9 @@ describe("query workflow audit runtime", () => {
 
     expect(unwrapOk(replayResult)).toEqual(unwrapOk(firstResult));
 
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectQueryJournalCommandRows(db);
 
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_validate",
       "record_validate_preparation_accepted",
     ]);
@@ -813,12 +808,9 @@ describe("query workflow audit runtime", () => {
     expect(loadSource).toHaveBeenCalledTimes(2);
     expect(validateQuery).toHaveBeenCalledTimes(2);
 
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectQueryJournalCommandRows(db);
 
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_validate",
       "record_validate_preparation_accepted",
       "start_validate",
@@ -909,12 +901,9 @@ describe("query workflow audit runtime", () => {
     expect(executeSql).toHaveBeenCalledTimes(1);
     expect(persistUsage).not.toHaveBeenCalled();
 
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectQueryJournalCommandRows(db);
 
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_execute",
       "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",
@@ -967,8 +956,6 @@ describe("query workflow audit runtime", () => {
       timeoutMs: 30_000,
     });
     const firstValue = unwrapOk(firstResult);
-
-    await db.delete(workflowCommands);
     await db.delete(workflowEffectDispatches);
 
     const replayResult = await runCliQueryExecutionWorkflowResult({
@@ -1007,14 +994,24 @@ describe("query workflow audit runtime", () => {
     expect(unwrapOk(replayResult)).toEqual(firstValue);
     expect(executeSql).toHaveBeenCalledTimes(1);
 
-    const commandRows = await db.select().from(workflowCommands);
+    const commandRows = await selectQueryJournalCommandRows(db);
     const dispatchRows = await db.select().from(workflowEffectDispatches);
-    const eventRows = await db.select().from(queryActionEvents);
+    const eventRows = await selectQueryJournalEventRows(db);
     const journalRows = await db.select().from(workflowJournal);
 
-    expect(commandRows).toHaveLength(0);
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
+      "start_execute",
+      "record_execute_preparation_succeeded",
+      "record_query_execution_succeeded",
+    ]);
     expect(dispatchRows).toHaveLength(0);
-    expect(eventRows).toHaveLength(0);
+    expect(eventRows.map((row) => row.payloadType)).toEqual([
+      "action_received",
+      "source_loaded",
+      "query_validated",
+      "credentials_loaded",
+      "query_executed",
+    ]);
     expect(journalRows.length).toBeGreaterThan(0);
   });
 
@@ -1110,12 +1107,9 @@ describe("query workflow audit runtime", () => {
     expect(executeSql).toHaveBeenCalledTimes(2);
     expect(persistUsage).not.toHaveBeenCalled();
 
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectQueryJournalCommandRows(db);
 
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_execute",
       "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",

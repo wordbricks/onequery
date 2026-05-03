@@ -9,11 +9,9 @@ import {
   eq,
   organization,
   prepareApplicationDatabase,
-  queryActionEvents,
   queryActions,
-  sourceApiActionEvents,
-  workflowCommands,
   workflowEffectDispatches,
+  workflowJournal,
 } from "@onequery/db/server";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -209,9 +207,28 @@ async function selectWorkflowCommandRows(
 ) {
   return db
     .select()
-    .from(workflowCommands)
-    .where(eq(workflowCommands.family, family))
-    .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    .from(workflowJournal)
+    .where(eq(workflowJournal.family, family))
+    .orderBy(asc(workflowJournal.streamPosition), asc(workflowJournal.id));
+}
+
+async function selectJournalCommandRows(
+  db: ReturnType<typeof createDb>,
+  family: "query_action" | "source_api_action"
+) {
+  const rows = await selectWorkflowCommandRows(db, family);
+  return rows.filter((row) => row.entryKind === "command");
+}
+
+async function selectJournalEventRows(
+  db: ReturnType<typeof createDb>,
+  family: "query_action" | "source_api_action",
+  actionId: string
+) {
+  const rows = await selectWorkflowCommandRows(db, family);
+  return rows.filter(
+    (row) => row.entryKind === "event" && row.streamId === actionId
+  );
 }
 
 function expectStoredDecision<
@@ -243,6 +260,24 @@ function expectStoredBinaryPayload(bytes: Buffer): Buffer {
   expect(bytes.length).toBeGreaterThan(0);
 
   return bytes;
+}
+
+function expectPayloadBytes(row: typeof workflowJournal.$inferSelect): Buffer {
+  expect(row.payloadBytes).toBeInstanceOf(Buffer);
+  if (row.payloadBytes === null) {
+    throw new Error("expected journal payload bytes");
+  }
+
+  return row.payloadBytes;
+}
+
+function expectPayloadType(row: typeof workflowJournal.$inferSelect): string {
+  expect(row.payloadType).toBeTypeOf("string");
+  if (row.payloadType === null) {
+    throw new Error("expected journal payload type");
+  }
+
+  return row.payloadType;
 }
 
 function unwrapQueryResult(
@@ -277,14 +312,14 @@ function omitFreshEffects<
 }
 
 function decodeStoredQueryActionCommand(
-  row: typeof workflowCommands.$inferSelect
+  row: typeof workflowJournal.$inferSelect
 ) {
   const decoded = decodeQueryActionCommandPayload(
-    expectStoredBinaryPayload(row.commandPayloadBytes),
+    expectStoredBinaryPayload(expectPayloadBytes(row)),
     {
-      ...(row.actionId === null ? {} : { actionId: row.actionId }),
+      actionId: row.streamId,
       commandId: row.id,
-      payloadType: row.commandType,
+      payloadType: expectPayloadType(row),
     }
   );
   expect(decoded.isOk()).toBe(true);
@@ -296,14 +331,14 @@ function decodeStoredQueryActionCommand(
 }
 
 function decodeStoredQueryActionEvent(
-  row: typeof queryActionEvents.$inferSelect
+  row: typeof workflowJournal.$inferSelect
 ) {
   const decoded = decodeQueryActionEventPayload(
-    expectStoredBinaryPayload(row.payloadBytes),
+    expectStoredBinaryPayload(expectPayloadBytes(row)),
     {
-      actionId: row.actionId,
-      commandId: row.commandId,
-      payloadType: row.eventType,
+      actionId: row.streamId,
+      commandId: row.id,
+      payloadType: expectPayloadType(row),
     }
   );
   expect(decoded.isOk()).toBe(true);
@@ -333,14 +368,14 @@ function decodeStoredQueryActionEffect(
 }
 
 function decodeStoredSourceApiActionCommand(
-  row: typeof workflowCommands.$inferSelect
+  row: typeof workflowJournal.$inferSelect
 ) {
   const decoded = decodeSourceApiActionCommandPayload(
-    expectStoredBinaryPayload(row.commandPayloadBytes),
+    expectStoredBinaryPayload(expectPayloadBytes(row)),
     {
-      ...(row.actionId === null ? {} : { actionId: row.actionId }),
+      actionId: row.streamId,
       commandId: row.id,
-      payloadType: row.commandType,
+      payloadType: expectPayloadType(row),
     }
   );
   expect(decoded.isOk()).toBe(true);
@@ -352,14 +387,14 @@ function decodeStoredSourceApiActionCommand(
 }
 
 function decodeStoredSourceApiActionEvent(
-  row: typeof sourceApiActionEvents.$inferSelect
+  row: typeof workflowJournal.$inferSelect
 ) {
   const decoded = decodeSourceApiActionEventPayload(
-    expectStoredBinaryPayload(row.payloadBytes),
+    expectStoredBinaryPayload(expectPayloadBytes(row)),
     {
-      actionId: row.actionId,
-      commandId: row.commandId,
-      payloadType: row.eventType,
+      actionId: row.streamId,
+      commandId: row.id,
+      payloadType: expectPayloadType(row),
     }
   );
   expect(decoded.isOk()).toBe(true);
@@ -435,15 +470,15 @@ describe("audit workflow storage", () => {
       throw new Error("expected a query_validated event");
     }
 
-    const commandRows = await selectWorkflowCommandRows(db, "query_action");
+    const commandRows = await selectJournalCommandRows(db, "query_action");
     const actionRow = await db.query.queryActions.findFirst({
       where: eq(queryActions.id, startDecision.actionId),
     });
-    const eventRows = await db
-      .select()
-      .from(queryActionEvents)
-      .where(eq(queryActionEvents.actionId, startDecision.actionId))
-      .orderBy(asc(queryActionEvents.sequence));
+    const eventRows = await selectJournalEventRows(
+      db,
+      "query_action",
+      startDecision.actionId
+    );
     const outboxRows = await db
       .select()
       .from(workflowEffectDispatches)
@@ -454,9 +489,9 @@ describe("audit workflow storage", () => {
       );
 
     expect(commandRows).toHaveLength(2);
-    expect(commandRows.map((row) => row.decisionKind)).toEqual([
-      "accepted",
-      "accepted",
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
+      "start_validate",
+      "record_validate_preparation_accepted",
     ]);
 
     expect(actionRow).toMatchObject({
@@ -472,17 +507,13 @@ describe("audit workflow storage", () => {
     });
 
     expect(
-      eventRows.map((row) => ({
-        commandId: row.commandId,
-        commitPosition: row.commitPosition,
-        eventType: row.eventType,
+      eventRows.map((row, index) => ({
+        eventType: row.payloadType,
         payload: decodeStoredQueryActionEvent(row),
-        sequence: row.sequence,
+        sequence: index + 1,
       }))
     ).toEqual([
       {
-        commandId: startDecision.commandId,
-        commitPosition: 1n,
         eventType: "action_received",
         payload: {
           queryMode: "validate",
@@ -492,8 +523,6 @@ describe("audit workflow storage", () => {
         sequence: 1,
       },
       {
-        commandId: preparationDecision.commandId,
-        commitPosition: 2n,
         eventType: "source_loaded",
         payload: {
           source: sourceDescriptor,
@@ -502,8 +531,6 @@ describe("audit workflow storage", () => {
         sequence: 2,
       },
       {
-        commandId: preparationDecision.commandId,
-        commitPosition: 3n,
         eventType: "query_validated",
         payload: {
           type: "query_validated",
@@ -558,11 +585,11 @@ describe("audit workflow storage", () => {
       "accepted"
     );
 
-    const [queryCommandRow] = await selectWorkflowCommandRows(
+    const [queryCommandRow] = await selectJournalCommandRows(
       db,
       "query_action"
     );
-    const [sourceApiCommandRow] = await selectWorkflowCommandRows(
+    const [sourceApiCommandRow] = await selectJournalCommandRows(
       db,
       "source_api_action"
     );
@@ -582,18 +609,20 @@ describe("audit workflow storage", () => {
       type: "start_describe",
     });
 
-    const queryEventRows = await db
-      .select()
-      .from(queryActionEvents)
-      .where(eq(queryActionEvents.commandId, queryDecision.commandId));
-    const sourceApiEventRows = await db
-      .select()
-      .from(sourceApiActionEvents)
-      .where(eq(sourceApiActionEvents.commandId, sourceApiDecision.commandId));
+    const queryEventRows = await selectJournalEventRows(
+      db,
+      "query_action",
+      queryDecision.actionId
+    );
+    const sourceApiEventRows = await selectJournalEventRows(
+      db,
+      "source_api_action",
+      sourceApiDecision.actionId
+    );
 
     expect(
       queryEventRows.map((row) => ({
-        eventType: row.eventType,
+        eventType: row.payloadType,
         payload: decodeStoredQueryActionEvent(row),
       }))
     ).toEqual([
@@ -608,7 +637,7 @@ describe("audit workflow storage", () => {
     ]);
     expect(
       sourceApiEventRows.map((row) => ({
-        eventType: row.eventType,
+        eventType: row.payloadType,
         payload: decodeStoredSourceApiActionEvent(row),
       }))
     ).toEqual([
@@ -690,8 +719,12 @@ describe("audit workflow storage", () => {
       idempotency: "replayed",
     });
 
-    const commandRows = await selectWorkflowCommandRows(db, "query_action");
-    const eventRows = await db.select().from(queryActionEvents);
+    const commandRows = await selectJournalCommandRows(db, "query_action");
+    const eventRows = await selectJournalEventRows(
+      db,
+      "query_action",
+      firstDecision.actionId
+    );
     const outboxRows = await db.select().from(workflowEffectDispatches);
 
     expect(commandRows).toHaveLength(1);
@@ -861,13 +894,17 @@ describe("audit workflow storage", () => {
       rejectCode: "unknown_action",
     });
 
-    const commandRows = await selectWorkflowCommandRows(db, "query_action");
+    const commandRows = await selectJournalCommandRows(db, "query_action");
     const actionRows = await db.select().from(queryActions);
-    const eventRows = await db.select().from(queryActionEvents);
+    const eventRows = await selectJournalEventRows(
+      db,
+      "query_action",
+      "missing-query-action"
+    );
     const outboxRows = await db.select().from(workflowEffectDispatches);
 
     expect(commandRows).toHaveLength(1);
-    expect(commandRows[0]?.decisionKind).toBe("rejected");
+    expect(commandRows[0]?.payloadType).toBe("record_source_found");
     expect(actionRows).toHaveLength(0);
     expect(eventRows).toHaveLength(0);
     expect(outboxRows).toHaveLength(0);
@@ -896,11 +933,11 @@ describe("audit workflow storage", () => {
       idempotency: "replayed",
     });
 
-    const commandRows = await selectWorkflowCommandRows(db, "query_action");
+    const commandRows = await selectJournalCommandRows(db, "query_action");
     expect(commandRows).toHaveLength(1);
   });
 
-  it("replays accepted query commands from the journal when projected event payloads are corrupt", async () => {
+  it("replays accepted query commands from the journal when old projections are absent", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -911,11 +948,9 @@ describe("audit workflow storage", () => {
     );
 
     await db
-      .update(queryActionEvents)
-      .set({
-        payloadBytes: Buffer.from([0xff]),
-      })
-      .where(eq(queryActionEvents.commandId, storedDecision.commandId));
+      .delete(queryActions)
+      .where(eq(queryActions.id, storedDecision.actionId));
+    await db.delete(workflowEffectDispatches);
 
     const replayedDecision = expectStoredDecision(
       unwrapQueryResult(
@@ -933,7 +968,7 @@ describe("audit workflow storage", () => {
     });
   });
 
-  it("uses an independent commit position sequence per family", async () => {
+  it("uses a single append-only journal position sequence across families", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -945,23 +980,21 @@ describe("audit workflow storage", () => {
       command: buildDescribeCommand(),
       db,
     });
-    const queryDecision = expectStoredDecision(
-      unwrapQueryResult(queryResult),
-      "accepted"
-    );
-    const sourceApiDecision = expectStoredDecision(
-      unwrapSourceApiResult(sourceApiResult),
-      "accepted"
-    );
+    expectStoredDecision(unwrapQueryResult(queryResult), "accepted");
+    expectStoredDecision(unwrapSourceApiResult(sourceApiResult), "accepted");
 
-    const queryEventRow = await db.query.queryActionEvents.findFirst({
-      where: eq(queryActionEvents.commandId, queryDecision.commandId),
-    });
-    const sourceApiEventRow = await db.query.sourceApiActionEvents.findFirst({
-      where: eq(sourceApiActionEvents.commandId, sourceApiDecision.commandId),
-    });
+    const journalRows = await db
+      .select()
+      .from(workflowJournal)
+      .orderBy(asc(workflowJournal.commitPosition));
 
-    expect(queryEventRow?.commitPosition).toBe(1n);
-    expect(sourceApiEventRow?.commitPosition).toBe(1n);
+    expect(journalRows.map((row) => row.commitPosition)).toEqual([
+      1n,
+      2n,
+      3n,
+      4n,
+      5n,
+      6n,
+    ]);
   });
 });

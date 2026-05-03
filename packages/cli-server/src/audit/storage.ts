@@ -34,7 +34,9 @@ export {
   storeQueryActionCommandViaJournal,
 } from "./storage/query-action-journal";
 export {
+  claimFailedSourceApiActionEffectViaJournal,
   loadSourceApiActionCommandViaJournal,
+  recordSourceApiActionEffectFailureViaJournal,
   storeSourceApiActionCommandViaJournal,
 } from "./storage/source-api-action-journal";
 export {

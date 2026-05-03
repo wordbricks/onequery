@@ -1,10 +1,8 @@
 import {
   inArray,
-  queryActionEvents,
   queryActions,
   sql,
   ulid,
-  workflowCommands,
   workflowEffectDispatches,
 } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
@@ -202,6 +200,12 @@ export async function storeQueryActionCommandViaJournal(input: {
             ]
           : [],
       commandInvocationId: command.commandInvocationId,
+      commandMetadata: {
+        actorSnapshot: command.actorSnapshot,
+        causedByEventId: command.causedByEventId,
+        requestId: command.requestId,
+        surface: command.surface,
+      },
       commandPayload: command.commandPayload,
       commandType: getQueryActionCommandPayloadType(command.commandPayload),
       effectCompletions:
@@ -539,42 +543,6 @@ async function projectFreshQueryActionJournalAppend(input: {
   >[];
   tx: DatabaseTransaction;
 }) {
-  const commandEntry = requireCommandEntry(input.entries);
-
-  // Comment: query_action_events still has a workflow_commands FK, so the
-  // journal-backed path keeps this compatibility row until projections move.
-  await input.tx.insert(workflowCommands).values({
-    actionId:
-      input.decision.kind === "accepted"
-        ? input.actionId
-        : input.command.actionId,
-    actorSnapshotJson: {
-      authMode: input.command.actorSnapshot.authMode,
-      email: input.command.actorSnapshot.email,
-      membershipRoles: [...input.command.actorSnapshot.membershipRoles],
-      userId: input.command.actorSnapshot.userId,
-    },
-    causedByEventId: input.command.causedByEventId,
-    commandInvocationId: input.command.commandInvocationId,
-    commandPayloadBytes: encodeQueryActionCommandPayload(
-      input.command.commandPayload
-    ),
-    commandType: getQueryActionCommandPayloadType(input.command.commandPayload),
-    createdAt: input.command.observedAt,
-    decisionKind: input.decision.kind,
-    family: "query_action",
-    id: commandEntry.entryId,
-    organizationId: input.command.organizationId,
-    rejectCode:
-      input.decision.kind === "rejected" ? input.decision.rejectCode : null,
-    rejectDetail:
-      input.decision.kind === "rejected"
-        ? (input.decision.rejectDetail ?? null)
-        : null,
-    requestId: input.command.requestId,
-    surface: input.command.surface,
-  });
-
   if (input.decision.kind === "rejected") {
     return;
   }
@@ -598,18 +566,6 @@ async function projectFreshQueryActionJournalAppend(input: {
   if (nextState.isErr()) {
     throw nextState.error;
   }
-
-  await input.tx.insert(queryActionEvents).values(
-    committedEvents.map((event) => ({
-      actionId: input.actionId,
-      commandId: commandEntry.entryId,
-      eventType: event.type,
-      id: event.id,
-      occurredAt: event.occurredAt,
-      payloadBytes: encodeQueryActionEventPayload(event),
-      sequence: event.sequence,
-    }))
-  );
 
   const lastEvent = committedEvents.at(-1);
   if (!lastEvent) {
@@ -949,24 +905,6 @@ function findCommandEntry(
     (entry): entry is WorkflowJournalCommandEntry<QueryActionCommandPayload> =>
       entry.kind === "command"
   );
-}
-
-function requireCommandEntry(
-  entries: readonly WorkflowJournalEntry<
-    QueryActionCommandPayload,
-    QueryActionEvent,
-    QueryActionEffect
-  >[]
-) {
-  const commandEntry = findCommandEntry(entries);
-  if (commandEntry === undefined) {
-    throw new WorkflowStorageWriteError({
-      family: "query_action",
-      operation: "project_journal_command",
-    });
-  }
-
-  return commandEntry;
 }
 
 function findRejectedDecisionCheckpoint(

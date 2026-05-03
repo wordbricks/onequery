@@ -3,6 +3,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   text,
   timestamp,
   uniqueIndex,
@@ -11,7 +12,9 @@ import { sql } from "drizzle-orm/sql";
 
 import type {
   WorkflowFamily,
+  WorkflowActorSnapshotJson,
   WorkflowJournalEntryKind,
+  WorkflowSurface,
 } from "./audit-workflow";
 import { organization } from "./auth";
 import { bytea } from "./bytea";
@@ -21,6 +24,10 @@ import { ulid } from "./ulid";
 export const workflowJournal = pgTable(
   "workflow_journal",
   {
+    actorSnapshotJson: jsonb(
+      "actor_snapshot_json"
+    ).$type<WorkflowActorSnapshotJson>(),
+    causedByEventId: text("caused_by_event_id"),
     commandInvocationId: text("command_invocation_id"),
     commitId: text("commit_id").notNull(),
     commitPosition: bigserial("commit_position", { mode: "bigint" }).notNull(),
@@ -37,8 +44,10 @@ export const workflowJournal = pgTable(
       .references(() => organization.id, { onDelete: "cascade" }),
     payloadBytes: bytea("payload_bytes"),
     payloadType: text("payload_type"),
+    requestId: text("request_id"),
     streamId: text("stream_id").notNull(),
     streamPosition: integer("stream_position").notNull(),
+    surface: text("surface").$type<WorkflowSurface>(),
   },
   (table) => [
     uniqueIndex("idx_workflow_journal_stream_position_unique").on(

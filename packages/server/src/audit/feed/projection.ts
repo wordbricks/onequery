@@ -7,15 +7,15 @@ import {
   gt,
   inArray,
   lt,
-  queryActionEvents,
-  sourceApiActionEvents,
   sql,
-  workflowCommands,
+  workflowJournal,
 } from "@onequery/db/server";
 import type {
   Database,
+  WorkflowActorSnapshotJson,
   WorkflowFamily,
   WorkflowProjectionJson,
+  WorkflowSurface,
 } from "@onequery/db/server";
 
 import {
@@ -39,6 +39,26 @@ import type {
   QueryActionProjectionRow,
   SourceApiActionProjectionRow,
 } from "./types";
+
+type JournalEventRow = {
+  actionId: string;
+  commitId: string;
+  commitPosition: bigint;
+  eventId: string | null;
+  eventType: string | null;
+  occurredAt: Date;
+  organizationId: string;
+  payloadBytes: Buffer | null;
+};
+
+type JournalCommandRow = {
+  actorSnapshotJson: WorkflowActorSnapshotJson | null;
+  commandId: string;
+  commandPayloadBytes: Buffer | null;
+  commandType: string | null;
+  commitId: string;
+  surface: WorkflowSurface | null;
+};
 
 async function loadAuditCheckpoint(
   db: DatabaseExecutor,
@@ -88,30 +108,29 @@ async function loadQueryActionEventBatch(
   lastCommitPosition: bigint,
   limit: number
 ) {
-  return db
+  const rows = await db
     .select({
-      actionId: queryActionEvents.actionId,
-      actorSnapshotJson: workflowCommands.actorSnapshotJson,
-      commandId: workflowCommands.id,
-      commandPayloadBytes: workflowCommands.commandPayloadBytes,
-      commandType: workflowCommands.commandType,
-      commitPosition: queryActionEvents.commitPosition,
-      eventId: queryActionEvents.id,
-      eventType: queryActionEvents.eventType,
-      occurredAt: queryActionEvents.occurredAt,
-      organizationId: workflowCommands.organizationId,
-      payloadBytes: queryActionEvents.payloadBytes,
-      sequence: queryActionEvents.sequence,
-      surface: workflowCommands.surface,
+      actionId: workflowJournal.streamId,
+      commitId: workflowJournal.commitId,
+      commitPosition: workflowJournal.commitPosition,
+      eventId: workflowJournal.eventId,
+      eventType: workflowJournal.eventType,
+      occurredAt: workflowJournal.occurredAt,
+      organizationId: workflowJournal.organizationId,
+      payloadBytes: workflowJournal.payloadBytes,
     })
-    .from(queryActionEvents)
-    .innerJoin(
-      workflowCommands,
-      eq(workflowCommands.id, queryActionEvents.commandId)
+    .from(workflowJournal)
+    .where(
+      and(
+        eq(workflowJournal.family, "query_action"),
+        eq(workflowJournal.entryKind, "event"),
+        gt(workflowJournal.commitPosition, lastCommitPosition)
+      )
     )
-    .where(gt(queryActionEvents.commitPosition, lastCommitPosition))
-    .orderBy(asc(queryActionEvents.commitPosition))
+    .orderBy(asc(workflowJournal.commitPosition))
     .limit(limit);
+
+  return hydrateQueryActionEventRows(db, rows, lastCommitPosition);
 }
 
 async function loadSourceApiActionEventBatch(
@@ -119,30 +138,193 @@ async function loadSourceApiActionEventBatch(
   lastCommitPosition: bigint,
   limit: number
 ) {
+  const rows = await db
+    .select({
+      actionId: workflowJournal.streamId,
+      commitId: workflowJournal.commitId,
+      commitPosition: workflowJournal.commitPosition,
+      eventId: workflowJournal.eventId,
+      eventType: workflowJournal.eventType,
+      occurredAt: workflowJournal.occurredAt,
+      organizationId: workflowJournal.organizationId,
+      payloadBytes: workflowJournal.payloadBytes,
+    })
+    .from(workflowJournal)
+    .where(
+      and(
+        eq(workflowJournal.family, "source_api_action"),
+        eq(workflowJournal.entryKind, "event"),
+        gt(workflowJournal.commitPosition, lastCommitPosition)
+      )
+    )
+    .orderBy(asc(workflowJournal.commitPosition))
+    .limit(limit);
+
+  return hydrateSourceApiActionEventRows(db, rows, lastCommitPosition);
+}
+
+async function hydrateQueryActionEventRows(
+  db: DatabaseExecutor,
+  rows: readonly JournalEventRow[],
+  previousCommitPosition: bigint
+) {
+  return hydrateJournalEventRows(
+    db,
+    "query_action",
+    rows,
+    previousCommitPosition
+  );
+}
+
+async function hydrateSourceApiActionEventRows(
+  db: DatabaseExecutor,
+  rows: readonly JournalEventRow[],
+  previousCommitPosition: bigint
+) {
+  return hydrateJournalEventRows(
+    db,
+    "source_api_action",
+    rows,
+    previousCommitPosition
+  );
+}
+
+async function hydrateJournalEventRows(
+  db: DatabaseExecutor,
+  family: WorkflowFamily,
+  rows: readonly JournalEventRow[],
+  previousCommitPosition: bigint
+) {
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const actionIds = [...new Set(rows.map((row) => row.actionId))];
+  const commitIds = [...new Set(rows.map((row) => row.commitId))];
+  const [commands, sequenceOffsets] = await Promise.all([
+    loadJournalCommandRows(db, family, commitIds),
+    loadJournalEventSequenceOffsets(
+      db,
+      family,
+      actionIds,
+      previousCommitPosition
+    ),
+  ]);
+  const commandByCommitId = new Map(
+    commands.map((command) => [command.commitId, command])
+  );
+  const sequenceByActionId = new Map(sequenceOffsets);
+
+  return rows.map((row) => {
+    const command = commandByCommitId.get(row.commitId);
+    if (command === undefined) {
+      throw new Error(
+        `${family} journal event ${row.eventId ?? row.commitId} has no command entry`
+      );
+    }
+
+    const nextSequence = (sequenceByActionId.get(row.actionId) ?? 0) + 1;
+    sequenceByActionId.set(row.actionId, nextSequence);
+
+    return {
+      actionId: row.actionId,
+      actorSnapshotJson: requireJournalValue(
+        command.actorSnapshotJson,
+        `${family} command ${command.commandId} actor snapshot`
+      ),
+      commandId: command.commandId,
+      commandPayloadBytes: requireJournalValue(
+        command.commandPayloadBytes,
+        `${family} command ${command.commandId} payload`
+      ),
+      commandType: requireJournalValue(
+        command.commandType,
+        `${family} command ${command.commandId} type`
+      ),
+      commitPosition: row.commitPosition,
+      eventId: requireJournalValue(row.eventId, `${family} journal event id`),
+      eventType: requireJournalValue(
+        row.eventType,
+        `${family} journal event type`
+      ),
+      occurredAt: row.occurredAt,
+      organizationId: row.organizationId,
+      payloadBytes: requireJournalValue(
+        row.payloadBytes,
+        `${family} journal event payload`
+      ),
+      sequence: nextSequence,
+      surface: requireJournalValue(
+        command.surface,
+        `${family} command ${command.commandId} surface`
+      ),
+    };
+  });
+}
+
+async function loadJournalCommandRows(
+  db: DatabaseExecutor,
+  family: WorkflowFamily,
+  commitIds: readonly string[]
+): Promise<JournalCommandRow[]> {
+  if (commitIds.length === 0) {
+    return [];
+  }
+
   return db
     .select({
-      actionId: sourceApiActionEvents.actionId,
-      actorSnapshotJson: workflowCommands.actorSnapshotJson,
-      commandId: workflowCommands.id,
-      commandPayloadBytes: workflowCommands.commandPayloadBytes,
-      commandType: workflowCommands.commandType,
-      commitPosition: sourceApiActionEvents.commitPosition,
-      eventId: sourceApiActionEvents.id,
-      eventType: sourceApiActionEvents.eventType,
-      occurredAt: sourceApiActionEvents.occurredAt,
-      organizationId: workflowCommands.organizationId,
-      payloadBytes: sourceApiActionEvents.payloadBytes,
-      sequence: sourceApiActionEvents.sequence,
-      surface: workflowCommands.surface,
+      actorSnapshotJson: workflowJournal.actorSnapshotJson,
+      commandId: workflowJournal.id,
+      commandPayloadBytes: workflowJournal.payloadBytes,
+      commandType: workflowJournal.payloadType,
+      commitId: workflowJournal.commitId,
+      surface: workflowJournal.surface,
     })
-    .from(sourceApiActionEvents)
-    .innerJoin(
-      workflowCommands,
-      eq(workflowCommands.id, sourceApiActionEvents.commandId)
+    .from(workflowJournal)
+    .where(
+      and(
+        eq(workflowJournal.family, family),
+        eq(workflowJournal.entryKind, "command"),
+        inArray(workflowJournal.commitId, [...commitIds])
+      )
+    );
+}
+
+async function loadJournalEventSequenceOffsets(
+  db: DatabaseExecutor,
+  family: WorkflowFamily,
+  actionIds: readonly string[],
+  previousCommitPosition: bigint
+): Promise<Array<[string, number]>> {
+  if (actionIds.length === 0 || previousCommitPosition === 0n) {
+    return [];
+  }
+
+  const rows = await db
+    .select({
+      actionId: workflowJournal.streamId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(workflowJournal)
+    .where(
+      and(
+        eq(workflowJournal.family, family),
+        eq(workflowJournal.entryKind, "event"),
+        inArray(workflowJournal.streamId, [...actionIds]),
+        lt(workflowJournal.commitPosition, previousCommitPosition + 1n)
+      )
     )
-    .where(gt(sourceApiActionEvents.commitPosition, lastCommitPosition))
-    .orderBy(asc(sourceApiActionEvents.commitPosition))
-    .limit(limit);
+    .groupBy(workflowJournal.streamId);
+
+  return rows.map((row) => [row.actionId, Number(row.count)]);
+}
+
+function requireJournalValue<T>(value: T | null, label: string): T {
+  if (value === null) {
+    throw new Error(`missing ${label}`);
+  }
+
+  return value;
 }
 
 async function rebuildQueryActionRow(
@@ -150,34 +332,28 @@ async function rebuildQueryActionRow(
   actionId: string,
   throughCommitPosition: bigint
 ) {
-  const eventRows = await db
+  const rows = await db
     .select({
-      actionId: queryActionEvents.actionId,
-      actorSnapshotJson: workflowCommands.actorSnapshotJson,
-      commandId: workflowCommands.id,
-      commandPayloadBytes: workflowCommands.commandPayloadBytes,
-      commandType: workflowCommands.commandType,
-      commitPosition: queryActionEvents.commitPosition,
-      eventId: queryActionEvents.id,
-      eventType: queryActionEvents.eventType,
-      occurredAt: queryActionEvents.occurredAt,
-      organizationId: workflowCommands.organizationId,
-      payloadBytes: queryActionEvents.payloadBytes,
-      sequence: queryActionEvents.sequence,
-      surface: workflowCommands.surface,
+      actionId: workflowJournal.streamId,
+      commitId: workflowJournal.commitId,
+      commitPosition: workflowJournal.commitPosition,
+      eventId: workflowJournal.eventId,
+      eventType: workflowJournal.eventType,
+      occurredAt: workflowJournal.occurredAt,
+      organizationId: workflowJournal.organizationId,
+      payloadBytes: workflowJournal.payloadBytes,
     })
-    .from(queryActionEvents)
-    .innerJoin(
-      workflowCommands,
-      eq(workflowCommands.id, queryActionEvents.commandId)
-    )
+    .from(workflowJournal)
     .where(
       and(
-        eq(queryActionEvents.actionId, actionId),
-        lt(queryActionEvents.commitPosition, throughCommitPosition + 1n)
+        eq(workflowJournal.family, "query_action"),
+        eq(workflowJournal.entryKind, "event"),
+        eq(workflowJournal.streamId, actionId),
+        lt(workflowJournal.commitPosition, throughCommitPosition + 1n)
       )
     )
-    .orderBy(asc(queryActionEvents.commitPosition));
+    .orderBy(asc(workflowJournal.commitPosition));
+  const eventRows = await hydrateQueryActionEventRows(db, rows, 0n);
 
   let row: QueryActionProjectionRow | null = null;
   for (const eventRow of eventRows) {
@@ -199,34 +375,28 @@ async function rebuildSourceApiActionRow(
   actionId: string,
   throughCommitPosition: bigint
 ) {
-  const eventRows = await db
+  const rows = await db
     .select({
-      actionId: sourceApiActionEvents.actionId,
-      actorSnapshotJson: workflowCommands.actorSnapshotJson,
-      commandId: workflowCommands.id,
-      commandPayloadBytes: workflowCommands.commandPayloadBytes,
-      commandType: workflowCommands.commandType,
-      commitPosition: sourceApiActionEvents.commitPosition,
-      eventId: sourceApiActionEvents.id,
-      eventType: sourceApiActionEvents.eventType,
-      occurredAt: sourceApiActionEvents.occurredAt,
-      organizationId: workflowCommands.organizationId,
-      payloadBytes: sourceApiActionEvents.payloadBytes,
-      sequence: sourceApiActionEvents.sequence,
-      surface: workflowCommands.surface,
+      actionId: workflowJournal.streamId,
+      commitId: workflowJournal.commitId,
+      commitPosition: workflowJournal.commitPosition,
+      eventId: workflowJournal.eventId,
+      eventType: workflowJournal.eventType,
+      occurredAt: workflowJournal.occurredAt,
+      organizationId: workflowJournal.organizationId,
+      payloadBytes: workflowJournal.payloadBytes,
     })
-    .from(sourceApiActionEvents)
-    .innerJoin(
-      workflowCommands,
-      eq(workflowCommands.id, sourceApiActionEvents.commandId)
-    )
+    .from(workflowJournal)
     .where(
       and(
-        eq(sourceApiActionEvents.actionId, actionId),
-        lt(sourceApiActionEvents.commitPosition, throughCommitPosition + 1n)
+        eq(workflowJournal.family, "source_api_action"),
+        eq(workflowJournal.entryKind, "event"),
+        eq(workflowJournal.streamId, actionId),
+        lt(workflowJournal.commitPosition, throughCommitPosition + 1n)
       )
     )
-    .orderBy(asc(sourceApiActionEvents.commitPosition));
+    .orderBy(asc(workflowJournal.commitPosition));
+  const eventRows = await hydrateSourceApiActionEventRows(db, rows, 0n);
 
   let row: SourceApiActionProjectionRow | null = null;
   for (const eventRow of eventRows) {

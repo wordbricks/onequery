@@ -14,7 +14,9 @@ import type {
 import { Result, isPanic } from "better-result";
 
 import {
+  claimFailedSourceApiActionEffectViaJournal,
   loadSourceApiActionCommandViaJournal,
+  recordSourceApiActionEffectFailureViaJournal,
   storeSourceApiActionCommand,
 } from "../../../audit";
 import type {
@@ -88,6 +90,18 @@ export async function dispatchStoredSourceApiActionEffect<
     if (replay !== null) {
       return replay;
     }
+
+    const claimed = await tryDispatchClaimedJournalSourceApiActionEffect({
+      ...input,
+      effect: replayed,
+    });
+    if (claimed !== null) {
+      return claimed;
+    }
+
+    throw createSourceApiAuditFailure(
+      `source_api_action effect ${replayed.id} is still pending in the journal`
+    );
   }
 
   return dispatchStoredWorkflowEffect<
@@ -151,6 +165,92 @@ async function replayJournalSourceApiActionEffect<
 }
 
 async function dispatchFreshSourceApiActionEffect<
+  EffectType extends SourceApiActionEffect["type"],
+  TResult,
+>(input: {
+  actorSnapshot: WorkflowActorSnapshot;
+  currentDecision: StoredAcceptedSourceApiActionDecision;
+  db: Database;
+  effect: LoadedSourceApiActionEffect<EffectType>;
+  organizationId: string;
+  requestId: string;
+  run: (
+    effect: Extract<SourceApiActionEffect, { type: EffectType }>
+  ) => Promise<{
+    commandPayload: SourceApiActionCommandPayload;
+    result: TResult;
+  }>;
+}): Promise<DispatchedSourceApiActionEffect<EffectType, TResult>> {
+  try {
+    return await runJournalSourceApiActionEffect(input);
+  } catch (error) {
+    await recordSourceApiActionEffectFailure({
+      currentDecision: input.currentDecision,
+      db: input.db,
+      effectId: input.effect.id,
+      error,
+      organizationId: input.organizationId,
+    });
+    throw error;
+  }
+}
+
+async function tryDispatchClaimedJournalSourceApiActionEffect<
+  EffectType extends SourceApiActionEffect["type"],
+  TResult,
+>(input: {
+  actorSnapshot: WorkflowActorSnapshot;
+  currentDecision: StoredAcceptedSourceApiActionDecision;
+  db: Database;
+  effect: LoadedSourceApiActionEffect<EffectType>;
+  organizationId: string;
+  requestId: string;
+  run: (
+    effect: Extract<SourceApiActionEffect, { type: EffectType }>
+  ) => Promise<{
+    commandPayload: SourceApiActionCommandPayload;
+    result: TResult;
+  }>;
+}): Promise<DispatchedSourceApiActionEffect<EffectType, TResult> | null> {
+  const claimed = await claimFailedSourceApiActionEffectViaJournal({
+    actionId: input.currentDecision.actionId,
+    db: input.db,
+    effectId: input.effect.id,
+    organizationId: input.organizationId,
+  });
+  if (claimed.isErr()) {
+    return null;
+  }
+
+  try {
+    return await runJournalSourceApiActionEffect({
+      actorSnapshot: input.actorSnapshot,
+      currentDecision: input.currentDecision,
+      db: input.db,
+      effect: {
+        ...input.effect,
+        effect: claimed.value.effect as Extract<
+          SourceApiActionEffect,
+          { type: EffectType }
+        >,
+      },
+      organizationId: input.organizationId,
+      requestId: input.requestId,
+      run: input.run,
+    });
+  } catch (error) {
+    await recordSourceApiActionEffectFailure({
+      currentDecision: input.currentDecision,
+      db: input.db,
+      effectId: input.effect.id,
+      error,
+      organizationId: input.organizationId,
+    });
+    throw error;
+  }
+}
+
+async function runJournalSourceApiActionEffect<
   EffectType extends SourceApiActionEffect["type"],
   TResult,
 >(input: {
@@ -625,6 +725,29 @@ async function loadRequiredSourceApiActionEffect<
     originEventId: row.originEventId,
     status: row.status,
   };
+}
+
+async function recordSourceApiActionEffectFailure(input: {
+  currentDecision: StoredAcceptedSourceApiActionDecision;
+  db: Database;
+  effectId: string;
+  error: unknown;
+  organizationId: string;
+}) {
+  const recorded = await recordSourceApiActionEffectFailureViaJournal({
+    actionId: input.currentDecision.actionId,
+    db: input.db,
+    effectId: input.effectId,
+    errorCode: "dispatch_failed",
+    errorDetail: toCliErrorMessage(input.error),
+    organizationId: input.organizationId,
+  });
+  if (recorded.isErr()) {
+    throw createSourceApiAuditFailure(
+      `source_api_action effect ${input.effectId} failure could not be recorded in the journal`,
+      recorded.error
+    );
+  }
 }
 
 async function loadStoredAcceptedSourceApiActionResultCommand(input: {

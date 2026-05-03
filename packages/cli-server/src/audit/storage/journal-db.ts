@@ -326,9 +326,21 @@ function toWorkflowJournalInsert<
       const context = payloadContext(entry, entry.commandType);
       return {
         ...base,
+        actorSnapshotJson:
+          entry.actorSnapshot === undefined
+            ? null
+            : {
+                authMode: entry.actorSnapshot.authMode,
+                email: entry.actorSnapshot.email,
+                membershipRoles: [...entry.actorSnapshot.membershipRoles],
+                userId: entry.actorSnapshot.userId,
+              },
+        causedByEventId: entry.causedByEventId ?? null,
         commandInvocationId: entry.commandInvocationId,
         payloadBytes: codec.encodeCommandPayload(entry.commandPayload, context),
         payloadType: entry.commandType,
+        requestId: entry.requestId ?? null,
+        surface: entry.surface ?? null,
       };
     }
     case "event": {
@@ -425,12 +437,20 @@ function toWorkflowJournalEntry<
       });
       return {
         ...base,
+        ...(row.actorSnapshotJson === null
+          ? {}
+          : { actorSnapshot: row.actorSnapshotJson }),
+        ...(row.causedByEventId === null
+          ? {}
+          : { causedByEventId: row.causedByEventId }),
         commandInvocationId,
         commandPayload: unwrapDecoded(
           codec.decodeCommandPayload(payloadBytes, context)
         ),
         commandType,
         kind: "command",
+        ...(row.requestId === null ? {} : { requestId: row.requestId }),
+        ...(row.surface === null ? {} : { surface: row.surface }),
       } satisfies WorkflowJournalCommandEntry<CommandPayload>;
     }
     case "event": {

@@ -1,9 +1,8 @@
 import {
   inArray,
-  sourceApiActionEvents,
   sourceApiActions,
+  sql,
   ulid,
-  workflowCommands,
   workflowEffectDispatches,
 } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
@@ -46,6 +45,8 @@ import {
 import type {
   WorkflowJournalAppendResult,
   WorkflowJournalCommandEntry,
+  WorkflowJournalEffectFailedEntry,
+  WorkflowJournalEffectStartedEntry,
   WorkflowJournalEffectToken,
   WorkflowJournalEntry,
   WorkflowJournalEventEntry,
@@ -112,6 +113,7 @@ type StoredSourceApiActionJournalDecision =
     });
 
 const REJECTED_DECISION_CHECKPOINT = "decision_rejected";
+const SOURCE_API_ACTION_EFFECT_WORKER_ID = "source-api-action-runtime";
 
 const sourceApiActionJournalPayloadCodec: WorkflowJournalPayloadCodec<
   SourceApiActionCommandPayload,
@@ -284,6 +286,190 @@ export async function loadSourceApiActionCommandViaJournal(input: {
   return replayed;
 }
 
+export async function claimFailedSourceApiActionEffectViaJournal(input: {
+  actionId: string;
+  db: Database;
+  effectId: string;
+  organizationId: string;
+}): Promise<
+  ResultType<
+    WorkflowJournalEffectToken<SourceApiActionEffect>,
+    SourceApiActionJournalStorageError
+  >
+> {
+  for (let attempt = 1; attempt <= MAX_STORAGE_COMMIT_ATTEMPTS; attempt += 1) {
+    const store = createSourceApiActionJournalStore({
+      db: input.db,
+      onAppendEntries: ({ entries, tx }) =>
+        projectSourceApiActionEffectLifecycleAppend({ entries, tx }),
+    });
+    const streamEntries = await store.loadStream({
+      family: "source_api_action",
+      streamId: input.actionId,
+    });
+    const cursor = foldWorkflowJournalEntries({
+      entries: streamEntries,
+      reduce: reduceSourceApiActionJournalEvent,
+      streamId: input.actionId,
+    });
+    if (cursor.isErr()) {
+      return Result.err(cursor.error);
+    }
+
+    const effectState = cursor.value.effects.find(
+      (known) => known.effectId === input.effectId
+    );
+    const effect = cursor.value.pendingEffects.find(
+      (pending) => pending.effectId === input.effectId
+    );
+    if (effectState === undefined || effectState.status !== "failed") {
+      return Result.err(
+        new WorkflowJournalCorruptStreamError({
+          detail: `source_api_action effect ${input.effectId} is not failed in journal state`,
+          family: "source_api_action",
+          streamId: input.actionId,
+        })
+      );
+    }
+    if (effect === undefined) {
+      return Result.err(
+        new WorkflowJournalCorruptStreamError({
+          detail: `source_api_action failed effect ${input.effectId} is not runnable from journal state`,
+          family: "source_api_action",
+          streamId: input.actionId,
+        })
+      );
+    }
+
+    const occurredAt = new Date();
+    const entry: WorkflowJournalEffectStartedEntry = {
+      commitId: ulid(),
+      effectId: input.effectId,
+      entryId: ulid(),
+      family: "source_api_action",
+      kind: "effect_started",
+      occurredAt,
+      organizationId: input.organizationId,
+      streamId: input.actionId,
+      streamPosition: cursor.value.streamPosition + 1,
+      workerId: SOURCE_API_ACTION_EFFECT_WORKER_ID,
+    };
+    const appended = await store.appendEntries({
+      entries: [entry],
+      expectedStreamPosition: cursor.value.streamPosition,
+    });
+
+    if (appended.kind === "appended") {
+      return Result.ok(effect);
+    }
+    if (appended.kind === "position_conflict") {
+      continue;
+    }
+
+    return Result.err(
+      new WorkflowJournalCorruptStreamError({
+        detail:
+          "source_api_action effect claim append unexpectedly conflicted on command idempotency",
+        family: "source_api_action",
+        streamId: input.actionId,
+      })
+    );
+  }
+
+  return Result.err(
+    new WorkflowStorageContentionError({
+      actionId: input.actionId,
+      attempts: MAX_STORAGE_COMMIT_ATTEMPTS,
+      family: "source_api_action",
+    })
+  );
+}
+
+export async function recordSourceApiActionEffectFailureViaJournal(input: {
+  actionId: string;
+  db: Database;
+  effectId: string;
+  errorCode: string;
+  errorDetail?: string | null;
+  organizationId: string;
+}): Promise<ResultType<void, SourceApiActionJournalStorageError>> {
+  for (let attempt = 1; attempt <= MAX_STORAGE_COMMIT_ATTEMPTS; attempt += 1) {
+    const store = createSourceApiActionJournalStore({
+      db: input.db,
+      onAppendEntries: ({ entries, tx }) =>
+        projectSourceApiActionEffectLifecycleAppend({ entries, tx }),
+    });
+    const streamEntries = await store.loadStream({
+      family: "source_api_action",
+      streamId: input.actionId,
+    });
+    const cursor = foldWorkflowJournalEntries({
+      entries: streamEntries,
+      reduce: reduceSourceApiActionJournalEvent,
+      streamId: input.actionId,
+    });
+    if (cursor.isErr()) {
+      return Result.err(cursor.error);
+    }
+
+    const effect = cursor.value.effects.find(
+      (known) => known.effectId === input.effectId
+    );
+    if (effect === undefined || effect.status === "completed") {
+      return Result.err(
+        new WorkflowJournalCorruptStreamError({
+          detail: `source_api_action effect ${input.effectId} cannot be marked failed from journal state`,
+          family: "source_api_action",
+          streamId: input.actionId,
+        })
+      );
+    }
+
+    const occurredAt = new Date();
+    const entry: WorkflowJournalEffectFailedEntry = {
+      commitId: ulid(),
+      effectId: input.effectId,
+      entryId: ulid(),
+      errorCode: input.errorCode,
+      errorDetail: input.errorDetail ?? null,
+      family: "source_api_action",
+      kind: "effect_failed",
+      occurredAt,
+      organizationId: input.organizationId,
+      streamId: input.actionId,
+      streamPosition: cursor.value.streamPosition + 1,
+    };
+    const appended = await store.appendEntries({
+      entries: [entry],
+      expectedStreamPosition: cursor.value.streamPosition,
+    });
+
+    if (appended.kind === "appended") {
+      return Result.ok(undefined);
+    }
+    if (appended.kind === "position_conflict") {
+      continue;
+    }
+
+    return Result.err(
+      new WorkflowJournalCorruptStreamError({
+        detail:
+          "source_api_action effect failure append unexpectedly conflicted on command idempotency",
+        family: "source_api_action",
+        streamId: input.actionId,
+      })
+    );
+  }
+
+  return Result.err(
+    new WorkflowStorageContentionError({
+      actionId: input.actionId,
+      attempts: MAX_STORAGE_COMMIT_ATTEMPTS,
+      family: "source_api_action",
+    })
+  );
+}
+
 function createSourceApiActionJournalStore(input: {
   db: Database;
   onAppendEntries?: (input: {
@@ -363,42 +549,6 @@ async function projectFreshSourceApiActionJournalAppend(input: {
   >[];
   tx: DatabaseTransaction;
 }) {
-  const commandEntry = requireCommandEntry(input.entries);
-
-  await input.tx.insert(workflowCommands).values({
-    actionId:
-      input.decision.kind === "accepted"
-        ? input.actionId
-        : input.command.actionId,
-    actorSnapshotJson: {
-      authMode: input.command.actorSnapshot.authMode,
-      email: input.command.actorSnapshot.email,
-      membershipRoles: [...input.command.actorSnapshot.membershipRoles],
-      userId: input.command.actorSnapshot.userId,
-    },
-    causedByEventId: input.command.causedByEventId,
-    commandInvocationId: input.command.commandInvocationId,
-    commandPayloadBytes: encodeSourceApiActionCommandPayload(
-      input.command.commandPayload
-    ),
-    commandType: getSourceApiActionCommandPayloadType(
-      input.command.commandPayload
-    ),
-    createdAt: input.command.observedAt,
-    decisionKind: input.decision.kind,
-    family: "source_api_action",
-    id: commandEntry.entryId,
-    organizationId: input.command.organizationId,
-    rejectCode:
-      input.decision.kind === "rejected" ? input.decision.rejectCode : null,
-    rejectDetail:
-      input.decision.kind === "rejected"
-        ? (input.decision.rejectDetail ?? null)
-        : null,
-    requestId: input.command.requestId,
-    surface: input.command.surface,
-  });
-
   if (input.decision.kind === "rejected") {
     return;
   }
@@ -422,18 +572,6 @@ async function projectFreshSourceApiActionJournalAppend(input: {
   if (nextState.isErr()) {
     throw nextState.error;
   }
-
-  await input.tx.insert(sourceApiActionEvents).values(
-    committedEvents.map((event) => ({
-      actionId: input.actionId,
-      commandId: commandEntry.entryId,
-      eventType: event.type,
-      id: event.id,
-      occurredAt: event.occurredAt,
-      payloadBytes: encodeSourceApiActionEventPayload(event),
-      sequence: event.sequence,
-    }))
-  );
 
   const lastEvent = committedEvents.at(-1);
   if (!lastEvent) {
@@ -517,6 +655,60 @@ async function projectFreshSourceApiActionJournalAppend(input: {
       set: actionColumns,
       target: sourceApiActions.id,
     });
+}
+
+async function projectSourceApiActionEffectLifecycleAppend(input: {
+  entries: readonly WorkflowJournalEntry<
+    SourceApiActionCommandPayload,
+    SourceApiActionEvent,
+    SourceApiActionEffect
+  >[];
+  tx: DatabaseTransaction;
+}) {
+  const startedEffects = input.entries.filter(
+    (entry): entry is WorkflowJournalEffectStartedEntry =>
+      entry.kind === "effect_started"
+  );
+  if (startedEffects.length > 0) {
+    await input.tx
+      .update(workflowEffectDispatches)
+      .set({
+        attemptCount: sql`${workflowEffectDispatches.attemptCount} + 1`,
+        lastErrorCode: null,
+        lastErrorDetail: null,
+        leasedUntil: null,
+        status: "leased",
+      })
+      .where(
+        inArray(
+          workflowEffectDispatches.id,
+          startedEffects.map((entry) => entry.effectId)
+        )
+      );
+  }
+
+  const failedEffects = input.entries.filter(
+    (entry): entry is WorkflowJournalEffectFailedEntry =>
+      entry.kind === "effect_failed"
+  );
+  const firstFailedEffect = failedEffects[0];
+  if (firstFailedEffect !== undefined) {
+    await input.tx
+      .update(workflowEffectDispatches)
+      .set({
+        availableAt: firstFailedEffect.occurredAt,
+        lastErrorCode: firstFailedEffect.errorCode,
+        lastErrorDetail: firstFailedEffect.errorDetail,
+        leasedUntil: null,
+        status: "pending",
+      })
+      .where(
+        inArray(
+          workflowEffectDispatches.id,
+          failedEffects.map((entry) => entry.effectId)
+        )
+      );
+  }
 }
 
 function toStoredSourceApiActionJournalDecision(
@@ -724,24 +916,6 @@ function findCommandEntry(
     ): entry is WorkflowJournalCommandEntry<SourceApiActionCommandPayload> =>
       entry.kind === "command"
   );
-}
-
-function requireCommandEntry(
-  entries: readonly WorkflowJournalEntry<
-    SourceApiActionCommandPayload,
-    SourceApiActionEvent,
-    SourceApiActionEffect
-  >[]
-) {
-  const commandEntry = findCommandEntry(entries);
-  if (commandEntry === undefined) {
-    throw new WorkflowStorageWriteError({
-      family: "source_api_action",
-      operation: "project_journal_command",
-    });
-  }
-
-  return commandEntry;
 }
 
 function findRejectedDecisionCheckpoint(
