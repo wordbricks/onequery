@@ -112,8 +112,8 @@ type StoredSourceApiActionJournalDecision =
       >,
       { kind: "accepted" }
     > & {
-      freshEffects?: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
-      journalEffects?: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
+      freshEffects: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
+      journalEffects: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
     });
 
 const REJECTED_DECISION_CHECKPOINT = "decision_rejected";

@@ -738,7 +738,7 @@ describe("query workflow audit runtime", () => {
       surface: "cli",
     });
     expect(
-      startDecision.freshEffects?.map((effect) => effect.effectType)
+      startDecision.freshEffects.map((effect) => effect.effectType)
     ).toEqual(["prepare_validate_query"]);
 
     const loadSource = vi.fn().mockResolvedValue({

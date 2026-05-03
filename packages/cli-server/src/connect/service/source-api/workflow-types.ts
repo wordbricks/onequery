@@ -58,8 +58,8 @@ export type StoredAcceptedSourceApiActionDecision = Extract<
   StoredWorkflowDecision<"source_api_action", SourceApiActionEvent, string>,
   { kind: "accepted" }
 > & {
-  freshEffects?: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
-  journalEffects?: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
+  freshEffects: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
+  journalEffects: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
 };
 
 export type StoredAcceptedSourceApiActionResultCommand = {

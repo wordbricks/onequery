@@ -18,6 +18,7 @@ import type {
   SourceApiActionEffect,
   SourceApiActionSourceDescriptor,
   WorkflowActorSnapshot,
+  WorkflowJournalEffectToken,
 } from "../../../audit";
 import { isCliFailure } from "../../../domain/failures";
 import { toCliErrorMessage } from "../../../observability";
@@ -565,7 +566,7 @@ function findFreshSourceApiActionEffect<
 }): LoadedSourceApiActionEffect<EffectType> | null {
   return findSourceApiActionJournalEffect({
     currentDecision: input.currentDecision,
-    effects: input.currentDecision.freshEffects ?? [],
+    effects: input.currentDecision.freshEffects,
     expectedEffectType: input.expectedEffectType,
   });
 }
@@ -579,7 +580,7 @@ function findJournalSourceApiActionEffect<
   return findSourceApiActionJournalEffect({
     currentDecision: input.currentDecision,
     expectedEffectType: input.expectedEffectType,
-    effects: input.currentDecision.journalEffects ?? [],
+    effects: input.currentDecision.journalEffects,
   });
 }
 
@@ -587,18 +588,17 @@ function findSourceApiActionJournalEffect<
   EffectType extends SourceApiActionEffect["type"],
 >(input: {
   currentDecision: StoredAcceptedSourceApiActionDecision;
-  effects: StoredAcceptedSourceApiActionDecision["journalEffects"];
+  effects: readonly WorkflowJournalEffectToken<SourceApiActionEffect>[];
   expectedEffectType: EffectType;
 }): LoadedSourceApiActionEffect<EffectType> | null {
-  const effects = input.effects ?? [];
-  const effectIndex = effects.findIndex(
+  const effectIndex = input.effects.findIndex(
     (effect) => effect.effect.type === input.expectedEffectType
   );
   if (effectIndex === -1) {
     return null;
   }
 
-  const effect = effects[effectIndex];
+  const effect = input.effects[effectIndex];
   if (effect === undefined) {
     return null;
   }

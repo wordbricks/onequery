@@ -125,8 +125,8 @@ type StoredQueryActionJournalDecision =
       { kind: "accepted" }
     > & {
       cursor: QueryActionJournalCursor;
-      freshEffects?: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
-      journalEffects?: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
+      freshEffects: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
+      journalEffects: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
     });
 
 const REJECTED_DECISION_CHECKPOINT = "decision_rejected";

@@ -62,8 +62,8 @@ export type StoredAcceptedQueryActionDecision = Extract<
     QueryActionEvent,
     QueryActionEffect
   >;
-  freshEffects?: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
-  journalEffects?: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
+  freshEffects: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
+  journalEffects: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
 };
 
 export type LoadedQueryActionEffect<

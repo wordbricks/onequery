@@ -138,7 +138,8 @@ function normalizeCell(value: unknown): string {
   }
 
   try {
-    return JSON.stringify(value) ?? "";
+    const serialized = JSON.stringify(value);
+    return serialized === undefined ? String(value) : serialized;
   } catch {
     return String(value);
   }

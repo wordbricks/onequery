@@ -10,6 +10,7 @@ import type {
   QueryActionCommand,
   QueryActionEffect,
   QueryActionSourceDescriptor,
+  WorkflowJournalEffectToken,
 } from "../../../audit";
 import type { CliQuerySourceRecord } from "../../../domain/workflows";
 import { toCliErrorMessage } from "../../../observability";
@@ -371,7 +372,7 @@ function findFreshQueryActionEffect<
 }): LoadedQueryActionEffect<EffectType> | null {
   return findQueryActionJournalEffect({
     currentDecision: input.currentDecision,
-    effects: input.currentDecision.freshEffects ?? [],
+    effects: input.currentDecision.freshEffects,
     expectedEffectType: input.expectedEffectType,
   });
 }
@@ -385,7 +386,7 @@ function findJournalQueryActionEffect<
   return findQueryActionJournalEffect({
     currentDecision: input.currentDecision,
     expectedEffectType: input.expectedEffectType,
-    effects: input.currentDecision.journalEffects ?? [],
+    effects: input.currentDecision.journalEffects,
   });
 }
 
@@ -393,18 +394,17 @@ function findQueryActionJournalEffect<
   EffectType extends QueryActionEffect["type"],
 >(input: {
   currentDecision: StoredAcceptedQueryActionDecision;
-  effects: StoredAcceptedQueryActionDecision["journalEffects"];
+  effects: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
   expectedEffectType: EffectType;
 }): LoadedQueryActionEffect<EffectType> | null {
-  const effects = input.effects ?? [];
-  const effectIndex = effects.findIndex(
+  const effectIndex = input.effects.findIndex(
     (effect) => effect.effect.type === input.expectedEffectType
   );
   if (effectIndex === -1) {
     return null;
   }
 
-  const effect = effects[effectIndex];
+  const effect = input.effects[effectIndex];
   if (effect === undefined) {
     return null;
   }
