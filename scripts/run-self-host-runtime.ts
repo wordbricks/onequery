@@ -281,32 +281,45 @@ function copyRuntimeAssetFamily(input: {
     recursive: true,
   });
 
-  switch (familyConfig.buildSource.kind) {
-    case "package-entrypoint-directory": {
-      const resolvedPackageFile = familyRequire.resolve(
-        familyConfig.buildSource.packageSpecifier
-      );
-      const sourceDir = dirname(resolvedPackageFile);
+  const buildSource = familyConfig.buildSource;
 
-      for (const fileConfig of Object.values(familyConfig.files)) {
-        copyFileSync(
-          join(sourceDir, fileConfig.filename),
-          join(outDir, fileConfig.filename)
-        );
-      }
-      return;
+  if ("packageSpecifier" in buildSource) {
+    const resolvedPackageFile = familyRequire.resolve(
+      buildSource.packageSpecifier
+    );
+    const sourceDir = dirname(resolvedPackageFile);
+
+    for (const fileConfig of Object.values(familyConfig.files)) {
+      copyFileSync(
+        join(sourceDir, fileConfig.filename),
+        join(outDir, fileConfig.filename)
+      );
     }
-    case "resolved-specifier-map": {
-      for (const [fileRole, fileConfig] of Object.entries(familyConfig.files)) {
-        const sourcePath = familyRequire.resolve(
-          familyConfig.buildSource.specifiersByFileRole[
-            fileRole as keyof typeof familyConfig.buildSource.specifiersByFileRole
-          ]
-        );
-        copyFileSync(sourcePath, join(outDir, fileConfig.filename));
-      }
-    }
+    return;
   }
+
+  if ("specifiersByFileRole" in buildSource) {
+    const specifiersByFileRole: Readonly<Record<string, string>> =
+      buildSource.specifiersByFileRole;
+
+    for (const [fileRole, fileConfig] of Object.entries(familyConfig.files)) {
+      const sourceSpecifier = specifiersByFileRole[fileRole];
+
+      if (!sourceSpecifier) {
+        throw new Error(
+          `Missing runtime asset build source specifier for '${input.family}.${fileRole}'.`
+        );
+      }
+
+      const sourcePath = familyRequire.resolve(sourceSpecifier);
+      copyFileSync(sourcePath, join(outDir, fileConfig.filename));
+    }
+    return;
+  }
+
+  throw new Error(
+    `Unsupported runtime asset build source for '${input.family}'.`
+  );
 }
 
 export async function stageWorkspaceDevRuntimeAssetsResult(
