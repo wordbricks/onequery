@@ -81,11 +81,6 @@ type QueryActionEffectOfType<Type extends QueryActionEffectType> = Extract<
   QueryActionEffect,
   { type: Type }
 >;
-type QueryActionEffectForFilter<
-  Type extends QueryActionEffectType | undefined,
-> = Type extends QueryActionEffectType
-  ? QueryActionEffectOfType<Type>
-  : QueryActionEffect;
 
 type QueryActionJournalStorageError =
   | WorkflowStorageError
@@ -373,25 +368,23 @@ export async function loadQueryActionCommandViaJournal(input: {
 }
 
 export async function loadPendingQueryActionEffectsViaJournal<
-  const EffectType extends QueryActionEffectType | undefined = undefined,
+  const EffectType extends QueryActionEffectType,
 >(input: {
   db: Database;
-  effectType?: EffectType;
+  effectType: EffectType;
   limit?: number;
   organizationId?: string;
 }): Promise<
   ResultType<
-    WorkflowJournalEffectToken<QueryActionEffectForFilter<EffectType>>[],
+    WorkflowJournalEffectToken<QueryActionEffectOfType<EffectType>>[],
     QueryActionJournalStorageError
   >
 > {
   const conditions = [
     eq(pendingWorkflowEffects.family, "query_action"),
+    eq(pendingWorkflowEffects.effectType, input.effectType),
     inArray(pendingWorkflowEffects.status, ["pending", "failed"]),
   ];
-  if (input.effectType !== undefined) {
-    conditions.push(eq(pendingWorkflowEffects.effectType, input.effectType));
-  }
   if (input.organizationId !== undefined) {
     conditions.push(
       eq(pendingWorkflowEffects.organizationId, input.organizationId)
@@ -405,8 +398,8 @@ export async function loadPendingQueryActionEffectsViaJournal<
     .orderBy(asc(pendingWorkflowEffects.scheduledAt))
     .limit(input.limit ?? 100);
 
-  const pending: WorkflowJournalEffectToken<
-    QueryActionEffectForFilter<EffectType>
+  const effectTokens: WorkflowJournalEffectToken<
+    QueryActionEffectOfType<EffectType>
   >[] = [];
 
   for (const row of rows) {
@@ -418,8 +411,8 @@ export async function loadPendingQueryActionEffectsViaJournal<
       return Result.err(effect.error);
     }
 
-    pending.push({
-      effect: effect.value as QueryActionEffectForFilter<EffectType>,
+    effectTokens.push({
+      effect: effect.value as QueryActionEffectOfType<EffectType>,
       effectId: row.effectId,
       effectType: row.effectType,
       organizationId: row.organizationId,
@@ -430,7 +423,7 @@ export async function loadPendingQueryActionEffectsViaJournal<
     });
   }
 
-  return Result.ok(pending);
+  return Result.ok(effectTokens);
 }
 
 export async function loadQueryActionDecisionForEffectViaJournal(input: {

@@ -125,16 +125,16 @@ export async function recoverPendingQueryUsagePersistenceEffects(input: {
   organizationId?: string;
   requestId?: string;
 }): Promise<QueryUsagePersistenceRecoveryResult> {
-  const pending = await loadPendingQueryActionEffectsViaJournal({
+  const pendingUsageEffects = await loadPendingQueryActionEffectsViaJournal({
     db: input.db,
     effectType: "persist_usage",
     limit: input.limit,
     organizationId: input.organizationId,
   });
-  if (pending.isErr()) {
+  if (pendingUsageEffects.isErr()) {
     throw createQueryAuditProblem(
       "query_action pending usage effects could not be loaded",
-      pending.error
+      pendingUsageEffects.error
     );
   }
 
@@ -144,15 +144,15 @@ export async function recoverPendingQueryUsagePersistenceEffects(input: {
     skipped: 0,
   };
 
-  for (const effect of pending.value) {
+  for (const usageEffect of pendingUsageEffects.value) {
     const decision = await loadQueryActionDecisionForEffectViaJournal({
-      actionId: effect.streamId,
+      actionId: usageEffect.streamId,
       db: input.db,
-      effectId: effect.effectId,
+      effectId: usageEffect.effectId,
     });
     if (decision.isErr()) {
       throw createQueryAuditProblem(
-        `query_action pending usage effect ${effect.effectId} could not be loaded from the journal`,
+        `query_action pending usage effect ${usageEffect.effectId} could not be loaded from the journal`,
         decision.error
       );
     }
@@ -168,11 +168,11 @@ export async function recoverPendingQueryUsagePersistenceEffects(input: {
         currentDecision: {
           ...decision.value,
           freshEffects: [],
-          journalEffects: [effect],
+          journalEffects: [usageEffect],
         },
         db: input.db,
         dispatch: input.dispatch,
-        organizationId: effect.organizationId,
+        organizationId: usageEffect.organizationId,
         requestId: input.requestId ?? "query-usage-recovery",
       });
       summary.recovered += 1;
@@ -180,10 +180,10 @@ export async function recoverPendingQueryUsagePersistenceEffects(input: {
       summary.failed += 1;
       logCliEvent({
         details: {
-          actionId: effect.streamId,
-          effectId: effect.effectId,
+          actionId: usageEffect.streamId,
+          effectId: usageEffect.effectId,
           error: toCliErrorMessage(error),
-          organizationId: effect.organizationId,
+          organizationId: usageEffect.organizationId,
         },
         event: "cli.query.usage_persistence_recovery_failed",
         level: "warn",
