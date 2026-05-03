@@ -228,7 +228,6 @@ pub(crate) fn resolved_base_url(
             ErrorStage::LoadConfig,
             failure.render(),
             vec![
-                "fix onequery.dev.toml".to_owned(),
                 "set ONEQUERY_BASE_URL or run onequery config set api.server_url <origin>"
                     .to_owned(),
             ],

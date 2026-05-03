@@ -9,11 +9,9 @@
  */
 
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 
-import { schema } from "@/client";
+import { createDatabaseHandle } from "@/client";
+import type { Database } from "@/client";
 import { member, organization, session, user } from "@/schema/auth";
 import { dataSources } from "@/schema/data-sources";
 import { organizationProfiles } from "@/schema/organization-profiles";
@@ -28,9 +26,7 @@ import {
   PLACEHOLDER_IV,
 } from "./seed-dev-data";
 
-type Transaction = Parameters<
-  Parameters<PostgresJsDatabase<typeof schema>["transaction"]>[0]
->[0];
+type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 async function seedAuth(tx: Transaction) {
   await tx.insert(user).values({
@@ -116,11 +112,10 @@ async function main() {
     throw new Error("DATABASE_URL is required to seed dev data.");
   }
 
-  const sql = postgres(connectionString, { idle_timeout: 5, max: 1 });
-  const db = drizzle(sql, { schema });
+  const database = createDatabaseHandle(connectionString);
 
   try {
-    const existingOrg = await db
+    const existingOrg = await database.db
       .select({ id: organization.id })
       .from(organization)
       .where(eq(organization.id, DEV_ORG_ID))
@@ -131,7 +126,7 @@ async function main() {
       return;
     }
 
-    await db.transaction(async (tx) => {
+    await database.db.transaction(async (tx) => {
       await seedAuth(tx);
       await seedDataSources(tx);
     });
@@ -141,7 +136,7 @@ async function main() {
     console.error("[OneQuery] Seeding failed:", error);
     throw error;
   } finally {
-    await sql.end({ timeout: 5 });
+    await database.close();
   }
 }
 

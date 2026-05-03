@@ -7,7 +7,9 @@
       "devDependencies": {
         "@bufbuild/buf": "catalog:tooling",
         "@bufbuild/protoc-gen-es": "catalog:tooling",
+        "@onequery/base": "workspace:*",
         "@onequery/config": "workspace:*",
+        "@onequery/config-loader": "workspace:*",
         "@onequery/config-node": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/self-host-runtime": "workspace:*",

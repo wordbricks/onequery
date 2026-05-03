@@ -21,8 +21,8 @@ describe("test-env runtime config helpers", () => {
       Uint8Array
     );
     expect(runtimeConfig.value.storage).toMatchObject({
-      kind: "postgres",
-      url: "postgres://test:test@localhost:5454/test",
+      dir: "/tmp/onequery/test/pglite",
+      kind: "pglite",
     });
   });
 

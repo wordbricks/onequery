@@ -22,14 +22,12 @@ export type DeviceNavigation = {
 };
 
 export type DeviceVerificationRequest = {
-  requestId: number;
-  userCode: string | null;
+  userCode: string;
 };
 
 export type DeviceDecisionRequest = {
   action: DeviceDecisionAction;
-  requestId: number;
-  userCode: string | null;
+  userCode: string;
 };
 
 export type DeviceNavigationTarget = {
@@ -60,9 +58,6 @@ export type DeviceAuthContext = {
   session: DeviceSession;
   navigation: DeviceNavigation | null;
   nextNavigationId: number;
-  nextAsyncRequestId: number;
-  pendingVerification: DeviceVerificationRequest | null;
-  pendingDecision: DeviceDecisionRequest | null;
 };
 
 export type DeviceAuthMachineInput = {
@@ -95,12 +90,12 @@ export type DevicePanelView =
 
 export type DeviceActorFailure = {
   message: string;
-  requestId: number;
 };
 
 export type DeviceAuthReadableSnapshot = {
   context: DeviceAuthContext;
   value:
+    | "bootstrap"
     | "entry"
     | "verifying"
     | "result"
@@ -109,7 +104,8 @@ export type DeviceAuthReadableSnapshot = {
           | "sessionCheck"
           | "signInRequired"
           | "review"
-          | "submittingDecision";
+          | "approving"
+          | "denying";
       };
 };
 
@@ -149,10 +145,7 @@ export function createInitialDeviceAuthContext(
     alert: createIdleDeviceAuthAlert(),
     inputCode: "",
     navigation: null,
-    nextAsyncRequestId: 1,
     nextNavigationId: 1,
-    pendingDecision: null,
-    pendingVerification: null,
     resultState: createIdleDeviceAuthResultState(),
     session: input?.initialSession ?? { kind: "pending" },
   };
@@ -165,23 +158,14 @@ export function createInitialDeviceAuthContext(
     ...context,
     activeUserCode: input.initialUserCode,
     inputCode: input.initialUserCode,
-    nextAsyncRequestId: 2,
-    pendingVerification: {
-      requestId: 1,
-      userCode: input.initialUserCode,
-    },
   };
 }
 
 export function resetFlowContext(
-  context: Pick<
-    DeviceAuthContext,
-    "nextAsyncRequestId" | "nextNavigationId" | "session"
-  >
+  context: Pick<DeviceAuthContext, "nextNavigationId" | "session">
 ): DeviceAuthContext {
   return {
     ...createInitialDeviceAuthContext(),
-    nextAsyncRequestId: context.nextAsyncRequestId,
     nextNavigationId: context.nextNavigationId,
     session: context.session,
   };
@@ -209,6 +193,9 @@ export function normalizeUserCode(value: string | null) {
 export function readPanelView(
   snapshot: DeviceAuthReadableSnapshot
 ): DevicePanelView {
+  if (snapshot.value === "bootstrap") {
+    return "entry";
+  }
   if (snapshot.value === "entry") {
     return "entry";
   }
@@ -277,8 +264,6 @@ export function readVerifiedTransition(input: {
     activeUserCode: input.userCode,
     alert: createIdleDeviceAuthAlert(),
     inputCode: input.userCode,
-    pendingDecision: null,
-    pendingVerification: null,
     resultState: input.resultState,
     ...(shouldReplaceNavigation(input.context.activeUserCode, input.userCode)
       ? queueNavigation(input.context, input.userCode, true)
@@ -286,29 +271,17 @@ export function readVerifiedTransition(input: {
   };
 }
 
-export function requirePendingVerification(
-  context: DeviceAuthContext
-): DeviceVerificationRequest {
-  if (context.pendingVerification === null) {
-    throw new Error("Pending verification is required in verifying state");
-  }
-
-  return context.pendingVerification;
-}
-
-export function requirePendingDecision(
-  context: DeviceAuthContext
-): DeviceDecisionRequest {
-  if (context.pendingDecision === null) {
-    throw new Error("Pending decision is required in submitting state");
-  }
-
-  return context.pendingDecision;
-}
-
 export function shouldReplaceNavigation(
   activeUserCode: string | null,
   userCode: string
 ) {
   return userCode !== activeUserCode;
+}
+
+export function requireActiveUserCode(context: DeviceAuthContext): string {
+  if (context.activeUserCode === null) {
+    throw new Error("Active user code is required in device request states");
+  }
+
+  return context.activeUserCode;
 }

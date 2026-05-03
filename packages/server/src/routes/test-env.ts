@@ -10,8 +10,7 @@ import { deriveKeyFromBase64Result } from "../services/crypto/credential-encrypt
 export const TEST_PUBLIC_ORIGIN = "http://localhost:4545";
 export const TEST_SERVER_MASTER_ENCRYPTION_KEY =
   "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=";
-export const DEFAULT_TEST_DATABASE_URL =
-  "postgres://test:test@localhost:5454/test";
+export const DEFAULT_TEST_DATABASE_URL = "pglite:/tmp/onequery/test/pglite";
 
 export type TestRuntimeConfigOverrides = Omit<
   Partial<ServerRuntimeConfig>,

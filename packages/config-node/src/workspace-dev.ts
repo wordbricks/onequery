@@ -7,7 +7,8 @@ import type { TomlFileData } from "@onequery/config-loader";
 import {
   formatWorkspaceDevIssuePath,
   parseWorkspaceDev,
-  WORKSPACE_DEV_CONFIG_FILENAME,
+  WORKSPACE_DEV_HOME_DIRNAME,
+  WORKSPACE_DEV_PROFILE_DIRNAME,
   WORKSPACE_DEV_SECRETS_FILENAME,
 } from "@onequery/config/workspace-dev";
 import type {
@@ -21,7 +22,7 @@ const defaultRootDir = resolve(
 );
 
 export interface WorkspaceDevPaths {
-  readonly configPath: string;
+  readonly profileDir: string;
   readonly rootDir: string;
   readonly secretsPath: string;
 }
@@ -49,7 +50,7 @@ function renderWorkspaceDevParseError(
 
   return [
     "Invalid workspace-dev config.",
-    `Config file: ${paths.configPath}`,
+    `Profile dir: ${paths.profileDir}`,
     `Secrets file: ${paths.secretsPath}`,
     ...issues,
   ].join("\n");
@@ -58,27 +59,22 @@ function renderWorkspaceDevParseError(
 function renderWorkspaceDevReadError(input: {
   readonly error: unknown;
   readonly paths: WorkspaceDevPaths;
-  readonly source: "config" | "secrets";
 }): string {
   return [
     "Failed to load workspace-dev config.",
-    `Config file: ${input.paths.configPath}`,
+    `Profile dir: ${input.paths.profileDir}`,
     `Secrets file: ${input.paths.secretsPath}`,
-    `- ${input.source}: ${
+    `- secrets: ${
       input.error instanceof Error ? input.error.message : String(input.error)
     }`,
   ].join("\n");
 }
 
-function readWorkspaceDevSource(input: {
-  readonly path: string;
-  readonly paths: WorkspaceDevPaths;
-  readonly source: "config" | "secrets";
-}): TomlFileData {
+function readWorkspaceDevSecrets(paths: WorkspaceDevPaths): TomlFileData {
   try {
-    return readOptionalTomlFile(input.path);
+    return readOptionalTomlFile(paths.secretsPath);
   } catch (error) {
-    throw new Error(renderWorkspaceDevReadError({ ...input, error }), {
+    throw new Error(renderWorkspaceDevReadError({ error, paths }), {
       cause: error,
     });
   }
@@ -87,10 +83,16 @@ function readWorkspaceDevSource(input: {
 export function resolveWorkspaceDevPaths(
   rootDir: string = defaultRootDir
 ): WorkspaceDevPaths {
-  return {
-    configPath: resolve(rootDir, WORKSPACE_DEV_CONFIG_FILENAME),
+  const profileDir = resolve(
     rootDir,
-    secretsPath: resolve(rootDir, WORKSPACE_DEV_SECRETS_FILENAME),
+    WORKSPACE_DEV_HOME_DIRNAME,
+    WORKSPACE_DEV_PROFILE_DIRNAME
+  );
+
+  return {
+    profileDir,
+    rootDir,
+    secretsPath: resolve(profileDir, WORKSPACE_DEV_SECRETS_FILENAME),
   };
 }
 
@@ -99,16 +101,7 @@ export function loadWorkspaceDev(
 ): ResolvedWorkspaceDevConfig {
   const paths = resolveWorkspaceDevPaths(input.rootDir);
   const result = parseWorkspaceDev({
-    config: readWorkspaceDevSource({
-      path: paths.configPath,
-      paths,
-      source: "config",
-    }),
-    secrets: readWorkspaceDevSource({
-      path: paths.secretsPath,
-      paths,
-      source: "secrets",
-    }),
+    secrets: readWorkspaceDevSecrets(paths),
   });
 
   if (!result.ok) {

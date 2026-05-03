@@ -2,12 +2,17 @@ import type { ResolvedWorkspaceDevConfig } from "../workspace-dev";
 
 export interface DrizzleConfigProjection {
   readonly databaseUrl: string;
+  readonly pgliteDir: string;
 }
 
 export function projectDrizzleConfig(
-  workspaceDev: ResolvedWorkspaceDevConfig
+  _workspaceDev: ResolvedWorkspaceDevConfig,
+  options: {
+    readonly storageDir: string;
+  }
 ): DrizzleConfigProjection {
   return {
-    databaseUrl: workspaceDev.postgres.url,
+    databaseUrl: `pglite:${options.storageDir}`,
+    pgliteDir: options.storageDir,
   };
 }

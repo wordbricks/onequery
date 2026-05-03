@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -54,15 +54,17 @@ describe("packaged server startup", () => {
     expect(loadStartupLaunchConfig(startupInput)).toEqual(launchConfig);
   });
 
-  it("does not read repo-local workspace-dev files during self-host startup", () => {
+  it("does not read repo-local workspace-dev state during self-host startup", () => {
     const root = mkdtempSync(join(tmpdir(), "onequery-self-host-startup-"));
     const launchConfigPath = join(root, "launch.json");
 
     // Comment: keep this in self-host mode. A workspace-dev launch config here
     // would make the acceptance check look stronger than it really is.
-    writeFileSync(join(root, "onequery.dev.toml"), 'port = "not json"\n');
+    mkdirSync(join(root, ".onequery", "dev"), {
+      recursive: true,
+    });
     writeFileSync(
-      join(root, "onequery.dev.secrets.toml"),
+      join(root, ".onequery", "dev", "secrets.toml"),
       'secret = "not toml"\n'
     );
     writeLaunchConfig(

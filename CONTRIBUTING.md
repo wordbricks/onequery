@@ -175,6 +175,10 @@ bun run db:studio
 bun run db:reset
 ```
 
+`db:reset` recreates the local development database and runs migrations only,
+so the next sign-in uses the first-user onboarding flow. Run `db:seed:dev`
+afterwards only when you want the sample `test-org` dataset.
+
 Proto contract commands:
 
 ```bash

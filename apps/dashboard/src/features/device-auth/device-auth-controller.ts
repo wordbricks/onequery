@@ -132,10 +132,6 @@ export function useDeviceAuthController({
   const errorMessage = readDeviceAuthErrorMessage(state);
   const result = readDeviceAuthResult(state);
   const sessionEmail = readSessionEmail(state);
-  const pendingDecision = state.context.pendingDecision;
-  const isSubmittingDecision = state.matches({
-    pending: "submittingDecision",
-  });
   const currentCode = activeUserCode ?? requestedUserCode;
   const resumePath = buildDeviceAuthPath(currentCode, onboardingOrganizationId);
   const panelMeta = getPanelMeta({ panelView, result });
@@ -144,10 +140,8 @@ export function useDeviceAuthController({
     activeUserCode,
     errorMessage,
     inputCode,
-    isSubmittingApprove:
-      isSubmittingDecision && pendingDecision?.action === "approve",
-    isSubmittingDeny:
-      isSubmittingDecision && pendingDecision?.action === "deny",
+    isSubmittingApprove: state.matches({ pending: "approving" }),
+    isSubmittingDeny: state.matches({ pending: "denying" }),
     onboardingOrganizationId,
     onApprove: () => {
       send({ type: "deviceAuth/approve" });

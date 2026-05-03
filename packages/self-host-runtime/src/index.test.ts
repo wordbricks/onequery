@@ -231,7 +231,7 @@ describe("startServer", () => {
       mode: "workspace-dev",
     });
     expect(mocks.prepareRuntimeDatabaseResult).toHaveBeenCalledWith({
-      databaseUrl: "postgres://onequery:onequery@localhost:5454/onequery",
+      databaseUrl: "pglite:/tmp/onequery/dev/pglite/onequery",
       migrationsDir: "/tmp/migrations",
     });
     expect(mocks.serve).toHaveBeenCalledWith(

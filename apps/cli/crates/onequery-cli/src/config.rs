@@ -1,8 +1,6 @@
 mod layers;
 
 use std::fmt::Display;
-use std::fs;
-use std::num::NonZeroU16;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -34,7 +32,7 @@ use onequery_gateway::self_host::default_public_origin;
 
 pub(crate) const DEFAULT_REQUEST_TIMEOUT_SEC: u64 = 60;
 pub(crate) type RawCliConfigOverrides = Vec<(String, TomlValue)>;
-const WORKSPACE_DEV_CONFIG_FILENAME: &str = "onequery.dev.toml";
+const WORKSPACE_DEV_BASE_URL: &str = "http://localhost:4545";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum ServerUrlValidationFailure {
@@ -89,43 +87,17 @@ pub(crate) fn config_set_request_timeout_sec_command_example() -> String {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum WorkspaceDevBaseUrlFailure {
-    ResolveRepoRoot { message: String },
-    Read { path: PathBuf, message: String },
-    Parse { path: PathBuf, message: String },
-    InvalidOrigin { path: PathBuf, message: String },
+    InvalidOrigin { message: String },
 }
 
 impl WorkspaceDevBaseUrlFailure {
     pub(crate) fn render(&self) -> String {
         match self {
-            Self::ResolveRepoRoot { message } => {
-                format!("failed to resolve workspace-dev repo root: {message}")
+            Self::InvalidOrigin { message } => {
+                format!("workspace-dev browser origin is invalid: {message}")
             }
-            Self::Read { path, message } => format!(
-                "failed to read workspace-dev config {}: {message}",
-                path.display()
-            ),
-            Self::Parse { path, message } => {
-                format!("invalid workspace-dev config {}: {message}", path.display())
-            }
-            Self::InvalidOrigin { path, message } => format!(
-                "workspace-dev browser origin derived from {} is invalid: {message}",
-                path.display()
-            ),
         }
     }
-}
-
-#[derive(Debug, Deserialize)]
-struct WorkspaceDevConfigProjection {
-    browser: WorkspaceDevBrowserProjection,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct WorkspaceDevBrowserProjection {
-    host: String,
-    port: NonZeroU16,
 }
 
 pub(crate) fn workspace_dev_base_url_for_debug_build()
@@ -134,44 +106,11 @@ pub(crate) fn workspace_dev_base_url_for_debug_build()
         return Ok(None);
     }
 
-    let repo_root = onequery_utils::repo_root().map_err(|error| {
-        WorkspaceDevBaseUrlFailure::ResolveRepoRoot {
-            message: error.to_string(),
-        }
-    })?;
-    Ok(Some(workspace_dev_base_url_from_repo_root(&repo_root)?))
-}
-
-fn workspace_dev_base_url_from_repo_root(
-    repo_root: &Path,
-) -> Result<String, WorkspaceDevBaseUrlFailure> {
-    workspace_dev_base_url_from_path(&repo_root.join(WORKSPACE_DEV_CONFIG_FILENAME))
-}
-
-fn workspace_dev_base_url_from_path(
-    config_path: &Path,
-) -> Result<String, WorkspaceDevBaseUrlFailure> {
-    let raw_config =
-        fs::read_to_string(config_path).map_err(|read_error| WorkspaceDevBaseUrlFailure::Read {
-            path: config_path.to_path_buf(),
-            message: read_error.to_string(),
-        })?;
-    let projection =
-        toml::from_str::<WorkspaceDevConfigProjection>(&raw_config).map_err(|parse_error| {
-            WorkspaceDevBaseUrlFailure::Parse {
-                path: config_path.to_path_buf(),
-                message: parse_error.to_string(),
-            }
-        })?;
-    let host = projection.browser.host.trim();
-    let browser_origin = format!("http://{host}:{}", projection.browser.port);
-
-    normalize_server_url(&browser_origin).map_err(|failure| {
-        WorkspaceDevBaseUrlFailure::InvalidOrigin {
-            path: config_path.to_path_buf(),
+    normalize_server_url(WORKSPACE_DEV_BASE_URL)
+        .map(Some)
+        .map_err(|failure| WorkspaceDevBaseUrlFailure::InvalidOrigin {
             message: failure.render("browser origin"),
-        }
-    })
+        })
 }
 
 pub(crate) fn normalize_server_url(raw_url: &str) -> Result<String, ServerUrlValidationFailure> {
@@ -567,8 +506,6 @@ mod tests {
     use super::DEFAULT_REQUEST_TIMEOUT_SEC;
     use super::ServerUrlValidationFailure;
     use super::TypedConfigOverrides;
-    use super::WORKSPACE_DEV_CONFIG_FILENAME;
-    use super::WorkspaceDevBaseUrlFailure;
     use super::config_set_request_timeout_sec_command_example;
     use super::config_set_server_url_command_example;
     use super::default_base_url;
@@ -576,7 +513,7 @@ mod tests {
     use super::layers::ConfigValueOrigin;
     use super::layers::materialize_runtime_config;
     use super::normalize_server_url;
-    use super::workspace_dev_base_url_from_repo_root;
+    use super::workspace_dev_base_url_for_debug_build;
     use onequery_gateway::self_host::default_public_origin;
 
     #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -692,88 +629,11 @@ mod tests {
     }
 
     #[test]
-    fn workspace_dev_base_url_from_repo_root_uses_workspace_root_browser_origin() {
-        let workspace_root =
-            std::env::temp_dir().join(format!("onequery-workspace-dev-test-{}", Uuid::new_v4()));
-        fs::create_dir_all(&workspace_root).unwrap_or_else(|error| {
-            panic!("expected workspace root creation to succeed: {error}");
-        });
-        fs::write(
-            workspace_root.join(WORKSPACE_DEV_CONFIG_FILENAME),
-            r#"
-[browser]
-host = "localhost"
-port = 4545
-
-[api]
-host = "127.0.0.1"
-port = 4555
-
-[postgres]
-host_port = 5454
-container_port = 5432
-database = "onequery"
-user = "onequery"
-password = "onequery"
-
-[flags]
-disable_rate_limit = true
-"#,
-        )
-        .unwrap_or_else(|error| panic!("expected workspace-dev config write to succeed: {error}"));
-
+    fn workspace_dev_base_url_for_debug_build_uses_repo_local_dev_origin() {
         assert_eq!(
-            workspace_dev_base_url_from_repo_root(&workspace_root),
-            Ok("http://localhost:4545".to_owned())
+            workspace_dev_base_url_for_debug_build(),
+            Ok(Some("http://localhost:4545".to_owned()))
         );
-
-        fs::remove_dir_all(&workspace_root).unwrap_or_else(|cleanup_error| {
-            panic!("expected temp workspace cleanup to succeed: {cleanup_error}");
-        });
-    }
-
-    #[test]
-    fn workspace_dev_base_url_from_repo_root_reports_missing_workspace_config() {
-        let workspace_root =
-            std::env::temp_dir().join(format!("onequery-workspace-dev-test-{}", Uuid::new_v4()));
-        fs::create_dir_all(&workspace_root).unwrap_or_else(|error| {
-            panic!("expected workspace root creation to succeed: {error}");
-        });
-
-        let failure = workspace_dev_base_url_from_repo_root(&workspace_root)
-            .expect_err("expected missing workspace-dev config to fail");
-        assert!(matches!(failure, WorkspaceDevBaseUrlFailure::Read { .. }));
-        assert!(failure.render().contains(WORKSPACE_DEV_CONFIG_FILENAME));
-
-        fs::remove_dir_all(&workspace_root).unwrap_or_else(|cleanup_error| {
-            panic!("expected temp workspace cleanup to succeed: {cleanup_error}");
-        });
-    }
-
-    #[test]
-    fn workspace_dev_base_url_from_repo_root_reports_invalid_workspace_config() {
-        let workspace_root =
-            std::env::temp_dir().join(format!("onequery-workspace-dev-test-{}", Uuid::new_v4()));
-        fs::create_dir_all(&workspace_root).unwrap_or_else(|error| {
-            panic!("expected workspace root creation to succeed: {error}");
-        });
-        fs::write(
-            workspace_root.join(WORKSPACE_DEV_CONFIG_FILENAME),
-            r#"
-[browser]
-port = 4545
-"#,
-        )
-        .unwrap_or_else(|error| panic!("expected workspace-dev config write to succeed: {error}"));
-
-        let failure = workspace_dev_base_url_from_repo_root(&workspace_root)
-            .expect_err("expected invalid workspace-dev config to fail");
-        assert!(matches!(failure, WorkspaceDevBaseUrlFailure::Parse { .. }));
-        assert!(failure.render().contains(WORKSPACE_DEV_CONFIG_FILENAME));
-
-        fs::remove_dir_all(&workspace_root).unwrap_or_else(|cleanup_error| {
-            panic!("expected temp workspace cleanup to succeed: {cleanup_error}");
-        });
     }
 
     #[test]

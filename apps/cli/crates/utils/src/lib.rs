@@ -69,7 +69,7 @@ mod tests {
     fn repo_root_resolves_workspace_checkout_root() -> io::Result<()> {
         let root = repo_root()?;
         assert!(root.join("apps/cli/Cargo.toml").is_file());
-        assert!(root.join("onequery.dev.toml").is_file());
+        assert!(root.join("package.json").is_file());
         Ok(())
     }
 
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn include_repo_resource_str_resolves_from_repo_root() {
-        let config = include_repo_resource_str!("onequery.dev.toml");
-        assert!(config.contains("[browser]"));
+        let package_json = include_repo_resource_str!("package.json");
+        assert!(package_json.contains("onequery-workspace"));
     }
 }

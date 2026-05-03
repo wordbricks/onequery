@@ -13,6 +13,7 @@
   "scripts": {
     "build:web": "bun run --cwd ../../apps/dashboard build",
     "dev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-runtime.ts --dev",
+    "workspace:dev": "bun run dev",
     "start": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-smoke.ts serve",
     "serve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types ../../scripts/run-self-host-smoke.ts serve",
     "test": "vitest run --exclude 'src/**/*.integration.test.ts'",

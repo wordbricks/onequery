@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "CONNECTOR_ABORT_ON_PREREQ_FAILURE=false CONNECTOR_ABORT_ON_AUTH_FAILURE=false bun --watch src/index.ts",
+    "workspace:dev": "bun run dev",
     "start": "bun src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
     "check": "bun run typecheck && bun run test",

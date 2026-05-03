@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "workspace:dev": "bun run dev",
     "build": "vite build",
     "deploy": "bun run --cwd ../.. landing:build && bunx wrangler deploy",
     "deploy:preview": "bun run --cwd ../.. landing:build && bunx wrangler versions upload",

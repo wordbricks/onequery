@@ -11,26 +11,13 @@ jobs:
   server-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_USER: test
-        ports:
-          - 5454:5432
-        options: >-
-          --health-cmd "pg_isready -U test -d test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     env:
       TURBO_API: ${{ secrets.TURBO_API }}
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
       TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
       TURBO_REMOTE_CACHE_SIGNATURE_KEY: ${{ secrets.TURBO_REMOTE_CACHE_SIGNATURE_KEY }}
+      ONEQUERY_PGLITE_DIR: /tmp/onequery-server-integration/pglite/onequery
 
     steps:
       - uses: actions/checkout@v6
@@ -44,22 +31,11 @@ jobs:
       - name: Install dependencies
         run: bun ci
 
-      - name: Wait for Postgres
-        # Comment: keep the full server integration lane manual because it is
-        # materially slower than the default PR CI, but it still needs the
-        # same Better Auth test database service when maintainers invoke it.
-        run: |
-          for _ in {1..30}; do
-            if bash -lc '</dev/tcp/127.0.0.1/5454' >/dev/null 2>&1; then
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "Postgres service did not become ready on localhost:5454" >&2
-          exit 1
+      - name: Prepare PGlite database directory
+        run: mkdir -p "$ONEQUERY_PGLITE_DIR"
 
-      - name: Apply test database schema
-        run: cd packages/db && DATABASE_URL=postgres://test:test@localhost:5454/test bunx drizzle-kit push --force --config drizzle.config.ts
+      - name: Apply PGlite test database schema
+        run: cd packages/db && bunx drizzle-kit push --force --config drizzle.config.ts
 
       - name: Test integration
         run: bunx turbo run test:integration --filter='@onequery/server'

@@ -1,9 +1,18 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { resolvePackagedRuntimeAssetPath } from "@onequery/base/runtime-bundle";
-import { viewServerLaunchConfig } from "@onequery/config/server-launch";
+import {
+  decodeServerLaunchConfigJson,
+  viewServerLaunchConfig,
+} from "@onequery/config/server-launch";
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -30,31 +39,11 @@ describe("self-host runtime dev entrypoint", () => {
     );
 
     try {
+      mkdirSync(join(rootDir, ".onequery", "dev"), {
+        recursive: true,
+      });
       writeFileSync(
-        join(rootDir, "onequery.dev.toml"),
-        [
-          "[browser]",
-          'host = "localhost"',
-          "port = 4545",
-          "",
-          "[api]",
-          'host = "127.0.0.1"',
-          "port = 4555",
-          "",
-          "[postgres]",
-          "host_port = 5454",
-          "container_port = 5432",
-          'database = "onequery"',
-          'user = "onequery"',
-          'password = "onequery"',
-          "",
-          "[flags]",
-          "disable_rate_limit = true",
-        ].join("\n"),
-        "utf8"
-      );
-      writeFileSync(
-        join(rootDir, "onequery.dev.secrets.toml"),
+        join(rootDir, ".onequery", "dev", "secrets.toml"),
         [
           "[auth]",
           'secret = "workspace-auth-secret"',
@@ -68,7 +57,10 @@ describe("self-host runtime dev entrypoint", () => {
         "utf8"
       );
 
-      const launchConfig = createLaunchConfig(rootDir);
+      const launchConfig = decodeServerLaunchConfigJson(
+        JSON.stringify(createLaunchConfig(rootDir)),
+        "test"
+      );
       const launchView = viewServerLaunchConfig(launchConfig, "test");
       const listen = launchView.common.listen;
       if (listen === undefined) {

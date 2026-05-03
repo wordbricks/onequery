@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createActor, fromPromise, waitFor } from "xstate";
 
 import {
@@ -32,14 +32,27 @@ describe("deviceAuthMachine", () => {
   });
 
   it("stages verification from the initial device code", () => {
-    const actor = createActor(deviceAuthMachine, {
-      input: {
-        initialSession: {
-          kind: "signedOut",
+    const verifyDevice = vi.fn(
+      () => new Promise<VerifyDeviceActorOutput>(() => undefined)
+    );
+    const actor = createActor(
+      deviceAuthMachine.provide({
+        actors: {
+          verifyDevice: fromPromise<
+            VerifyDeviceActorOutput,
+            VerifyDeviceActorInput
+          >(verifyDevice),
         },
-        initialUserCode: USER_CODE,
-      },
-    });
+      }),
+      {
+        input: {
+          initialSession: {
+            kind: "signedOut",
+          },
+          initialUserCode: USER_CODE,
+        },
+      }
+    );
 
     actor.start();
 
@@ -47,24 +60,26 @@ describe("deviceAuthMachine", () => {
 
     expect(snapshot.matches("verifying")).toBe(true);
     expect(readPanelView(snapshot)).toBe("verifying");
-    expect(snapshot.context.pendingVerification).toEqual({
-      requestId: 1,
-      userCode: USER_CODE,
-    });
+    expect(verifyDevice).toHaveBeenCalledOnce();
+    expect(verifyDevice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: {
+          userCode: USER_CODE,
+        },
+      })
+    );
   });
 
-  it("uses the invoked verification actor output", async () => {
+  it("reviews an initial signed-in device code without a preflight verify", async () => {
     const actor = createActor(
       deviceAuthMachine.provide({
         actors: {
           verifyDevice: fromPromise<
             VerifyDeviceActorOutput,
             VerifyDeviceActorInput
-          >(async () => ({
-            requestId: 1,
-            status: "pending",
-            userCode: USER_CODE,
-          })),
+          >(async () => {
+            throw new Error("signed-in initial codes should not preflight");
+          }),
         },
       }),
       {
@@ -87,7 +102,7 @@ describe("deviceAuthMachine", () => {
     );
 
     expect(readPanelView(snapshot)).toBe("review");
-    expect(snapshot.context.pendingVerification).toBeNull();
+    expect(snapshot.context.activeUserCode).toBe(USER_CODE);
   });
 
   it("uses invoked verification actor errors", async () => {
@@ -100,7 +115,6 @@ describe("deviceAuthMachine", () => {
           >(async () => {
             throw new DeviceActorRequestError({
               message: VERIFY_ERROR_MESSAGE,
-              requestId: 1,
             });
           }),
         },
@@ -125,7 +139,7 @@ describe("deviceAuthMachine", () => {
     expect(readDeviceAuthErrorMessage(snapshot)).toBe(VERIFY_ERROR_MESSAGE);
   });
 
-  it("uses actor input for the initial route and session snapshots", () => {
+  it("uses actor input for signed-in initial route and session snapshots", async () => {
     const actor = createActor(deviceAuthMachine, {
       input: {
         initialSession: {
@@ -138,13 +152,13 @@ describe("deviceAuthMachine", () => {
 
     actor.start();
 
-    const snapshot = actor.getSnapshot();
+    const snapshot = await waitFor(
+      actor,
+      (state) => state.matches({ pending: "review" }),
+      { timeout: 1000 }
+    );
 
-    expect(snapshot.matches("verifying")).toBe(true);
-    expect(snapshot.context.pendingVerification).toEqual({
-      requestId: 1,
-      userCode: USER_CODE,
-    });
+    expect(readPanelView(snapshot)).toBe("review");
     expect(readSessionEmail(snapshot)).toBe(SESSION_EMAIL);
   });
 
@@ -158,7 +172,6 @@ describe("deviceAuthMachine", () => {
           >(async () => {
             throw new DeviceActorRequestError({
               message: VERIFY_ERROR_MESSAGE,
-              requestId: 1,
             });
           }),
         },
@@ -192,7 +205,6 @@ describe("deviceAuthMachine", () => {
             SubmitDeviceDecisionActorInput
           >(async () => ({
             message: "Approved in browser.",
-            requestId: 2,
             title: "Device Approved",
             tone: "success",
           })),
@@ -200,7 +212,6 @@ describe("deviceAuthMachine", () => {
             VerifyDeviceActorOutput,
             VerifyDeviceActorInput
           >(async () => ({
-            requestId: 1,
             status: "pending",
             userCode: USER_CODE,
           })),
@@ -235,18 +246,26 @@ describe("deviceAuthMachine", () => {
       title: "Device Approved",
       tone: "success",
     });
-    expect(snapshot.context.pendingDecision).toBeNull();
   });
 
   it("stages an approval request when the signed-in reviewer approves", async () => {
+    let decisionInput: SubmitDeviceDecisionActorInput | null = null;
     const actor = createActor(
       deviceAuthMachine.provide({
         actors: {
+          submitDeviceDecision: fromPromise<
+            SubmitDeviceDecisionActorOutput,
+            SubmitDeviceDecisionActorInput
+          >(({ input }) => {
+            decisionInput = input;
+            return new Promise<SubmitDeviceDecisionActorOutput>(() => {
+              // Keep the actor in the approving state for inspection.
+            });
+          }),
           verifyDevice: fromPromise<
             VerifyDeviceActorOutput,
             VerifyDeviceActorInput
           >(async () => ({
-            requestId: 1,
             status: "pending",
             userCode: USER_CODE,
           })),
@@ -273,10 +292,9 @@ describe("deviceAuthMachine", () => {
 
     const snapshot = actor.getSnapshot();
 
-    expect(snapshot.matches({ pending: "submittingDecision" })).toBe(true);
-    expect(snapshot.context.pendingDecision).toEqual({
+    expect(snapshot.matches({ pending: "approving" })).toBe(true);
+    expect(decisionInput).toEqual({
       action: "approve",
-      requestId: 2,
       userCode: USER_CODE,
     });
   });
@@ -289,7 +307,6 @@ describe("deviceAuthMachine", () => {
             VerifyDeviceActorOutput,
             VerifyDeviceActorInput
           >(async () => ({
-            requestId: 1,
             status: "pending",
             userCode: USER_CODE,
           })),
@@ -325,14 +342,12 @@ describe("deviceAuthMachine", () => {
           >(async () => {
             throw new DeviceActorRequestError({
               message: DECISION_ERROR_MESSAGE,
-              requestId: 2,
             });
           }),
           verifyDevice: fromPromise<
             VerifyDeviceActorOutput,
             VerifyDeviceActorInput
           >(async () => ({
-            requestId: 1,
             status: "pending",
             userCode: USER_CODE,
           })),
@@ -363,7 +378,16 @@ describe("deviceAuthMachine", () => {
     expect(readPanelView(snapshot)).toBe("entry");
     expect(snapshot.context.inputCode).toBe(USER_CODE);
     expect(readDeviceAuthErrorMessage(snapshot)).toBe(DECISION_ERROR_MESSAGE);
-    expect(snapshot.context.pendingDecision).toBeNull();
+
+    actor.send({
+      type: "deviceAuth/inputChanged",
+      value: CANONICAL_USER_CODE,
+    });
+
+    const editedSnapshot = actor.getSnapshot();
+
+    expect(editedSnapshot.matches("entry")).toBe(true);
+    expect(editedSnapshot.context.inputCode).toBe(CANONICAL_USER_CODE);
   });
 
   it("replaces the route when verification returns a canonical user code", async () => {
@@ -374,7 +398,6 @@ describe("deviceAuthMachine", () => {
             VerifyDeviceActorOutput,
             VerifyDeviceActorInput
           >(async () => ({
-            requestId: 1,
             status: "approved",
             userCode: CANONICAL_USER_CODE,
           })),
@@ -418,7 +441,6 @@ describe("deviceAuthMachine", () => {
             VerifyDeviceActorOutput,
             VerifyDeviceActorInput
           >(async () => ({
-            requestId: 1,
             status: "pending",
             userCode: USER_CODE,
           })),

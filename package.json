@@ -71,8 +71,8 @@
   },
   "scripts": {
     "prepare": "test -d .git && lefthook install || true",
-    "dev": "bun run dev:setup && turbo dev --filter='!@onequery/connector'",
-    "dev:with-connector": "bun run dev:setup && turbo dev",
+    "dev": "bun run dev:setup && turbo workspace:dev --filter='!@onequery/connector'",
+    "dev:with-connector": "bun run dev:setup && turbo workspace:dev",
     "dev:setup": "bun run scripts/dev-setup.ts",
     "landing:build": "bunx turbo build --filter @onequery/landing",
     "landing:deploy": "bun run --cwd apps/landing deploy",
@@ -106,7 +106,7 @@
     "db:push": "bun run scripts/run-local-env-command.ts --cwd packages/db -- drizzle-kit push",
     "db:seed:dev": "bun run scripts/run-local-env-command.ts --cwd packages/db -- bun src/scripts/seed-dev.ts",
     "db:studio": "bun run scripts/run-local-env-command.ts --cwd packages/db -- drizzle-kit studio",
-    "db:reset": "bun run scripts/run-local-env-command.ts -- docker compose down -v && bun run dev:setup && bun run db:migrate && bun run db:seed:dev",
+    "db:reset": "rm -rf .onequery/dev/pglite/onequery && bun run dev:setup && bun run db:migrate",
     "clean": "find . -type d \\( -name 'node_modules' -o -name 'dist' -o -name 'dist-worker' -o -name '.turbo' -o -name 'coverage' -o -name '.cache' \\) -prune -exec rm -rf {} + 2>/dev/null; rm -rf .turbo bun.lock",
     "bump": "ncu -u",
     "knip": "knip"
@@ -114,7 +114,9 @@
   "devDependencies": {
     "@bufbuild/buf": "catalog:tooling",
     "@bufbuild/protoc-gen-es": "catalog:tooling",
+    "@onequery/base": "workspace:*",
     "@onequery/config": "workspace:*",
+    "@onequery/config-loader": "workspace:*",
     "@onequery/config-node": "workspace:*",
     "@onequery/db": "workspace:*",
     "@onequery/self-host-runtime": "workspace:*",

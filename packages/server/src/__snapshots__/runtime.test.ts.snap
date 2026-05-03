@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`createServerRuntimeConfig > maps a postgres launch contract into a typed runtime config 1`] = `
+exports[`createServerRuntimeConfig > maps a workspace-dev PGlite launch contract into a typed runtime config 1`] = `
 {
   "auth": {
     "baseURL": "http://localhost:4545",
@@ -61,9 +61,9 @@ exports[`createServerRuntimeConfig > maps a postgres launch contract into a type
   },
   "runtimePaths": undefined,
   "storage": {
-    "connectionString": "postgres://onequery:onequery@localhost:5454/onequery",
-    "kind": "postgres",
-    "url": "postgres://onequery:onequery@localhost:5454/onequery",
+    "connectionString": "pglite:/tmp/onequery/dev/pglite/onequery",
+    "dir": "/tmp/onequery/dev/pglite/onequery",
+    "kind": "pglite",
   },
 }
 `;

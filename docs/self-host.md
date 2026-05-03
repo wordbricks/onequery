@@ -180,8 +180,8 @@ Runtime behavior:
 Application schema convergence happens at runtime startup, not in bootstrap
 scripts:
 
-- `bun run dev:setup` creates workspace-dev secrets, starts local Postgres, and
-  provisions shared local databases/extensions only
+- `bun run dev:setup` creates workspace-dev secrets and the repo-local PGlite
+  data directory only
 - `bun dev` starts workspace-dev and the packaged runtime applies the application
   schema on startup
 - `onequery gateway` and `onequery gateway start` start self-host and the

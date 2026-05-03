@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "workspace:dev": "bun run dev",
     "build": "vite build",
     "preview": "bun run --cwd ../../packages/self-host-runtime serve",
     "test": "vitest run",

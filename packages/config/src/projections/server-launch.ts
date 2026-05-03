@@ -21,6 +21,7 @@ import type { ResolvedWorkspaceDevConfig } from "../workspace-dev";
 export interface ProjectWorkspaceDevServerLaunchConfigOptions {
   readonly assetDir: string;
   readonly migrationsDir: string;
+  readonly storageDir: string;
   readonly smtp?: ServerLaunchSmtpConfig;
 }
 
@@ -61,9 +62,9 @@ export function projectWorkspaceDevServerLaunchConfig(
           ...(options.smtp === undefined ? {} : { smtp: options.smtp }),
           storage: create(ServerLaunchStorageConfigSchema, {
             kind: {
-              case: "postgres",
+              case: "pglite",
               value: {
-                url: workspaceDev.postgres.url,
+                dir: resolve(options.storageDir),
               },
             },
           }),
