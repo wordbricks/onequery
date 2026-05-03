@@ -45,18 +45,17 @@ Keep useful domain event names such as `action_received`, `source_loaded`, `quer
 
 ## Migration
 
-Prefer a one-shot backfill for historical audit facts only. Old runtime bookkeeping that has no meaning in the journal model should be dropped. Do not add dual-write or a long compatibility path.
+Drop historical workflow/audit rows instead of backfilling them. The legacy runtime command payloads do not map cleanly to the new composite journal contract, and compatibility backfill would become the long compatibility path this migration is trying to avoid.
 
 ```text
 1. Create workflow_journal.
-2. Backfill old command/event history that maps cleanly to journal entries.
+2. Clear old derived workflow/audit projections and projection checkpoints.
 3. Drop old lease/retry/projection/checkpoint state that is only runtime bookkeeping.
 4. Recreate projections against the journal.
-5. Rebuild projections from the backfilled journal.
-6. Drop old audit/workflow tables after validation.
+5. Drop old audit/workflow tables after validation.
 ```
 
-Do not preserve data just because it exists. If an old row is not part of the new correctness or audit model, drop it instead of encoding legacy semantics into the journal. The backfill must not become a legacy compatibility layer.
+Do not preserve data just because it exists. If an old row is not part of the new correctness model, drop it instead of encoding legacy semantics into the journal.
 
 ## Append Contract
 
