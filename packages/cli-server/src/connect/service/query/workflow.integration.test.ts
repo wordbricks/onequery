@@ -13,6 +13,7 @@ import {
   workflowJournal,
 } from "@onequery/db/server";
 import type { Database, DatabaseCredentials } from "@onequery/db/server";
+import { createStableValueFingerprint } from "@onequery/server/lib/stable-fingerprint";
 import type { Result as ResultType } from "better-result";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -32,6 +33,7 @@ import {
   runCliQueryExecutionWorkflowResult,
   runCliQueryValidationWorkflowResult,
 } from "./workflow";
+import { storeAcceptedQueryActionCommand } from "./workflow-runtime";
 import type {
   CliQueryExecutionDispatch,
   CliQueryValidationDispatch,
@@ -125,10 +127,34 @@ function unwrapOk<T, E>(value: ResultType<T, E>) {
   return value.value;
 }
 
+async function waitForFollowUpTimers() {
+  await new Promise((resolve) => setTimeout(resolve, 20));
+}
+
+function buildStartQueryCommandInvocationId(input: {
+  mode: "start_execute" | "start_validate";
+  organizationId: string;
+  requestId: string;
+  sourceName: string;
+  sql: string;
+  timeoutMs: number;
+}) {
+  const fingerprint = createStableValueFingerprint({
+    mode: input.mode,
+    organizationId: input.organizationId,
+    sourceName: input.sourceName,
+    sql: input.sql,
+    timeoutMs: input.timeoutMs,
+  });
+
+  return `query_action:${input.requestId}:${input.mode}:${fingerprint}`;
+}
+
 describe("query workflow audit runtime", () => {
   const openedDatabases: ClosableDatabase[] = [];
 
   afterEach(async () => {
+    await waitForFollowUpTimers();
     for (const db of openedDatabases.splice(0)) {
       await closeDatabase(db);
     }
@@ -201,7 +227,7 @@ describe("query workflow audit runtime", () => {
     ]);
   });
 
-  it("records executeQuery through query_action storage and schedules usage persistence", async () => {
+  it("records executeQuery and persists usage as an asynchronous follow-up", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -209,11 +235,9 @@ describe("query workflow audit runtime", () => {
       connectionString: "postgres://example",
       provider: "postgres",
     } as unknown as DatabaseCredentials;
-    const persistUsage = vi
-      .fn<() => Promise<CliPersistUsageEffectResult>>()
-      .mockRejectedValue(
-        new Error("persistUsage should not run before response")
-      );
+    const persistUsage = vi.fn().mockResolvedValue({
+      kind: "usage_persisted",
+    } satisfies CliPersistUsageEffectResult);
 
     const result = await runCliQueryExecutionWorkflowResult({
       actorSnapshot,
@@ -248,6 +272,16 @@ describe("query workflow audit runtime", () => {
     });
 
     const execution = unwrapOk(result);
+    expect(execution).toMatchObject({
+      kind: "response_ready",
+      response: {
+        elapsedMs: 12,
+        rowCount: 1,
+        truncated: false,
+      },
+    });
+    await waitForFollowUpTimers();
+
     const commandRows = await selectQueryJournalCommandRows(db);
     const actionRow = await db.query.queryActions.findFirst({
       where: (table, { eq }) => eq(table.organizationId, org.id),
@@ -262,27 +296,20 @@ describe("query workflow audit runtime", () => {
       .from(pendingWorkflowEffects)
       .orderBy(asc(pendingWorkflowEffects.scheduledAt));
 
-    expect(execution).toMatchObject({
-      kind: "response_ready",
-      response: {
-        elapsedMs: 12,
-        rowCount: 1,
-        truncated: false,
-      },
-    });
-    expect(persistUsage).not.toHaveBeenCalled();
+    expect(persistUsage).toHaveBeenCalledTimes(1);
     expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_execute",
       "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",
+      "record_usage_persistence_succeeded",
     ]);
     expect(actionRow).toMatchObject({
       failureCode: null,
-      outcome: "pending",
-      phase: "persist_usage",
+      outcome: "succeeded",
+      phase: "completed",
       queryMode: "execute",
       queryText: "select 42 as answer",
-      usageRecordingStatus: "not_started",
+      usageRecordingStatus: "succeeded",
       validatedQuery: "select 42 as answer",
     });
     expect(eventRows.map((row) => row.payloadType)).toEqual([
@@ -291,6 +318,7 @@ describe("query workflow audit runtime", () => {
       "query_validated",
       "credentials_loaded",
       "query_executed",
+      "usage_persisted",
     ]);
     expect(
       journalRows.map((row) => ({
@@ -301,6 +329,7 @@ describe("query workflow audit runtime", () => {
       { entryKind: "command", payloadType: "start_execute" },
       { entryKind: "event", payloadType: "action_received" },
       { entryKind: "effect_scheduled", payloadType: "prepare_execute_query" },
+      { entryKind: "checkpoint", payloadType: "preparing" },
       {
         entryKind: "command",
         payloadType: "record_execute_preparation_succeeded",
@@ -310,6 +339,7 @@ describe("query workflow audit runtime", () => {
       { entryKind: "event", payloadType: "credentials_loaded" },
       { entryKind: "effect_scheduled", payloadType: "execute_query" },
       { entryKind: "effect_completed", payloadType: "effect_completed" },
+      { entryKind: "checkpoint", payloadType: "executing" },
       {
         entryKind: "command",
         payloadType: "record_query_execution_succeeded",
@@ -317,13 +347,21 @@ describe("query workflow audit runtime", () => {
       { entryKind: "event", payloadType: "query_executed" },
       { entryKind: "effect_scheduled", payloadType: "persist_usage" },
       { entryKind: "effect_completed", payloadType: "effect_completed" },
+      { entryKind: "checkpoint", payloadType: "query_succeeded" },
+      {
+        entryKind: "command",
+        payloadType: "record_usage_persistence_succeeded",
+      },
+      { entryKind: "event", payloadType: "usage_persisted" },
+      { entryKind: "effect_completed", payloadType: "effect_completed" },
+      { entryKind: "checkpoint", payloadType: "usage_persisted" },
     ]);
     expect(
       pendingEffectRows.map((row) => ({
         effectType: row.effectType,
         status: row.status,
       }))
-    ).toEqual([{ effectType: "persist_usage", status: "pending" }]);
+    ).toEqual([]);
     expect(
       journalRows
         .map((row) => row.payloadBytes?.toString("utf8") ?? "")
@@ -558,6 +596,7 @@ describe("query workflow audit runtime", () => {
       { entryKind: "command", payloadType: "start_validate" },
       { entryKind: "event", payloadType: "action_received" },
       { entryKind: "effect_scheduled", payloadType: "prepare_validate_query" },
+      { entryKind: "checkpoint", payloadType: "preparing" },
       { entryKind: "effect_failed", payloadType: "effect_failed" },
       { entryKind: "effect_started", payloadType: "effect_started" },
       {
@@ -567,7 +606,83 @@ describe("query workflow audit runtime", () => {
       { entryKind: "event", payloadType: "source_loaded" },
       { entryKind: "event", payloadType: "query_validated" },
       { entryKind: "effect_completed", payloadType: "effect_completed" },
+      { entryKind: "checkpoint", payloadType: "query_validated" },
     ]);
+  });
+
+  it("claims scheduled journal effects when recovering after scheduling", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const requestId = "req-validate-scheduled-recovery-1";
+    const startDecision = await storeAcceptedQueryActionCommand({
+      actionId: null,
+      actorSnapshot,
+      causedByEventId: null,
+      commandInvocationId: buildStartQueryCommandInvocationId({
+        mode: "start_validate",
+        organizationId: org.id,
+        requestId,
+        sourceName: source.sourceKey,
+        sql: "select 1",
+        timeoutMs: 5_000,
+      }),
+      commandPayload: {
+        queryText: "select 1",
+        sourceKey: source.sourceKey,
+        type: "start_validate",
+      },
+      db,
+      organizationId: org.id,
+      requestId,
+      surface: "cli",
+    });
+    expect(
+      startDecision.freshEffects?.map((effect) => effect.effectType)
+    ).toEqual(["prepare_validate_query"]);
+
+    const loadSource = vi.fn().mockResolvedValue({
+      kind: "found",
+      source,
+    } satisfies CliLoadSourceEffectResult);
+    const validateQuery = vi.fn().mockResolvedValue({
+      kind: "query_ready",
+      normalizedSql: "select 1",
+      truncated: false,
+    } satisfies CliValidateQueryEffectResult);
+
+    const recovered = await runCliQueryValidationWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        loadSource,
+        validateQuery,
+      },
+      org,
+      requestId,
+      sourceName: source.sourceKey,
+      sql: "select 1",
+      timeoutMs: 5_000,
+    });
+
+    expect(unwrapOk(recovered)).toMatchObject({
+      kind: "ready",
+      normalizedSql: "select 1",
+    });
+    expect(loadSource).toHaveBeenCalledTimes(1);
+    expect(validateQuery).toHaveBeenCalledTimes(1);
+
+    const pendingEffectRows = await db
+      .select()
+      .from(pendingWorkflowEffects)
+      .orderBy(asc(pendingWorkflowEffects.scheduledAt));
+    expect(pendingEffectRows).toEqual([]);
+
+    const journalRows = await db
+      .select()
+      .from(workflowJournal)
+      .orderBy(asc(workflowJournal.streamPosition));
+    expect(journalRows.map((row) => row.entryKind)).toContain("effect_started");
   });
 
   it("does not replay validateQuery when a reused request id carries different SQL", async () => {
@@ -715,7 +830,8 @@ describe("query workflow audit runtime", () => {
 
     expect(unwrapOk(replayResult)).toEqual(unwrapOk(firstResult));
     expect(executeSql).toHaveBeenCalledTimes(1);
-    expect(persistUsage).not.toHaveBeenCalled();
+    await waitForFollowUpTimers();
+    expect(persistUsage).toHaveBeenCalledTimes(1);
 
     const commandRows = await selectQueryJournalCommandRows(db);
 
@@ -723,6 +839,7 @@ describe("query workflow audit runtime", () => {
       "start_execute",
       "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",
+      "record_usage_persistence_succeeded",
     ]);
   });
 
@@ -917,11 +1034,18 @@ describe("query workflow audit runtime", () => {
       },
     });
     expect(executeSql).toHaveBeenCalledTimes(2);
-    expect(persistUsage).not.toHaveBeenCalled();
+    await waitForFollowUpTimers();
+    expect(persistUsage).toHaveBeenCalledTimes(2);
 
     const commandRows = await selectQueryJournalCommandRows(db);
 
-    expect(commandRows.map((row) => row.payloadType)).toEqual([
+    expect(
+      commandRows
+        .map((row) => row.payloadType)
+        .filter(
+          (payloadType) => payloadType !== "record_usage_persistence_succeeded"
+        )
+    ).toEqual([
       "start_execute",
       "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",

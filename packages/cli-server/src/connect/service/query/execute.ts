@@ -7,7 +7,6 @@ import { createCliFailureForQueryWorkflowResult } from "../errors";
 import { buildCliPage, parseCliPageRequest } from "../read-controls";
 import type { CliResultServiceMethod } from "../result";
 import { liftCliServiceMethod } from "../result";
-import { syncCliQueryAuditFeedProjection } from "./audit-projection";
 import { resolveCliQueryRequestState } from "./context";
 import { createCliQueryExecutionDispatch } from "./dispatch";
 import {
@@ -48,11 +47,6 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
       sourceName: request.sourceKey,
       sql: resolved.query.sql,
       timeoutMs: resolved.resultWindow.timeoutMs,
-    });
-
-    await syncCliQueryAuditFeedProjection({
-      c: resolved.c,
-      sourceKey: request.sourceKey,
     });
 
     const result = yield* workflowResult;

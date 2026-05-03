@@ -46,6 +46,7 @@ import {
 import type {
   WorkflowJournalAppendResult,
   WorkflowJournalCommandEntry,
+  WorkflowJournalCheckpointIntent,
   WorkflowJournalEffectFailedEntry,
   WorkflowJournalEffectStartedEntry,
   WorkflowJournalEffectToken,
@@ -190,19 +191,10 @@ export async function storeQueryActionCommandViaJournal(input: {
         }),
     });
     const appended = await appendWorkflowJournalBatch({
-      checkpoints:
-        decision.value.kind === "rejected"
-          ? [
-              {
-                checkpointName: REJECTED_DECISION_CHECKPOINT,
-                checkpointPayload: {
-                  actionId: command.actionId,
-                  rejectCode: decision.value.rejectCode,
-                  rejectDetail: decision.value.rejectDetail ?? null,
-                } satisfies RejectedDecisionCheckpointPayload,
-              },
-            ]
-          : [],
+      checkpoints: buildQueryActionJournalCheckpoints({
+        command,
+        decision: decision.value,
+      }),
       commandInvocationId: command.commandInvocationId,
       commandMetadata: {
         actorSnapshot: command.actorSnapshot,
@@ -254,6 +246,93 @@ export async function storeQueryActionCommandViaJournal(input: {
       family: "query_action",
     })
   );
+}
+
+function buildQueryActionJournalCheckpoints(input: {
+  command: QueryActionCommand;
+  decision: WorkflowDecision<
+    QueryActionEvent,
+    QueryActionEffect,
+    QueryActionRejectCode
+  >;
+}): WorkflowJournalCheckpointIntent[] {
+  if (input.decision.kind === "rejected") {
+    return [
+      {
+        checkpointName: REJECTED_DECISION_CHECKPOINT,
+        checkpointPayload: {
+          actionId: input.command.actionId,
+          rejectCode: input.decision.rejectCode,
+          rejectDetail: input.decision.rejectDetail ?? null,
+        } satisfies RejectedDecisionCheckpointPayload,
+      },
+    ];
+  }
+
+  switch (input.command.commandPayload.type) {
+    case "start_execute":
+    case "start_validate":
+      return [
+        {
+          checkpointName: "preparing",
+          checkpointPayload: {
+            commandType: input.command.commandPayload.type,
+          },
+        },
+      ];
+    case "record_execute_preparation":
+      return [
+        {
+          checkpointName:
+            input.command.commandPayload.kind === "succeeded"
+              ? "executing"
+              : "terminal_failure",
+          checkpointPayload: {
+            commandType: input.command.commandPayload.type,
+            outcome: input.command.commandPayload.kind,
+          },
+        },
+      ];
+    case "record_query_execution":
+      return [
+        {
+          checkpointName:
+            input.command.commandPayload.kind === "succeeded"
+              ? "query_succeeded"
+              : "terminal_failure",
+          checkpointPayload: {
+            commandType: input.command.commandPayload.type,
+            outcome: input.command.commandPayload.kind,
+          },
+        },
+      ];
+    case "record_usage_persistence":
+      return [
+        {
+          checkpointName:
+            input.command.commandPayload.kind === "succeeded"
+              ? "usage_persisted"
+              : "usage_persist_failed",
+          checkpointPayload: {
+            commandType: input.command.commandPayload.type,
+            outcome: input.command.commandPayload.kind,
+          },
+        },
+      ];
+    case "record_validate_preparation":
+      return [
+        {
+          checkpointName:
+            input.command.commandPayload.kind === "accepted"
+              ? "query_validated"
+              : "terminal_failure",
+          checkpointPayload: {
+            commandType: input.command.commandPayload.type,
+            outcome: input.command.commandPayload.kind,
+          },
+        },
+      ];
+  }
 }
 
 export async function loadQueryActionCommandViaJournal(input: {
@@ -460,10 +539,13 @@ export async function claimFailedQueryActionEffectViaJournal(input: {
     const effect = cursor.value.pendingEffects.find(
       (pending) => pending.effectId === input.effectId
     );
-    if (effectState === undefined || effectState.status !== "failed") {
+    if (
+      effectState === undefined ||
+      (effectState.status !== "scheduled" && effectState.status !== "failed")
+    ) {
       return Result.err(
         new WorkflowJournalCorruptStreamError({
-          detail: `query_action effect ${input.effectId} is not failed in journal state`,
+          detail: `query_action effect ${input.effectId} is not claimable in journal state`,
           family: "query_action",
           streamId: input.actionId,
         })
@@ -472,7 +554,7 @@ export async function claimFailedQueryActionEffectViaJournal(input: {
     if (effect === undefined) {
       return Result.err(
         new WorkflowJournalCorruptStreamError({
-          detail: `query_action failed effect ${input.effectId} is not runnable from journal state`,
+          detail: `query_action claimable effect ${input.effectId} is not runnable from journal state`,
           family: "query_action",
           streamId: input.actionId,
         })

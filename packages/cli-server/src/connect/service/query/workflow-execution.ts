@@ -1,12 +1,16 @@
 import { Result } from "better-result";
 
 import { isCliFailure } from "../../../domain/failures";
+import { logCliEvent, toCliErrorMessage } from "../../../observability";
 import type { CliServiceResult } from "../result";
 import { toCliQueryExecutionFailureResult } from "./workflow-outcome";
 import { runPreparedCliQueryWorkflow } from "./workflow-preparation";
 import type { CliQueryExecutionWorkflowResult } from "./workflow-result";
 import { createQueryAuditProblem } from "./workflow-runtime";
-import { runQueryExecutionStep } from "./workflow-steps";
+import {
+  runQueryExecutionStep,
+  runQueryUsagePersistenceStep,
+} from "./workflow-steps";
 import type { CliQueryExecutionWorkflowInput } from "./workflow-types";
 
 export async function runCliQueryExecutionWorkflowResult(
@@ -51,6 +55,13 @@ export async function runCliQueryExecutionWorkflowResult(
         });
       }
 
+      if (execution.decision.idempotency === "fresh") {
+        scheduleQueryUsagePersistenceFollowUp({
+          executionDecision: execution.decision,
+          input,
+        });
+      }
+
       return {
         kind: "response_ready",
         response: execution.result.response,
@@ -64,4 +75,33 @@ export async function runCliQueryExecutionWorkflowResult(
             error
           ),
   });
+}
+
+function scheduleQueryUsagePersistenceFollowUp(input: {
+  executionDecision: Awaited<
+    ReturnType<typeof runQueryExecutionStep>
+  >["decision"];
+  input: CliQueryExecutionWorkflowInput;
+}) {
+  setTimeout(() => {
+    void runQueryUsagePersistenceStep({
+      actorSnapshot: input.input.actorSnapshot,
+      currentDecision: input.executionDecision,
+      db: input.input.db,
+      dispatch: input.input.dispatch,
+      organizationId: input.input.org.id,
+      requestId: input.input.requestId,
+    }).catch((error: unknown) => {
+      logCliEvent({
+        details: {
+          error: toCliErrorMessage(error),
+          organizationId: input.input.org.id,
+          requestId: input.input.requestId,
+          sourceName: input.input.sourceName,
+        },
+        event: "cli.query.usage_persistence_followup_failed",
+        level: "warn",
+      });
+    });
+  }, 0);
 }

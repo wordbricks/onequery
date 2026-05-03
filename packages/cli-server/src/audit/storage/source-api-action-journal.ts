@@ -476,10 +476,13 @@ export async function claimFailedSourceApiActionEffectViaJournal(input: {
     const effect = cursor.value.pendingEffects.find(
       (pending) => pending.effectId === input.effectId
     );
-    if (effectState === undefined || effectState.status !== "failed") {
+    if (
+      effectState === undefined ||
+      (effectState.status !== "scheduled" && effectState.status !== "failed")
+    ) {
       return Result.err(
         new WorkflowJournalCorruptStreamError({
-          detail: `source_api_action effect ${input.effectId} is not failed in journal state`,
+          detail: `source_api_action effect ${input.effectId} is not claimable in journal state`,
           family: "source_api_action",
           streamId: input.actionId,
         })
@@ -488,7 +491,7 @@ export async function claimFailedSourceApiActionEffectViaJournal(input: {
     if (effect === undefined) {
       return Result.err(
         new WorkflowJournalCorruptStreamError({
-          detail: `source_api_action failed effect ${input.effectId} is not runnable from journal state`,
+          detail: `source_api_action claimable effect ${input.effectId} is not runnable from journal state`,
           family: "source_api_action",
           streamId: input.actionId,
         })
