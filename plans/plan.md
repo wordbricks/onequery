@@ -218,9 +218,12 @@ Recovery must not depend on old lease, retry, action, or audit tables. Those tab
 - [x] Add workflow journal schema and append/fold/replay core.
 - [x] Add DB-backed workflow journal store adapter.
 - [x] Update query workflow proto contract for composite preparation effects.
-- [ ] Move query execution start/preparation/execution commits to journal append batches.
+- [x] Move query execution start/preparation/execution commits to journal append batches.
 - [x] Replace per-step internal preparation effects with composite preparation effects.
 - [x] Move usage persistence behind the user-visible query result.
+- [x] Run fresh query effects directly from append-returned journal tokens.
+- [x] Replay completed duplicate query effects from journal state.
+- [x] Record failed query effects and retry claims in journal state.
 - [ ] Build journal-derived projections for action state, audit feed, and pending effects.
 - [ ] Move recovery and duplicate command replay to journal state.
 - [ ] Remove old workflow/audit tables from the correctness path.

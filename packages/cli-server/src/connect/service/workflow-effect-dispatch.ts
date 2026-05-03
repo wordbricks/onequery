@@ -77,6 +77,7 @@ export async function dispatchStoredWorkflowEffect<
     causedByEventId: string;
     commandInvocationId: string;
     commandPayload: CommandPayload;
+    completedEffectId?: string;
     db: Database;
     organizationId: string;
     requestId: string;
@@ -144,6 +145,7 @@ export async function dispatchStoredWorkflowEffect<
       causedByEventId: effectDispatch.originEventId,
       commandInvocationId: resultCommandInvocationId,
       commandPayload: outcome.commandPayload,
+      completedEffectId: effectDispatch.id,
       db: input.db,
       organizationId: input.organizationId,
       requestId: input.requestId,

@@ -85,8 +85,13 @@ export function createDbWorkflowJournalStore<
 >(input: {
   codec: WorkflowJournalPayloadCodec<CommandPayload, Event, Effect>;
   db: Database;
+  onAppendEntries?: (input: {
+    entries: readonly WorkflowJournalEntry<CommandPayload, Event, Effect>[];
+    expectedStreamPosition: number;
+    tx: DatabaseTransaction;
+  }) => Promise<void>;
 }): WorkflowJournalStore<CommandPayload, Event, Effect> {
-  const { codec, db } = input;
+  const { codec, db, onAppendEntries } = input;
 
   return {
     appendEntries: async (appendInput) => {
@@ -139,6 +144,12 @@ export function createDbWorkflowJournalStore<
                 toWorkflowJournalInsert(entry, codec)
               )
             );
+
+          await onAppendEntries?.({
+            entries: appendInput.entries,
+            expectedStreamPosition: appendInput.expectedStreamPosition,
+            tx,
+          });
 
           return {
             kind: "appended",

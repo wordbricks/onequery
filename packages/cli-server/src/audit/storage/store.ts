@@ -9,13 +9,11 @@ import type {
 } from "../kernel";
 import type { QueryActionCommand } from "../query-action-family";
 import type { SourceApiActionCommand } from "../source-api-action-family";
-import {
-  queryActionStoreAdapter,
-  sourceApiActionStoreAdapter,
-} from "./adapters";
+import { sourceApiActionStoreAdapter } from "./adapters";
 import { commitWorkflowDecision } from "./commit";
 import { WorkflowStorageContentionError } from "./errors";
 import type { WorkflowStorageError } from "./errors";
+import { storeQueryActionCommandViaJournal } from "./query-action-journal";
 import { loadStoredWorkflowDecision, loadWorkflowState } from "./replay";
 import type { StoredWorkflowDecision, WorkflowStoreAdapter } from "./types";
 import { MAX_STORAGE_COMMIT_ATTEMPTS } from "./types";
@@ -24,8 +22,7 @@ export async function storeQueryActionCommand(input: {
   command: QueryActionCommand;
   db: Database;
 }) {
-  return storeWorkflowCommand({
-    adapter: queryActionStoreAdapter,
+  return storeQueryActionCommandViaJournal({
     command: input.command,
     db: input.db,
   });

@@ -10,6 +10,7 @@ import {
   organization,
   prepareApplicationDatabase,
   queryActionEvents,
+  workflowJournal,
   workflowCommands,
   workflowEffectDispatches,
 } from "@onequery/db/server";
@@ -292,6 +293,10 @@ describe("query workflow audit runtime", () => {
       .select()
       .from(queryActionEvents)
       .orderBy(asc(queryActionEvents.sequence));
+    const journalRows = await db
+      .select()
+      .from(workflowJournal)
+      .orderBy(asc(workflowJournal.streamPosition));
     const outboxRows = await db
       .select()
       .from(workflowEffectDispatches)
@@ -330,6 +335,42 @@ describe("query workflow audit runtime", () => {
       "credentials_loaded",
       "query_executed",
     ]);
+    expect(
+      journalRows.map((row) => ({
+        entryKind: row.entryKind,
+        payloadType: row.payloadType,
+      }))
+    ).toEqual([
+      { entryKind: "command", payloadType: "start_execute" },
+      { entryKind: "event", payloadType: "action_received" },
+      { entryKind: "effect_scheduled", payloadType: "prepare_execute_query" },
+      {
+        entryKind: "command",
+        payloadType: "record_execute_preparation_succeeded",
+      },
+      { entryKind: "event", payloadType: "source_loaded" },
+      { entryKind: "event", payloadType: "query_validated" },
+      { entryKind: "event", payloadType: "credentials_loaded" },
+      { entryKind: "effect_scheduled", payloadType: "execute_query" },
+      { entryKind: "effect_completed", payloadType: "effect_completed" },
+      {
+        entryKind: "command",
+        payloadType: "record_query_execution_succeeded",
+      },
+      { entryKind: "event", payloadType: "query_executed" },
+      { entryKind: "effect_scheduled", payloadType: "persist_usage" },
+      { entryKind: "effect_completed", payloadType: "effect_completed" },
+    ]);
+    expect(
+      journalRows
+        .map((row) => row.payloadBytes?.toString("utf8") ?? "")
+        .join("\n")
+    ).not.toContain("postgres://example");
+    expect(
+      journalRows
+        .map((row) => row.payloadBytes?.toString("utf8") ?? "")
+        .join("\n")
+    ).not.toContain("encrypted");
     expect(
       outboxRows.map((row) => ({
         effectType: row.effectType,
@@ -419,7 +460,7 @@ describe("query workflow audit runtime", () => {
     ).toEqual([{ effectType: "prepare_validate_query", status: "completed" }]);
   });
 
-  it("replays completed validateQuery requests without redispatching effects", async () => {
+  it("replays completed validateQuery requests from the journal after effect dispatch rows are removed", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -443,6 +484,8 @@ describe("query workflow audit runtime", () => {
       sql: "select 1",
       timeoutMs: 5_000,
     });
+
+    await db.delete(workflowEffectDispatches);
 
     const replayResult = await runCliQueryValidationWorkflowResult({
       actorSnapshot,
@@ -490,22 +533,14 @@ describe("query workflow audit runtime", () => {
         effectType: row.effectType,
         status: row.status,
       }))
-    ).toEqual([
-      {
-        attemptCount: 1,
-        effectType: "prepare_validate_query",
-        status: "completed",
-      },
-    ]);
+    ).toEqual([]);
     expect(
       dispatchRows.map((row) => ({
         lastErrorCode: row.lastErrorCode,
         lastErrorDetail: row.lastErrorDetail,
         leasedUntil: row.leasedUntil,
       }))
-    ).toEqual([
-      { lastErrorCode: null, lastErrorDetail: null, leasedUntil: null },
-    ]);
+    ).toEqual([]);
   });
 
   it("releases failed dispatches back to pending and retries them", async () => {
@@ -545,7 +580,7 @@ describe("query workflow audit runtime", () => {
 
     const failedDispatch = await loadFirstPrepareValidateDispatch(db);
     expect(failedDispatch).toMatchObject({
-      attemptCount: 1,
+      attemptCount: 0,
       completedAt: null,
       effectType: "prepare_validate_query",
       lastErrorCode: "dispatch_failed",
@@ -582,7 +617,7 @@ describe("query workflow audit runtime", () => {
       failedDispatch.id
     );
     expect(retriedPreparationDispatch).toMatchObject({
-      attemptCount: 2,
+      attemptCount: 1,
       effectType: "prepare_validate_query",
       lastErrorCode: null,
       lastErrorDetail: null,
@@ -607,10 +642,34 @@ describe("query workflow audit runtime", () => {
       }))
     ).toEqual([
       {
-        attemptCount: 2,
+        attemptCount: 1,
         effectType: "prepare_validate_query",
         status: "completed",
       },
+    ]);
+
+    const journalRows = await db
+      .select()
+      .from(workflowJournal)
+      .orderBy(asc(workflowJournal.streamPosition));
+    expect(
+      journalRows.map((row) => ({
+        entryKind: row.entryKind,
+        payloadType: row.payloadType,
+      }))
+    ).toEqual([
+      { entryKind: "command", payloadType: "start_validate" },
+      { entryKind: "event", payloadType: "action_received" },
+      { entryKind: "effect_scheduled", payloadType: "prepare_validate_query" },
+      { entryKind: "effect_failed", payloadType: "effect_failed" },
+      { entryKind: "effect_started", payloadType: "effect_started" },
+      {
+        entryKind: "command",
+        payloadType: "record_validate_preparation_accepted",
+      },
+      { entryKind: "event", payloadType: "source_loaded" },
+      { entryKind: "event", payloadType: "query_validated" },
+      { entryKind: "effect_completed", payloadType: "effect_completed" },
     ]);
   });
 
@@ -860,6 +919,103 @@ describe("query workflow audit runtime", () => {
       "record_execute_preparation_succeeded",
       "record_query_execution_succeeded",
     ]);
+  });
+
+  it("replays executed executeQuery requests from the journal after workflow_commands and effect dispatch rows are removed", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const fakeCredentials = {
+      connectionString: "postgres://example",
+      provider: "postgres",
+    } as unknown as DatabaseCredentials;
+
+    const executeSql = vi.fn().mockResolvedValue({
+      elapsedMs: 12,
+      kind: "succeeded",
+      rows: [{ answer: 42 }],
+    } satisfies CliQueryExecutionResult);
+    const persistUsage = vi.fn().mockResolvedValue({
+      kind: "usage_persisted",
+    } satisfies CliPersistUsageEffectResult);
+
+    const firstResult = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        executeSql,
+        loadCredentials: vi.fn().mockResolvedValue({
+          credentials: fakeCredentials,
+          kind: "credentials_loaded",
+          source,
+        } satisfies CliLoadCredentialsEffectResult),
+        loadSource: vi.fn().mockResolvedValue({
+          kind: "found",
+          source,
+        } satisfies CliLoadSourceEffectResult),
+        persistUsage,
+        validateQuery: vi.fn().mockResolvedValue({
+          kind: "query_ready",
+          normalizedSql: "select 42 as answer",
+          truncated: false,
+        } satisfies CliValidateQueryEffectResult),
+      },
+      org,
+      requestId: "req-execute-journal-replay-1",
+      sourceName: source.sourceKey,
+      sql: "select 42 as answer",
+      timeoutMs: 30_000,
+    });
+    const firstValue = unwrapOk(firstResult);
+
+    await db.delete(workflowCommands);
+    await db.delete(workflowEffectDispatches);
+
+    const replayResult = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        executeSql: vi
+          .fn<() => Promise<CliQueryExecutionResult>>()
+          .mockRejectedValue(new Error("executeSql should not run on replay")),
+        loadCredentials: vi
+          .fn<() => Promise<CliLoadCredentialsEffectResult>>()
+          .mockRejectedValue(
+            new Error("loadCredentials should not run on replay")
+          ),
+        loadSource: vi
+          .fn<() => Promise<CliLoadSourceEffectResult>>()
+          .mockRejectedValue(new Error("loadSource should not run on replay")),
+        persistUsage: vi
+          .fn<() => Promise<CliPersistUsageEffectResult>>()
+          .mockRejectedValue(
+            new Error("persistUsage should not run on replay")
+          ),
+        validateQuery: vi
+          .fn<() => Promise<CliValidateQueryEffectResult>>()
+          .mockRejectedValue(
+            new Error("validateQuery should not run on replay")
+          ),
+      },
+      org,
+      requestId: "req-execute-journal-replay-1",
+      sourceName: source.sourceKey,
+      sql: "select 42 as answer",
+      timeoutMs: 30_000,
+    });
+
+    expect(unwrapOk(replayResult)).toEqual(firstValue);
+    expect(executeSql).toHaveBeenCalledTimes(1);
+
+    const commandRows = await db.select().from(workflowCommands);
+    const dispatchRows = await db.select().from(workflowEffectDispatches);
+    const eventRows = await db.select().from(queryActionEvents);
+    const journalRows = await db.select().from(workflowJournal);
+
+    expect(commandRows).toHaveLength(0);
+    expect(dispatchRows).toHaveLength(0);
+    expect(eventRows).toHaveLength(0);
+    expect(journalRows.length).toBeGreaterThan(0);
   });
 
   it("does not replay executeQuery when a reused request id carries a different timeout", async () => {

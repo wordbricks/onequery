@@ -28,6 +28,12 @@ export type {
   WorkflowJournalPayloadCodecContext,
 } from "./storage/journal-db";
 export {
+  claimFailedQueryActionEffectViaJournal,
+  loadQueryActionCommandViaJournal,
+  recordQueryActionEffectFailureViaJournal,
+  storeQueryActionCommandViaJournal,
+} from "./storage/query-action-journal";
+export {
   storeQueryActionCommand,
   storeSourceApiActionCommand,
 } from "./storage/store";

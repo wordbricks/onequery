@@ -12,6 +12,7 @@ import type {
   QueryActionSourceDescriptor,
   StoredWorkflowDecision,
   WorkflowActorSnapshot,
+  WorkflowJournalEffectToken,
 } from "../../../audit";
 import type {
   AccessibleCliOrg,
@@ -52,7 +53,10 @@ export type CliQueryValidationWorkflowInput = QueryWorkflowRuntimeBaseInput & {
 export type StoredAcceptedQueryActionDecision = Extract<
   StoredWorkflowDecision<"query_action", QueryActionEvent, string>,
   { kind: "accepted" }
->;
+> & {
+  freshEffects?: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
+  journalEffects?: readonly WorkflowJournalEffectToken<QueryActionEffect>[];
+};
 
 export type LoadedQueryActionEffect<
   EffectType extends QueryActionEffect["type"] = QueryActionEffect["type"],
@@ -141,6 +145,7 @@ export type QueryExecutionEffectResult =
 
 export type StoredAcceptedQueryActionResultCommand = {
   commandPayload: QueryActionCommandPayload;
+  completedEffectIds: readonly string[];
   decision: StoredAcceptedQueryActionDecision;
 };
 

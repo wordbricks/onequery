@@ -267,15 +267,13 @@ function unwrapSourceApiResult(
   return result.value;
 }
 
-function unwrapQueryError(
-  result: Awaited<ReturnType<typeof storeQueryActionCommand>>
-) {
-  expect(result.isErr()).toBe(true);
-  if (result.isOk()) {
-    throw new Error("expected query workflow storage error");
-  }
-
-  return result.error;
+function omitFreshEffects<
+  Decision extends Extract<AnyStoredWorkflowDecision, { kind: "accepted" }> & {
+    freshEffects?: unknown;
+  },
+>(decision: Decision) {
+  const { freshEffects: _freshEffects, ...rest } = decision;
+  return rest;
 }
 
 function decodeStoredQueryActionCommand(
@@ -687,8 +685,8 @@ describe("audit workflow storage", () => {
       idempotency: "fresh",
       kind: "accepted",
     });
-    expect(secondDecision).toEqual({
-      ...firstDecision,
+    expect(omitFreshEffects(secondDecision)).toEqual({
+      ...omitFreshEffects(firstDecision),
       idempotency: "replayed",
     });
 
@@ -902,7 +900,7 @@ describe("audit workflow storage", () => {
     expect(commandRows).toHaveLength(1);
   });
 
-  it("surfaces corrupt row errors when a stored accepted event payload is corrupt", async () => {
+  it("replays accepted query commands from the journal when projected event payloads are corrupt", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -919,19 +917,20 @@ describe("audit workflow storage", () => {
       })
       .where(eq(queryActionEvents.commandId, storedDecision.commandId));
 
-    const error = unwrapQueryError(
-      await storeQueryActionCommand({
-        command,
-        db,
-      })
+    const replayedDecision = expectStoredDecision(
+      unwrapQueryResult(
+        await storeQueryActionCommand({
+          command,
+          db,
+        })
+      ),
+      "accepted"
     );
 
-    expect(error._tag).toBe("WorkflowStorageCorruptRowError");
-    if (error._tag !== "WorkflowStorageCorruptRowError") {
-      throw error;
-    }
-    expect(error.entity).toBe("query_action_event_payload");
-    expect(error.family).toBe("query_action");
+    expect(omitFreshEffects(replayedDecision)).toEqual({
+      ...omitFreshEffects(storedDecision),
+      idempotency: "replayed",
+    });
   });
 
   it("uses an independent commit position sequence per family", async () => {
