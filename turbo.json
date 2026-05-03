@@ -16,7 +16,6 @@
       "cache": false,
       "persistent": true,
       "passThroughEnv": [
-        "LOCAL_AGENT",
         "CONNECTOR_ABORT_ON_AUTH_FAILURE",
         "CONNECTOR_ABORT_ON_PREREQ_FAILURE",
         "DATABASE_URL",
@@ -27,7 +26,6 @@
       "cache": false,
       "persistent": true,
       "passThroughEnv": [
-        "LOCAL_AGENT",
         "CONNECTOR_ABORT_ON_AUTH_FAILURE",
         "CONNECTOR_ABORT_ON_PREREQ_FAILURE",
         "DATABASE_URL",
