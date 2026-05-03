@@ -1,0 +1,78 @@
+import { ShieldIcon } from "../blog-icons";
+import type { BlogPost } from "../blog-types";
+
+export const llmSafeDataAccessLayerPost: BlogPost = {
+  body: [
+    "LLM agents are becoming useful because they can keep working after the first prompt. They read context, draft SQL, call tools, inspect failures, and try again. That same autonomy becomes risky when the agent runtime can see raw production credentials.",
+    "OneQuery makes the safer architecture explicit: the model can ask data questions, but credentials, permissions, validation, execution limits, and audit records live outside the model.",
+  ],
+  category: "Safety",
+  date: "Apr 30, 2026",
+  description:
+    "How OneQuery gives LLMs a safe, auditable data access layer without handing them raw production credentials.",
+  icon: ShieldIcon,
+  imageSrc: "/images/blog/llm-safe-data-access-layer-icon.png",
+  readTime: "8 min read",
+  sections: [
+    {
+      id: "llm-risk-is-authority-risk",
+      imageAlt:
+        "Diagram contrasting direct LLM access to raw keys and production data with bounded access through OneQuery.",
+      imagePlacement: "after-title",
+      imageSrc: "/images/blog/llm-safe-data-access-direct-vs-bounded.png",
+      paragraphs: [
+        "Using an LLM for data work is not dangerous by itself. The danger appears when the model gets too much authority. If database passwords, SaaS tokens, or warehouse admin credentials are available inside the agent runtime, the model's mistake can become the system's mistake.",
+        'Adding a prompt rule like "never touch production" can guide normal behavior, but it is not a security boundary. A model can be influenced by tool output, try an unexpected recovery path after a failure, or simply use the permissions already attached to a token.',
+        "The safer pattern is not to make the model promise to be careful. The safer pattern is to narrow the execution path around the model. The LLM can understand the question and draft SQL. OneQuery decides which source the request can use, which organization permissions apply, and which execution limits must be enforced.",
+      ],
+      title: "LLM Risk Is Authority Risk",
+    },
+    {
+      id: "onequery-control-plane",
+      imageAlt:
+        "Diagram showing OneQuery query safety pipeline with source scope, read-only check, single statement enforcement, result window, and audit event.",
+      imagePlacement: "after-title",
+      imageSrc: "/images/blog/llm-safe-data-access-query-pipeline.png",
+      paragraphs: [
+        "OneQuery's first job is to separate credentials from the model runtime. The agent does not need the original database password or API token. OneQuery manages the data source connection, and the agent sends bounded requests against sources it is allowed to use.",
+        "The second job is to reduce what can execute. Before running a query, OneQuery applies read-only validation and single-statement enforcement. If the model accidentally drafts destructive SQL, the execution layer rejects it before it reaches the backing system.",
+        "The third job is to bound the response. LLMs often ask for more data than they need. OneQuery uses timeouts, row limits, payload limits, and provider-specific cost limits where available so one query does not turn into excessive spend or unnecessary data exposure.",
+      ],
+      title: "OneQuery Creates the Execution Boundary",
+    },
+    {
+      id: "denials-are-lifecycle",
+      paragraphs: [
+        "In a safe system, denial is not an incident. It is a normal lifecycle transition. A query that is not read-only becomes denied. A result that is too large becomes truncated. A missing permission becomes a permission failure.",
+        "That distinction matters for LLM agents. Instead of throwing an exception that encourages the model to improvise a workaround, the system returns a clear state and reason. The agent can explain the result to the user or write a narrower query.",
+        'This is also why OneQuery keeps an audit log. The question after a data action is not only "did it succeed?" Operators need to know who asked, which source was used, which SQL ran, which limits applied, and where the workflow failed if it failed.',
+      ],
+      title: "Denials and Failures Are Normal Flow",
+    },
+    {
+      id: "connector-keeps-credentials-local",
+      imageAlt:
+        "Diagram showing OneQuery connector polling over outbound HTTPS while credentials remain inside customer infrastructure.",
+      imagePlacement: "after-title",
+      imageSrc: "/images/blog/llm-safe-data-access-connector.png",
+      paragraphs: [
+        "For sensitive infrastructure, where credentials live matters. A OneQuery connector runs inside customer infrastructure, polls for work over outbound HTTPS, executes the query locally, and returns the result.",
+        "For example, an Athena connector can use EC2 IAM Role credentials to run Athena queries inside the customer's environment. The OneQuery control plane coordinates the job and receives the result, but the original credential does not need to move into the hosted control plane.",
+        "This is the practical compromise teams need for LLM adoption. The agent can answer from real operational data, but it does not directly hold the source credential. Operators manage source access, roles, validation, limits, and audit behavior at the product boundary.",
+      ],
+      title: "Connectors Keep Credentials Local",
+    },
+    {
+      id: "trust-the-workflow",
+      paragraphs: [
+        "The goal of safe LLM usage is not to fully trust the model. The thing to trust is the workflow around the model.",
+        "LLMs are good at language, planning, SQL drafting, and result interpretation. Deterministic systems are better at permission checks, credential management, write prevention, audit records, timeouts, and retries.",
+        "OneQuery separates those responsibilities. The model asks the question. OneQuery keeps the boundary. That difference is what turns data agents from risky production access into useful automation.",
+      ],
+      title: "Trust the Workflow, Not the Model",
+    },
+  ],
+  slug: "llm-safe-data-access-layer",
+  thumbnail: "blog-thumbnail-teal",
+  title: "A Safe Data Access Layer for LLMs",
+};

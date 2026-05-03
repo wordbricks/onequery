@@ -9,8 +9,8 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@onequery/ui/components/alert";
-import { Badge } from "@onequery/ui/components/badge";
 import { Button, buttonVariants } from "@onequery/ui/components/button";
+import { CopyButton } from "@onequery/ui/components/copy-button";
 import {
   Empty,
   EmptyDescription,
@@ -44,13 +44,12 @@ import {
   IconAlertTriangle,
   IconArrowLeft,
   IconArrowRight,
+  IconChevronDown,
   IconChevronRight,
-  IconClock,
-  IconDatabase,
+  IconDownload,
   IconHistory,
-  IconListDetails,
   IconRefresh,
-  IconRoute,
+  IconSearch,
 } from "@tabler/icons-react";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
@@ -90,16 +89,16 @@ function truncateText(value: string, maxLength = 160): string {
   return `${value.slice(0, maxLength - 1)}…`;
 }
 
-function getOutcomeBadgeVariant(outcome: AuditListItem["outcome"]) {
+function getOutcomeDotClassName(outcome: AuditListItem["outcome"]) {
   if (outcome === "succeeded") {
-    return "secondary" as const;
+    return "bg-emerald-500";
   }
 
   if (outcome === "pending") {
-    return "outline" as const;
+    return "bg-amber-500";
   }
 
-  return "destructive" as const;
+  return "bg-red-500";
 }
 
 function getActorLabel(item: AuditListItem) {
@@ -185,6 +184,80 @@ function getVolumeLabel(item: AuditListItem) {
     .join(" · ");
 }
 
+function getTargetLabel(item: AuditListItem) {
+  if (item.family === "source_api_action") {
+    return (
+      item.preview?.operation ??
+      item.preview?.selector ??
+      item.preview?.method ??
+      item.target.displayName ??
+      item.target.sourceName ??
+      "API"
+    );
+  }
+
+  return (
+    item.target.displayName ??
+    item.target.sourceName ??
+    item.target.provider ??
+    "Query"
+  );
+}
+
+function getTraceIdLabel(item: AuditListItem) {
+  return item.id.length > 12 ? item.id.slice(0, 12) : item.id;
+}
+
+function escapeCsvValue(value: string) {
+  if (!/[",\n\r]/.test(value)) {
+    return value;
+  }
+
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+function buildAuditCsv(items: readonly AuditListItem[]) {
+  const rows = items.map((item) => [
+    formatDateTime(item.startedAt),
+    item.outcome,
+    getActorLabel(item),
+    item.target.sourceKey,
+    item.title,
+    getTargetLabel(item),
+    getDurationLabel(item),
+    getVolumeLabel(item) || "n/a",
+    item.id,
+  ]);
+
+  return [
+    [
+      "Time",
+      "Outcome",
+      "Actor",
+      "Source",
+      "Action",
+      "Target",
+      "Duration",
+      "Rows / Pages",
+      "Trace ID",
+    ],
+    ...rows,
+  ]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\n");
+}
+
+function downloadAuditCsv(items: readonly AuditListItem[]) {
+  const url = URL.createObjectURL(
+    new Blob([buildAuditCsv(items)], { type: "text/csv;charset=utf-8" })
+  );
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "audit-entries.csv";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function AuditTableRow({
   isSelected,
   item,
@@ -199,72 +272,100 @@ function AuditTableRow({
   return (
     <TableRow
       className={
-        isSelected ? "bg-muted/60 hover:bg-muted/60" : "hover:bg-muted/40"
+        isSelected
+          ? "border-l-blue-500 bg-blue-50/60 hover:bg-blue-50/70"
+          : "border-l-transparent hover:bg-muted/40"
       }
       onClick={onSelect}
+      data-state={isSelected ? "selected" : undefined}
     >
-      <TableCell className="w-[132px] align-top">
-        <div className="text-xs font-medium">
+      <TableCell className="w-[132px] border-l-2 py-2 align-middle">
+        <div className="text-xs tabular-nums">
           {formatDateTime(item.startedAt)}
         </div>
-        <div className="text-muted-foreground mt-1 text-xs">
-          {formatEnumLabel(item.originSurface)}
+      </TableCell>
+      <TableCell className="w-[104px] py-2 align-middle">
+        <div className="flex items-center gap-2 text-xs">
+          <span
+            className={`size-2 rounded-full ${getOutcomeDotClassName(
+              item.outcome
+            )}`}
+          />
+          {formatEnumLabel(item.outcome)}
         </div>
       </TableCell>
-      <TableCell className="align-top whitespace-normal">
-        <div className="max-w-[180px] truncate text-sm font-medium">
+      <TableCell className="w-[172px] py-2 align-middle">
+        <div className="truncate text-xs font-medium">
           {getActorLabel(item)}
         </div>
-        <div className="text-muted-foreground mt-1 text-xs">
-          {item.target.sourceKey}
-        </div>
       </TableCell>
-      <TableCell className="min-w-[340px] align-top whitespace-normal">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{formatEnumLabel(item.family)}</Badge>
-          <span className="text-sm font-medium">{item.title}</span>
-        </div>
-        <div className="text-muted-foreground mt-2 text-xs font-mono break-words">
+      <TableCell className="w-[132px] py-2 align-middle">
+        <div className="truncate text-xs">{item.target.sourceKey}</div>
+      </TableCell>
+      <TableCell className="min-w-[320px] py-2 align-middle">
+        <div className="truncate text-xs font-medium">{item.title}</div>
+        <div className="text-muted-foreground mt-1 truncate font-mono text-[11px]">
           {getDetailLine(item)}
         </div>
       </TableCell>
-      <TableCell className="w-[132px] align-top whitespace-normal">
-        <div className="flex flex-col gap-2">
-          <Badge variant={getOutcomeBadgeVariant(item.outcome)}>
-            {formatEnumLabel(item.outcome)}
-          </Badge>
-          <div className="text-muted-foreground text-xs">
-            {formatEnumLabel(item.phase)}
-          </div>
-          {metricsLabel ? (
-            <div className="text-muted-foreground text-xs">{metricsLabel}</div>
-          ) : null}
+      <TableCell className="w-[160px] py-2 align-middle">
+        <div className="truncate text-xs">{getTargetLabel(item)}</div>
+      </TableCell>
+      <TableCell className="w-[92px] py-2 text-right align-middle text-xs tabular-nums">
+        {getDurationLabel(item)}
+      </TableCell>
+      <TableCell className="w-[112px] py-2 text-right align-middle text-xs tabular-nums">
+        {getVolumeLabel(item) || metricsLabel || "n/a"}
+      </TableCell>
+      <TableCell className="w-[112px] py-2 align-middle">
+        <div className="text-muted-foreground truncate font-mono text-[11px]">
+          {getTraceIdLabel(item)}
         </div>
       </TableCell>
-      <TableCell className="w-8 align-top">
+      <TableCell className="w-8 py-2 align-middle">
         <IconChevronRight className="text-muted-foreground size-4" />
       </TableCell>
     </TableRow>
   );
 }
 
-function StatTile({ label, value }: { label: string; value: string }) {
+function DetailFact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border p-3">
+    <div className="min-w-0">
       <div className="text-muted-foreground text-xs">{label}</div>
-      <div className="mt-1 truncate text-sm font-medium">{value}</div>
+      <div className="mt-1 truncate text-xs font-medium">{value}</div>
     </div>
   );
 }
 
-function JsonBlock({ title, value }: { title: string; value: unknown }) {
+function EvidenceDisclosure({
+  defaultOpen = false,
+  title,
+  value,
+}: {
+  defaultOpen?: boolean;
+  title: string;
+  value: unknown;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
   return (
-    <div className="rounded-md border">
-      <div className="border-b px-3 py-2 text-xs font-medium">{title}</div>
-      <pre className="max-h-44 overflow-auto p-3 text-xs">
+    <details
+      className="group rounded-md border"
+      open={isOpen}
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs font-medium">
+        {title}
+        <IconChevronDown
+          className="text-muted-foreground size-3.5 transition-transform group-open:rotate-180"
+          stroke={2}
+        />
+      </summary>
+      <pre className="border-t p-3 text-xs break-words whitespace-pre-wrap">
         {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
       </pre>
-    </div>
+    </details>
   );
 }
 
@@ -272,16 +373,21 @@ function DetailSkeleton({ item }: { item: AuditListItem }) {
   return (
     <div className="space-y-4">
       <div>
-        <div className="flex items-center gap-2">
-          <Badge variant={getOutcomeBadgeVariant(item.outcome)}>
-            {formatEnumLabel(item.outcome)}
-          </Badge>
-          <Badge variant="outline">{item.family}</Badge>
+        <div className="flex items-center gap-2 text-xs">
+          <span
+            className={`size-2 rounded-full ${getOutcomeDotClassName(
+              item.outcome
+            )}`}
+          />
+          <span className="font-medium">{formatEnumLabel(item.outcome)}</span>
+          <span className="text-muted-foreground">{item.family}</span>
         </div>
-        <h2 className="mt-3 text-xl font-semibold">{item.title}</h2>
-        <p className="text-muted-foreground mt-1 text-sm">{item.subtitle}</p>
+        <h2 className="mt-2 truncate text-base font-semibold">{item.title}</h2>
+        <p className="text-muted-foreground mt-1 truncate text-xs">
+          {item.subtitle}
+        </p>
       </div>
-      <div className="rounded-md border p-4 text-sm">
+      <div className="rounded-md border p-3 text-xs">
         Loading full command and event trace…
       </div>
     </div>
@@ -299,88 +405,81 @@ function AuditTraceDetail({
   const latestEvent = detail.events.at(-1);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-xs">
+              <span
+                className={`size-2 rounded-full ${getOutcomeDotClassName(
+                  item.outcome
+                )}`}
+              />
+              <span className="font-medium">
+                {formatEnumLabel(item.outcome)}
+              </span>
+              <span className="text-muted-foreground">
+                {formatDateTime(item.startedAt)}
+              </span>
+            </div>
+            <h2 className="mt-2 truncate text-base font-semibold">
+              {item.title}
+            </h2>
+            <p className="text-muted-foreground mt-1 truncate text-xs">
+              {item.subtitle}
+            </p>
+          </div>
+          <CopyButton value={item.id} className="size-7 shrink-0" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-y py-3">
+        <DetailFact label="Actor" value={getActorLabel(item)} />
+        <DetailFact label="Source" value={item.target.sourceKey} />
+        <DetailFact label="Duration" value={getDurationLabel(item)} />
+        <DetailFact
+          label="Rows / Pages"
+          value={getVolumeLabel(item) || "n/a"}
+        />
+        <DetailFact label="Phase" value={formatEnumLabel(item.phase)} />
+        <DetailFact label="Trace ID" value={getTraceIdLabel(item)} />
+      </div>
+
+      <div className="text-muted-foreground flex items-center justify-between text-xs">
+        <span>Projection caught up</span>
+        <span className="font-mono">
+          commit_position {latestEvent?.commitPosition ?? "n/a"}
+        </span>
+      </div>
+
       <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={getOutcomeBadgeVariant(item.outcome)}>
-            {formatEnumLabel(item.outcome)}
-          </Badge>
-          <Badge variant="outline">{detail.family}</Badge>
-          <Badge variant="secondary">Projection caught up</Badge>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-medium">Event timeline</h3>
+          <span className="text-muted-foreground text-xs">
+            {detail.events.length} events
+          </span>
         </div>
-        <h2 className="mt-3 text-xl font-semibold">
-          {detail.family === "query_action" ? "Query trace" : "API trace"}
-        </h2>
-        <p className="text-muted-foreground mt-1 text-sm">{item.subtitle}</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatTile label="Duration" value={getDurationLabel(item)} />
-        <StatTile label="Volume" value={getVolumeLabel(item) || "n/a"} />
-        <StatTile label="Source" value={item.target.sourceKey} />
-        <StatTile label="Actor" value={getActorLabel(item)} />
-      </div>
-
-      <div className="grid gap-3 text-sm md:grid-cols-2">
-        <div className="rounded-md border p-3">
-          <div className="text-muted-foreground text-xs">workflow_commands</div>
-          <div className="mt-1 font-mono text-xs break-all">
-            {firstCommand?.id ?? "No command recorded"}
-          </div>
-          <div className="text-muted-foreground mt-2 text-xs">
-            Request {firstCommand?.requestId ?? "n/a"}
-          </div>
-        </div>
-        <div className="rounded-md border p-3">
-          <div className="text-muted-foreground text-xs">Last event</div>
-          <div className="mt-1 font-mono text-xs break-all">
-            {latestEvent?.eventType ?? item.lastEventType}
-          </div>
-          <div className="text-muted-foreground mt-2 text-xs">
-            commit_position {latestEvent?.commitPosition ?? "n/a"}
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div className="mb-3 flex flex-wrap gap-2">
-          {["Timeline", "SQL", "Payload", "Metrics", "Events"].map(
-            (tab, index) => (
-              <Button
-                key={tab}
-                type="button"
-                variant={index === 0 ? "secondary" : "outline"}
-                size="sm"
-              >
-                {tab}
-              </Button>
-            )
-          )}
-        </div>
-
-        <div className="space-y-3">
+        <div className="divide-y rounded-md border">
           {detail.events.map((event) => (
             <div
               key={event.id}
-              className="grid grid-cols-[32px_minmax(0,1fr)] gap-3 rounded-md border p-3"
+              className="grid grid-cols-[28px_minmax(0,1fr)] gap-2 px-3 py-2"
             >
-              <div className="bg-muted flex size-8 items-center justify-center rounded-full text-xs font-medium">
+              <div className="bg-muted flex size-6 items-center justify-center rounded-full text-[11px] tabular-nums">
                 {event.sequence}
               </div>
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-xs font-medium">
                     {formatEnumLabel(event.eventType)}
                   </span>
-                  <Badge variant="outline">
-                    commit_position {event.commitPosition}
-                  </Badge>
-                  <Badge variant="outline">
+                  <span className="text-muted-foreground shrink-0 text-[11px]">
                     {formatBytes(event.payload.byteLength)}
-                  </Badge>
+                  </span>
                 </div>
-                <div className="text-muted-foreground mt-1 text-xs">
-                  {formatDateTime(event.occurredAt)} · command {event.commandId}
+                <div className="text-muted-foreground mt-1 truncate font-mono text-[11px]">
+                  {formatDateTime(event.occurredAt)} · commit{" "}
+                  {event.commitPosition}
                 </div>
               </div>
             </div>
@@ -389,43 +488,56 @@ function AuditTraceDetail({
       </div>
 
       {detail.family === "query_action" ? (
-        <div className="grid gap-3">
-          <JsonBlock title="query_text" value={detail.action.queryText} />
-          <JsonBlock
-            title="validated_query"
+        <div className="grid gap-2">
+          <EvidenceDisclosure
+            defaultOpen
+            title="SQL"
+            value={detail.action.queryText}
+          />
+          <EvidenceDisclosure
+            title="Validated query"
             value={
               detail.action.validatedQuery ?? "No validated query recorded"
             }
           />
-          <JsonBlock
-            title="source_descriptor_json"
+          <EvidenceDisclosure
+            title="Metrics"
+            value={item.metrics ?? "No metrics recorded"}
+          />
+          <EvidenceDisclosure
+            title="Source descriptor"
             value={detail.action.sourceDescriptor}
           />
         </div>
       ) : (
-        <div className="grid gap-3">
-          <JsonBlock
-            title="request_descriptor_json"
+        <div className="grid gap-2">
+          <EvidenceDisclosure
+            defaultOpen
+            title="Request"
             value={detail.action.requestDescriptor}
           />
-          <JsonBlock
-            title="page_progress_json"
+          <EvidenceDisclosure
+            title="Payload"
             value={detail.action.pageProgress}
           />
-          <JsonBlock
-            title="source_descriptor_json"
+          <EvidenceDisclosure
+            title="Metrics"
+            value={item.metrics ?? "No metrics recorded"}
+          />
+          <EvidenceDisclosure
+            title="Source descriptor"
             value={detail.action.sourceDescriptor}
           />
         </div>
       )}
 
-      <div className="grid gap-3">
-        <JsonBlock
-          title="command_payload_json"
+      <div className="grid gap-2">
+        <EvidenceDisclosure
+          title="Command payload"
           value={firstCommand?.decodedPayload ?? null}
         />
-        <JsonBlock
-          title="event_payloads_json"
+        <EvidenceDisclosure
+          title="Raw Events"
           value={detail.events.map((event) => ({
             commandId: event.commandId,
             eventType: event.eventType,
@@ -473,7 +585,6 @@ function AuditFiltersSection({
   isFetching,
   itemCount,
   nextCursor,
-  onRefresh,
   organizationSlug,
   projectionLag,
   search,
@@ -481,7 +592,6 @@ function AuditFiltersSection({
   isFetching: boolean;
   itemCount: number;
   nextCursor: string | null;
-  onRefresh: () => void;
   organizationSlug: string;
   projectionLag: {
     queryAction: boolean;
@@ -539,15 +649,22 @@ function AuditFiltersSection({
   }
 
   return (
-    <section className="rounded-xl border p-4">
+    <section className="border-b pb-4">
       <form
-        className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_180px_180px_180px_auto_auto]"
+        className="grid gap-2 lg:grid-cols-[minmax(260px,1fr)_160px_360px_150px_150px_auto]"
         onSubmit={handleFilterSubmit}
       >
-        <div className="space-y-2">
-          <Label htmlFor="audit-search">Search</Label>
+        <div className="relative">
+          <Label htmlFor="audit-search" className="sr-only">
+            Search
+          </Label>
+          <IconSearch
+            className="text-muted-foreground absolute top-2 left-2.5 size-4"
+            stroke={2}
+          />
           <Input
             id="audit-search"
+            className="pl-8"
             value={draft.q}
             onChange={(event) =>
               setDraft((current) => ({
@@ -555,12 +672,14 @@ function AuditFiltersSection({
                 q: event.target.value,
               }))
             }
-            placeholder="Actor, query text, operation, or title"
+            placeholder="Search actor, source, query"
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="audit-source-key">Source Key</Label>
+        <div>
+          <Label htmlFor="audit-source-key" className="sr-only">
+            Source
+          </Label>
           <Input
             id="audit-source-key"
             value={draft.sourceKey}
@@ -570,40 +689,50 @@ function AuditFiltersSection({
                 sourceKey: event.target.value,
               }))
             }
-            placeholder="warehouse"
+            placeholder="Source"
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="audit-outcome">Outcome</Label>
-          <Select
-            value={search.outcome ?? "all"}
-            onValueChange={(value) => {
-              navigateAuditSearch({
-                cursor: undefined,
-                outcome:
-                  value && value !== "all"
-                    ? (value as AuditSearch["outcome"])
-                    : undefined,
-              });
-            }}
+        <div className="flex rounded-lg border p-0.5">
+          <Button
+            type="button"
+            variant={search.outcome ? "ghost" : "secondary"}
+            size="sm"
+            className="flex-1"
+            onClick={() =>
+              navigateAuditSearch({ cursor: undefined, outcome: undefined })
+            }
           >
-            <SelectTrigger id="audit-outcome" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All outcomes</SelectItem>
-              {AUDIT_OUTCOMES.map((outcome) => (
-                <SelectItem key={outcome} value={outcome}>
-                  {formatEnumLabel(outcome)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            All outcomes
+          </Button>
+          {AUDIT_OUTCOMES.map((outcome) => (
+            <Button
+              key={outcome}
+              type="button"
+              variant={search.outcome === outcome ? "secondary" : "ghost"}
+              size="sm"
+              className="flex-1"
+              onClick={() =>
+                navigateAuditSearch({
+                  cursor: undefined,
+                  outcome,
+                })
+              }
+            >
+              <span
+                className={`size-1.5 rounded-full ${getOutcomeDotClassName(
+                  outcome
+                )}`}
+              />
+              {formatEnumLabel(outcome)}
+            </Button>
+          ))}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="audit-family">Family</Label>
+        <div>
+          <Label htmlFor="audit-family" className="sr-only">
+            Family
+          </Label>
           <Select
             value={search.family ?? "all"}
             onValueChange={(value) => {
@@ -630,8 +759,10 @@ function AuditFiltersSection({
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="audit-action-name">Action</Label>
+        <div>
+          <Label htmlFor="audit-action-name" className="sr-only">
+            Action
+          </Label>
           <Select
             value={search.actionName ?? "all"}
             onValueChange={(value) => {
@@ -658,7 +789,7 @@ function AuditFiltersSection({
           </Select>
         </div>
 
-        <div className="flex items-end">
+        <div className="flex gap-2">
           <Button
             type="submit"
             className="w-full lg:w-auto"
@@ -666,9 +797,6 @@ function AuditFiltersSection({
           >
             Apply
           </Button>
-        </div>
-
-        <div className="flex items-end">
           <Button
             type="button"
             variant="ghost"
@@ -691,7 +819,7 @@ function AuditFiltersSection({
         </Alert>
       ) : null}
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-muted-foreground text-sm">
           {itemCount} entries on this page
           {search.cursor ? " · viewing older results" : " · newest first"}
@@ -700,23 +828,6 @@ function AuditFiltersSection({
         </p>
 
         <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger
-              aria-label="Refresh audit feed"
-              className={buttonVariants({ size: "icon", variant: "outline" })}
-              disabled={isFetching}
-              onClick={onRefresh}
-              type="button"
-            >
-              <IconRefresh
-                className={isFetching ? "animate-spin" : undefined}
-                size={16}
-                stroke={2}
-              />
-            </TooltipTrigger>
-            <TooltipContent>Refresh audit feed</TooltipContent>
-          </Tooltip>
-
           {search.cursor ? (
             <Button
               type="button"
@@ -778,13 +889,39 @@ export function AuditPage() {
   });
 
   return (
-    <div className="space-y-8 p-8">
-      <div>
-        <h1 className="text-3xl font-bold">Audit</h1>
-        <p className="text-muted-foreground mt-2">
-          Trace query and source API workflows from command intake through raw
-          events, payloads, metrics, and projection state.
-        </p>
+    <div className="space-y-4 p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-semibold">Audit</h1>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger
+              aria-label="Refresh audit feed"
+              className={buttonVariants({ size: "icon", variant: "outline" })}
+              disabled={isFetching}
+              onClick={() => {
+                void refetch();
+              }}
+              type="button"
+            >
+              <IconRefresh
+                className={isFetching ? "animate-spin" : undefined}
+                size={16}
+                stroke={2}
+              />
+            </TooltipTrigger>
+            <TooltipContent>Refresh audit feed</TooltipContent>
+          </Tooltip>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={data.items.length === 0}
+            onClick={() => downloadAuditCsv(data.items)}
+          >
+            <IconDownload size={16} stroke={2} />
+            Export
+          </Button>
+        </div>
       </div>
 
       <AuditFiltersSection
@@ -792,9 +929,6 @@ export function AuditPage() {
         isFetching={isFetching}
         itemCount={data.items.length}
         nextCursor={data.nextCursor}
-        onRefresh={() => {
-          void refetch();
-        }}
         organizationSlug={organizationSlug}
         projectionLag={data.projectionLag}
         search={search}
@@ -814,31 +948,36 @@ export function AuditPage() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(440px,0.95fr)]">
+        <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,420px)]">
           <section className="min-w-0 rounded-md border">
-            <div className="flex items-center justify-between border-b px-4 py-3">
+            <div className="flex items-center justify-between border-b px-3 py-2">
               <div>
-                <h2 className="font-semibold">Trace feed</h2>
-                <p className="text-muted-foreground text-xs">
-                  Newest audited actions with source, actor, status, and shape.
-                </p>
+                <h2 className="text-sm font-semibold">Audit entries</h2>
               </div>
-              <div className="text-muted-foreground flex items-center gap-2 text-xs">
-                <IconListDetails size={16} stroke={1.75} />
+              <div className="text-muted-foreground text-xs">
                 {data.projectedThrough.queryAction ||
                 data.projectedThrough.sourceApiAction
                   ? "Projection caught up"
                   : "Projection pending"}
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
+            <div className="max-h-[calc(100vh-240px)] overflow-auto">
+              <Table className="min-w-[1220px]">
+                <TableHeader className="bg-background sticky top-0 z-10">
                   <TableRow>
-                    <TableHead>When</TableHead>
-                    <TableHead>Actor / source</TableHead>
-                    <TableHead>Activity</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[132px]">Time</TableHead>
+                    <TableHead className="w-[104px]">Outcome</TableHead>
+                    <TableHead className="w-[172px]">Actor</TableHead>
+                    <TableHead className="w-[132px]">Source</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead className="w-[160px]">Target</TableHead>
+                    <TableHead className="w-[92px] text-right">
+                      Duration
+                    </TableHead>
+                    <TableHead className="w-[112px] text-right">
+                      Rows / Pages
+                    </TableHead>
+                    <TableHead className="w-[112px]">Trace ID</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
@@ -857,20 +996,12 @@ export function AuditPage() {
           </section>
 
           <aside className="min-w-0 rounded-md border">
-            <div className="flex items-center justify-between border-b px-4 py-3">
+            <div className="flex items-center justify-between border-b px-3 py-2">
               <div>
-                <h2 className="font-semibold">Trace detail</h2>
-                <p className="text-muted-foreground text-xs">
-                  Commands, event log, payload bytes, and action fold state.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <IconRoute className="text-muted-foreground size-4" />
-                <IconDatabase className="text-muted-foreground size-4" />
-                <IconClock className="text-muted-foreground size-4" />
+                <h2 className="text-sm font-semibold">Details</h2>
               </div>
             </div>
-            <div className="max-h-[calc(100vh-220px)] overflow-auto p-4">
+            <div className="max-h-[calc(100vh-240px)] overflow-auto p-3">
               {selectedItem && detailQuery.isPending ? (
                 <DetailSkeleton item={selectedItem} />
               ) : null}
@@ -888,6 +1019,7 @@ export function AuditPage() {
               ) : null}
               {selectedItem && detailQuery.data ? (
                 <AuditTraceDetail
+                  key={selectedItem.id}
                   detail={detailQuery.data}
                   item={selectedItem}
                 />
