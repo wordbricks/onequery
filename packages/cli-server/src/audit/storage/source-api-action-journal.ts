@@ -217,6 +217,12 @@ export async function storeSourceApiActionCommandViaJournal(input: {
             ]
           : [],
       commandInvocationId: command.commandInvocationId,
+      commandMetadata: {
+        actorSnapshot: command.actorSnapshot,
+        causedByEventId: command.causedByEventId,
+        requestId: command.requestId,
+        surface: command.surface,
+      },
       commandPayload: command.commandPayload,
       commandType: getSourceApiActionCommandPayloadType(command.commandPayload),
       effectCompletions:
