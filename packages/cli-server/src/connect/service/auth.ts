@@ -78,7 +78,11 @@ const handleGetSessionImpl: CliResultServiceMethod<"getSession"> = async (
 ) =>
   Result.gen(async function* handleGetSessionFlow() {
     const requestContext = requireCliConnectRequestContext(context);
-    const session = yield* Result.await(requestContext.resolveSession());
+    const session = yield* Result.await(
+      requestContext.resolveSession({
+        includeActiveOrgSlug: true,
+      })
+    );
 
     return Result.ok(buildCliAuthSession(session));
   });
@@ -90,9 +94,10 @@ const handleRefreshSessionImpl: CliResultServiceMethod<
     const requestContext = requireCliConnectRequestContext(context);
     const c = requestContext.honoContext;
 
-    yield* Result.await(requestContext.resolveSession());
     const session = yield* resolveCliSessionIdentityResult(
-      await refreshCliSessionIdentity(c.var.storage, c.req.raw.headers)
+      await refreshCliSessionIdentity(c.var.storage, c.req.raw.headers, {
+        includeActiveOrgSlug: true,
+      })
     );
 
     return Result.ok(buildCliRefreshSession(session));
@@ -165,7 +170,10 @@ const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
       const session = yield* resolveCliSessionIdentityResult(
         await resolveCliSessionIdentity(
           c.var.storage,
-          createBearerHeaders(c.req.raw, payload.access_token)
+          createBearerHeaders(c.req.raw, payload.access_token),
+          {
+            includeActiveOrgSlug: true,
+          }
         )
       );
 

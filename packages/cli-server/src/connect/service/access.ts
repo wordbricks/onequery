@@ -1,6 +1,7 @@
 import { Result } from "better-result";
 
 import { resolveCliSessionIdentity } from "../../auth/session-identity";
+import type { ResolveCliSessionIdentityOptions } from "../../auth/session-identity";
 import { authorizeCliOrgAccess } from "../../authorization";
 import type { AuthorizedCliOrgContext, CliAction } from "../../authorization";
 import type {
@@ -32,11 +33,13 @@ export function resolveCliSessionIdentityResult(
 }
 
 export async function resolveAuthenticatedCliSession(
-  c: CliHonoContext
+  c: CliHonoContext,
+  options: ResolveCliSessionIdentityOptions = {}
 ): Promise<CliServiceResult<CliSessionIdentity>> {
   const session = await resolveCliSessionIdentity(
     c.var.storage,
-    c.req.raw.headers
+    c.req.raw.headers,
+    options
   );
   if (!session) {
     logCliEvent({

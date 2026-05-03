@@ -152,6 +152,21 @@ const queryActionJournalPayloadCodec: WorkflowJournalPayloadCodec<
   encodeEventPayload: (event) => encodeQueryActionEventPayload(event),
 };
 
+function createEmptyQueryActionJournalCursor(
+  streamId: string
+): QueryActionJournalCursor {
+  return {
+    checkpoint: null,
+    commands: [],
+    effects: [],
+    events: [],
+    pendingEffects: [],
+    state: null,
+    streamId,
+    streamPosition: 0,
+  };
+}
+
 export async function storeQueryActionCommandViaJournal(input: {
   command: QueryActionCommand;
   completedEffectId?: string;
@@ -166,17 +181,21 @@ export async function storeQueryActionCommandViaJournal(input: {
   for (let attempt = 1; attempt <= MAX_STORAGE_COMMIT_ATTEMPTS; attempt += 1) {
     const actionId = command.actionId ?? carriedCursor?.streamId ?? ulid();
     const store = createQueryActionJournalStore({ db });
+    const isFreshGeneratedStream =
+      command.actionId === null && carriedCursor === undefined;
     const cursor =
       carriedCursor?.streamId === actionId
         ? Result.ok(carriedCursor)
-        : foldWorkflowJournalEntries({
-            entries: await store.loadStream({
-              family: "query_action",
+        : isFreshGeneratedStream
+          ? Result.ok(createEmptyQueryActionJournalCursor(actionId))
+          : foldWorkflowJournalEntries({
+              entries: await store.loadStream({
+                family: "query_action",
+                streamId: actionId,
+              }),
+              reduce: reduceQueryActionJournalEvent,
               streamId: actionId,
-            }),
-            reduce: reduceQueryActionJournalEvent,
-            streamId: actionId,
-          });
+            });
     if (cursor.isErr()) {
       return Result.err(cursor.error);
     }
@@ -213,8 +232,7 @@ export async function storeQueryActionCommandViaJournal(input: {
       },
       commandPayload: command.commandPayload,
       commandType: getQueryActionCommandPayloadType(command.commandPayload),
-      currentCursor:
-        carriedCursor?.streamId === actionId ? carriedCursor : undefined,
+      currentCursor: cursor.value,
       effectCompletions:
         decision.value.kind !== "accepted" ||
         input.completedEffectId === undefined
@@ -233,6 +251,7 @@ export async function storeQueryActionCommandViaJournal(input: {
       reduce: reduceQueryActionJournalEvent,
       store: appendStore,
       streamId: actionId,
+      skipStorePreflightChecks: isFreshGeneratedStream,
     });
 
     if (appended.isErr()) {

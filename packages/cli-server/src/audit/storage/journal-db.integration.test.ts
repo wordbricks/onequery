@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { appendWorkflowJournalBatch } from "./journal";
 import type {
   WorkflowJournalCommandEntry,
+  WorkflowJournalCursor,
   WorkflowJournalEffectFailedEntry,
   WorkflowJournalEffectScheduledEntry,
   WorkflowJournalEffectStartedEntry,
@@ -182,12 +183,21 @@ function appendTestBatch(
     effects?: readonly TestEffect[];
     events?: readonly TestEvent[];
     expectedStreamPosition: number;
+    currentCursor?: WorkflowJournalCursor<
+      TestState,
+      TestCommand,
+      TestEvent,
+      TestEffect
+    >;
+    skipStorePreflightChecks?: boolean;
+    streamId?: string;
   }
 ) {
   return appendWorkflowJournalBatch({
     checkpoints: input.checkpoints,
     commandInvocationId: input.commandInvocationId,
     commandPayload: input.commandPayload,
+    currentCursor: input.currentCursor,
     effectFailures: input.effectFailures,
     effectStarts: input.effectStarts,
     effects: input.effects,
@@ -197,8 +207,9 @@ function appendTestBatch(
     occurredAt,
     organizationId: "org_1",
     reduce: reduceTestState,
+    skipStorePreflightChecks: input.skipStorePreflightChecks,
     store,
-    streamId: "action_1",
+    streamId: input.streamId ?? "action_1",
   });
 }
 
@@ -219,6 +230,21 @@ function expectSingle<T>(values: readonly T[]): T {
   }
 
   return value;
+}
+
+function emptyCursor(
+  streamId: string
+): WorkflowJournalCursor<TestState, TestCommand, TestEvent, TestEffect> {
+  return {
+    checkpoint: null,
+    commands: [],
+    effects: [],
+    events: [],
+    pendingEffects: [],
+    state: null,
+    streamId,
+    streamPosition: 0,
+  };
 }
 
 function buildManualCommandEntry(input: {
@@ -491,6 +517,63 @@ describe("DB workflow journal store", () => {
     expect(stream.map((entry) => entry.entryId)).toEqual(
       started.entries.map((entry) => entry.entryId)
     );
+  });
+
+  it("replays optimistic fresh-stream appends on command idempotency conflicts", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+    const store = createTestStore(db);
+
+    const started = unwrap(
+      await appendTestBatch(store, {
+        commandInvocationId: "cmd-start",
+        commandPayload: {
+          name: "query",
+          type: "start",
+        },
+        currentCursor: emptyCursor("action_1"),
+        events: [
+          {
+            name: "query",
+            type: "started",
+          },
+        ],
+        expectedStreamPosition: 0,
+        skipStorePreflightChecks: true,
+        streamId: "action_1",
+      })
+    );
+
+    const replay = unwrap(
+      await appendTestBatch(store, {
+        commandInvocationId: "cmd-start",
+        commandPayload: {
+          name: "ignored",
+          type: "start",
+        },
+        currentCursor: emptyCursor("action_2"),
+        events: [
+          {
+            name: "ignored",
+            type: "started",
+          },
+        ],
+        expectedStreamPosition: 0,
+        skipStorePreflightChecks: true,
+        streamId: "action_2",
+      })
+    );
+    const replayStream = await store.loadStream({
+      family: "query_action",
+      streamId: "action_2",
+    });
+
+    expect(replay.idempotency).toBe("replayed");
+    expect(replay.cursor.streamId).toBe("action_1");
+    expect(replay.entries.map((entry) => entry.entryId)).toEqual(
+      started.entries.map((entry) => entry.entryId)
+    );
+    expect(replayStream).toEqual([]);
   });
 
   it("returns stream position conflicts without partially inserting a batch", async () => {

@@ -9,6 +9,7 @@ import { Result } from "better-result";
 import type { Context } from "hono";
 
 import type { CliRouteEnv } from "../app";
+import type { ResolveCliSessionIdentityOptions } from "../auth/session-identity";
 import type { AuthorizedCliOrgContext, CliAction } from "../authorization";
 import type { CliSessionIdentity } from "../domain/workflows";
 import { getCliRequestId } from "../request-context";
@@ -26,7 +27,9 @@ type CliConnectRequestContextDependencies = {
 export type CliConnectRequestContext = {
   honoContext: Context<CliRouteEnv>;
   requestId: string;
-  resolveSession(): Promise<CliServiceResult<CliSessionIdentity>>;
+  resolveSession(
+    options?: ResolveCliSessionIdentityOptions
+  ): Promise<CliServiceResult<CliSessionIdentity>>;
   resolveAuthorizedOrg(input: {
     action: CliAction;
     orgSlug: string;
@@ -60,6 +63,9 @@ export function createCliConnectRequestContext(
   const resolveAuthorizedCliOrgImpl =
     dependencies.resolveAuthorizedCliOrg ?? resolveAuthorizedCliOrg;
   let sessionPromise: Promise<CliServiceResult<CliSessionIdentity>> | undefined;
+  let sessionWithActiveOrgSlugPromise:
+    | Promise<CliServiceResult<CliSessionIdentity>>
+    | undefined;
   const authorizedOrgPromises = new Map<
     string,
     Promise<CliServiceResult<AuthorizedCliOrgContext>>
@@ -68,7 +74,19 @@ export function createCliConnectRequestContext(
   const requestContext: CliConnectRequestContext = {
     honoContext: c,
     requestId: getCliRequestId(c),
-    resolveSession() {
+    resolveSession(options) {
+      if (options?.includeActiveOrgSlug === true) {
+        sessionWithActiveOrgSlugPromise ??= resolveAuthenticatedCliSessionImpl(
+          c,
+          options
+        );
+        return sessionWithActiveOrgSlugPromise;
+      }
+
+      if (sessionWithActiveOrgSlugPromise !== undefined) {
+        return sessionWithActiveOrgSlugPromise;
+      }
+
       sessionPromise ??= resolveAuthenticatedCliSessionImpl(c);
       return sessionPromise;
     },

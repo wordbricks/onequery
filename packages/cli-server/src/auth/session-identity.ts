@@ -29,6 +29,9 @@ const CliAuthSessionSchema = z.object({
 type ResolvedCliAuthSession = z.infer<typeof CliAuthSessionSchema>;
 
 type CliSessionStorage = Pick<ServerStorage, "auth" | "db">;
+export type ResolveCliSessionIdentityOptions = {
+  includeActiveOrgSlug?: boolean;
+};
 
 async function resolveActiveOrgSlug(
   storage: CliSessionStorage,
@@ -61,7 +64,8 @@ async function parseCliSessionIdentity(
   storage: CliSessionStorage,
   session: unknown,
   headers: Headers,
-  accessTokenOverride: string | null
+  accessTokenOverride: string | null,
+  options: ResolveCliSessionIdentityOptions = {}
 ): Promise<CliSessionIdentity | null> {
   const parsed = CliAuthSessionSchema.safeParse(session);
 
@@ -72,10 +76,13 @@ async function parseCliSessionIdentity(
   return {
     accessToken:
       normalizeCliAccessToken(accessTokenOverride) ?? parsed.data.session.token,
-    activeOrg: await resolveActiveOrgSlug(
-      storage,
-      parsed.data.session.activeOrganizationId ?? null
-    ),
+    activeOrg:
+      options.includeActiveOrgSlug === true
+        ? await resolveActiveOrgSlug(
+            storage,
+            parsed.data.session.activeOrganizationId ?? null
+          )
+        : null,
     authMode: resolveCliSessionAuthMode(headers),
     expiresAt: toOptionalIsoString(parsed.data.session.expiresAt),
     issuedAt: toOptionalIsoString(parsed.data.session.createdAt),
@@ -105,7 +112,8 @@ function resolveCliSessionAuthMode(headers: Headers): CliSessionAuthMode {
 
 export async function resolveCliSessionIdentity(
   storage: CliSessionStorage,
-  headers: Headers
+  headers: Headers,
+  options: ResolveCliSessionIdentityOptions = {}
 ): Promise<CliSessionIdentity | null> {
   const session = await storage.auth.api.getSession({
     headers,
@@ -114,12 +122,13 @@ export async function resolveCliSessionIdentity(
     },
   });
 
-  return parseCliSessionIdentity(storage, session, headers, null);
+  return parseCliSessionIdentity(storage, session, headers, null, options);
 }
 
 export async function refreshCliSessionIdentity(
   storage: CliSessionStorage,
-  headers: Headers
+  headers: Headers,
+  options: ResolveCliSessionIdentityOptions = {}
 ): Promise<CliSessionIdentity | null> {
   const session = await storage.auth.api.getSession({
     headers,
@@ -133,6 +142,7 @@ export async function refreshCliSessionIdentity(
     storage,
     session.response,
     headers,
-    session.headers.get("set-auth-token")
+    session.headers.get("set-auth-token"),
+    options
   );
 }

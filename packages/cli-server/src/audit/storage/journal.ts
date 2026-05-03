@@ -194,6 +194,7 @@ export type WorkflowJournalStore<
   appendEntries: (input: {
     entries: readonly WorkflowJournalEntry<CommandPayload, Event, Effect>[];
     expectedStreamPosition: number;
+    skipPreflightChecks?: boolean;
   }) => Promise<
     WorkflowJournalStoreAppendResult<CommandPayload, Event, Effect>
   >;
@@ -297,6 +298,7 @@ export async function appendWorkflowJournalBatch<
   ) => ResultType<State, ReduceError>;
   store: WorkflowJournalStore<CommandPayload, Event, Effect>;
   streamId: string;
+  skipStorePreflightChecks?: boolean;
 }): Promise<
   ResultType<
     WorkflowJournalAppendResult<State, CommandPayload, Event, Effect>,
@@ -387,6 +389,7 @@ export async function appendWorkflowJournalBatch<
   const appended = await input.store.appendEntries({
     entries,
     expectedStreamPosition: input.expectedStreamPosition,
+    skipPreflightChecks: input.skipStorePreflightChecks,
   });
 
   switch (appended.kind) {
