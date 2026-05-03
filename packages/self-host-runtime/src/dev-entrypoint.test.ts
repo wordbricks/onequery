@@ -9,7 +9,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { resolvePackagedRuntimeAssetPath } from "@onequery/base/runtime-bundle";
-import { viewServerLaunchConfig } from "@onequery/config/server-launch";
+import {
+  decodeServerLaunchConfigJson,
+  viewServerLaunchConfig,
+} from "@onequery/config/server-launch";
 import { SAMPLE_MASTER_ENCRYPTION_KEY } from "@onequery/config/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -54,7 +57,10 @@ describe("self-host runtime dev entrypoint", () => {
         "utf8"
       );
 
-      const launchConfig = createLaunchConfig(rootDir);
+      const launchConfig = decodeServerLaunchConfigJson(
+        JSON.stringify(createLaunchConfig(rootDir)),
+        "test"
+      );
       const launchView = viewServerLaunchConfig(launchConfig, "test");
       const listen = launchView.common.listen;
       if (listen === undefined) {
