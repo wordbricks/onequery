@@ -127,6 +127,7 @@ export async function recoverPendingQueryUsagePersistenceEffects(input: {
 }): Promise<QueryUsagePersistenceRecoveryResult> {
   const pending = await loadPendingQueryActionEffectsViaJournal({
     db: input.db,
+    effectType: "persist_usage",
     limit: input.limit,
     organizationId: input.organizationId,
   });
@@ -144,11 +145,6 @@ export async function recoverPendingQueryUsagePersistenceEffects(input: {
   };
 
   for (const effect of pending.value) {
-    if (effect.effect.type !== "persist_usage") {
-      summary.skipped += 1;
-      continue;
-    }
-
     const decision = await loadQueryActionDecisionForEffectViaJournal({
       actionId: effect.streamId,
       db: input.db,

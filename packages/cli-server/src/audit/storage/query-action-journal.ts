@@ -76,6 +76,17 @@ type QueryActionJournalAppendResult = WorkflowJournalAppendResult<
   QueryActionEffect
 >;
 
+type QueryActionEffectType = QueryActionEffect["type"];
+type QueryActionEffectOfType<Type extends QueryActionEffectType> = Extract<
+  QueryActionEffect,
+  { type: Type }
+>;
+type QueryActionEffectForFilter<
+  Type extends QueryActionEffectType | undefined,
+> = Type extends QueryActionEffectType
+  ? QueryActionEffectOfType<Type>
+  : QueryActionEffect;
+
 type QueryActionJournalStorageError =
   | WorkflowStorageError
   | WorkflowJournalCorruptStreamError
@@ -361,13 +372,16 @@ export async function loadQueryActionCommandViaJournal(input: {
   });
 }
 
-export async function loadPendingQueryActionEffectsViaJournal(input: {
+export async function loadPendingQueryActionEffectsViaJournal<
+  const EffectType extends QueryActionEffectType | undefined = undefined,
+>(input: {
   db: Database;
+  effectType?: EffectType;
   limit?: number;
   organizationId?: string;
 }): Promise<
   ResultType<
-    WorkflowJournalEffectToken<QueryActionEffect>[],
+    WorkflowJournalEffectToken<QueryActionEffectForFilter<EffectType>>[],
     QueryActionJournalStorageError
   >
 > {
@@ -375,6 +389,9 @@ export async function loadPendingQueryActionEffectsViaJournal(input: {
     eq(pendingWorkflowEffects.family, "query_action"),
     inArray(pendingWorkflowEffects.status, ["pending", "failed"]),
   ];
+  if (input.effectType !== undefined) {
+    conditions.push(eq(pendingWorkflowEffects.effectType, input.effectType));
+  }
   if (input.organizationId !== undefined) {
     conditions.push(
       eq(pendingWorkflowEffects.organizationId, input.organizationId)
@@ -388,7 +405,9 @@ export async function loadPendingQueryActionEffectsViaJournal(input: {
     .orderBy(asc(pendingWorkflowEffects.scheduledAt))
     .limit(input.limit ?? 100);
 
-  const pending: WorkflowJournalEffectToken<QueryActionEffect>[] = [];
+  const pending: WorkflowJournalEffectToken<
+    QueryActionEffectForFilter<EffectType>
+  >[] = [];
 
   for (const row of rows) {
     const effect = decodeQueryActionEffectPayload(row.payloadBytes, {
@@ -400,7 +419,7 @@ export async function loadPendingQueryActionEffectsViaJournal(input: {
     }
 
     pending.push({
-      effect: effect.value,
+      effect: effect.value as QueryActionEffectForFilter<EffectType>,
       effectId: row.effectId,
       effectType: row.effectType,
       organizationId: row.organizationId,
