@@ -57,6 +57,13 @@
       "when": 1777347342886,
       "tag": "20260428033542_rename_source_query_interface_missing",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777549273404,
+      "tag": "20260430114113_jittery_scorpion",
+      "breakpoints": true
     }
   ]
 }

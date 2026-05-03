@@ -7,6 +7,27 @@ export {
 } from "./storage/errors";
 export type { WorkflowStorageError } from "./storage/errors";
 export {
+  appendWorkflowJournalBatch,
+  createInMemoryWorkflowJournalStore,
+  foldWorkflowJournalEntries,
+  WorkflowJournalCorruptStreamError,
+  WorkflowJournalExpectedPositionConflictError,
+} from "./storage/journal";
+export { createDbWorkflowJournalStore } from "./storage/journal-db";
+export type {
+  WorkflowJournalAppendResult,
+  WorkflowJournalCursor,
+  WorkflowJournalEffectState,
+  WorkflowJournalEffectToken,
+  WorkflowJournalEntry,
+  WorkflowJournalEntryKind,
+  WorkflowJournalStore,
+} from "./storage/journal";
+export type {
+  WorkflowJournalPayloadCodec,
+  WorkflowJournalPayloadCodecContext,
+} from "./storage/journal-db";
+export {
   storeQueryActionCommand,
   storeSourceApiActionCommand,
 } from "./storage/store";

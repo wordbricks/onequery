@@ -16,6 +16,7 @@ import * as sourceApiActionsSchema from "./source-api-actions";
 import * as userProfilesSchema from "./user-profiles";
 import * as workflowCommandsSchema from "./workflow-commands";
 import * as workflowEffectDispatchesSchema from "./workflow-effect-dispatches";
+import * as workflowJournalSchema from "./workflow-journal";
 
 export const schema = {
   ...auditFeedEntriesSchema,
@@ -35,6 +36,7 @@ export const schema = {
   ...userProfilesSchema,
   ...workflowCommandsSchema,
   ...workflowEffectDispatchesSchema,
+  ...workflowJournalSchema,
   ...relationsSchema,
 };
 
@@ -57,3 +59,4 @@ export { isValidUlid, ulid, ulidSchema } from "./ulid";
 export * from "./user-profiles";
 export * from "./workflow-commands";
 export * from "./workflow-effect-dispatches";
+export * from "./workflow-journal";

@@ -212,3 +212,14 @@ Recovery must not depend on old lease, retry, action, or audit tables. Those tab
 - projections can be dropped and rebuilt from the journal.
 - credential values are never stored in journal payloads.
 ```
+
+## Implementation Progress
+
+- [x] Add workflow journal schema and append/fold/replay core.
+- [x] Add DB-backed workflow journal store adapter.
+- [ ] Move query execution start/preparation/execution commits to journal append batches.
+- [ ] Replace per-step internal preparation effects with composite preparation effects.
+- [ ] Move usage persistence behind the user-visible query result.
+- [ ] Build journal-derived projections for action state, audit feed, and pending effects.
+- [ ] Move recovery and duplicate command replay to journal state.
+- [ ] Remove old workflow/audit tables from the correctness path.

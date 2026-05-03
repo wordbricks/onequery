@@ -27,6 +27,7 @@ export default defineConfig({
     "./src/schema/source-api-action-events.ts",
     "./src/schema/workflow-commands.ts",
     "./src/schema/workflow-effect-dispatches.ts",
+    "./src/schema/workflow-journal.ts",
     "./src/schema/relations.ts",
   ],
 });
