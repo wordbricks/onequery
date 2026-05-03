@@ -6,11 +6,11 @@ import { fileURLToPath } from "node:url";
 import {
   asc,
   createDb,
+  eq,
   organization,
+  pendingWorkflowEffects,
   prepareApplicationDatabase,
-  sourceApiActionEvents,
-  workflowCommands,
-  workflowEffectDispatches,
+  workflowJournal,
 } from "@onequery/db/server";
 import {
   createSourceApiPreview,
@@ -22,12 +22,18 @@ import { Result } from "better-result";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { WorkflowActorSnapshot } from "../../../audit";
+import {
+  claimFailedSourceApiActionEffectViaJournal,
+  rebuildPendingSourceApiActionEffectsViaJournal,
+} from "../../../audit/storage";
 import type { SourceApiServiceDependencies } from "./dependencies";
 import {
   runDescribeSourceApiWorkflowResult,
   runResumeSourceApiExecuteWorkflowResult,
   runStartSourceApiExecuteWorkflowResult,
 } from "./workflow";
+import { buildStartSourceApiDescribeCommandInvocationId } from "./workflow-command-id";
+import { storeAcceptedSourceApiActionCommand } from "./workflow-runtime";
 
 type ClosableDatabase = {
   $client?: {
@@ -245,6 +251,28 @@ async function createTestDb() {
   return db;
 }
 
+async function selectSourceApiJournalCommandRows(
+  db: ReturnType<typeof createDb>
+) {
+  return db
+    .select()
+    .from(workflowJournal)
+    .where(eq(workflowJournal.family, "source_api_action"))
+    .orderBy(asc(workflowJournal.commitPosition), asc(workflowJournal.id))
+    .then((rows) => rows.filter((row) => row.entryKind === "command"));
+}
+
+async function selectSourceApiJournalEventRows(
+  db: ReturnType<typeof createDb>
+) {
+  return db
+    .select()
+    .from(workflowJournal)
+    .where(eq(workflowJournal.family, "source_api_action"))
+    .orderBy(asc(workflowJournal.commitPosition), asc(workflowJournal.id))
+    .then((rows) => rows.filter((row) => row.entryKind === "event"));
+}
+
 function unwrapOk<T, E>(value: ResultType<T, E>) {
   expect(value.isOk()).toBe(true);
   if (value.isErr()) {
@@ -336,24 +364,11 @@ describe("source api workflow audit runtime", () => {
     });
 
     const descriptorResult = unwrapOk(result);
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectSourceApiJournalCommandRows(db);
     const actionRow = await db.query.sourceApiActions.findFirst({
       where: (table, { eq }) => eq(table.organizationId, org.id),
     });
-    const eventRows = await db
-      .select()
-      .from(sourceApiActionEvents)
-      .orderBy(asc(sourceApiActionEvents.sequence));
-    const outboxRows = await db
-      .select()
-      .from(workflowEffectDispatches)
-      .orderBy(
-        asc(workflowEffectDispatches.createdAt),
-        asc(workflowEffectDispatches.id)
-      );
+    const eventRows = await selectSourceApiJournalEventRows(db);
 
     expect(descriptorResult).toMatchObject({
       descriptorVersion: "github-v1",
@@ -362,7 +377,7 @@ describe("source api workflow audit runtime", () => {
         sourceKey: "github-prod",
       },
     });
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_describe",
       "record_source_found",
       "record_descriptor_resolved",
@@ -375,20 +390,178 @@ describe("source api workflow audit runtime", () => {
       phase: "completed",
       requestKind: "describe",
     });
-    expect(eventRows.map((row) => row.eventType)).toEqual([
+    expect(eventRows.map((row) => row.payloadType)).toEqual([
       "action_received",
       "source_loaded",
       "descriptor_resolved",
     ]);
+  });
+
+  it("records failed dispatches in the journal and retries them from journal state", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+    const runCliLoadSourceEffect = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error("source backend temporarily unavailable")
+      )
+      .mockResolvedValue(loadedSource);
+    const dependencies = createDependencies({
+      runCliLoadSourceEffect,
+    });
+
+    const failedResult = await runDescribeSourceApiWorkflowResult({
+      ...createWorkflowContext(db, "req-describe-dispatch-retry-1"),
+      dependencies,
+      sourceKey: "github-prod",
+    });
+
+    expect(failedResult.isErr()).toBe(true);
+
+    const retriedResult = await runDescribeSourceApiWorkflowResult({
+      ...createWorkflowContext(db, "req-describe-dispatch-retry-1"),
+      dependencies,
+      sourceKey: "github-prod",
+    });
+
+    expect(unwrapOk(retriedResult)).toMatchObject({
+      descriptorVersion: "github-v1",
+    });
+    expect(runCliLoadSourceEffect).toHaveBeenCalledTimes(3);
+
+    const journalRows = await db
+      .select()
+      .from(workflowJournal)
+      .orderBy(asc(workflowJournal.streamPosition));
     expect(
-      outboxRows.map((row) => ({
+      journalRows.map((row) => ({
+        entryKind: row.entryKind,
+        payloadType: row.payloadType,
+      }))
+    ).toEqual([
+      { entryKind: "command", payloadType: "start_describe" },
+      { entryKind: "event", payloadType: "action_received" },
+      { entryKind: "effect_scheduled", payloadType: "load_source" },
+      { entryKind: "effect_failed", payloadType: "effect_failed" },
+      { entryKind: "effect_started", payloadType: "effect_started" },
+      { entryKind: "command", payloadType: "record_source_found" },
+      { entryKind: "event", payloadType: "source_loaded" },
+      { entryKind: "effect_scheduled", payloadType: "resolve_descriptor" },
+      { entryKind: "effect_completed", payloadType: "effect_completed" },
+      { entryKind: "command", payloadType: "record_descriptor_resolved" },
+      { entryKind: "event", payloadType: "descriptor_resolved" },
+      { entryKind: "effect_completed", payloadType: "effect_completed" },
+    ]);
+  });
+
+  it("retries leased source-api effects after a worker crash", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+    const requestId = "req-describe-leased-recovery-1";
+    const sourceKey = "github-prod";
+    const dependencies = createDependencies();
+
+    const startDecision = await storeAcceptedSourceApiActionCommand({
+      actionId: null,
+      actorSnapshot,
+      causedByEventId: null,
+      commandInvocationId: buildStartSourceApiDescribeCommandInvocationId({
+        organizationId: org.id,
+        requestId,
+        sourceKey,
+      }),
+      commandPayload: {
+        sourceKey,
+        type: "start_describe",
+      },
+      db,
+      organizationId: org.id,
+      requestId,
+      surface: "cli",
+    });
+    expect(
+      startDecision.freshEffects.map((effect) => effect.effectType)
+    ).toEqual(["load_source"]);
+
+    const [pendingSourceApiEffect] = await db
+      .select()
+      .from(pendingWorkflowEffects);
+    if (pendingSourceApiEffect === undefined) {
+      throw new Error("expected pending source api effect");
+    }
+
+    const claimed = await claimFailedSourceApiActionEffectViaJournal({
+      actionId: pendingSourceApiEffect.streamId,
+      db,
+      effectId: pendingSourceApiEffect.effectId,
+      organizationId: org.id,
+    });
+    expect(claimed.isOk()).toBe(true);
+
+    let pendingEffectRows = await db.select().from(pendingWorkflowEffects);
+    expect(
+      pendingEffectRows.map((row) => ({
+        attemptCount: row.attemptCount,
         effectType: row.effectType,
         status: row.status,
       }))
     ).toEqual([
-      { effectType: "load_source", status: "completed" },
-      { effectType: "resolve_descriptor", status: "completed" },
+      {
+        attemptCount: 1,
+        effectType: "load_source",
+        status: "leased",
+      },
     ]);
+
+    await db.delete(pendingWorkflowEffects);
+    const rebuilt = await rebuildPendingSourceApiActionEffectsViaJournal({
+      db,
+    });
+    expect(rebuilt.isOk()).toBe(true);
+    pendingEffectRows = await db.select().from(pendingWorkflowEffects);
+    expect(
+      pendingEffectRows.map((row) => ({
+        attemptCount: row.attemptCount,
+        effectType: row.effectType,
+        status: row.status,
+      }))
+    ).toEqual([
+      {
+        attemptCount: 1,
+        effectType: "load_source",
+        status: "leased",
+      },
+    ]);
+
+    const recoveredResult = await runDescribeSourceApiWorkflowResult({
+      ...createWorkflowContext(db, requestId),
+      dependencies,
+      sourceKey,
+    });
+
+    expect(unwrapOk(recoveredResult)).toMatchObject({
+      descriptorVersion: "github-v1",
+    });
+
+    const pendingAfter = await db.select().from(pendingWorkflowEffects);
+    expect(pendingAfter).toEqual([]);
+
+    const journalRows = await db
+      .select()
+      .from(workflowJournal)
+      .orderBy(asc(workflowJournal.streamPosition));
+    expect(
+      journalRows.map((row) => ({
+        entryKind: row.entryKind,
+        payloadType: row.payloadType,
+      }))
+    ).toEqual(
+      expect.arrayContaining([
+        { entryKind: "effect_failed", payloadType: "effect_failed" },
+        { entryKind: "effect_started", payloadType: "effect_started" },
+        { entryKind: "event", payloadType: "descriptor_resolved" },
+      ])
+    );
   });
 
   it("records preview-only invoke through source_api_action storage", async () => {
@@ -414,24 +587,11 @@ describe("source api workflow audit runtime", () => {
     });
 
     const preview = unwrapOk(result);
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectSourceApiJournalCommandRows(db);
     const actionRow = await db.query.sourceApiActions.findFirst({
       where: (table, { eq }) => eq(table.organizationId, org.id),
     });
-    const eventRows = await db
-      .select()
-      .from(sourceApiActionEvents)
-      .orderBy(asc(sourceApiActionEvents.sequence));
-    const outboxRows = await db
-      .select()
-      .from(workflowEffectDispatches)
-      .orderBy(
-        asc(workflowEffectDispatches.createdAt),
-        asc(workflowEffectDispatches.id)
-      );
+    const eventRows = await selectSourceApiJournalEventRows(db);
 
     expect(preview.preview).toMatchObject({
       kind: "http_request",
@@ -440,7 +600,7 @@ describe("source api workflow audit runtime", () => {
     });
     expect(preview.continuationToken).toBeUndefined();
     expect(preview.result).toBeUndefined();
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_invoke",
       "record_source_found",
       "record_descriptor_resolved",
@@ -455,21 +615,11 @@ describe("source api workflow audit runtime", () => {
       preparedRequestFingerprint: "prepared_preview",
       requestKind: "invoke",
     });
-    expect(eventRows.map((row) => row.eventType)).toEqual([
+    expect(eventRows.map((row) => row.payloadType)).toEqual([
       "action_received",
       "source_loaded",
       "descriptor_resolved",
       "request_prepared",
-    ]);
-    expect(
-      outboxRows.map((row) => ({
-        effectType: row.effectType,
-        status: row.status,
-      }))
-    ).toEqual([
-      { effectType: "load_source", status: "completed" },
-      { effectType: "resolve_descriptor", status: "completed" },
-      { effectType: "prepare_request", status: "completed" },
     ]);
   });
 
@@ -552,12 +702,9 @@ describe("source api workflow audit runtime", () => {
     });
     expect(executePreparedSourceApi).toHaveBeenCalledTimes(1);
 
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectSourceApiJournalCommandRows(db);
 
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_invoke",
       "record_source_found",
       "record_descriptor_resolved",
@@ -629,12 +776,9 @@ describe("source api workflow audit runtime", () => {
     expect(runCliLoadSourceEffect).toHaveBeenCalledTimes(4);
     expect(describeSourceApi).toHaveBeenCalledTimes(2);
 
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectSourceApiJournalCommandRows(db);
 
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_describe",
       "record_source_found",
       "record_descriptor_resolved",
@@ -716,12 +860,9 @@ describe("source api workflow audit runtime", () => {
     });
     expect(prepareSourceApiDraft).toHaveBeenCalledTimes(2);
 
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectSourceApiJournalCommandRows(db);
 
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_invoke",
       "record_source_found",
       "record_descriptor_resolved",
@@ -792,24 +933,11 @@ describe("source api workflow audit runtime", () => {
     });
 
     const resumed = unwrapOk(resumeResult);
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectSourceApiJournalCommandRows(db);
     const actionRow = await db.query.sourceApiActions.findFirst({
       where: (table, { eq }) => eq(table.organizationId, org.id),
     });
-    const eventRows = await db
-      .select()
-      .from(sourceApiActionEvents)
-      .orderBy(asc(sourceApiActionEvents.sequence));
-    const outboxRows = await db
-      .select()
-      .from(workflowEffectDispatches)
-      .orderBy(
-        asc(workflowEffectDispatches.createdAt),
-        asc(workflowEffectDispatches.id)
-      );
+    const eventRows = await selectSourceApiJournalEventRows(db);
 
     expect(resumed).toMatchObject({
       continuationToken: undefined,
@@ -822,7 +950,7 @@ describe("source api workflow audit runtime", () => {
         status: 200,
       },
     });
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_invoke",
       "record_source_found",
       "record_descriptor_resolved",
@@ -838,7 +966,7 @@ describe("source api workflow audit runtime", () => {
       phase: "completed",
       preparedRequestFingerprint: "prepared_execute",
     });
-    expect(eventRows.map((row) => row.eventType)).toEqual([
+    expect(eventRows.map((row) => row.payloadType)).toEqual([
       "action_received",
       "source_loaded",
       "descriptor_resolved",
@@ -846,18 +974,6 @@ describe("source api workflow audit runtime", () => {
       "page_fetch_succeeded",
       "resume_requested",
       "page_fetch_succeeded",
-    ]);
-    expect(
-      outboxRows.map((row) => ({
-        effectType: row.effectType,
-        status: row.status,
-      }))
-    ).toEqual([
-      { effectType: "load_source", status: "completed" },
-      { effectType: "resolve_descriptor", status: "completed" },
-      { effectType: "prepare_request", status: "completed" },
-      { effectType: "execute_page", status: "completed" },
-      { effectType: "execute_page", status: "completed" },
     ]);
   });
 
@@ -921,12 +1037,9 @@ describe("source api workflow audit runtime", () => {
     expect([...replayResume.result.body.value]).toEqual([0, 1, 127, 255]);
     expect(executePreparedSourceApi).toHaveBeenCalledTimes(2);
 
-    const commandRows = await db
-      .select()
-      .from(workflowCommands)
-      .orderBy(asc(workflowCommands.createdAt), asc(workflowCommands.id));
+    const commandRows = await selectSourceApiJournalCommandRows(db);
 
-    expect(commandRows.map((row) => row.commandType)).toEqual([
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_invoke",
       "record_source_found",
       "record_descriptor_resolved",
@@ -969,10 +1082,7 @@ describe("source api workflow audit runtime", () => {
     const actionRow = await db.query.sourceApiActions.findFirst({
       where: (table, { eq }) => eq(table.organizationId, org.id),
     });
-    const eventRows = await db
-      .select()
-      .from(sourceApiActionEvents)
-      .orderBy(asc(sourceApiActionEvents.sequence));
+    const eventRows = await selectSourceApiJournalEventRows(db);
 
     expect(actionRow).toMatchObject({
       attemptNumber: 1,
@@ -980,7 +1090,7 @@ describe("source api workflow audit runtime", () => {
       outcome: "failed",
       phase: "completed",
     });
-    expect(eventRows.map((row) => row.eventType)).toEqual([
+    expect(eventRows.map((row) => row.payloadType)).toEqual([
       "action_received",
       "source_loaded",
       "descriptor_resolved",

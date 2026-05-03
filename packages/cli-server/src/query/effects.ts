@@ -3,7 +3,7 @@ import type { Database } from "@onequery/db/server";
 import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
 import {
   DataSourceQueryExecutionError,
-  executeDatabaseQuery,
+  executeValidatedDatabaseQuery,
 } from "@onequery/server/services/data-source-query/execute-query";
 import {
   classifyCliQueryValidationFailure,
@@ -80,11 +80,11 @@ export async function runCliExecuteSqlEffect(input: {
 }): Promise<CliExecuteSqlEffectResult> {
   const startedAtMs = Date.now();
   const execution = await Result.tryPromise(async () =>
-    executeDatabaseQuery({
+    executeValidatedDatabaseQuery({
       credentials: input.effect.credentials,
       db: input.db,
+      normalizedSql: input.effect.normalizedSql,
       organizationId: input.effect.source.organizationId,
-      sql: input.effect.sql,
       timeoutMs: input.effect.clientTimeoutMs,
     })
   );

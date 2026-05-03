@@ -8,14 +8,12 @@ import * as dataSourceQueryCostsSchema from "./data-source-query-costs";
 import * as dataSourceTableUsageSchema from "./data-source-table-usage";
 import * as dataSourcesSchema from "./data-sources";
 import * as organizationProfilesSchema from "./organization-profiles";
-import * as queryActionEventsSchema from "./query-action-events";
+import * as pendingWorkflowEffectsSchema from "./pending-workflow-effects";
 import * as queryActionsSchema from "./query-actions";
 import * as relationsSchema from "./relations";
-import * as sourceApiActionEventsSchema from "./source-api-action-events";
 import * as sourceApiActionsSchema from "./source-api-actions";
 import * as userProfilesSchema from "./user-profiles";
-import * as workflowCommandsSchema from "./workflow-commands";
-import * as workflowEffectDispatchesSchema from "./workflow-effect-dispatches";
+import * as workflowJournalSchema from "./workflow-journal";
 
 export const schema = {
   ...auditFeedEntriesSchema,
@@ -28,13 +26,11 @@ export const schema = {
   ...dataSourceTableUsageSchema,
   ...connectorsSchema,
   ...organizationProfilesSchema,
+  ...pendingWorkflowEffectsSchema,
   ...queryActionsSchema,
-  ...queryActionEventsSchema,
   ...sourceApiActionsSchema,
-  ...sourceApiActionEventsSchema,
   ...userProfilesSchema,
-  ...workflowCommandsSchema,
-  ...workflowEffectDispatchesSchema,
+  ...workflowJournalSchema,
   ...relationsSchema,
 };
 
@@ -48,12 +44,10 @@ export * from "./data-source-query-costs";
 export * from "./data-source-table-usage";
 export * from "./data-sources";
 export * from "./organization-profiles";
-export * from "./query-action-events";
+export * from "./pending-workflow-effects";
 export * from "./query-actions";
 export * from "./relations";
-export * from "./source-api-action-events";
 export * from "./source-api-actions";
 export { isValidUlid, ulid, ulidSchema } from "./ulid";
 export * from "./user-profiles";
-export * from "./workflow-commands";
-export * from "./workflow-effect-dispatches";
+export * from "./workflow-journal";

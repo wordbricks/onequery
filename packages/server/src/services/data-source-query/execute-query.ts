@@ -107,6 +107,21 @@ export type DatabaseQueryExecution = {
   stats?: DatabaseQueryExecutionStats;
 };
 
+type DatabaseQueryInputBase = {
+  credentials: DatabaseCredentials;
+  timeoutMs?: number | null;
+  organizationId?: string;
+  db?: Database;
+};
+
+type RawDatabaseQueryInput = DatabaseQueryInputBase & {
+  sql: string;
+};
+
+type ValidatedDatabaseQueryInput = DatabaseQueryInputBase & {
+  normalizedSql: string;
+};
+
 export class DataSourceQueryExecutionError extends Error {
   readonly retryable: boolean;
   readonly timedOut: boolean;
@@ -140,48 +155,58 @@ export function resolveQueryTimeoutMs(
   return Math.min(Math.max(rounded, 1000), MAX_QUERY_TIMEOUT_MS);
 }
 
-export async function executeDatabaseQuery(input: {
-  credentials: DatabaseCredentials;
-  sql: string;
-  timeoutMs?: number | null;
-  organizationId?: string;
-  db?: Database;
-}): Promise<Record<string, unknown>[]> {
+export async function executeDatabaseQuery(
+  input: RawDatabaseQueryInput
+): Promise<Record<string, unknown>[]> {
+  const result = await executeDatabaseQueryInternal(
+    {
+      ...input,
+      normalizedSql: await validateSqlForExecution(
+        input.sql,
+        input.credentials.type
+      ),
+    },
+    {
+      includeStats: false,
+    }
+  );
+  return result.rows;
+}
+
+export async function executeValidatedDatabaseQuery(
+  input: ValidatedDatabaseQueryInput
+): Promise<Record<string, unknown>[]> {
   const result = await executeDatabaseQueryInternal(input, {
     includeStats: false,
   });
   return result.rows;
 }
 
-export async function executeDatabaseQueryWithStats(input: {
-  credentials: DatabaseCredentials;
-  sql: string;
-  timeoutMs?: number | null;
-  organizationId?: string;
-  db?: Database;
-}): Promise<DatabaseQueryExecution> {
-  return executeDatabaseQueryInternal(input, {
-    includeStats: true,
-  });
+export async function executeDatabaseQueryWithStats(
+  input: RawDatabaseQueryInput
+): Promise<DatabaseQueryExecution> {
+  return executeDatabaseQueryInternal(
+    {
+      ...input,
+      normalizedSql: await validateSqlForExecution(
+        input.sql,
+        input.credentials.type
+      ),
+    },
+    {
+      includeStats: true,
+    }
+  );
 }
 
 async function executeDatabaseQueryInternal(
-  input: {
-    credentials: DatabaseCredentials;
-    sql: string;
-    timeoutMs?: number | null;
-    organizationId?: string;
-    db?: Database;
-  },
+  input: ValidatedDatabaseQueryInput,
   options: {
     includeStats: boolean;
   }
 ): Promise<DatabaseQueryExecution> {
   const timeoutMs = resolveQueryTimeoutMs(input.timeoutMs);
-  const normalizedSql = await validateSqlForExecution(
-    input.sql,
-    input.credentials.type
-  );
+  const normalizedSql = input.normalizedSql;
 
   try {
     if (input.credentials.type === "postgres") {

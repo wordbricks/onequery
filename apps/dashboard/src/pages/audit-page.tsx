@@ -442,6 +442,15 @@ function AuditTraceDetail({
           value={getVolumeLabel(item) || "n/a"}
         />
         <DetailFact label="Phase" value={formatEnumLabel(item.phase)} />
+        <DetailFact label="Action" value={formatEnumLabel(item.actionName)} />
+        <DetailFact
+          label="Last event"
+          value={formatEnumLabel(item.lastEventType)}
+        />
+        <DetailFact
+          label="Failure"
+          value={item.failureCode ? formatEnumLabel(item.failureCode) : "n/a"}
+        />
         <DetailFact label="Trace ID" value={getTraceIdLabel(item)} />
       </div>
 
@@ -489,6 +498,18 @@ function AuditTraceDetail({
 
       {detail.family === "query_action" ? (
         <div className="grid gap-2">
+          {item.family === "query_action" && item.preview?.errorDetail ? (
+            <EvidenceDisclosure
+              defaultOpen
+              title="Failure detail"
+              value={{
+                detail: item.preview.errorDetail,
+                failureCode: item.failureCode,
+                hint: item.preview.errorHint,
+                lastEventType: item.lastEventType,
+              }}
+            />
+          ) : null}
           <EvidenceDisclosure
             defaultOpen
             title="SQL"
@@ -505,12 +526,27 @@ function AuditTraceDetail({
             value={item.metrics ?? "No metrics recorded"}
           />
           <EvidenceDisclosure
+            title="Usage recording"
+            value={detail.action.usageRecordingStatus}
+          />
+          <EvidenceDisclosure
             title="Source descriptor"
             value={detail.action.sourceDescriptor}
           />
         </div>
       ) : (
         <div className="grid gap-2">
+          {item.family === "source_api_action" && item.preview?.errorDetail ? (
+            <EvidenceDisclosure
+              defaultOpen
+              title="Failure detail"
+              value={{
+                detail: item.preview.errorDetail,
+                failureCode: item.failureCode,
+                lastEventType: item.lastEventType,
+              }}
+            />
+          ) : null}
           <EvidenceDisclosure
             defaultOpen
             title="Request"

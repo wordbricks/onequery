@@ -57,6 +57,34 @@
       "when": 1777347342886,
       "tag": "20260428033542_rename_source_query_interface_missing",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777549273404,
+      "tag": "20260430114113_jittery_scorpion",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777557546727,
+      "tag": "20260430135906_flippant_timeslip",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777633260000,
+      "tag": "20260502000100_drop_old_workflow_audit_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1777770670748,
+      "tag": "20260503011110_moaning_jack_flag",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,6 @@ import { Result } from "better-result";
 import { createCliFailureForQueryPlanResult } from "../errors";
 import type { CliResultServiceMethod } from "../result";
 import { liftCliServiceMethod } from "../result";
-import { syncCliQueryAuditFeedProjection } from "./audit-projection";
 import { resolveCliQueryRequestState } from "./context";
 import { createCliQueryValidationDispatch } from "./dispatch";
 import {
@@ -35,11 +34,6 @@ const handleValidateQueryImpl: CliResultServiceMethod<"validateQuery"> = async (
       sourceName: request.sourceKey,
       sql: resolved.query.sql,
       timeoutMs: resolved.resultWindow.timeoutMs,
-    });
-
-    await syncCliQueryAuditFeedProjection({
-      c: resolved.c,
-      sourceKey: request.sourceKey,
     });
 
     const result = yield* workflowResult;
