@@ -1,4 +1,12 @@
-import { queryActions, ulid } from "@onequery/db/server";
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  queryActions,
+  ulid,
+  workflowJournal,
+} from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import type { Result as ResultType } from "better-result";
 import { Result } from "better-result";
@@ -270,6 +278,58 @@ export async function loadQueryActionCommandViaJournal(input: {
     idempotency: "replayed",
     store,
   });
+}
+
+export async function loadPendingQueryActionEffectsViaJournal(input: {
+  db: Database;
+  limit?: number;
+  organizationId?: string;
+}): Promise<
+  ResultType<
+    WorkflowJournalEffectToken<QueryActionEffect>[],
+    QueryActionJournalStorageError
+  >
+> {
+  const conditions = [
+    eq(workflowJournal.family, "query_action"),
+    inArray(workflowJournal.entryKind, ["effect_scheduled", "effect_failed"]),
+  ];
+  if (input.organizationId !== undefined) {
+    conditions.push(eq(workflowJournal.organizationId, input.organizationId));
+  }
+
+  const streamRows = await input.db
+    .select({ streamId: workflowJournal.streamId })
+    .from(workflowJournal)
+    .where(and(...conditions))
+    .groupBy(workflowJournal.streamId)
+    .orderBy(asc(workflowJournal.streamId))
+    .limit(input.limit ?? 100);
+
+  const store = createQueryActionJournalStore({ db: input.db });
+  const pending: WorkflowJournalEffectToken<QueryActionEffect>[] = [];
+
+  for (const row of streamRows) {
+    const streamEntries = await store.loadStream({
+      family: "query_action",
+      streamId: row.streamId,
+    });
+    const cursor = foldWorkflowJournalEntries({
+      entries: streamEntries,
+      reduce: reduceQueryActionJournalEvent,
+      streamId: row.streamId,
+    });
+    if (cursor.isErr()) {
+      return Result.err(cursor.error);
+    }
+
+    pending.push(...cursor.value.pendingEffects);
+    if (pending.length >= (input.limit ?? 100)) {
+      return Result.ok(pending.slice(0, input.limit ?? 100));
+    }
+  }
+
+  return Result.ok(pending);
 }
 
 export async function claimFailedQueryActionEffectViaJournal(input: {

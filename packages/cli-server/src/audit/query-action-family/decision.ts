@@ -13,10 +13,7 @@ import type { SharedWorkflowRejectCode, WorkflowDecision } from "../kernel";
 import type { QueryActionCommand } from "./commands";
 import type { QueryActionEffect } from "./effects";
 import type { QueryActionEvent } from "./events";
-import {
-  requireQueryActionSourceDescriptor,
-  requireValidatedQuery,
-} from "./invariants";
+import { requireQueryActionSourceDescriptor } from "./invariants";
 import type { QueryActionState } from "./state";
 
 export type QueryActionRejectCode = SharedWorkflowRejectCode;
@@ -100,137 +97,6 @@ export function decideQueryAction(
         })
       );
     }
-    case "record_source_lookup": {
-      if (state === null) {
-        return okQueryDecision(rejectUnknownAction());
-      }
-
-      if (state.phase !== "load_source") {
-        return okQueryDecision(rejectInvalidPhase());
-      }
-
-      if (!hasMatchingCausation(state, command.causedByEventId)) {
-        return okQueryDecision(rejectCausationMismatch());
-      }
-
-      switch (command.commandPayload.kind) {
-        case "found":
-          return okQueryDecision(
-            acceptWorkflowDecision({
-              effects: [
-                {
-                  queryText: state.queryText,
-                  source: command.commandPayload.source,
-                  type: "validate_query",
-                },
-              ],
-              events: [
-                {
-                  source: command.commandPayload.source,
-                  type: "source_loaded",
-                },
-              ],
-            })
-          );
-        case "not_found":
-          return okQueryDecision(
-            acceptWorkflowDecision({
-              events: [
-                {
-                  sourceKey: command.commandPayload.sourceKey,
-                  type: "source_not_found",
-                },
-              ],
-            })
-          );
-        case "query_interface_missing":
-          return okQueryDecision(
-            acceptWorkflowDecision({
-              events: [
-                {
-                  provider: command.commandPayload.provider,
-                  sourceStatus: command.commandPayload.sourceStatus,
-                  type: "source_query_interface_missing",
-                },
-              ],
-            })
-          );
-      }
-      break;
-    }
-    case "record_query_validation": {
-      if (state === null) {
-        return okQueryDecision(rejectUnknownAction());
-      }
-
-      if (state.phase !== "validate_query") {
-        return okQueryDecision(rejectInvalidPhase());
-      }
-
-      if (!hasMatchingCausation(state, command.causedByEventId)) {
-        return okQueryDecision(rejectCausationMismatch());
-      }
-
-      const commandPayload = command.commandPayload;
-
-      switch (commandPayload.kind) {
-        case "accepted":
-          return Result.gen(function* decideAcceptedQueryValidation() {
-            const source =
-              state.queryMode === "execute"
-                ? yield* requireQueryActionSourceDescriptor(
-                    state,
-                    invariantContext
-                  )
-                : null;
-
-            return okQueryDecision(
-              acceptWorkflowDecision({
-                ...(source === null
-                  ? {}
-                  : {
-                      effects: [
-                        {
-                          source,
-                          type: "load_credentials" as const,
-                        },
-                      ],
-                    }),
-                events: [
-                  {
-                    type: "query_validated",
-                    validatedQuery: commandPayload.validatedQuery,
-                  },
-                ],
-              })
-            );
-          });
-        case "rejected":
-          return okQueryDecision(
-            acceptWorkflowDecision({
-              events: [
-                {
-                  detail: commandPayload.detail,
-                  type: "query_rejected",
-                },
-              ],
-            })
-          );
-        case "preparation_failed":
-          return okQueryDecision(
-            acceptWorkflowDecision({
-              events: [
-                {
-                  detail: commandPayload.detail,
-                  hint: commandPayload.hint,
-                  type: "query_preparation_failed",
-                },
-              ],
-            })
-          );
-      }
-      break;
-    }
     case "record_validate_preparation": {
       if (state === null) {
         return okQueryDecision(rejectUnknownAction());
@@ -275,6 +141,29 @@ export function decideQueryAction(
                   type: "query_rejected",
                 },
               ]),
+            })
+          );
+        case "not_found":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: [
+                {
+                  sourceKey: commandPayload.sourceKey,
+                  type: "source_not_found",
+                },
+              ],
+            })
+          );
+        case "query_interface_missing":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: [
+                {
+                  provider: commandPayload.provider,
+                  sourceStatus: commandPayload.sourceStatus,
+                  type: "source_query_interface_missing",
+                },
+              ],
             })
           );
         case "failed":
@@ -360,6 +249,29 @@ export function decideQueryAction(
               ]),
             })
           );
+        case "not_found":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: [
+                {
+                  sourceKey: commandPayload.sourceKey,
+                  type: "source_not_found",
+                },
+              ],
+            })
+          );
+        case "query_interface_missing":
+          return okQueryDecision(
+            acceptWorkflowDecision({
+              events: [
+                {
+                  provider: commandPayload.provider,
+                  sourceStatus: commandPayload.sourceStatus,
+                  type: "source_query_interface_missing",
+                },
+              ],
+            })
+          );
         case "failed":
           return okQueryDecision(
             acceptWorkflowDecision({
@@ -384,61 +296,6 @@ export function decideQueryAction(
                       },
                     ]
               ),
-            })
-          );
-      }
-      break;
-    }
-    case "record_credentials_load": {
-      if (state === null) {
-        return okQueryDecision(rejectUnknownAction());
-      }
-
-      if (state.phase !== "load_credentials") {
-        return okQueryDecision(rejectInvalidPhase());
-      }
-
-      if (!hasMatchingCausation(state, command.causedByEventId)) {
-        return okQueryDecision(rejectCausationMismatch());
-      }
-
-      const commandPayload = command.commandPayload;
-
-      switch (commandPayload.kind) {
-        case "loaded":
-          return Result.gen(function* decideLoadedCredentials() {
-            const source = yield* requireQueryActionSourceDescriptor(
-              state,
-              invariantContext
-            );
-            const validatedQuery = yield* requireValidatedQuery(
-              state,
-              invariantContext
-            );
-
-            return okQueryDecision(
-              acceptWorkflowDecision({
-                effects: [
-                  {
-                    source,
-                    type: "execute_query",
-                    validatedQuery,
-                  },
-                ],
-                events: [{ type: "credentials_loaded" }],
-              })
-            );
-          });
-        case "preparation_failed":
-          return okQueryDecision(
-            acceptWorkflowDecision({
-              events: [
-                {
-                  detail: commandPayload.detail,
-                  hint: commandPayload.hint,
-                  type: "query_preparation_failed",
-                },
-              ],
             })
           );
       }

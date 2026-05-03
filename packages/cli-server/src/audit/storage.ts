@@ -29,12 +29,14 @@ export type {
 } from "./storage/journal-db";
 export {
   claimFailedQueryActionEffectViaJournal,
+  loadPendingQueryActionEffectsViaJournal,
   loadQueryActionCommandViaJournal,
   recordQueryActionEffectFailureViaJournal,
   storeQueryActionCommandViaJournal,
 } from "./storage/query-action-journal";
 export {
   claimFailedSourceApiActionEffectViaJournal,
+  loadPendingSourceApiActionEffectsViaJournal,
   loadSourceApiActionCommandViaJournal,
   recordSourceApiActionEffectFailureViaJournal,
   storeSourceApiActionCommandViaJournal,

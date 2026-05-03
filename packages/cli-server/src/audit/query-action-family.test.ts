@@ -291,79 +291,12 @@ describe("query_action family", () => {
     });
   });
 
-  it("completes validate actions on query_validated without execution stages", () => {
-    let state = applyQueryDecision(null, [
-      {
-        queryMode: "validate",
-        queryText: "select 1",
-        type: "action_received",
-      },
-      {
-        source: {
-          displayName: null,
-          name: "warehouse",
-          organizationId: "org_1",
-          provider: "postgres",
-          sourceId: "source_1",
-          sourceKey: "warehouse",
-          sourceStatus: "active",
-        },
-        type: "source_loaded",
-      },
-    ]);
-
-    const decision = unwrapQueryDecision(
-      decideQueryAction(
-        state,
-        buildQueryCommand(
-          {
-            kind: "accepted",
-            truncated: false,
-            type: "record_query_validation",
-            validatedQuery: "SELECT 1",
-          },
-          { actionId: "action_1", causedByEventId: state.lastEventId }
-        )
-      )
-    );
-
-    expect(decision).toMatchObject({
-      kind: "accepted",
-      effects: [],
-      events: [{ type: "query_validated", validatedQuery: "SELECT 1" }],
-    });
-
-    if (decision.kind !== "accepted") {
-      return;
-    }
-
-    state = applyQueryDecision(state, decision.events);
-    expect(state).toMatchObject({
-      failureCode: null,
-      outcome: "succeeded",
-      phase: "completed",
-      queryMode: "validate",
-    });
-  });
-
   it("completes validation-stage preparation failures as terminal query_preparation_failed actions", () => {
     let state = applyQueryDecision(null, [
       {
         queryMode: "validate",
         queryText: "select 1",
         type: "action_received",
-      },
-      {
-        source: {
-          displayName: null,
-          name: "warehouse",
-          organizationId: "org_1",
-          provider: "postgres",
-          sourceId: "source_1",
-          sourceKey: "warehouse",
-          sourceStatus: "active",
-        },
-        type: "source_loaded",
       },
     ]);
 
@@ -374,8 +307,8 @@ describe("query_action family", () => {
           {
             detail: "sql parser runtime unavailable",
             hint: "retry the request",
-            kind: "preparation_failed",
-            type: "record_query_validation",
+            kind: "failed",
+            type: "record_validate_preparation",
           },
           { actionId: "action_1", causedByEventId: state.lastEventId }
         )
@@ -425,7 +358,7 @@ describe("query_action family", () => {
           {
             kind: "not_found",
             sourceKey: "warehouse",
-            type: "record_source_lookup",
+            type: "record_execute_preparation",
           },
           { actionId: "action_1", causedByEventId: "stale_event" }
         )
@@ -468,8 +401,19 @@ describe("query_action family", () => {
         state,
         buildQueryCommand(
           {
-            kind: "loaded",
-            type: "record_credentials_load",
+            kind: "succeeded",
+            source: {
+              displayName: null,
+              name: "warehouse",
+              organizationId: "org_1",
+              provider: "postgres",
+              sourceId: "source_1",
+              sourceKey: "warehouse",
+              sourceStatus: "active",
+            },
+            truncated: false,
+            type: "record_execute_preparation",
+            validatedQuery: "SELECT 1",
           },
           { actionId: "action_1", causedByEventId: state.lastEventId }
         )
@@ -527,7 +471,7 @@ describe("query_action family", () => {
           type: "action_received",
         },
       ]),
-      phase: "load_credentials" as const,
+      phase: "execute_query" as const,
       sourceDescriptor: null,
       validatedQuery: "SELECT 1",
     } satisfies QueryActionState;
@@ -536,8 +480,9 @@ describe("query_action family", () => {
       state,
       buildQueryCommand(
         {
-          kind: "loaded",
-          type: "record_credentials_load",
+          kind: "succeeded",
+          response: queryExecutionResponse,
+          type: "record_query_execution",
         },
         { actionId: "action_1", causedByEventId: state.lastEventId }
       )
@@ -549,10 +494,10 @@ describe("query_action family", () => {
     }
     expect(result.error).toMatchObject({
       _tag: "WorkflowInternalInvariantError",
-      commandType: "record_credentials_load",
+      commandType: "record_query_execution",
       family: "query_action",
       invariant: "source_descriptor_required",
-      phase: "load_credentials",
+      phase: "execute_query",
       scope: "decision",
     });
   });

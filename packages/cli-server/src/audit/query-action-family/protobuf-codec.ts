@@ -11,8 +11,6 @@ import {
   QueryActionEffectPayloadSchema,
   QueryActionEventPayloadSchema,
   QueryActionExecuteQueryEffectSchema,
-  QueryActionLoadCredentialsEffectSchema,
-  QueryActionLoadSourceEffectSchema,
   QueryActionMode as ProtoQueryActionMode,
   QueryActionPrepareExecuteQueryEffectSchema,
   QueryActionPrepareValidateQueryEffectSchema,
@@ -29,27 +27,23 @@ import {
   QueryActionQueryUnavailableEventSchema,
   QueryActionQueryValidatedEventSchema,
   QueryActionReceivedEventSchema,
-  QueryActionRecordCredentialsLoadedCommandSchema,
-  QueryActionRecordCredentialsPreparationFailedCommandSchema,
   QueryActionRecordExecutePreparationFailedCommandSchema,
+  QueryActionRecordExecutePreparationQueryInterfaceMissingCommandSchema,
   QueryActionRecordExecutePreparationRejectedCommandSchema,
+  QueryActionRecordExecutePreparationSourceNotFoundCommandSchema,
   QueryActionRecordExecutePreparationSucceededCommandSchema,
   QueryActionRecordQueryExecutionFailedCommandSchema,
   QueryActionRecordQueryExecutionResultSchema,
   QueryActionRecordQueryExecutionSucceededCommandSchema,
   QueryActionRecordQueryExecutionTimedOutCommandSchema,
   QueryActionRecordQueryExecutionUnavailableCommandSchema,
-  QueryActionRecordQueryValidationAcceptedCommandSchema,
-  QueryActionRecordQueryValidationPreparationFailedCommandSchema,
-  QueryActionRecordQueryValidationRejectedCommandSchema,
-  QueryActionRecordSourceFoundCommandSchema,
-  QueryActionRecordSourceNotFoundCommandSchema,
-  QueryActionRecordSourceQueryInterfaceMissingCommandSchema,
   QueryActionRecordUsagePersistenceFailedCommandSchema,
   QueryActionRecordUsagePersistenceSucceededCommandSchema,
   QueryActionRecordValidatePreparationAcceptedCommandSchema,
   QueryActionRecordValidatePreparationFailedCommandSchema,
+  QueryActionRecordValidatePreparationQueryInterfaceMissingCommandSchema,
   QueryActionRecordValidatePreparationRejectedCommandSchema,
+  QueryActionRecordValidatePreparationSourceNotFoundCommandSchema,
   QueryActionSourceDescriptorSchema,
   QueryActionSourceLoadedEventSchema,
   QueryActionSourceNotFoundEventSchema,
@@ -58,7 +52,6 @@ import {
   QueryActionStartValidateCommandSchema,
   QueryActionUsagePersistedEventSchema,
   QueryActionUsagePersistFailedEventSchema,
-  QueryActionValidateQueryEffectSchema,
 } from "@onequery/proto-workflow/workflow/v1/query_action_pb";
 import type {
   QueryActionCommandPayload as ProtoQueryActionCommandPayload,
@@ -113,34 +106,16 @@ export function getQueryActionCommandPayloadType(
       return "start_validate";
     case "start_execute":
       return "start_execute";
-    case "record_source_lookup":
-      switch (payload.kind) {
-        case "found":
-          return "record_source_found";
-        case "not_found":
-          return "record_source_not_found";
-        case "query_interface_missing":
-          return "record_source_query_interface_missing";
-        default:
-          return assertNever(payload);
-      }
-    case "record_query_validation":
-      switch (payload.kind) {
-        case "accepted":
-          return "record_query_validation_accepted";
-        case "rejected":
-          return "record_query_validation_rejected";
-        case "preparation_failed":
-          return "record_query_validation_preparation_failed";
-        default:
-          return assertNever(payload);
-      }
     case "record_validate_preparation":
       switch (payload.kind) {
         case "accepted":
           return "record_validate_preparation_accepted";
         case "rejected":
           return "record_validate_preparation_rejected";
+        case "not_found":
+          return "record_validate_preparation_source_not_found";
+        case "query_interface_missing":
+          return "record_validate_preparation_query_interface_missing";
         case "failed":
           return "record_validate_preparation_failed";
         default:
@@ -152,17 +127,12 @@ export function getQueryActionCommandPayloadType(
           return "record_execute_preparation_succeeded";
         case "rejected":
           return "record_execute_preparation_rejected";
+        case "not_found":
+          return "record_execute_preparation_source_not_found";
+        case "query_interface_missing":
+          return "record_execute_preparation_query_interface_missing";
         case "failed":
           return "record_execute_preparation_failed";
-        default:
-          return assertNever(payload);
-      }
-    case "record_credentials_load":
-      switch (payload.kind) {
-        case "loaded":
-          return "record_credentials_loaded";
-        case "preparation_failed":
-          return "record_credentials_preparation_failed";
         default:
           return assertNever(payload);
       }
@@ -319,104 +289,14 @@ function toQueryActionCommandMessage(payload: QueryActionCommandPayload) {
           }),
         },
       });
-    case "record_source_lookup":
-      return toQueryActionSourceLookupCommandMessage(payload);
-    case "record_query_validation":
-      return toQueryActionQueryValidationCommandMessage(payload);
     case "record_validate_preparation":
       return toQueryActionValidatePreparationCommandMessage(payload);
     case "record_execute_preparation":
       return toQueryActionExecutePreparationCommandMessage(payload);
-    case "record_credentials_load":
-      return toQueryActionCredentialsLoadCommandMessage(payload);
     case "record_query_execution":
       return toQueryActionQueryExecutionCommandMessage(payload);
     case "record_usage_persistence":
       return toQueryActionUsagePersistenceCommandMessage(payload);
-    default:
-      return assertNever(payload);
-  }
-}
-
-function toQueryActionSourceLookupCommandMessage(
-  payload: Extract<QueryActionCommandPayload, { type: "record_source_lookup" }>
-) {
-  switch (payload.kind) {
-    case "found":
-      return create(QueryActionCommandPayloadSchema, {
-        command: {
-          case: "recordSourceFound",
-          value: create(QueryActionRecordSourceFoundCommandSchema, {
-            source: toQueryActionSourceDescriptorMessage(payload.source),
-          }),
-        },
-      });
-    case "not_found":
-      return create(QueryActionCommandPayloadSchema, {
-        command: {
-          case: "recordSourceNotFound",
-          value: create(QueryActionRecordSourceNotFoundCommandSchema, {
-            sourceKey: payload.sourceKey,
-          }),
-        },
-      });
-    case "query_interface_missing":
-      return create(QueryActionCommandPayloadSchema, {
-        command: {
-          case: "recordSourceQueryInterfaceMissing",
-          value: create(
-            QueryActionRecordSourceQueryInterfaceMissingCommandSchema,
-            {
-              provider: toWorkflowSourceProvider(payload.provider),
-              sourceStatus: toWorkflowDataSourceStatus(payload.sourceStatus),
-            }
-          ),
-        },
-      });
-    default:
-      return assertNever(payload);
-  }
-}
-
-function toQueryActionQueryValidationCommandMessage(
-  payload: Extract<
-    QueryActionCommandPayload,
-    { type: "record_query_validation" }
-  >
-) {
-  switch (payload.kind) {
-    case "accepted":
-      return create(QueryActionCommandPayloadSchema, {
-        command: {
-          case: "recordQueryValidationAccepted",
-          value: create(QueryActionRecordQueryValidationAcceptedCommandSchema, {
-            truncated: payload.truncated,
-            validatedQuery: payload.validatedQuery,
-          }),
-        },
-      });
-    case "rejected":
-      return create(QueryActionCommandPayloadSchema, {
-        command: {
-          case: "recordQueryValidationRejected",
-          value: create(QueryActionRecordQueryValidationRejectedCommandSchema, {
-            detail: payload.detail,
-          }),
-        },
-      });
-    case "preparation_failed":
-      return create(QueryActionCommandPayloadSchema, {
-        command: {
-          case: "recordQueryValidationPreparationFailed",
-          value: create(
-            QueryActionRecordQueryValidationPreparationFailedCommandSchema,
-            {
-              detail: payload.detail,
-              hint: payload.hint,
-            }
-          ),
-        },
-      });
     default:
       return assertNever(payload);
   }
@@ -452,6 +332,31 @@ function toQueryActionValidatePreparationCommandMessage(
             {
               detail: payload.detail,
               source: toQueryActionSourceDescriptorMessage(payload.source),
+            }
+          ),
+        },
+      });
+    case "not_found":
+      return create(QueryActionCommandPayloadSchema, {
+        command: {
+          case: "recordValidatePreparationSourceNotFound",
+          value: create(
+            QueryActionRecordValidatePreparationSourceNotFoundCommandSchema,
+            {
+              sourceKey: payload.sourceKey,
+            }
+          ),
+        },
+      });
+    case "query_interface_missing":
+      return create(QueryActionCommandPayloadSchema, {
+        command: {
+          case: "recordValidatePreparationQueryInterfaceMissing",
+          value: create(
+            QueryActionRecordValidatePreparationQueryInterfaceMissingCommandSchema,
+            {
+              provider: toWorkflowSourceProvider(payload.provider),
+              sourceStatus: toWorkflowDataSourceStatus(payload.sourceStatus),
             }
           ),
         },
@@ -515,6 +420,31 @@ function toQueryActionExecutePreparationCommandMessage(
           ),
         },
       });
+    case "not_found":
+      return create(QueryActionCommandPayloadSchema, {
+        command: {
+          case: "recordExecutePreparationSourceNotFound",
+          value: create(
+            QueryActionRecordExecutePreparationSourceNotFoundCommandSchema,
+            {
+              sourceKey: payload.sourceKey,
+            }
+          ),
+        },
+      });
+    case "query_interface_missing":
+      return create(QueryActionCommandPayloadSchema, {
+        command: {
+          case: "recordExecutePreparationQueryInterfaceMissing",
+          value: create(
+            QueryActionRecordExecutePreparationQueryInterfaceMissingCommandSchema,
+            {
+              provider: toWorkflowSourceProvider(payload.provider),
+              sourceStatus: toWorkflowDataSourceStatus(payload.sourceStatus),
+            }
+          ),
+        },
+      });
     case "failed":
       return create(QueryActionCommandPayloadSchema, {
         command: {
@@ -531,38 +461,6 @@ function toQueryActionExecutePreparationCommandMessage(
                       payload.source
                     ),
                   }),
-            }
-          ),
-        },
-      });
-    default:
-      return assertNever(payload);
-  }
-}
-
-function toQueryActionCredentialsLoadCommandMessage(
-  payload: Extract<
-    QueryActionCommandPayload,
-    { type: "record_credentials_load" }
-  >
-) {
-  switch (payload.kind) {
-    case "loaded":
-      return create(QueryActionCommandPayloadSchema, {
-        command: {
-          case: "recordCredentialsLoaded",
-          value: create(QueryActionRecordCredentialsLoadedCommandSchema),
-        },
-      });
-    case "preparation_failed":
-      return create(QueryActionCommandPayloadSchema, {
-        command: {
-          case: "recordCredentialsPreparationFailed",
-          value: create(
-            QueryActionRecordCredentialsPreparationFailedCommandSchema,
-            {
-              detail: payload.detail,
-              hint: payload.hint,
             }
           ),
         },
@@ -669,49 +567,6 @@ function fromQueryActionCommandMessage(
         sourceKey: payload.command.value.sourceKey,
         type: "start_execute",
       };
-    case "recordSourceFound":
-      return {
-        kind: "found",
-        source: fromQueryActionSourceDescriptorMessage(
-          payload.command.value.source
-        ),
-        type: "record_source_lookup",
-      };
-    case "recordSourceNotFound":
-      return {
-        kind: "not_found",
-        sourceKey: payload.command.value.sourceKey,
-        type: "record_source_lookup",
-      };
-    case "recordSourceQueryInterfaceMissing":
-      return {
-        kind: "query_interface_missing",
-        provider: fromWorkflowSourceProvider(payload.command.value.provider),
-        sourceStatus: fromWorkflowDataSourceStatus(
-          payload.command.value.sourceStatus
-        ),
-        type: "record_source_lookup",
-      };
-    case "recordQueryValidationAccepted":
-      return {
-        kind: "accepted",
-        truncated: payload.command.value.truncated,
-        type: "record_query_validation",
-        validatedQuery: payload.command.value.validatedQuery,
-      };
-    case "recordQueryValidationRejected":
-      return {
-        detail: payload.command.value.detail,
-        kind: "rejected",
-        type: "record_query_validation",
-      };
-    case "recordQueryValidationPreparationFailed":
-      return {
-        detail: payload.command.value.detail,
-        hint: payload.command.value.hint,
-        kind: "preparation_failed",
-        type: "record_query_validation",
-      };
     case "recordValidatePreparationAccepted":
       return {
         kind: "accepted",
@@ -743,6 +598,21 @@ function fromQueryActionCommandMessage(
                 payload.command.value.source
               ),
             }),
+        type: "record_validate_preparation",
+      };
+    case "recordValidatePreparationSourceNotFound":
+      return {
+        kind: "not_found",
+        sourceKey: payload.command.value.sourceKey,
+        type: "record_validate_preparation",
+      };
+    case "recordValidatePreparationQueryInterfaceMissing":
+      return {
+        kind: "query_interface_missing",
+        provider: fromWorkflowSourceProvider(payload.command.value.provider),
+        sourceStatus: fromWorkflowDataSourceStatus(
+          payload.command.value.sourceStatus
+        ),
         type: "record_validate_preparation",
       };
     case "recordExecutePreparationSucceeded":
@@ -778,17 +648,20 @@ function fromQueryActionCommandMessage(
             }),
         type: "record_execute_preparation",
       };
-    case "recordCredentialsLoaded":
+    case "recordExecutePreparationSourceNotFound":
       return {
-        kind: "loaded",
-        type: "record_credentials_load",
+        kind: "not_found",
+        sourceKey: payload.command.value.sourceKey,
+        type: "record_execute_preparation",
       };
-    case "recordCredentialsPreparationFailed":
+    case "recordExecutePreparationQueryInterfaceMissing":
       return {
-        detail: payload.command.value.detail,
-        hint: payload.command.value.hint,
-        kind: "preparation_failed",
-        type: "record_credentials_load",
+        kind: "query_interface_missing",
+        provider: fromWorkflowSourceProvider(payload.command.value.provider),
+        sourceStatus: fromWorkflowDataSourceStatus(
+          payload.command.value.sourceStatus
+        ),
+        type: "record_execute_preparation",
       };
     case "recordQueryExecutionSucceeded":
       return {
@@ -842,34 +715,26 @@ function getQueryActionCommandPayloadTypeFromOneofCase(
       return "start_validate";
     case "startExecute":
       return "start_execute";
-    case "recordSourceFound":
-      return "record_source_found";
-    case "recordSourceNotFound":
-      return "record_source_not_found";
-    case "recordSourceQueryInterfaceMissing":
-      return "record_source_query_interface_missing";
-    case "recordQueryValidationAccepted":
-      return "record_query_validation_accepted";
-    case "recordQueryValidationRejected":
-      return "record_query_validation_rejected";
-    case "recordQueryValidationPreparationFailed":
-      return "record_query_validation_preparation_failed";
     case "recordValidatePreparationAccepted":
       return "record_validate_preparation_accepted";
     case "recordValidatePreparationRejected":
       return "record_validate_preparation_rejected";
     case "recordValidatePreparationFailed":
       return "record_validate_preparation_failed";
+    case "recordValidatePreparationSourceNotFound":
+      return "record_validate_preparation_source_not_found";
+    case "recordValidatePreparationQueryInterfaceMissing":
+      return "record_validate_preparation_query_interface_missing";
     case "recordExecutePreparationSucceeded":
       return "record_execute_preparation_succeeded";
     case "recordExecutePreparationRejected":
       return "record_execute_preparation_rejected";
     case "recordExecutePreparationFailed":
       return "record_execute_preparation_failed";
-    case "recordCredentialsLoaded":
-      return "record_credentials_loaded";
-    case "recordCredentialsPreparationFailed":
-      return "record_credentials_preparation_failed";
+    case "recordExecutePreparationSourceNotFound":
+      return "record_execute_preparation_source_not_found";
+    case "recordExecutePreparationQueryInterfaceMissing":
+      return "record_execute_preparation_query_interface_missing";
     case "recordQueryExecutionSucceeded":
       return "record_query_execution_succeeded";
     case "recordQueryExecutionUnavailable":
@@ -1113,26 +978,6 @@ function fromQueryActionEventMessage(
 
 function toQueryActionEffectMessage(effect: QueryActionEffect) {
   switch (effect.type) {
-    case "load_source":
-      return create(QueryActionEffectPayloadSchema, {
-        effect: {
-          case: "loadSource",
-          value: create(QueryActionLoadSourceEffectSchema, {
-            organizationId: effect.organizationId,
-            sourceKey: effect.sourceKey,
-          }),
-        },
-      });
-    case "validate_query":
-      return create(QueryActionEffectPayloadSchema, {
-        effect: {
-          case: "validateQuery",
-          value: create(QueryActionValidateQueryEffectSchema, {
-            queryText: effect.queryText,
-            source: toQueryActionSourceDescriptorMessage(effect.source),
-          }),
-        },
-      });
     case "prepare_validate_query":
       return create(QueryActionEffectPayloadSchema, {
         effect: {
@@ -1152,15 +997,6 @@ function toQueryActionEffectMessage(effect: QueryActionEffect) {
             organizationId: effect.organizationId,
             queryText: effect.queryText,
             sourceKey: effect.sourceKey,
-          }),
-        },
-      });
-    case "load_credentials":
-      return create(QueryActionEffectPayloadSchema, {
-        effect: {
-          case: "loadCredentials",
-          value: create(QueryActionLoadCredentialsEffectSchema, {
-            source: toQueryActionSourceDescriptorMessage(effect.source),
           }),
         },
       });
@@ -1192,20 +1028,6 @@ function fromQueryActionEffectMessage(
   payload: ProtoQueryActionEffectPayload
 ): QueryActionEffect {
   switch (payload.effect.case) {
-    case "loadSource":
-      return {
-        organizationId: payload.effect.value.organizationId,
-        sourceKey: payload.effect.value.sourceKey,
-        type: "load_source",
-      };
-    case "validateQuery":
-      return {
-        queryText: payload.effect.value.queryText,
-        source: fromQueryActionSourceDescriptorMessage(
-          payload.effect.value.source
-        ),
-        type: "validate_query",
-      };
     case "prepareValidateQuery":
       return {
         organizationId: payload.effect.value.organizationId,
@@ -1219,13 +1041,6 @@ function fromQueryActionEffectMessage(
         queryText: payload.effect.value.queryText,
         sourceKey: payload.effect.value.sourceKey,
         type: "prepare_execute_query",
-      };
-    case "loadCredentials":
-      return {
-        source: fromQueryActionSourceDescriptorMessage(
-          payload.effect.value.source
-        ),
-        type: "load_credentials",
       };
     case "executeQuery":
       return {

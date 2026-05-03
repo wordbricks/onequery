@@ -13,14 +13,6 @@ message QueryActionCommandPayload {
 
     QueryActionStartValidateCommand start_validate = 1;
     QueryActionStartExecuteCommand start_execute = 2;
-    QueryActionRecordSourceFoundCommand record_source_found = 3;
-    QueryActionRecordSourceNotFoundCommand record_source_not_found = 4;
-    QueryActionRecordSourceQueryInterfaceMissingCommand record_source_query_interface_missing = 5;
-    QueryActionRecordQueryValidationAcceptedCommand record_query_validation_accepted = 6;
-    QueryActionRecordQueryValidationRejectedCommand record_query_validation_rejected = 7;
-    QueryActionRecordQueryValidationPreparationFailedCommand record_query_validation_preparation_failed = 8;
-    QueryActionRecordCredentialsLoadedCommand record_credentials_loaded = 9;
-    QueryActionRecordCredentialsPreparationFailedCommand record_credentials_preparation_failed = 10;
     QueryActionRecordQueryExecutionSucceededCommand record_query_execution_succeeded = 11;
     QueryActionRecordQueryExecutionUnavailableCommand record_query_execution_unavailable = 12;
     QueryActionRecordQueryExecutionTimedOutCommand record_query_execution_timed_out = 13;
@@ -33,6 +25,10 @@ message QueryActionCommandPayload {
     QueryActionRecordExecutePreparationSucceededCommand record_execute_preparation_succeeded = 20;
     QueryActionRecordExecutePreparationRejectedCommand record_execute_preparation_rejected = 21;
     QueryActionRecordExecutePreparationFailedCommand record_execute_preparation_failed = 22;
+    QueryActionRecordValidatePreparationSourceNotFoundCommand record_validate_preparation_source_not_found = 23;
+    QueryActionRecordValidatePreparationQueryInterfaceMissingCommand record_validate_preparation_query_interface_missing = 24;
+    QueryActionRecordExecutePreparationSourceNotFoundCommand record_execute_preparation_source_not_found = 25;
+    QueryActionRecordExecutePreparationQueryInterfaceMissingCommand record_execute_preparation_query_interface_missing = 26;
   }
 }
 
@@ -61,9 +57,6 @@ message QueryActionEffectPayload {
   oneof effect {
     option (buf.validate.oneof).required = true;
 
-    QueryActionLoadSourceEffect load_source = 1;
-    QueryActionValidateQueryEffect validate_query = 2;
-    QueryActionLoadCredentialsEffect load_credentials = 3;
     QueryActionExecuteQueryEffect execute_query = 4;
     QueryActionPersistUsageEffect persist_usage = 5;
     QueryActionPrepareValidateQueryEffect prepare_validate_query = 6;
@@ -98,78 +91,6 @@ message QueryActionStartExecuteCommand {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
-  ];
-}
-
-message QueryActionRecordSourceFoundCommand {
-  QueryActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
-}
-
-message QueryActionRecordSourceNotFoundCommand {
-  string source_key = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
-  ];
-}
-
-message QueryActionRecordSourceQueryInterfaceMissingCommand {
-  WorkflowSourceProvider provider = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
-  ];
-  WorkflowDataSourceStatus source_status = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
-  ];
-}
-
-message QueryActionRecordQueryValidationAcceptedCommand {
-  string validated_query = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 262144,
-    (buf.validate.field).string.pattern = "\\S"
-  ];
-  bool truncated = 2 [(buf.validate.field).required = true];
-}
-
-message QueryActionRecordQueryValidationRejectedCommand {
-  string detail = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 4096
-  ];
-}
-
-message QueryActionRecordQueryValidationPreparationFailedCommand {
-  string detail = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 4096
-  ];
-  string hint = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 4096
-  ];
-}
-
-message QueryActionRecordCredentialsLoadedCommand {}
-
-message QueryActionRecordCredentialsPreparationFailedCommand {
-  string detail = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 4096
-  ];
-  string hint = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 4096
   ];
 }
 
@@ -246,6 +167,28 @@ message QueryActionRecordValidatePreparationFailedCommand {
   QueryActionSourceDescriptor source = 3;
 }
 
+message QueryActionRecordValidatePreparationSourceNotFoundCommand {
+  string source_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+}
+
+message QueryActionRecordValidatePreparationQueryInterfaceMissingCommand {
+  WorkflowSourceProvider provider = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  WorkflowDataSourceStatus source_status = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+}
+
 message QueryActionRecordExecutePreparationSucceededCommand {
   QueryActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
   string validated_query = 2 [
@@ -278,6 +221,28 @@ message QueryActionRecordExecutePreparationFailedCommand {
     (buf.validate.field).string.max_len = 4096
   ];
   QueryActionSourceDescriptor source = 3;
+}
+
+message QueryActionRecordExecutePreparationSourceNotFoundCommand {
+  string source_key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+  ];
+}
+
+message QueryActionRecordExecutePreparationQueryInterfaceMissingCommand {
+  WorkflowSourceProvider provider = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
+  WorkflowDataSourceStatus source_status = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).enum.not_in = 0,
+    (buf.validate.field).enum.defined_only = true
+  ];
 }
 
 message QueryActionReceivedEvent {
@@ -395,34 +360,6 @@ message QueryActionUsagePersistFailedEvent {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 4096
   ];
-}
-
-message QueryActionLoadSourceEffect {
-  string organization_id = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 255
-  ];
-  string source_key = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
-  ];
-}
-
-message QueryActionValidateQueryEffect {
-  string query_text = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 262144,
-    (buf.validate.field).string.pattern = "\\S"
-  ];
-  QueryActionSourceDescriptor source = 2 [(buf.validate.field).required = true];
-}
-
-message QueryActionLoadCredentialsEffect {
-  QueryActionSourceDescriptor source = 1 [(buf.validate.field).required = true];
 }
 
 message QueryActionExecuteQueryEffect {

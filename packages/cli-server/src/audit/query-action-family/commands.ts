@@ -16,54 +16,30 @@ export type QueryActionCommandPayload =
       sourceKey: string;
     }
   | {
-      type: "record_source_lookup";
-      kind: "found";
+      type: "record_validate_preparation";
+      detail?: never;
+      hint?: never;
+      kind: "accepted";
+      source: QueryActionSourceDescriptor;
+      truncated: boolean;
+      validatedQuery: string;
+    }
+  | {
+      type: "record_validate_preparation";
+      detail: string;
+      kind: "rejected";
       source: QueryActionSourceDescriptor;
     }
   | {
-      type: "record_source_lookup";
+      type: "record_validate_preparation";
       kind: "not_found";
       sourceKey: string;
     }
   | {
-      type: "record_source_lookup";
+      type: "record_validate_preparation";
       kind: "query_interface_missing";
       provider: ProviderType;
       sourceStatus: DataSourceStatus;
-    }
-  | {
-      type: "record_query_validation";
-      detail?: never;
-      hint?: never;
-      kind: "accepted";
-      truncated: boolean;
-      validatedQuery: string;
-    }
-  | {
-      type: "record_query_validation";
-      detail: string;
-      kind: "rejected";
-    }
-  | {
-      type: "record_query_validation";
-      detail: string;
-      hint: string;
-      kind: "preparation_failed";
-    }
-  | {
-      type: "record_validate_preparation";
-      detail?: never;
-      hint?: never;
-      kind: "accepted";
-      source: QueryActionSourceDescriptor;
-      truncated: boolean;
-      validatedQuery: string;
-    }
-  | {
-      type: "record_validate_preparation";
-      detail: string;
-      kind: "rejected";
-      source: QueryActionSourceDescriptor;
     }
   | {
       type: "record_validate_preparation";
@@ -89,20 +65,21 @@ export type QueryActionCommandPayload =
     }
   | {
       type: "record_execute_preparation";
+      kind: "not_found";
+      sourceKey: string;
+    }
+  | {
+      type: "record_execute_preparation";
+      kind: "query_interface_missing";
+      provider: ProviderType;
+      sourceStatus: DataSourceStatus;
+    }
+  | {
+      type: "record_execute_preparation";
       detail: string;
       hint: string;
       kind: "failed";
       source?: QueryActionSourceDescriptor;
-    }
-  | {
-      type: "record_credentials_load";
-      kind: "loaded";
-    }
-  | {
-      type: "record_credentials_load";
-      detail: string;
-      hint: string;
-      kind: "preparation_failed";
     }
   | {
       type: "record_query_execution";

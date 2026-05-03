@@ -27,12 +27,11 @@ import {
   QueryActionQueryValidatedEventSchema,
   QueryActionRecordQueryExecutionResultSchema,
   QueryActionReceivedEventSchema,
-  QueryActionRecordCredentialsLoadedCommandSchema,
+  QueryActionRecordExecutePreparationSucceededCommandSchema,
   QueryActionRecordQueryExecutionSucceededCommandSchema,
-  QueryActionRecordQueryValidationAcceptedCommandSchema,
-  QueryActionRecordQueryValidationPreparationFailedCommandSchema,
-  QueryActionRecordSourceFoundCommandSchema,
   QueryActionRecordUsagePersistenceSucceededCommandSchema,
+  QueryActionRecordValidatePreparationAcceptedCommandSchema,
+  QueryActionRecordValidatePreparationFailedCommandSchema,
   QueryActionSourceDescriptorSchema,
   QueryActionSourceLoadedEventSchema,
   QueryActionUsagePersistedEventSchema,
@@ -206,45 +205,35 @@ function encodeQueryActionCommandPayload(
           })
         )
       );
-    case "record_source_lookup":
-      return Buffer.from(
-        toBinary(
-          QueryActionCommandPayloadSchema,
-          create(QueryActionCommandPayloadSchema, {
-            command: {
-              case: "recordSourceFound",
-              value: create(QueryActionRecordSourceFoundCommandSchema, {
-                source: toQuerySourceDescriptorMessage(
-                  payload.source as Record<string, unknown>
-                ),
-              }),
-            },
-          })
-        )
-      );
-    case "record_query_validation":
+    case "record_validate_preparation":
       return Buffer.from(
         toBinary(
           QueryActionCommandPayloadSchema,
           create(QueryActionCommandPayloadSchema, {
             command:
-              payload.kind === "preparation_failed"
+              payload.kind === "failed"
                 ? {
-                    case: "recordQueryValidationPreparationFailed",
+                    case: "recordValidatePreparationFailed",
                     value: create(
-                      QueryActionRecordQueryValidationPreparationFailedCommandSchema,
+                      QueryActionRecordValidatePreparationFailedCommandSchema,
                       {
                         detail: payload.detail as string,
                         hint: payload.hint as string,
+                        source: toQuerySourceDescriptorMessage(
+                          payload.source as Record<string, unknown>
+                        ),
                       }
                     ),
                   }
                 : {
-                    case: "recordQueryValidationAccepted",
+                    case: "recordValidatePreparationAccepted",
                     value: create(
-                      QueryActionRecordQueryValidationAcceptedCommandSchema,
+                      QueryActionRecordValidatePreparationAcceptedCommandSchema,
                       {
-                        truncated: false,
+                        source: toQuerySourceDescriptorMessage(
+                          payload.source as Record<string, unknown>
+                        ),
+                        truncated: Boolean(payload.truncated),
                         validatedQuery: payload.validatedQuery as string,
                       }
                     ),
@@ -252,14 +241,23 @@ function encodeQueryActionCommandPayload(
           })
         )
       );
-    case "record_credentials_load":
+    case "record_execute_preparation":
       return Buffer.from(
         toBinary(
           QueryActionCommandPayloadSchema,
           create(QueryActionCommandPayloadSchema, {
             command: {
-              case: "recordCredentialsLoaded",
-              value: create(QueryActionRecordCredentialsLoadedCommandSchema),
+              case: "recordExecutePreparationSucceeded",
+              value: create(
+                QueryActionRecordExecutePreparationSucceededCommandSchema,
+                {
+                  source: toQuerySourceDescriptorMessage(
+                    payload.source as Record<string, unknown>
+                  ),
+                  truncated: Boolean(payload.truncated),
+                  validatedQuery: payload.validatedQuery as string,
+                }
+              ),
             },
           })
         )
@@ -799,49 +797,16 @@ async function seedSucceededQueryAction(input: {
   await insertAcceptedWorkflowCommand({
     actionId,
     actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-source`,
-    commandInvocationId: `${actionId}:record_source_lookup`,
+    commandId: `${commandBase}-prepared`,
+    commandInvocationId: `${actionId}:record_execute_preparation`,
     commandPayload: {
-      kind: "found",
+      kind: "succeeded",
       source,
-    },
-    commandType: "record_source_lookup",
-    createdAt: new Date(input.startedAt.getTime() + 1_000),
-    db: input.db,
-    family: "query_action",
-    organizationId: input.organizationId,
-    requestId: input.requestId,
-    surface: "system",
-  });
-
-  await insertAcceptedWorkflowCommand({
-    actionId,
-    actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-validated`,
-    commandInvocationId: `${actionId}:record_query_validation`,
-    commandPayload: {
-      kind: "accepted",
+      truncated: false,
       validatedQuery: "select * from customers",
     },
-    commandType: "record_query_validation",
-    createdAt: new Date(input.startedAt.getTime() + 2_000),
-    db: input.db,
-    family: "query_action",
-    organizationId: input.organizationId,
-    requestId: input.requestId,
-    surface: "system",
-  });
-
-  await insertAcceptedWorkflowCommand({
-    actionId,
-    actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-credentials`,
-    commandInvocationId: `${actionId}:record_credentials_load`,
-    commandPayload: {
-      kind: "loaded",
-    },
-    commandType: "record_credentials_load",
-    createdAt: new Date(input.startedAt.getTime() + 3_000),
+    commandType: "record_execute_preparation",
+    createdAt: new Date(input.startedAt.getTime() + 1_000),
     db: input.db,
     family: "query_action",
     organizationId: input.organizationId,
@@ -872,7 +837,7 @@ async function seedSucceededQueryAction(input: {
       },
     },
     commandType: "record_query_execution",
-    createdAt: new Date(input.startedAt.getTime() + 4_000),
+    createdAt: new Date(input.startedAt.getTime() + 2_000),
     db: input.db,
     family: "query_action",
     organizationId: input.organizationId,
@@ -889,7 +854,7 @@ async function seedSucceededQueryAction(input: {
       kind: "succeeded",
     },
     commandType: "record_usage_persistence",
-    createdAt: new Date(input.startedAt.getTime() + 5_000),
+    createdAt: new Date(input.startedAt.getTime() + 3_000),
     db: input.db,
     family: "query_action",
     organizationId: input.organizationId,
@@ -898,7 +863,7 @@ async function seedSucceededQueryAction(input: {
   });
 
   await input.db.insert(queryActions).values({
-    completedAt: new Date(input.startedAt.getTime() + 5_000),
+    completedAt: new Date(input.startedAt.getTime() + 3_000),
     failureCode: null,
     id: actionId,
     lastEventId: `${eventBase}-usage`,
@@ -932,7 +897,7 @@ async function seedSucceededQueryAction(input: {
       },
       {
         actionId,
-        commandId: `${commandBase}-source`,
+        commandId: `${commandBase}-prepared`,
         eventType: "source_loaded",
         id: `${eventBase}-source`,
         occurredAt: new Date(input.startedAt.getTime() + 1_000),
@@ -942,20 +907,20 @@ async function seedSucceededQueryAction(input: {
       },
       {
         actionId,
-        commandId: `${commandBase}-validated`,
+        commandId: `${commandBase}-prepared`,
         eventType: "query_validated",
         id: `${eventBase}-validated`,
-        occurredAt: new Date(input.startedAt.getTime() + 2_000),
+        occurredAt: new Date(input.startedAt.getTime() + 1_000),
         payload: {
           validatedQuery: "select * from customers",
         },
       },
       {
         actionId,
-        commandId: `${commandBase}-credentials`,
+        commandId: `${commandBase}-prepared`,
         eventType: "credentials_loaded",
         id: `${eventBase}-credentials`,
-        occurredAt: new Date(input.startedAt.getTime() + 3_000),
+        occurredAt: new Date(input.startedAt.getTime() + 1_000),
         payload: {},
       },
       {
@@ -963,7 +928,7 @@ async function seedSucceededQueryAction(input: {
         commandId: `${commandBase}-executed`,
         eventType: "query_executed",
         id: `${eventBase}-executed`,
-        occurredAt: new Date(input.startedAt.getTime() + 4_000),
+        occurredAt: new Date(input.startedAt.getTime() + 2_000),
         payload: {
           elapsedMs: 412,
           rowCount: 12,
@@ -974,7 +939,7 @@ async function seedSucceededQueryAction(input: {
         commandId: `${commandBase}-usage`,
         eventType: "usage_persisted",
         id: `${eventBase}-usage`,
-        occurredAt: new Date(input.startedAt.getTime() + 5_000),
+        occurredAt: new Date(input.startedAt.getTime() + 3_000),
         payload: {},
       },
     ],
@@ -1022,13 +987,15 @@ async function seedQueryPreparationFailedAction(input: {
   await insertAcceptedWorkflowCommand({
     actionId,
     actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-source`,
-    commandInvocationId: `${actionId}:record_source_lookup`,
+    commandId: `${commandBase}-preparation-failed`,
+    commandInvocationId: `${actionId}:record_validate_preparation`,
     commandPayload: {
-      kind: "found",
+      detail: "query preparation failed",
+      hint: "add a table name",
+      kind: "failed",
       source,
     },
-    commandType: "record_source_lookup",
+    commandType: "record_validate_preparation",
     createdAt: new Date(input.startedAt.getTime() + 1_000),
     db: input.db,
     family: "query_action",
@@ -1037,27 +1004,8 @@ async function seedQueryPreparationFailedAction(input: {
     surface: "system",
   });
 
-  await insertAcceptedWorkflowCommand({
-    actionId,
-    actorSnapshot: input.actorSnapshot,
-    commandId: `${commandBase}-preparation-failed`,
-    commandInvocationId: `${actionId}:record_query_validation`,
-    commandPayload: {
-      detail: "query preparation failed",
-      hint: "add a table name",
-      kind: "preparation_failed",
-    },
-    commandType: "record_query_validation",
-    createdAt: new Date(input.startedAt.getTime() + 2_000),
-    db: input.db,
-    family: "query_action",
-    organizationId: input.organizationId,
-    requestId: input.requestId,
-    surface: "system",
-  });
-
   await input.db.insert(queryActions).values({
-    completedAt: new Date(input.startedAt.getTime() + 2_000),
+    completedAt: new Date(input.startedAt.getTime() + 1_000),
     failureCode: "query_preparation_failed",
     id: actionId,
     lastEventId: `${eventBase}-preparation-failed`,
@@ -1091,7 +1039,7 @@ async function seedQueryPreparationFailedAction(input: {
       },
       {
         actionId,
-        commandId: `${commandBase}-source`,
+        commandId: `${commandBase}-preparation-failed`,
         eventType: "source_loaded",
         id: `${eventBase}-source`,
         occurredAt: new Date(input.startedAt.getTime() + 1_000),
@@ -1104,7 +1052,7 @@ async function seedQueryPreparationFailedAction(input: {
         commandId: `${commandBase}-preparation-failed`,
         eventType: "query_preparation_failed",
         id: `${eventBase}-preparation-failed`,
-        occurredAt: new Date(input.startedAt.getTime() + 2_000),
+        occurredAt: new Date(input.startedAt.getTime() + 1_000),
         payload: {
           detail: "query preparation failed",
           hint: "add a table name",
