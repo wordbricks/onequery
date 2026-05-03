@@ -1,10 +1,3 @@
-import {
-  and,
-  asc,
-  eq,
-  ne,
-  workflowEffectDispatches,
-} from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import type {
   PreparedSourceApi,
@@ -23,11 +16,9 @@ import type {
   SourceApiActionCommand,
   SourceApiActionCommandPayload,
   SourceApiActionEffect,
-  SourceApiActionEvent,
   SourceApiActionSourceDescriptor,
   WorkflowActorSnapshot,
 } from "../../../audit";
-import { decodeSourceApiActionEffectPayload } from "../../../audit/source-api-action-family/protobuf-codec";
 import { isCliFailure } from "../../../domain/failures";
 import { toCliErrorMessage } from "../../../observability";
 import { createCliServiceFailure } from "../result";
@@ -37,7 +28,6 @@ import {
   createWorkflowAuditCorruptionFailure,
   createWorkflowAuditFailure,
 } from "../workflow-audit-failure";
-import { dispatchStoredWorkflowEffect } from "../workflow-effect-dispatch";
 import type { SourceApiServiceDependencies } from "./dependencies";
 import { prepareSourceApiDraftResult } from "./runtime";
 import type {
@@ -104,23 +94,9 @@ export async function dispatchStoredSourceApiActionEffect<
     );
   }
 
-  return dispatchStoredWorkflowEffect<
-    SourceApiActionEffect,
-    EffectType,
-    SourceApiActionCommandPayload,
-    SourceApiActionEvent,
-    StoredAcceptedSourceApiActionDecision,
-    StoredAcceptedSourceApiActionResultCommand,
-    TResult
-  >({
-    ...input,
-    createCorruptionProblem: createSourceApiAuditCorruptionFailure,
-    createProblem: createSourceApiAuditFailure,
-    family: "source_api_action",
-    loadEffect: loadRequiredSourceApiActionEffect,
-    loadStoredResultCommand: loadStoredAcceptedSourceApiActionResultCommand,
-    storeResultCommand: storeAcceptedSourceApiActionCommand,
-  });
+  throw createSourceApiAuditCorruptionFailure(
+    `source_api_action expected journal effect ${input.expectedEffectType} but the current journal cursor has no runnable token`
+  );
 }
 
 async function replayJournalSourceApiActionEffect<
@@ -148,11 +124,6 @@ async function replayJournalSourceApiActionEffect<
       `source_api_action stored result command for effect ${input.effect.id} is missing its journal completion`
     );
   }
-
-  await completeSourceApiActionEffectProjectionIfPresent({
-    db: input.db,
-    effectId: input.effect.id,
-  });
 
   return {
     decision: stored.decision,
@@ -643,87 +614,6 @@ function findSourceApiActionJournalEffect<
     id: effect.effectId,
     originEventId: originEvent.id,
     status: "pending",
-  };
-}
-
-async function completeSourceApiActionEffectProjectionIfPresent(input: {
-  db: Database;
-  effectId: string;
-}) {
-  await input.db
-    .update(workflowEffectDispatches)
-    .set({
-      completedAt: new Date(),
-      lastErrorCode: null,
-      lastErrorDetail: null,
-      leasedUntil: null,
-      status: "completed",
-    })
-    .where(
-      and(
-        eq(workflowEffectDispatches.id, input.effectId),
-        ne(workflowEffectDispatches.status, "completed")
-      )
-    );
-}
-
-async function loadRequiredSourceApiActionEffect<
-  EffectType extends SourceApiActionEffect["type"],
->(input: {
-  actionId: string;
-  db: Database;
-  expectedEffectType: EffectType;
-  originEventId: string;
-}): Promise<LoadedSourceApiActionEffect<EffectType>> {
-  const [row] = await input.db
-    .select()
-    .from(workflowEffectDispatches)
-    .where(
-      and(
-        eq(workflowEffectDispatches.actionId, input.actionId),
-        eq(workflowEffectDispatches.family, "source_api_action"),
-        eq(workflowEffectDispatches.originEventId, input.originEventId)
-      )
-    )
-    .orderBy(
-      asc(workflowEffectDispatches.createdAt),
-      asc(workflowEffectDispatches.id)
-    )
-    .limit(1);
-
-  if (!row) {
-    throw createSourceApiAuditCorruptionFailure(
-      `source_api_action effect ${input.expectedEffectType} is missing for origin event ${input.originEventId}`
-    );
-  }
-
-  const decodedEffect = decodeSourceApiActionEffectPayload(row.payloadBytes, {
-    actionId: input.actionId,
-    payloadType: row.effectType,
-  });
-  if (decodedEffect.isErr()) {
-    throw createSourceApiAuditCorruptionFailure(
-      `source_api_action effect ${row.effectType} payload is corrupt`,
-      decodedEffect.error
-    );
-  }
-
-  if (decodedEffect.value.type !== input.expectedEffectType) {
-    throw createSourceApiAuditCorruptionFailure(
-      `source_api_action expected effect ${input.expectedEffectType} but loaded ${decodedEffect.value.type}`
-    );
-  }
-
-  return {
-    attemptCount: row.attemptCount,
-    effect: decodedEffect.value as Extract<
-      SourceApiActionEffect,
-      { type: EffectType }
-    >,
-    effectKey: row.effectKey,
-    id: row.id,
-    originEventId: row.originEventId,
-    status: row.status,
   };
 }
 

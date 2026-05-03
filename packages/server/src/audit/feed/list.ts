@@ -29,10 +29,8 @@ import {
   gt,
   lt,
   or,
-  queryActionEvents,
-  sourceApiActionEvents,
   sql,
-  workflowCommands,
+  workflowJournal,
 } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 
@@ -113,45 +111,21 @@ async function loadAuditProjectionCheckpointSnapshot(
   return checkpoints;
 }
 
-async function hasUnprojectedQueryActionEvents(
+async function hasUnprojectedWorkflowJournalEvents(
   db: DatabaseExecutor,
+  family: "query_action" | "source_api_action",
   lastCommitPosition: bigint,
   organizationId: string
 ) {
   const rows = await db
-    .select({ eventId: queryActionEvents.id })
-    .from(queryActionEvents)
-    .innerJoin(
-      workflowCommands,
-      eq(workflowCommands.id, queryActionEvents.commandId)
-    )
+    .select({ eventId: workflowJournal.id })
+    .from(workflowJournal)
     .where(
       and(
-        gt(queryActionEvents.commitPosition, lastCommitPosition),
-        eq(workflowCommands.organizationId, organizationId)
-      )
-    )
-    .limit(1);
-
-  return rows.length > 0;
-}
-
-async function hasUnprojectedSourceApiActionEvents(
-  db: DatabaseExecutor,
-  lastCommitPosition: bigint,
-  organizationId: string
-) {
-  const rows = await db
-    .select({ eventId: sourceApiActionEvents.id })
-    .from(sourceApiActionEvents)
-    .innerJoin(
-      workflowCommands,
-      eq(workflowCommands.id, sourceApiActionEvents.commandId)
-    )
-    .where(
-      and(
-        gt(sourceApiActionEvents.commitPosition, lastCommitPosition),
-        eq(workflowCommands.organizationId, organizationId)
+        eq(workflowJournal.family, family),
+        eq(workflowJournal.entryKind, "event"),
+        gt(workflowJournal.commitPosition, lastCommitPosition),
+        eq(workflowJournal.organizationId, organizationId)
       )
     )
     .limit(1);
@@ -165,13 +139,15 @@ async function loadAuditProjectionLag(
   organizationId: string
 ): Promise<AuditProjectionLag> {
   const [queryAction, sourceApiAction] = await Promise.all([
-    hasUnprojectedQueryActionEvents(
+    hasUnprojectedWorkflowJournalEvents(
       db,
+      "query_action",
       checkpoints.queryAction,
       organizationId
     ),
-    hasUnprojectedSourceApiActionEvents(
+    hasUnprojectedWorkflowJournalEvents(
       db,
+      "source_api_action",
       checkpoints.sourceApiAction,
       organizationId
     ),

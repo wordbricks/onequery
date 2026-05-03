@@ -10,7 +10,6 @@ import {
   organization,
   prepareApplicationDatabase,
   workflowJournal,
-  workflowEffectDispatches,
 } from "@onequery/db/server";
 import {
   createSourceApiPreview,
@@ -363,13 +362,6 @@ describe("source api workflow audit runtime", () => {
       where: (table, { eq }) => eq(table.organizationId, org.id),
     });
     const eventRows = await selectSourceApiJournalEventRows(db);
-    const outboxRows = await db
-      .select()
-      .from(workflowEffectDispatches)
-      .orderBy(
-        asc(workflowEffectDispatches.createdAt),
-        asc(workflowEffectDispatches.id)
-      );
 
     expect(descriptorResult).toMatchObject({
       descriptorVersion: "github-v1",
@@ -396,15 +388,6 @@ describe("source api workflow audit runtime", () => {
       "source_loaded",
       "descriptor_resolved",
     ]);
-    expect(
-      outboxRows.map((row) => ({
-        effectType: row.effectType,
-        status: row.status,
-      }))
-    ).toEqual([
-      { effectType: "load_source", status: "completed" },
-      { effectType: "resolve_descriptor", status: "completed" },
-    ]);
   });
 
   it("records failed dispatches in the journal and retries them from journal state", async () => {
@@ -428,32 +411,6 @@ describe("source api workflow audit runtime", () => {
 
     expect(failedResult.isErr()).toBe(true);
 
-    const failedDispatchRows = await db
-      .select()
-      .from(workflowEffectDispatches)
-      .orderBy(
-        asc(workflowEffectDispatches.createdAt),
-        asc(workflowEffectDispatches.id)
-      );
-    expect(
-      failedDispatchRows.map((row) => ({
-        attemptCount: row.attemptCount,
-        effectType: row.effectType,
-        lastErrorCode: row.lastErrorCode,
-        status: row.status,
-      }))
-    ).toEqual([
-      {
-        attemptCount: 0,
-        effectType: "load_source",
-        lastErrorCode: "dispatch_failed",
-        status: "pending",
-      },
-    ]);
-    expect(failedDispatchRows[0]?.lastErrorDetail).toContain(
-      "source backend temporarily unavailable"
-    );
-
     const retriedResult = await runDescribeSourceApiWorkflowResult({
       ...createWorkflowContext(db, "req-describe-dispatch-retry-1"),
       dependencies,
@@ -464,38 +421,6 @@ describe("source api workflow audit runtime", () => {
       descriptorVersion: "github-v1",
     });
     expect(runCliLoadSourceEffect).toHaveBeenCalledTimes(3);
-
-    const dispatchRows = await db
-      .select()
-      .from(workflowEffectDispatches)
-      .orderBy(
-        asc(workflowEffectDispatches.createdAt),
-        asc(workflowEffectDispatches.id)
-      );
-    expect(
-      dispatchRows.map((row) => ({
-        attemptCount: row.attemptCount,
-        effectType: row.effectType,
-        lastErrorCode: row.lastErrorCode,
-        lastErrorDetail: row.lastErrorDetail,
-        status: row.status,
-      }))
-    ).toEqual([
-      {
-        attemptCount: 1,
-        effectType: "load_source",
-        lastErrorCode: null,
-        lastErrorDetail: null,
-        status: "completed",
-      },
-      {
-        attemptCount: 0,
-        effectType: "resolve_descriptor",
-        lastErrorCode: null,
-        lastErrorDetail: null,
-        status: "completed",
-      },
-    ]);
 
     const journalRows = await db
       .select()
@@ -550,13 +475,6 @@ describe("source api workflow audit runtime", () => {
       where: (table, { eq }) => eq(table.organizationId, org.id),
     });
     const eventRows = await selectSourceApiJournalEventRows(db);
-    const outboxRows = await db
-      .select()
-      .from(workflowEffectDispatches)
-      .orderBy(
-        asc(workflowEffectDispatches.createdAt),
-        asc(workflowEffectDispatches.id)
-      );
 
     expect(preview.preview).toMatchObject({
       kind: "http_request",
@@ -585,16 +503,6 @@ describe("source api workflow audit runtime", () => {
       "source_loaded",
       "descriptor_resolved",
       "request_prepared",
-    ]);
-    expect(
-      outboxRows.map((row) => ({
-        effectType: row.effectType,
-        status: row.status,
-      }))
-    ).toEqual([
-      { effectType: "load_source", status: "completed" },
-      { effectType: "resolve_descriptor", status: "completed" },
-      { effectType: "prepare_request", status: "completed" },
     ]);
   });
 
@@ -913,13 +821,6 @@ describe("source api workflow audit runtime", () => {
       where: (table, { eq }) => eq(table.organizationId, org.id),
     });
     const eventRows = await selectSourceApiJournalEventRows(db);
-    const outboxRows = await db
-      .select()
-      .from(workflowEffectDispatches)
-      .orderBy(
-        asc(workflowEffectDispatches.createdAt),
-        asc(workflowEffectDispatches.id)
-      );
 
     expect(resumed).toMatchObject({
       continuationToken: undefined,
@@ -956,18 +857,6 @@ describe("source api workflow audit runtime", () => {
       "page_fetch_succeeded",
       "resume_requested",
       "page_fetch_succeeded",
-    ]);
-    expect(
-      outboxRows.map((row) => ({
-        effectType: row.effectType,
-        status: row.status,
-      }))
-    ).toEqual([
-      { effectType: "load_source", status: "completed" },
-      { effectType: "resolve_descriptor", status: "completed" },
-      { effectType: "prepare_request", status: "completed" },
-      { effectType: "execute_page", status: "completed" },
-      { effectType: "execute_page", status: "completed" },
     ]);
   });
 

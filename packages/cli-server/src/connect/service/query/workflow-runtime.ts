@@ -1,10 +1,3 @@
-import {
-  and,
-  asc,
-  eq,
-  ne,
-  workflowEffectDispatches,
-} from "@onequery/db/server";
 import type { Database, DatabaseCredentials } from "@onequery/db/server";
 
 import {
@@ -16,17 +9,14 @@ import {
 import type {
   QueryActionCommand,
   QueryActionEffect,
-  QueryActionEvent,
   QueryActionSourceDescriptor,
 } from "../../../audit";
-import { decodeQueryActionEffectPayload } from "../../../audit/query-action-family/protobuf-codec";
 import type { CliQuerySourceRecord } from "../../../domain/workflows";
 import { toCliErrorMessage } from "../../../observability";
 import {
   createWorkflowAuditCorruptionFailure,
   createWorkflowAuditFailure,
 } from "../workflow-audit-failure";
-import { dispatchStoredWorkflowEffect } from "../workflow-effect-dispatch";
 import type {
   CliQueryExecutionDispatch,
   DispatchedQueryActionEffect,
@@ -85,23 +75,9 @@ export async function dispatchStoredQueryActionEffect<
     );
   }
 
-  return dispatchStoredWorkflowEffect<
-    QueryActionEffect,
-    EffectType,
-    QueryActionCommand["commandPayload"],
-    QueryActionEvent,
-    StoredAcceptedQueryActionDecision,
-    StoredAcceptedQueryActionResultCommand,
-    TResult
-  >({
-    ...input,
-    createCorruptionProblem: createQueryAuditCorruptionProblem,
-    createProblem: createQueryAuditProblem,
-    family: "query_action",
-    loadEffect: loadRequiredQueryActionEffect,
-    loadStoredResultCommand: loadStoredAcceptedQueryActionResultCommand,
-    storeResultCommand: storeAcceptedQueryActionCommand,
-  });
+  throw createQueryAuditCorruptionProblem(
+    `query_action expected journal effect ${input.expectedEffectType} but the current journal cursor has no runnable token`
+  );
 }
 
 async function replayJournalQueryActionEffect<
@@ -129,11 +105,6 @@ async function replayJournalQueryActionEffect<
       `query_action stored result command for effect ${input.effect.id} is missing its journal completion`
     );
   }
-
-  await completeQueryActionEffectProjectionIfPresent({
-    db: input.db,
-    effectId: input.effect.id,
-  });
 
   return {
     decision: stored.decision,
@@ -446,27 +417,6 @@ function findQueryActionJournalEffect<
   };
 }
 
-async function completeQueryActionEffectProjectionIfPresent(input: {
-  db: Database;
-  effectId: string;
-}) {
-  await input.db
-    .update(workflowEffectDispatches)
-    .set({
-      completedAt: new Date(),
-      lastErrorCode: null,
-      lastErrorDetail: null,
-      leasedUntil: null,
-      status: "completed",
-    })
-    .where(
-      and(
-        eq(workflowEffectDispatches.id, input.effectId),
-        ne(workflowEffectDispatches.status, "completed")
-      )
-    );
-}
-
 async function recordQueryActionEffectFailure(input: {
   currentDecision: StoredAcceptedQueryActionDecision;
   db: Database;
@@ -488,66 +438,6 @@ async function recordQueryActionEffectFailure(input: {
       recorded.error
     );
   }
-}
-
-async function loadRequiredQueryActionEffect<
-  EffectType extends QueryActionEffect["type"],
->(input: {
-  actionId: string;
-  db: Database;
-  expectedEffectType: EffectType;
-  originEventId: string;
-}): Promise<LoadedQueryActionEffect<EffectType>> {
-  const [row] = await input.db
-    .select()
-    .from(workflowEffectDispatches)
-    .where(
-      and(
-        eq(workflowEffectDispatches.actionId, input.actionId),
-        eq(workflowEffectDispatches.family, "query_action"),
-        eq(workflowEffectDispatches.originEventId, input.originEventId)
-      )
-    )
-    .orderBy(
-      asc(workflowEffectDispatches.createdAt),
-      asc(workflowEffectDispatches.id)
-    )
-    .limit(1);
-
-  if (!row) {
-    throw createQueryAuditCorruptionProblem(
-      `query_action effect ${input.expectedEffectType} is missing for origin event ${input.originEventId}`
-    );
-  }
-
-  const decodedEffect = decodeQueryActionEffectPayload(row.payloadBytes, {
-    actionId: input.actionId,
-    payloadType: row.effectType,
-  });
-  if (decodedEffect.isErr()) {
-    throw createQueryAuditCorruptionProblem(
-      `query_action effect ${row.effectType} payload is corrupt`,
-      decodedEffect.error
-    );
-  }
-
-  if (decodedEffect.value.type !== input.expectedEffectType) {
-    throw createQueryAuditCorruptionProblem(
-      `query_action expected effect ${input.expectedEffectType} but loaded ${decodedEffect.value.type}`
-    );
-  }
-
-  return {
-    attemptCount: row.attemptCount,
-    effect: decodedEffect.value as Extract<
-      QueryActionEffect,
-      { type: EffectType }
-    >,
-    effectKey: row.effectKey,
-    id: row.id,
-    originEventId: row.originEventId,
-    status: row.status,
-  };
 }
 
 async function loadStoredAcceptedQueryActionResultCommand(input: {

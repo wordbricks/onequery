@@ -1,10 +1,4 @@
-import {
-  inArray,
-  sourceApiActions,
-  sql,
-  ulid,
-  workflowEffectDispatches,
-} from "@onequery/db/server";
+import { sourceApiActions, ulid } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import type { Result as ResultType } from "better-result";
 import { Result } from "better-result";
@@ -298,11 +292,7 @@ export async function claimFailedSourceApiActionEffectViaJournal(input: {
   >
 > {
   for (let attempt = 1; attempt <= MAX_STORAGE_COMMIT_ATTEMPTS; attempt += 1) {
-    const store = createSourceApiActionJournalStore({
-      db: input.db,
-      onAppendEntries: ({ entries, tx }) =>
-        projectSourceApiActionEffectLifecycleAppend({ entries, tx }),
-    });
+    const store = createSourceApiActionJournalStore({ db: input.db });
     const streamEntries = await store.loadStream({
       family: "source_api_action",
       streamId: input.actionId,
@@ -394,11 +384,7 @@ export async function recordSourceApiActionEffectFailureViaJournal(input: {
   organizationId: string;
 }): Promise<ResultType<void, SourceApiActionJournalStorageError>> {
   for (let attempt = 1; attempt <= MAX_STORAGE_COMMIT_ATTEMPTS; attempt += 1) {
-    const store = createSourceApiActionJournalStore({
-      db: input.db,
-      onAppendEntries: ({ entries, tx }) =>
-        projectSourceApiActionEffectLifecycleAppend({ entries, tx }),
-    });
+    const store = createSourceApiActionJournalStore({ db: input.db });
     const streamEntries = await store.loadStream({
       family: "source_api_action",
       streamId: input.actionId,
@@ -573,76 +559,6 @@ async function projectFreshSourceApiActionJournalAppend(input: {
     throw nextState.error;
   }
 
-  const lastEvent = committedEvents.at(-1);
-  if (!lastEvent) {
-    throw new WorkflowStorageWriteError({
-      actionId: input.actionId,
-      family: "source_api_action",
-      operation: "project_journal_effect_dispatches",
-    });
-  }
-
-  const scheduledEffects = input.entries.filter(
-    (
-      entry
-    ): entry is Extract<
-      WorkflowJournalEntry<
-        SourceApiActionCommandPayload,
-        SourceApiActionEvent,
-        SourceApiActionEffect
-      >,
-      { kind: "effect_scheduled" }
-    > => entry.kind === "effect_scheduled"
-  );
-  if (scheduledEffects.length > 0) {
-    await input.tx.insert(workflowEffectDispatches).values(
-      scheduledEffects.map((entry, index) => ({
-        actionId: input.actionId,
-        attemptCount: 0,
-        availableAt: entry.occurredAt,
-        createdAt: entry.occurredAt,
-        effectKey: `source_api_action:${lastEvent.id}:${index + 1}`,
-        effectType: entry.effectType,
-        family: "source_api_action" as const,
-        id: entry.effectId,
-        originEventId: lastEvent.id,
-        payloadBytes: encodeSourceApiActionEffectPayload(entry.effect),
-        status: "pending" as const,
-      }))
-    );
-  }
-
-  const completedEffects = input.entries.filter(
-    (
-      entry
-    ): entry is Extract<
-      WorkflowJournalEntry<
-        SourceApiActionCommandPayload,
-        SourceApiActionEvent,
-        SourceApiActionEffect
-      >,
-      { kind: "effect_completed" }
-    > => entry.kind === "effect_completed"
-  );
-  const firstCompletedEffect = completedEffects[0];
-  if (firstCompletedEffect !== undefined) {
-    await input.tx
-      .update(workflowEffectDispatches)
-      .set({
-        completedAt: firstCompletedEffect.occurredAt,
-        lastErrorCode: null,
-        lastErrorDetail: null,
-        leasedUntil: null,
-        status: "completed",
-      })
-      .where(
-        inArray(
-          workflowEffectDispatches.id,
-          completedEffects.map((effect) => effect.effectId)
-        )
-      );
-  }
-
   const actionColumns = toSourceApiActionColumns(nextState.value);
   await input.tx
     .insert(sourceApiActions)
@@ -655,60 +571,6 @@ async function projectFreshSourceApiActionJournalAppend(input: {
       set: actionColumns,
       target: sourceApiActions.id,
     });
-}
-
-async function projectSourceApiActionEffectLifecycleAppend(input: {
-  entries: readonly WorkflowJournalEntry<
-    SourceApiActionCommandPayload,
-    SourceApiActionEvent,
-    SourceApiActionEffect
-  >[];
-  tx: DatabaseTransaction;
-}) {
-  const startedEffects = input.entries.filter(
-    (entry): entry is WorkflowJournalEffectStartedEntry =>
-      entry.kind === "effect_started"
-  );
-  if (startedEffects.length > 0) {
-    await input.tx
-      .update(workflowEffectDispatches)
-      .set({
-        attemptCount: sql`${workflowEffectDispatches.attemptCount} + 1`,
-        lastErrorCode: null,
-        lastErrorDetail: null,
-        leasedUntil: null,
-        status: "leased",
-      })
-      .where(
-        inArray(
-          workflowEffectDispatches.id,
-          startedEffects.map((entry) => entry.effectId)
-        )
-      );
-  }
-
-  const failedEffects = input.entries.filter(
-    (entry): entry is WorkflowJournalEffectFailedEntry =>
-      entry.kind === "effect_failed"
-  );
-  const firstFailedEffect = failedEffects[0];
-  if (firstFailedEffect !== undefined) {
-    await input.tx
-      .update(workflowEffectDispatches)
-      .set({
-        availableAt: firstFailedEffect.occurredAt,
-        lastErrorCode: firstFailedEffect.errorCode,
-        lastErrorDetail: firstFailedEffect.errorDetail,
-        leasedUntil: null,
-        status: "pending",
-      })
-      .where(
-        inArray(
-          workflowEffectDispatches.id,
-          failedEffects.map((entry) => entry.effectId)
-        )
-      );
-  }
 }
 
 function toStoredSourceApiActionJournalDecision(

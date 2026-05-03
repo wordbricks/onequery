@@ -71,6 +71,13 @@
       "when": 1777557546727,
       "tag": "20260430135906_flippant_timeslip",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777633260000,
+      "tag": "20260502000100_drop_old_workflow_audit_tables",
+      "breakpoints": true
     }
   ]
 }
