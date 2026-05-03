@@ -403,6 +403,7 @@ export async function loadPendingQueryActionEffectsViaJournal(input: {
       effect: effect.value,
       effectId: row.effectId,
       effectType: row.effectType,
+      organizationId: row.organizationId,
       scheduledAt: row.scheduledAt,
       scheduledByEntryId: row.scheduledByEntryId,
       streamId: row.streamId,
@@ -411,6 +412,45 @@ export async function loadPendingQueryActionEffectsViaJournal(input: {
   }
 
   return Result.ok(pending);
+}
+
+export async function loadQueryActionDecisionForEffectViaJournal(input: {
+  actionId: string;
+  db: Database;
+  effectId: string;
+}): Promise<
+  ResultType<
+    StoredQueryActionJournalDecision | null,
+    QueryActionJournalStorageError
+  >
+> {
+  const store = createQueryActionJournalStore({ db: input.db });
+  const streamEntries = await store.loadStream({
+    family: "query_action",
+    streamId: input.actionId,
+  });
+  const effectEntry = streamEntries.find(
+    (entry) =>
+      entry.kind === "effect_scheduled" && entry.effectId === input.effectId
+  );
+
+  if (effectEntry === undefined) {
+    return Result.ok(null);
+  }
+
+  const commitEntries = streamEntries.filter(
+    (entry) => entry.commitId === effectEntry.commitId
+  );
+  const stored = await replayStoredQueryActionJournalCommand({
+    entries: commitEntries,
+    idempotency: "replayed",
+    store,
+  });
+  if (stored.isErr()) {
+    return Result.err(stored.error);
+  }
+
+  return Result.ok(stored.value.decision);
 }
 
 export async function rebuildPendingQueryActionEffectsViaJournal(input: {
@@ -1014,6 +1054,7 @@ function collectScheduledEffectTokens(
             effect: entry.effect,
             effectId: entry.effectId,
             effectType: entry.effectType,
+            organizationId: entry.organizationId,
             scheduledAt: entry.occurredAt,
             scheduledByEntryId: entry.entryId,
             streamId: entry.streamId,

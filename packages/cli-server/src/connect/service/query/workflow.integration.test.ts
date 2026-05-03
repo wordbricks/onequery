@@ -30,6 +30,7 @@ import type {
   CliQuerySourceRecord,
 } from "../../../domain/workflows";
 import {
+  recoverPendingQueryUsagePersistenceEffects,
   runCliQueryExecutionWorkflowResult,
   runCliQueryValidationWorkflowResult,
 } from "./workflow";
@@ -372,6 +373,105 @@ describe("query workflow audit runtime", () => {
         .map((row) => row.payloadBytes?.toString("utf8") ?? "")
         .join("\n")
     ).not.toContain("encrypted");
+  });
+
+  it("recovers pending usage persistence from journal state after query response", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const fakeCredentials = {
+      connectionString: "postgres://example",
+      provider: "postgres",
+    } as unknown as DatabaseCredentials;
+    const persistUsage = vi.fn().mockResolvedValue({
+      kind: "usage_persisted",
+    } satisfies CliPersistUsageEffectResult);
+
+    vi.useFakeTimers();
+    const result = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        executeSql: async (): Promise<CliQueryExecutionResult> => ({
+          elapsedMs: 12,
+          kind: "succeeded",
+          rows: [{ answer: 42 }],
+        }),
+        loadCredentials: async (): Promise<CliLoadCredentialsEffectResult> => ({
+          credentials: fakeCredentials,
+          kind: "credentials_loaded",
+          source,
+        }),
+        loadSource: async (): Promise<CliLoadSourceEffectResult> => ({
+          kind: "found",
+          source,
+        }),
+        persistUsage,
+        validateQuery: async (): Promise<CliValidateQueryEffectResult> => ({
+          kind: "query_ready",
+          normalizedSql: "select 42 as answer",
+          truncated: false,
+        }),
+      },
+      org,
+      requestId: "req-execute-usage-recovery-1",
+      sourceName: source.sourceKey,
+      sql: "select 42 as answer",
+      timeoutMs: 30_000,
+    });
+    vi.useRealTimers();
+
+    expect(unwrapOk(result)).toMatchObject({
+      kind: "response_ready",
+    });
+    expect(persistUsage).not.toHaveBeenCalled();
+
+    const pendingBefore = await db.select().from(pendingWorkflowEffects);
+    expect(pendingBefore.map((row) => row.effectType)).toEqual([
+      "persist_usage",
+    ]);
+
+    const recovered = await recoverPendingQueryUsagePersistenceEffects({
+      actorSnapshot,
+      db,
+      dispatch: {
+        persistUsage,
+      },
+      requestId: "req-execute-usage-recovery-worker-1",
+    });
+
+    expect(recovered).toEqual({
+      failed: 0,
+      recovered: 1,
+      skipped: 0,
+    });
+    expect(persistUsage).toHaveBeenCalledTimes(1);
+
+    const pendingAfter = await db.select().from(pendingWorkflowEffects);
+    expect(pendingAfter).toEqual([]);
+
+    const journalRows = await db
+      .select()
+      .from(workflowJournal)
+      .orderBy(asc(workflowJournal.streamPosition));
+    expect(
+      journalRows.map((row) => ({
+        entryKind: row.entryKind,
+        payloadType: row.payloadType,
+      }))
+    ).toContainEqual({
+      entryKind: "effect_started",
+      payloadType: "effect_started",
+    });
+    expect(
+      journalRows.map((row) => ({
+        entryKind: row.entryKind,
+        payloadType: row.payloadType,
+      }))
+    ).toContainEqual({
+      entryKind: "event",
+      payloadType: "usage_persisted",
+    });
   });
 
   it("records validation preparation failures as query_preparation_failed", async () => {

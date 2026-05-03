@@ -29,6 +29,7 @@ export type {
 } from "./storage/journal-db";
 export {
   claimFailedQueryActionEffectViaJournal,
+  loadQueryActionDecisionForEffectViaJournal,
   loadPendingQueryActionEffectsViaJournal,
   loadQueryActionCommandViaJournal,
   recordQueryActionEffectFailureViaJournal,

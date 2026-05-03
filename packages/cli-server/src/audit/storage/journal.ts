@@ -110,6 +110,7 @@ export type WorkflowJournalEffectState<Effect extends { type: string }> = {
   failedAt: Date | null;
   lastErrorCode: string | null;
   lastErrorDetail: string | null;
+  organizationId: string;
   scheduledAt: Date;
   scheduledByEntryId: string;
   startedAt: Date | null;
@@ -122,6 +123,7 @@ export type WorkflowJournalEffectToken<Effect extends { type: string }> = {
   effect: Effect;
   effectId: string;
   effectType: string;
+  organizationId: string;
   scheduledAt: Date;
   scheduledByEntryId: string;
   streamId: string;
@@ -497,6 +499,7 @@ export function foldWorkflowJournalEntries<
           failedAt: null,
           lastErrorCode: null,
           lastErrorDetail: null,
+          organizationId: entry.organizationId,
           scheduledAt: entry.occurredAt,
           scheduledByEntryId: entry.entryId,
           startedAt: null,
@@ -855,6 +858,7 @@ function collectFreshEffects<
             effect: entry.effect,
             effectId: entry.effectId,
             effectType: entry.effectType,
+            organizationId: entry.organizationId,
             scheduledAt: entry.occurredAt,
             scheduledByEntryId: entry.entryId,
             streamId: entry.streamId,
@@ -966,6 +970,7 @@ function toEffectToken<Effect extends { type: string }>(
     effect: effect.effect,
     effectId: effect.effectId,
     effectType: effect.effectType,
+    organizationId: effect.organizationId,
     scheduledAt: effect.scheduledAt,
     scheduledByEntryId: effect.scheduledByEntryId,
     streamId: effect.streamId,
