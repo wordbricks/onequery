@@ -183,9 +183,11 @@ export async function storeQueryActionCommandViaJournal(input: {
     const store = createQueryActionJournalStore({ db });
     const isFreshGeneratedStream =
       command.actionId === null && carriedCursor === undefined;
+    const trustedCurrentCursor =
+      carriedCursor?.streamId === actionId ? carriedCursor : undefined;
     const cursor =
-      carriedCursor?.streamId === actionId
-        ? Result.ok(carriedCursor)
+      trustedCurrentCursor !== undefined
+        ? Result.ok(trustedCurrentCursor)
         : isFreshGeneratedStream
           ? Result.ok(createEmptyQueryActionJournalCursor(actionId))
           : foldWorkflowJournalEntries({
@@ -251,7 +253,11 @@ export async function storeQueryActionCommandViaJournal(input: {
       reduce: reduceQueryActionJournalEvent,
       store: appendStore,
       streamId: actionId,
-      skipStorePreflightChecks: isFreshGeneratedStream,
+      // Comment: carried cursors are produced by a prior accepted decision in
+      // this stream; DB unique constraints still replay idempotency and position
+      // races if the optimistic append loses.
+      skipStorePreflightChecks:
+        isFreshGeneratedStream || trustedCurrentCursor !== undefined,
     });
 
     if (appended.isErr()) {
