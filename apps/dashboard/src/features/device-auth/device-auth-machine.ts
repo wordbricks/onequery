@@ -232,6 +232,10 @@ const deviceAuthMachineSetup = setup({
   guards: {
     hasPendingVerification: ({ context }) =>
       context.pendingVerification !== null,
+    hasSignedInInitialCode: ({ context }) =>
+      context.activeUserCode !== null &&
+      context.session.kind === "signedIn" &&
+      context.alert.kind === "idle",
     hasNormalizedInputCode: ({ context }) =>
       normalizeUserCode(context.inputCode) !== null,
     storedSessionSignedIn: ({ context }) => context.session.kind === "signedIn",
@@ -268,10 +272,16 @@ export const deviceAuthMachine = deviceAuthMachineSetup.createMachine({
   },
   states: {
     entry: {
-      always: {
-        guard: "hasPendingVerification",
-        target: "verifying",
-      },
+      always: [
+        {
+          guard: "hasPendingVerification",
+          target: "verifying",
+        },
+        {
+          guard: "hasSignedInInitialCode",
+          target: "pending",
+        },
+      ],
       on: {
         "deviceAuth/inputChanged": {
           actions: "setInputCode",

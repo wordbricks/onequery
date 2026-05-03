@@ -161,6 +161,14 @@ export function createInitialDeviceAuthContext(
     return context;
   }
 
+  if (input.initialSession.kind === "signedIn") {
+    return {
+      ...context,
+      activeUserCode: input.initialUserCode,
+      inputCode: input.initialUserCode,
+    };
+  }
+
   return {
     ...context,
     activeUserCode: input.initialUserCode,
