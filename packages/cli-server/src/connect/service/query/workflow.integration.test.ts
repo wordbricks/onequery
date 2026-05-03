@@ -18,7 +18,10 @@ import type { Result as ResultType } from "better-result";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { WorkflowActorSnapshot } from "../../../audit";
-import { rebuildPendingQueryActionEffectsViaJournal } from "../../../audit/storage";
+import {
+  claimFailedQueryActionEffectViaJournal,
+  rebuildPendingQueryActionEffectsViaJournal,
+} from "../../../audit/storage";
 import type {
   CliLoadCredentialsEffectResult,
   CliLoadSourceEffectResult,
@@ -474,6 +477,139 @@ describe("query workflow audit runtime", () => {
       entryKind: "event",
       payloadType: "usage_persisted",
     });
+  });
+
+  it("recovers leased usage persistence effects after a worker crash", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const fakeCredentials = {
+      connectionString: "postgres://example",
+      provider: "postgres",
+    } as unknown as DatabaseCredentials;
+    const persistUsage = vi.fn().mockResolvedValue({
+      kind: "usage_persisted",
+    } satisfies CliPersistUsageEffectResult);
+
+    vi.useFakeTimers();
+    const result = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        executeSql: async (): Promise<CliQueryExecutionResult> => ({
+          elapsedMs: 12,
+          kind: "succeeded",
+          rows: [{ answer: 42 }],
+        }),
+        loadCredentials: async (): Promise<CliLoadCredentialsEffectResult> => ({
+          credentials: fakeCredentials,
+          kind: "credentials_loaded",
+          source,
+        }),
+        loadSource: async (): Promise<CliLoadSourceEffectResult> => ({
+          kind: "found",
+          source,
+        }),
+        persistUsage,
+        validateQuery: async (): Promise<CliValidateQueryEffectResult> => ({
+          kind: "query_ready",
+          normalizedSql: "select 42 as answer",
+          truncated: false,
+        }),
+      },
+      org,
+      requestId: "req-execute-usage-leased-recovery-1",
+      sourceName: source.sourceKey,
+      sql: "select 42 as answer",
+      timeoutMs: 30_000,
+    });
+    vi.useRealTimers();
+
+    expect(unwrapOk(result)).toMatchObject({
+      kind: "response_ready",
+    });
+
+    const [pendingUsageEffect] = await db.select().from(pendingWorkflowEffects);
+    if (pendingUsageEffect === undefined) {
+      throw new Error("expected pending usage persistence effect");
+    }
+
+    const claimed = await claimFailedQueryActionEffectViaJournal({
+      actionId: pendingUsageEffect.streamId,
+      db,
+      effectId: pendingUsageEffect.effectId,
+      organizationId: org.id,
+    });
+    expect(claimed.isOk()).toBe(true);
+
+    let pendingEffectRows = await db.select().from(pendingWorkflowEffects);
+    expect(
+      pendingEffectRows.map((row) => ({
+        attemptCount: row.attemptCount,
+        effectType: row.effectType,
+        status: row.status,
+      }))
+    ).toEqual([
+      {
+        attemptCount: 1,
+        effectType: "persist_usage",
+        status: "leased",
+      },
+    ]);
+
+    await db.delete(pendingWorkflowEffects);
+    const rebuilt = await rebuildPendingQueryActionEffectsViaJournal({ db });
+    expect(rebuilt.isOk()).toBe(true);
+    pendingEffectRows = await db.select().from(pendingWorkflowEffects);
+    expect(
+      pendingEffectRows.map((row) => ({
+        attemptCount: row.attemptCount,
+        effectType: row.effectType,
+        status: row.status,
+      }))
+    ).toEqual([
+      {
+        attemptCount: 1,
+        effectType: "persist_usage",
+        status: "leased",
+      },
+    ]);
+
+    const recovered = await recoverPendingQueryUsagePersistenceEffects({
+      actorSnapshot,
+      db,
+      dispatch: {
+        persistUsage,
+      },
+      requestId: "req-execute-usage-leased-recovery-worker-1",
+    });
+
+    expect(recovered).toEqual({
+      failed: 0,
+      recovered: 1,
+      skipped: 0,
+    });
+    expect(persistUsage).toHaveBeenCalledTimes(1);
+
+    const pendingAfter = await db.select().from(pendingWorkflowEffects);
+    expect(pendingAfter).toEqual([]);
+
+    const journalRows = await db
+      .select()
+      .from(workflowJournal)
+      .orderBy(asc(workflowJournal.streamPosition));
+    expect(
+      journalRows.map((row) => ({
+        entryKind: row.entryKind,
+        payloadType: row.payloadType,
+      }))
+    ).toEqual(
+      expect.arrayContaining([
+        { entryKind: "effect_failed", payloadType: "effect_failed" },
+        { entryKind: "effect_started", payloadType: "effect_started" },
+        { entryKind: "event", payloadType: "usage_persisted" },
+      ])
+    );
   });
 
   it("records validation preparation failures as query_preparation_failed", async () => {

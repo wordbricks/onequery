@@ -174,12 +174,12 @@ audit_feed_entries:
   folded audit summary
 
 pending_effects:
-  rebuildable work queue derived from effect_scheduled, effect_started, and effect_completed entries
+  rebuildable work queue derived from effect_scheduled, effect_started, effect_failed, and effect_completed entries
 ```
 
 Keep existing projection names where they are still useful API surfaces, but redefine them as pure journal-derived read models. They are no longer correctness tables.
 
-`pending_effects` is a derived work queue, not a correctness source. Workers use it to find work, then claim by appending `effect_started` to the journal. If `pending_effects` is lost, stale, or corrupted, it is rebuilt from the journal.
+`pending_effects` is a derived work queue, not a correctness source. Workers use it to find work, then claim by appending `effect_started` to the journal. A row projected from `effect_started` is leased, but recovery must still be able to find it. If a worker crashes before completion or failure, the next claimant appends a lease-recovery `effect_failed` entry and then a new `effect_started` entry before executing. If `pending_effects` is lost, stale, or corrupted, it is rebuilt from the journal.
 
 Query execution does not sync projections on the request path. Audit/feed APIs may read stale projected state with lag metadata, run bounded sync, or rely on a background projector.
 
@@ -191,7 +191,7 @@ Recovered execution uses journal state.
 1. Find candidate effects from pending_effects.
 2. Rebuild state from the latest checkpoint plus journal tail.
 3. Skip effects that already have effect_completed.
-4. Claim expired or pending effects by appending effect_started.
+4. Claim pending, failed, or leased effects by appending effect_started. Leased effects first append a lease-recovery effect_failed entry so the journal can transition from started to started again without losing the crash record.
 5. Execute the effect.
 6. Append the result batch.
 ```

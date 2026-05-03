@@ -8,6 +8,7 @@ import {
   createDb,
   eq,
   organization,
+  pendingWorkflowEffects,
   prepareApplicationDatabase,
   workflowJournal,
 } from "@onequery/db/server";
@@ -21,12 +22,18 @@ import { Result } from "better-result";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { WorkflowActorSnapshot } from "../../../audit";
+import {
+  claimFailedSourceApiActionEffectViaJournal,
+  rebuildPendingSourceApiActionEffectsViaJournal,
+} from "../../../audit/storage";
 import type { SourceApiServiceDependencies } from "./dependencies";
 import {
   runDescribeSourceApiWorkflowResult,
   runResumeSourceApiExecuteWorkflowResult,
   runStartSourceApiExecuteWorkflowResult,
 } from "./workflow";
+import { buildStartSourceApiDescribeCommandInvocationId } from "./workflow-command-id";
+import { storeAcceptedSourceApiActionCommand } from "./workflow-runtime";
 
 type ClosableDatabase = {
   $client?: {
@@ -445,6 +452,116 @@ describe("source api workflow audit runtime", () => {
       { entryKind: "event", payloadType: "descriptor_resolved" },
       { entryKind: "effect_completed", payloadType: "effect_completed" },
     ]);
+  });
+
+  it("retries leased source-api effects after a worker crash", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+    const requestId = "req-describe-leased-recovery-1";
+    const sourceKey = "github-prod";
+    const dependencies = createDependencies();
+
+    const startDecision = await storeAcceptedSourceApiActionCommand({
+      actionId: null,
+      actorSnapshot,
+      causedByEventId: null,
+      commandInvocationId: buildStartSourceApiDescribeCommandInvocationId({
+        organizationId: org.id,
+        requestId,
+        sourceKey,
+      }),
+      commandPayload: {
+        sourceKey,
+        type: "start_describe",
+      },
+      db,
+      organizationId: org.id,
+      requestId,
+      surface: "cli",
+    });
+    expect(
+      startDecision.freshEffects.map((effect) => effect.effectType)
+    ).toEqual(["load_source"]);
+
+    const [pendingSourceApiEffect] = await db
+      .select()
+      .from(pendingWorkflowEffects);
+    if (pendingSourceApiEffect === undefined) {
+      throw new Error("expected pending source api effect");
+    }
+
+    const claimed = await claimFailedSourceApiActionEffectViaJournal({
+      actionId: pendingSourceApiEffect.streamId,
+      db,
+      effectId: pendingSourceApiEffect.effectId,
+      organizationId: org.id,
+    });
+    expect(claimed.isOk()).toBe(true);
+
+    let pendingEffectRows = await db.select().from(pendingWorkflowEffects);
+    expect(
+      pendingEffectRows.map((row) => ({
+        attemptCount: row.attemptCount,
+        effectType: row.effectType,
+        status: row.status,
+      }))
+    ).toEqual([
+      {
+        attemptCount: 1,
+        effectType: "load_source",
+        status: "leased",
+      },
+    ]);
+
+    await db.delete(pendingWorkflowEffects);
+    const rebuilt = await rebuildPendingSourceApiActionEffectsViaJournal({
+      db,
+    });
+    expect(rebuilt.isOk()).toBe(true);
+    pendingEffectRows = await db.select().from(pendingWorkflowEffects);
+    expect(
+      pendingEffectRows.map((row) => ({
+        attemptCount: row.attemptCount,
+        effectType: row.effectType,
+        status: row.status,
+      }))
+    ).toEqual([
+      {
+        attemptCount: 1,
+        effectType: "load_source",
+        status: "leased",
+      },
+    ]);
+
+    const recoveredResult = await runDescribeSourceApiWorkflowResult({
+      ...createWorkflowContext(db, requestId),
+      dependencies,
+      sourceKey,
+    });
+
+    expect(unwrapOk(recoveredResult)).toMatchObject({
+      descriptorVersion: "github-v1",
+    });
+
+    const pendingAfter = await db.select().from(pendingWorkflowEffects);
+    expect(pendingAfter).toEqual([]);
+
+    const journalRows = await db
+      .select()
+      .from(workflowJournal)
+      .orderBy(asc(workflowJournal.streamPosition));
+    expect(
+      journalRows.map((row) => ({
+        entryKind: row.entryKind,
+        payloadType: row.payloadType,
+      }))
+    ).toEqual(
+      expect.arrayContaining([
+        { entryKind: "effect_failed", payloadType: "effect_failed" },
+        { entryKind: "effect_started", payloadType: "effect_started" },
+        { entryKind: "event", payloadType: "descriptor_resolved" },
+      ])
+    );
   });
 
   it("records preview-only invoke through source_api_action storage", async () => {

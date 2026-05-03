@@ -49,6 +49,7 @@ import type {
   WorkflowJournalCheckpointIntent,
   WorkflowJournalEffectFailedEntry,
   WorkflowJournalEffectStartedEntry,
+  WorkflowJournalEffectState,
   WorkflowJournalEffectToken,
   WorkflowJournalEntry,
   WorkflowJournalEventEntry,
@@ -388,7 +389,7 @@ export async function loadPendingQueryActionEffectsViaJournal<
   const conditions = [
     eq(pendingWorkflowEffects.family, "query_action"),
     eq(pendingWorkflowEffects.effectType, input.effectType),
-    inArray(pendingWorkflowEffects.status, ["pending", "failed"]),
+    inArray(pendingWorkflowEffects.status, ["pending", "leased", "failed"]),
   ];
   if (input.organizationId !== undefined) {
     conditions.push(
@@ -525,7 +526,9 @@ export async function rebuildPendingQueryActionEffectsViaJournal(input: {
       ...cursor.value.effects
         .filter(
           (effect) =>
-            effect.status === "scheduled" || effect.status === "failed"
+            effect.status === "scheduled" ||
+            effect.status === "started" ||
+            effect.status === "failed"
         )
         .map((effect) => ({
           attemptCount: effect.attemptCount,
@@ -542,7 +545,9 @@ export async function rebuildPendingQueryActionEffectsViaJournal(input: {
           status:
             effect.status === "scheduled"
               ? ("pending" as const)
-              : ("failed" as const),
+              : effect.status === "started"
+                ? ("leased" as const)
+                : ("failed" as const),
           streamId: effect.streamId,
           streamPosition: effect.streamPosition,
         }))
@@ -593,12 +598,11 @@ export async function claimFailedQueryActionEffectViaJournal(input: {
     const effectState = cursor.value.effects.find(
       (known) => known.effectId === input.effectId
     );
-    const effect = cursor.value.pendingEffects.find(
-      (pending) => pending.effectId === input.effectId
-    );
     if (
       effectState === undefined ||
-      (effectState.status !== "scheduled" && effectState.status !== "failed")
+      (effectState.status !== "scheduled" &&
+        effectState.status !== "started" &&
+        effectState.status !== "failed")
     ) {
       return Result.err(
         new WorkflowJournalCorruptStreamError({
@@ -608,6 +612,10 @@ export async function claimFailedQueryActionEffectViaJournal(input: {
         })
       );
     }
+    const effect =
+      cursor.value.pendingEffects.find(
+        (pending) => pending.effectId === input.effectId
+      ) ?? toQueryActionJournalEffectToken(effectState);
     if (effect === undefined) {
       return Result.err(
         new WorkflowJournalCorruptStreamError({
@@ -619,8 +627,25 @@ export async function claimFailedQueryActionEffectViaJournal(input: {
     }
 
     const occurredAt = new Date();
+    const commitId = ulid();
+    const leaseRecoveryEntry: WorkflowJournalEffectFailedEntry | null =
+      effectState.status === "started"
+        ? {
+            commitId,
+            effectId: input.effectId,
+            entryId: ulid(),
+            errorCode: "effect_lease_recovered",
+            errorDetail: "query_action effect lease was recovered before retry",
+            family: "query_action",
+            kind: "effect_failed",
+            occurredAt,
+            organizationId: input.organizationId,
+            streamId: input.actionId,
+            streamPosition: cursor.value.streamPosition + 1,
+          }
+        : null;
     const entry: WorkflowJournalEffectStartedEntry = {
-      commitId: ulid(),
+      commitId,
       effectId: input.effectId,
       entryId: ulid(),
       family: "query_action",
@@ -628,11 +653,13 @@ export async function claimFailedQueryActionEffectViaJournal(input: {
       occurredAt,
       organizationId: input.organizationId,
       streamId: input.actionId,
-      streamPosition: cursor.value.streamPosition + 1,
+      streamPosition:
+        cursor.value.streamPosition + (leaseRecoveryEntry === null ? 1 : 2),
       workerId: QUERY_ACTION_EFFECT_WORKER_ID,
     };
     const appended = await store.appendEntries({
-      entries: [entry],
+      entries:
+        leaseRecoveryEntry === null ? [entry] : [leaseRecoveryEntry, entry],
       expectedStreamPosition: cursor.value.streamPosition,
     });
 
@@ -1081,6 +1108,21 @@ function collectScheduledEffectTokens(
         ]
       : []
   );
+}
+
+function toQueryActionJournalEffectToken(
+  effect: WorkflowJournalEffectState<QueryActionEffect>
+): WorkflowJournalEffectToken<QueryActionEffect> {
+  return {
+    effect: effect.effect,
+    effectId: effect.effectId,
+    effectType: effect.effectType,
+    organizationId: effect.organizationId,
+    scheduledAt: effect.scheduledAt,
+    scheduledByEntryId: effect.scheduledByEntryId,
+    streamId: effect.streamId,
+    streamPosition: effect.streamPosition,
+  };
 }
 
 function collectCompletedEffectIds(
