@@ -62,6 +62,7 @@
         "oxfmt": "0.46.0",
         "oxlint": "1.61.0",
         "postcss": "8.5.6",
+        "rollup-plugin-visualizer": "7.0.1",
         "tailwindcss": "4.2.2",
         "vite": "8.0.2",
         "vite-tsconfig-paths": "6.1.1"

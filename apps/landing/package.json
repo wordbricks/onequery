@@ -7,6 +7,9 @@
     "dev": "vite",
     "workspace:dev": "bun run dev",
     "build": "vite build",
+    "bundle:analyze": "ONEQUERY_BUNDLE_REPORT=1 vite build",
+    "bundle:analyze:json": "ONEQUERY_BUNDLE_REPORT=1 ONEQUERY_BUNDLE_REPORT_TEMPLATE=raw-data vite build",
+    "bundle:analyze:list": "ONEQUERY_BUNDLE_REPORT=1 ONEQUERY_BUNDLE_REPORT_TEMPLATE=list vite build",
     "deploy": "bun run --cwd ../.. landing:build && bunx wrangler deploy",
     "deploy:preview": "bun run --cwd ../.. landing:build && bunx wrangler versions upload",
     "cf-typegen": "bunx wrangler types worker-configuration.d.ts --env-interface CloudflareEnv",
@@ -41,6 +44,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:tooling",
     "babel-plugin-react-compiler": "catalog:tooling",
+    "rollup-plugin-visualizer": "catalog:tooling",
     "vite": "catalog:tooling",
     "vitest": "catalog:testing"
   }
