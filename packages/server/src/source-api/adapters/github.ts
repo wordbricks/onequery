@@ -139,7 +139,7 @@ const GitHubFieldPatchSchema = z
 
 type GitHubFieldPatch = z.infer<typeof GitHubFieldPatchSchema>;
 
-export type GitHubTransportResponse = {
+type GitHubTransportResponse = {
   body: SourceApiResponseBody;
   contentType: string;
   headers: SourceApiHeader[];

@@ -58,14 +58,14 @@ const MIXPANEL_ALLOWED_METHOD_SET = new Set<string>(MIXPANEL_ALLOWED_METHODS);
 const MIXPANEL_ALLOWED_RESPONSE_HEADERS = ["content-type"] as const;
 const RESERVED_MIXPANEL_KEYS = new Set(["project_id", "workspace_id"]);
 
-export const mixpanelSourceApiOperationSchema = z.enum([
+const mixpanelSourceApiOperationSchema = z.enum([
   "query_engage",
   "query_segmentation",
   "fetch_query_api",
   "export_events",
 ]);
 
-export type MixpanelSourceApiOperation = z.infer<
+type MixpanelSourceApiOperation = z.infer<
   typeof mixpanelSourceApiOperationSchema
 >;
 
@@ -162,11 +162,11 @@ type MixpanelExportEventsSourceApiRequest = {
   timeoutMs?: number;
 };
 
-export type MixpanelTransportResponse = Awaited<
+type MixpanelTransportResponse = Awaited<
   ReturnType<typeof readSourceApiHttpTransportResponse>
 >;
 
-export class MixpanelInvalidRequestError extends SourceApiInvalidRequestError {}
+class MixpanelInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export const mixpanelSourceApiAdapter: SourceApiAdapter = {
   provider: "mixpanel",
@@ -495,7 +495,7 @@ export const mixpanelSourceApiAdapter: SourceApiAdapter = {
   },
 };
 
-export function isMixpanelSourceCredentials(
+function isMixpanelSourceCredentials(
   value: unknown
 ): value is MixpanelCredentials {
   return (
@@ -506,7 +506,7 @@ export function isMixpanelSourceCredentials(
   );
 }
 
-export async function requestMixpanelSourceApi(
+async function requestMixpanelSourceApi(
   input: {
     credentials: MixpanelCredentials;
   } & (
@@ -587,7 +587,7 @@ export async function requestMixpanelSourceApi(
   }
 }
 
-export function buildMixpanelQueryApiUrl(input: {
+function buildMixpanelQueryApiUrl(input: {
   credentials: MixpanelCredentials;
   endpoint: string;
   params?: Record<string, unknown>;
@@ -616,7 +616,7 @@ export function buildMixpanelQueryApiUrl(input: {
   return url.toString();
 }
 
-export function buildMixpanelExportEventsUrl(input: {
+function buildMixpanelExportEventsUrl(input: {
   credentials: MixpanelCredentials;
   params?: Record<string, unknown>;
 }): string {

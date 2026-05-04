@@ -39,12 +39,6 @@ const AMPLITUDE_DESCRIPTOR_VERSION = "amplitude.v1";
 const AMPLITUDE_ALLOWED_METHODS = ["DELETE", "GET", "POST", "PUT"] as const;
 const AMPLITUDE_ALLOWED_RESPONSE_HEADERS = ["content-type"] as const;
 
-export const amplitudeSourceApiOperationSchema = z.enum(["fetch_api"]);
-
-export type AmplitudeSourceApiOperation = z.infer<
-  typeof amplitudeSourceApiOperationSchema
->;
-
 const amplitudeFieldPatchSchema = z
   .object({
     params: z.record(z.string(), z.unknown()).optional(),
@@ -59,11 +53,11 @@ const amplitudeFieldPatchSchema = z
 
 type AmplitudeFieldPatch = z.infer<typeof amplitudeFieldPatchSchema>;
 
-export type AmplitudeTransportResponse = Awaited<
+type AmplitudeTransportResponse = Awaited<
   ReturnType<typeof readSourceApiHttpTransportResponse>
 >;
 
-export class AmplitudeInvalidRequestError extends SourceApiInvalidRequestError {}
+class AmplitudeInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export const amplitudeSourceApiAdapter: SourceApiAdapter = {
   provider: "amplitude",
@@ -175,7 +169,7 @@ export const amplitudeSourceApiAdapter: SourceApiAdapter = {
   },
 };
 
-export function isAmplitudeSourceCredentials(
+function isAmplitudeSourceCredentials(
   value: unknown
 ): value is AmplitudeCredentials {
   return (
@@ -186,7 +180,7 @@ export function isAmplitudeSourceCredentials(
   );
 }
 
-export async function requestAmplitudeSourceApi(input: {
+async function requestAmplitudeSourceApi(input: {
   body: SourceApiRequestBody;
   credentials: AmplitudeCredentials;
   method: string;

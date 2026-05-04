@@ -41,36 +41,12 @@ type MixpanelParamValue =
   | Record<string, unknown>
   | unknown[];
 
-export interface MixpanelFetchOptions {
+interface MixpanelFetchOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   params?: Record<string, MixpanelParamValue>;
   body?: Record<string, MixpanelParamValue>;
   bodyFormat?: "form" | "json";
   timeoutMs?: number;
-}
-
-interface MixpanelEngageRequest {
-  where?: string;
-  page?: number;
-  pageSize?: number;
-  outputProperties?: string[];
-}
-
-interface MixpanelSegmentationRequest {
-  event: string;
-  fromDate: string;
-  toDate: string;
-  unit?: "hour" | "day" | "week" | "month";
-  type?: "general" | "unique" | "average";
-  where?: string;
-}
-
-function normalizeOptionalString(value: string | undefined): string | null {
-  if (!value) {
-    return null;
-  }
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
 }
 
 function normalizeMethod(method: string | undefined): string {
@@ -123,31 +99,6 @@ function assertNoReservedKeys(
       throw new Error(`Mixpanel ${location} key "${key}" is reserved`);
     }
   }
-}
-
-function normalizeEngagePageSize(pageSize: number | undefined): number {
-  if (pageSize === undefined) {
-    return DEFAULT_MIXPANEL_ENGAGE_PAGE_SIZE;
-  }
-  if (!Number.isInteger(pageSize)) {
-    throw new TypeError("pageSize must be an integer");
-  }
-  if (pageSize < 1 || pageSize > MAX_MIXPANEL_ENGAGE_PAGE_SIZE) {
-    throw new Error(
-      `pageSize must be between 1 and ${MAX_MIXPANEL_ENGAGE_PAGE_SIZE}`
-    );
-  }
-  return pageSize;
-}
-
-function normalizeEngagePage(page: number | undefined): number {
-  if (page === undefined) {
-    return 0;
-  }
-  if (!Number.isInteger(page) || page < 0) {
-    throw new Error("page must be an integer >= 0");
-  }
-  return page;
 }
 
 function sanitizeMixpanelText(
@@ -339,66 +290,4 @@ export async function exportMixpanelEvents(input: {
   });
 
   return readMixpanelResponse(response, input.credentials);
-}
-
-export async function queryMixpanelEngage(input: {
-  credentials: MixpanelCredentials;
-  request: MixpanelEngageRequest;
-}): Promise<MixpanelRelayResponse> {
-  const page = normalizeEngagePage(input.request.page);
-  const pageSize = normalizeEngagePageSize(input.request.pageSize);
-
-  return fetchMixpanelQueryApi({
-    credentials: input.credentials,
-    endpoint: "/query/engage",
-    options: {
-      body: {
-        filter_by_cohort: {},
-        page,
-        page_size: pageSize,
-        where: normalizeOptionalString(input.request.where) ?? undefined,
-        output_properties:
-          input.request.outputProperties &&
-          input.request.outputProperties.length > 0
-            ? input.request.outputProperties
-            : undefined,
-      },
-      bodyFormat: "form",
-      method: "POST",
-    },
-  });
-}
-
-export async function queryMixpanelSegmentation(input: {
-  credentials: MixpanelCredentials;
-  request: MixpanelSegmentationRequest;
-}): Promise<MixpanelRelayResponse> {
-  const event = normalizeOptionalString(input.request.event);
-  const fromDate = normalizeOptionalString(input.request.fromDate);
-  const toDate = normalizeOptionalString(input.request.toDate);
-  if (!event) {
-    throw new Error("event is required");
-  }
-  if (!fromDate) {
-    throw new Error("fromDate is required");
-  }
-  if (!toDate) {
-    throw new Error("toDate is required");
-  }
-
-  return fetchMixpanelQueryApi({
-    credentials: input.credentials,
-    endpoint: "/query/segmentation",
-    options: {
-      method: "GET",
-      params: {
-        event: [event],
-        from_date: fromDate,
-        to_date: toDate,
-        type: input.request.type,
-        unit: input.request.unit,
-        where: normalizeOptionalString(input.request.where) ?? undefined,
-      },
-    },
-  });
 }
