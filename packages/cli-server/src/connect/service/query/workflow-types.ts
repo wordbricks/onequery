@@ -1,7 +1,6 @@
 import type {
   DataSourceStatus,
   Database,
-  DatabaseCredentials,
   ProviderType,
 } from "@onequery/db/server";
 
@@ -16,7 +15,6 @@ import type {
   WorkflowJournalCursor,
   WorkflowJournalEffectToken,
 } from "../../../audit";
-import type { CliLoadSourceEffectResult } from "../../../domain/effects";
 import type {
   AccessibleCliOrg,
   CliQuerySuccessResult,
@@ -25,6 +23,7 @@ import type {
   createCliQueryExecutionDispatch,
   createCliQueryValidationDispatch,
 } from "./dispatch";
+import type { QueryWorkflowResourceCache } from "./resource-cache";
 
 export type CliQueryExecutionDispatch = ReturnType<
   typeof createCliQueryExecutionDispatch
@@ -156,15 +155,4 @@ export type StoredAcceptedQueryActionResultCommand = {
   commandPayload: QueryActionCommandPayload;
   completedEffectIds: readonly string[];
   decision: StoredAcceptedQueryActionDecision;
-};
-
-export type QuerySourceLookupCacheEntry = {
-  organizationId: string;
-  result: CliLoadSourceEffectResult;
-  sourceKey: string;
-};
-
-export type QueryWorkflowResourceCache = {
-  loadedCredentials: DatabaseCredentials | null;
-  sourceLookup: QuerySourceLookupCacheEntry | null;
 };

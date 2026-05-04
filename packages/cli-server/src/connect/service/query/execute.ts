@@ -14,13 +14,13 @@ import {
   logCliQueryExecutionFailure,
   logCliQueryExecutionSuccess,
 } from "./logging";
+import { createQueryWorkflowResourceCache } from "./resource-cache";
 import {
   buildQueryExecuteResponse,
   buildQueryExecuteSanitization,
   sanitizeQueryExecuteResponse,
 } from "./response";
 import { runCliQueryExecutionWorkflowResult } from "./workflow";
-import { createQueryWorkflowResourceCacheFromLookup } from "./workflow-steps";
 
 const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
   request,
@@ -46,7 +46,7 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
       dispatch: createCliQueryExecutionDispatch(resolved.c),
       org: resolved.authorizedOrg.org,
       requestId: resolved.requestId,
-      resourceCache: createQueryWorkflowResourceCacheFromLookup({
+      resourceCache: createQueryWorkflowResourceCache({
         organizationId: resolved.authorizedOrg.org.id,
         sourceKey: request.sourceKey,
         sourceLookup: resolved.sourceLookup,

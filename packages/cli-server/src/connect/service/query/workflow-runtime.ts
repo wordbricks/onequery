@@ -18,11 +18,12 @@ import {
   createWorkflowAuditCorruptionFailure,
   createWorkflowAuditFailure,
 } from "../workflow-audit-failure";
+import { readCachedQuerySourceLookup } from "./resource-cache";
+import type { CachedQuerySourceLookup } from "./resource-cache";
 import type {
   CliQueryExecutionDispatch,
   DispatchedQueryActionEffect,
   LoadedQueryActionEffect,
-  QuerySourceLookupCacheEntry,
   StoredAcceptedQueryActionDecision,
   StoredAcceptedQueryActionResultCommand,
 } from "./workflow-types";
@@ -273,15 +274,17 @@ export async function storeAcceptedQueryActionCommand(
 }
 
 export async function loadRequiredCliQuerySourceRecord(input: {
-  cachedSourceLookup: QuerySourceLookupCacheEntry | null;
   dispatch: Pick<CliQueryExecutionDispatch, "loadSource">;
+  sourceLookup: CachedQuerySourceLookup | null;
   sourceDescriptor: QueryActionSourceDescriptor;
 }): Promise<CliQuerySourceRecord> {
   const loaded =
-    input.cachedSourceLookup !== null
-      ? loadCachedQuerySourceLookup({
-          cachedSourceLookup: input.cachedSourceLookup,
-          sourceDescriptor: input.sourceDescriptor,
+    input.sourceLookup !== null
+      ? readCachedQuerySourceLookup({
+          cached: input.sourceLookup,
+          organizationId: input.sourceDescriptor.organizationId,
+          sourceKey: input.sourceDescriptor.sourceKey,
+          use: "execution effect",
         })
       : await input.dispatch.loadSource({
           kind: "load_source",
@@ -307,35 +310,6 @@ export async function loadRequiredCliQuerySourceRecord(input: {
   }
 
   return loaded.source;
-}
-
-function loadCachedQuerySourceLookup(input: {
-  cachedSourceLookup: QuerySourceLookupCacheEntry;
-  sourceDescriptor: QueryActionSourceDescriptor;
-}) {
-  if (
-    input.cachedSourceLookup.organizationId !==
-      input.sourceDescriptor.organizationId ||
-    input.cachedSourceLookup.sourceKey !== input.sourceDescriptor.sourceKey
-  ) {
-    throw createQueryAuditProblem(
-      "cached query source does not match execution effect"
-    );
-  }
-
-  if (
-    input.cachedSourceLookup.result.kind === "found" &&
-    (input.cachedSourceLookup.result.source.organizationId !==
-      input.sourceDescriptor.organizationId ||
-      input.cachedSourceLookup.result.source.sourceKey !==
-        input.sourceDescriptor.sourceKey)
-  ) {
-    throw createQueryAuditProblem(
-      "cached query source result does not match execution effect"
-    );
-  }
-
-  return input.cachedSourceLookup.result;
 }
 
 export async function loadRequiredCliQueryCredentials(input: {

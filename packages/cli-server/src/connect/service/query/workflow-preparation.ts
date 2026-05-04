@@ -6,18 +6,18 @@ import type {
   QueryActionSourceDescriptor,
 } from "../../../audit";
 import type { AccessibleCliOrg } from "../../../domain/workflows";
+import { createEmptyQueryWorkflowResourceCache } from "./resource-cache";
+import type { QueryWorkflowResourceCache } from "./resource-cache";
 import { toCliQueryPreparationFailureResult } from "./workflow-outcome";
 import type { CliQueryWorkflowPreparationFailureResult } from "./workflow-result";
 import { storeAcceptedQueryActionCommand } from "./workflow-runtime";
 import {
-  createEmptyQueryWorkflowResourceCache,
   runQueryExecutePreparationStep,
   runQueryValidatePreparationStep,
 } from "./workflow-steps";
 import type {
   CliQueryExecutionDispatch,
   CliQueryValidationDispatch,
-  QueryWorkflowResourceCache,
   StoredAcceptedQueryActionDecision,
 } from "./workflow-types";
 

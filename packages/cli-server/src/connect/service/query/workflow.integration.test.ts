@@ -32,13 +32,13 @@ import type {
   CliQueryExecutionResult,
   CliQuerySourceRecord,
 } from "../../../domain/workflows";
+import { createQueryWorkflowResourceCache } from "./resource-cache";
 import {
   recoverPendingQueryUsagePersistenceEffects,
   runCliQueryExecutionWorkflowResult,
   runCliQueryValidationWorkflowResult,
 } from "./workflow";
 import { storeAcceptedQueryActionCommand } from "./workflow-runtime";
-import { createQueryWorkflowResourceCacheFromLookup } from "./workflow-steps";
 import type {
   CliQueryExecutionDispatch,
   CliQueryValidationDispatch,
@@ -234,6 +234,54 @@ describe("query workflow audit runtime", () => {
     ]);
   });
 
+  it("uses cached source misses without dispatching loadSource", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const loadSource = vi
+      .fn<() => Promise<CliLoadSourceEffectResult>>()
+      .mockRejectedValue(new Error("loadSource should not run"));
+    const validateQuery = vi
+      .fn<() => Promise<CliValidateQueryEffectResult>>()
+      .mockRejectedValue(new Error("validateQuery should not run"));
+
+    const result = await runCliQueryValidationWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        loadSource,
+        validateQuery,
+      },
+      org,
+      requestId: "req-validate-cached-miss-1",
+      resourceCache: createQueryWorkflowResourceCache({
+        organizationId: org.id,
+        sourceKey: source.sourceKey,
+        sourceLookup: {
+          kind: "not_found",
+        },
+      }),
+      sourceName: source.sourceKey,
+      sql: "select 1",
+      timeoutMs: 5_000,
+    });
+
+    expect(unwrapOk(result)).toMatchObject({
+      kind: "source_not_found",
+      orgSlug: org.slug,
+      requestId: "req-validate-cached-miss-1",
+      sourceName: source.sourceKey,
+    });
+    expect(loadSource).not.toHaveBeenCalled();
+    expect(validateQuery).not.toHaveBeenCalled();
+
+    const commandRows = await selectQueryJournalCommandRows(db);
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
+      "start_validate",
+      "record_validate_preparation_source_not_found",
+    ]);
+  });
+
   it("records executeQuery and persists usage as an asynchronous follow-up", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
@@ -249,7 +297,7 @@ describe("query workflow audit runtime", () => {
       kind: "found",
       source,
     } satisfies CliLoadSourceEffectResult);
-    const resourceCache = createQueryWorkflowResourceCacheFromLookup({
+    const resourceCache = createQueryWorkflowResourceCache({
       organizationId: org.id,
       sourceKey: source.sourceKey,
       sourceLookup: {
