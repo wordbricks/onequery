@@ -8,7 +8,22 @@
 #![allow(clippy::enum_variant_names)]
 #![allow(clippy::uninlined_format_args)]
 
-// Comment: the generated file name is still runtime_control because it is
-// derived from the runtime/v1 proto package path, not the supervisor-control
-// service ownership in the gateway.
-include!("generated/_runtime_control_connectrpc.rs");
+#[path = "generated/connect/mod.rs"]
+mod connect;
+#[path = "generated/proto/mod.rs"]
+pub mod proto;
+
+pub mod google {
+    pub mod rpc {
+        pub use crate::proto::google::rpc::*;
+    }
+}
+
+pub mod onequery {
+    pub mod runtime {
+        pub mod v1 {
+            pub use crate::connect::onequery::runtime::v1::*;
+            pub use crate::proto::onequery::runtime::v1::*;
+        }
+    }
+}

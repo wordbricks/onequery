@@ -10,30 +10,6 @@ members = [
   "crates/install-context",
   "crates/onequery-cli",
   "crates/process-hardening",
-  "crates/proto-build-support",
-  "crates/proto-cli",
-  "crates/proto-runtime",
-  "crates/utils",
-  "crates/utils/absolute-path",
-  "crates/utils/cargo-bin",
-  "crates/utils/elapsed",
-  "crates/utils/home-dir",
-  "crates/utils/path-utils",
-  "crates/utils/readiness",
-  "crates/utils/string",
-  "crates/utils/template",
-]
-default-members = [
-  "crates/async-utils",
-  "crates/config",
-  "crates/connect-support",
-  "crates/core",
-  "crates/core/tests/common",
-  "crates/gateway",
-  "crates/git-utils",
-  "crates/install-context",
-  "crates/onequery-cli",
-  "crates/process-hardening",
   "crates/proto-cli",
   "crates/proto-runtime",
   "crates/utils",
@@ -73,7 +49,6 @@ onequery-gateway = { path = "crates/gateway" }
 onequery-git-utils = { path = "crates/git-utils" }
 onequery-install-context = { path = "crates/install-context" }
 onequery-process-hardening = { path = "crates/process-hardening" }
-onequery-proto-build-support = { path = "crates/proto-build-support" }
 onequery-proto-cli = { path = "crates/proto-cli" }
 onequery-proto-runtime = { path = "crates/proto-runtime" }
 onequery-utils = { path = "crates/utils" }
@@ -94,12 +69,10 @@ async-trait = "0.1.89"
 base64 = "0.22"
 blake3 = "1"
 buffa = "0.3.0"
-buffa-codegen = "0.3.0"
 buffa-types = "0.3.0"
 chrono = "0.4"
 clap = "4"
 connectrpc = { version = "0.3.3", default-features = false }
-connectrpc-build = "0.3.3"
 dirs = "6"
 dunce = "1.0.4"
 flate2 = "1.1.9"

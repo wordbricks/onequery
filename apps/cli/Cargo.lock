@@ -246,30 +246,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "buffa-codegen"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f9ddcb25f0dde4d82e0a1128b0c459feba775e24dfa7cb0c3f4a9d61abfa245"
-dependencies = [
- "buffa",
- "buffa-descriptor",
- "prettyplease",
- "proc-macro2",
- "quote",
- "syn",
- "thiserror",
-]
-
-[[package]]
-name = "buffa-descriptor"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a0794ed1f8a0c6ab168c70258e21cf74ca7b87a7dd888a0a69745b075f2d351"
-dependencies = [
- "buffa",
-]
-
-[[package]]
 name = "buffa-types"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -442,35 +418,6 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
-]
-
-[[package]]
-name = "connectrpc-build"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "591bc832b8d3faef060e435f832a1cf10a71c865dfb49f9874247769b60ef816"
-dependencies = [
- "anyhow",
- "buffa",
- "buffa-codegen",
- "connectrpc-codegen",
- "tempfile",
-]
-
-[[package]]
-name = "connectrpc-codegen"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "109a2352193792931d41e5cb3b048985371d5c6505f736f9b9a7ae606d5a0050"
-dependencies = [
- "anyhow",
- "buffa",
- "buffa-codegen",
- "heck",
- "prettyplease",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1684,16 +1631,6 @@ version = "0.0.0"
 dependencies = [
  "libc",
  "pretty_assertions",
-]
-
-[[package]]
-name = "onequery-proto-build-support"
-version = "0.0.0"
-dependencies = [
- "buffa",
- "buffa-codegen",
- "connectrpc-build",
- "onequery-utils",
 ]
 
 [[package]]

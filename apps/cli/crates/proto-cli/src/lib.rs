@@ -8,4 +8,22 @@
 #![allow(clippy::enum_variant_names)]
 #![allow(clippy::uninlined_format_args)]
 
-include!("generated/_connectrpc.rs");
+#[path = "generated/connect/mod.rs"]
+mod connect;
+#[path = "generated/proto/mod.rs"]
+pub mod proto;
+
+pub mod google {
+    pub mod rpc {
+        pub use crate::proto::google::rpc::*;
+    }
+}
+
+pub mod onequery {
+    pub mod cli {
+        pub mod v1 {
+            pub use crate::connect::onequery::cli::v1::*;
+            pub use crate::proto::onequery::cli::v1::*;
+        }
+    }
+}
