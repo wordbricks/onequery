@@ -1,4 +1,7 @@
 # Paths are matched exactly, relative to the repository root.
+# Entries ending in / match every file under that directory.
 # Keep this list short and limited to intentional large checked-in assets.
 
 bun.lock
+apps/cli/crates/proto-cli/src/generated/proto/
+apps/cli/crates/proto-runtime/src/generated/proto/

@@ -31,13 +31,18 @@ def run_git(*args: str) -> str:
     return result.stdout
 
 
-def load_allowlist(path: Path) -> set[str]:
-    allowlist: set[str] = set()
+def load_allowlist(path: Path) -> tuple[set[str], tuple[str, ...]]:
+    allowlist_paths: set[str] = set()
+    allowlist_dirs: list[str] = []
     for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.split("#", 1)[0].strip()
-        if line:
-            allowlist.add(line)
-    return allowlist
+        if not line:
+            continue
+        if line.endswith("/"):
+            allowlist_dirs.append(line)
+        else:
+            allowlist_paths.add(line)
+    return allowlist_paths, tuple(allowlist_dirs)
 
 
 def get_changed_paths(base: str, head: str) -> list[str]:
@@ -75,14 +80,20 @@ def blob_size(commit: str, path: str) -> int:
     return int(run_git("cat-file", "-s", f"{commit}:{path}").strip())
 
 
-def collect_changed_blobs(base: str, head: str, allowlist: set[str]) -> list[ChangedBlob]:
+def collect_changed_blobs(
+    base: str,
+    head: str,
+    allowlist: tuple[set[str], tuple[str, ...]],
+) -> list[ChangedBlob]:
+    allowlist_paths, allowlist_dirs = allowlist
     blobs: list[ChangedBlob] = []
     for path in get_changed_paths(base, head):
         blobs.append(
             ChangedBlob(
                 path=path,
                 size_bytes=blob_size(head, path),
-                is_allowlisted=path in allowlist,
+                is_allowlisted=path in allowlist_paths
+                or any(path.startswith(directory) for directory in allowlist_dirs),
                 is_binary=is_binary_change(base, head, path),
             )
         )
