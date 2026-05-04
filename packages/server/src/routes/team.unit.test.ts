@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
 import { testClient } from "hono/testing";
 import { describe, expect, it, vi } from "vitest";
 
@@ -47,6 +48,19 @@ function createSession(): BetterAuthSessionData {
   };
 }
 
+function useTestBetterAuthSessionContext(input: {
+  session: BetterAuthSessionData;
+  storage: StorageVariables["storage"];
+}) {
+  return createMiddleware<{
+    Variables: BetterAuthSessionVariables;
+  }>(async (c, next) => {
+    c.set("storage", input.storage);
+    c.set("session", input.session);
+    await next();
+  });
+}
+
 describe("team route", () => {
   it("uses request-scoped storage for invitation creation", async () => {
     const createInvitation = vi.fn(
@@ -65,28 +79,16 @@ describe("team route", () => {
     const app = new Hono<{
       Variables: BetterAuthSessionVariables;
     }>()
-      .use("*", async (c, next) => {
-        (
-          c as typeof c & {
-            set: (
-              key: "storage" | "session",
-              value: StorageVariables["storage"] | BetterAuthSessionData
-            ) => void;
-          }
-        ).set(
-          "storage",
-          createMockStorage({
+      .use(
+        "*",
+        useTestBetterAuthSessionContext({
+          session: createSession(),
+          storage: createMockStorage({
             createInvitation,
             findMembership,
-          })
-        );
-        (
-          c as typeof c & {
-            set: (key: "session", value: BetterAuthSessionData) => void;
-          }
-        ).set("session", createSession());
-        await next();
-      })
+          }),
+        })
+      )
       .route("/", teamRoute);
 
     const response = await testClient(app).organizations[

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
 import { testClient } from "hono/testing";
 import { describe, expect, it } from "vitest";
 
@@ -18,26 +19,30 @@ function createMockStorage(input: {
   } as unknown as StorageVariables["storage"];
 }
 
+function useTestStorage(storage: StorageVariables["storage"]) {
+  return createMiddleware<{
+    Variables: StorageVariables;
+  }>(async (c, next) => {
+    c.set("storage", storage);
+    await next();
+  });
+}
+
 describe("better auth session middleware", () => {
   it("falls back to an anonymous session when auth session lookup throws", async () => {
     const app = new Hono<{
       Variables: BetterAuthSessionVariables;
     }>()
-      .use("*", async (c, next) => {
-        (
-          c as typeof c & {
-            set: (key: "storage", value: StorageVariables["storage"]) => void;
-          }
-        ).set(
-          "storage",
+      .use(
+        "*",
+        useTestStorage(
           createMockStorage({
             getSession: async () => {
               throw new Error("session backend unavailable");
             },
           })
-        );
-        await next();
-      })
+        )
+      )
       .use("*", betterAuthSessionMiddleware())
       .get("/", (c) => c.json({ session: c.get("session") }));
 
