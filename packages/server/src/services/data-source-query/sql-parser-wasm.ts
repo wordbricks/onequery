@@ -1,10 +1,12 @@
 import { existsSync } from "node:fs";
 
+import { isRecord } from "@onequery/base";
 import type { Statement } from "@casual-simulation/sql-parser";
-import {
+import initWasm, {
   format,
   initSync,
   parse_sql,
+  type InitInput,
 } from "@casual-simulation/sql-parser/pkg/sql_parser_wasm.js";
 import {
   resolvePackagedRuntimeAssetPath,
@@ -23,7 +25,9 @@ export async function ensureSqlParserInit(): Promise<void> {
     return parserState.promise;
   }
 
-  const promise = initSqlParserInNode().then(() => {});
+  const promise = (
+    isCloudflareWorkers() ? initSqlParserInWorker() : initSqlParserInNode()
+  ).then(() => {});
   parserState.promise = promise;
   return promise;
 }
@@ -39,6 +43,13 @@ export function parseSqlStatements(sql: string, dialect: string): Statement[] {
 
 export function formatStatement(statement: Statement): string {
   return format(statement);
+}
+
+async function initSqlParserInWorker(): Promise<void> {
+  const wasmImport =
+    await import("@casual-simulation/sql-parser/pkg/sql_parser_wasm_bg.wasm");
+  const wasmModule = unwrapDefaultExport(wasmImport);
+  await initWasm(toInitInput(wasmModule));
 }
 
 async function initSqlParserInNode(): Promise<void> {
@@ -80,4 +91,47 @@ function resolvePackagedSqlParserWasmPath(): string | null {
   // Comment: the packaged server bundle runs under Node and resolves the SQL
   // parser wasm from the staged runtime asset directory, not from the bundle.
   return packagedWasmPath;
+}
+
+function isCloudflareWorkers(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    navigator.userAgent === "Cloudflare-Workers"
+  );
+}
+
+function unwrapDefaultExport(value: unknown): unknown {
+  if (!isRecord(value) || !("default" in value)) {
+    return value;
+  }
+
+  return value.default;
+}
+
+function toInitInput(value: unknown): InitInput {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof WebAssembly === "object" && value instanceof WebAssembly.Module) {
+    return value;
+  }
+
+  if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+    return value;
+  }
+
+  if (typeof Request === "function" && value instanceof Request) {
+    return value;
+  }
+
+  if (typeof Response === "function" && value instanceof Response) {
+    return value;
+  }
+
+  if (typeof URL === "function" && value instanceof URL) {
+    return value;
+  }
+
+  throw new Error("Invalid SQL parser WASM module");
 }
