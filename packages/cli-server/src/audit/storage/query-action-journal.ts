@@ -132,6 +132,9 @@ type StoredQueryActionJournalDecision =
 
 const REJECTED_DECISION_CHECKPOINT = "decision_rejected";
 const QUERY_ACTION_EFFECT_WORKER_ID = "query-action-runtime";
+const PENDING_QUERY_ACTION_EFFECT_TYPES = new Set<QueryActionEffectType>([
+  "persist_usage",
+]);
 
 const queryActionJournalPayloadCodec: WorkflowJournalPayloadCodec<
   QueryActionCommandPayload,
@@ -210,6 +213,7 @@ export async function storeQueryActionCommandViaJournal(input: {
 
     const appendStore = createQueryActionJournalStore({
       db,
+      pendingEffectIds: collectPendingProjectionEffectIds(cursor.value),
       onAppendEntries: ({ entries, tx }) =>
         projectFreshQueryActionJournalAppend({
           actionId,
@@ -551,9 +555,10 @@ export async function rebuildPendingQueryActionEffectsViaJournal(input: {
       ...cursor.value.effects
         .filter(
           (effect) =>
-            effect.status === "scheduled" ||
-            effect.status === "started" ||
-            effect.status === "failed"
+            isPendingQueryActionEffectType(effect.effectType) &&
+            (effect.status === "scheduled" ||
+              effect.status === "started" ||
+              effect.status === "failed")
         )
         .map((effect) => ({
           attemptCount: effect.attemptCount,
@@ -682,7 +687,11 @@ export async function claimFailedQueryActionEffectViaJournal(input: {
         cursor.value.streamPosition + (leaseRecoveryEntry === null ? 1 : 2),
       workerId: QUERY_ACTION_EFFECT_WORKER_ID,
     };
-    const appended = await store.appendEntries({
+    const appendStore = createQueryActionJournalStore({
+      db: input.db,
+      pendingEffectIds: collectPendingProjectionEffectIds(cursor.value),
+    });
+    const appended = await appendStore.appendEntries({
       entries:
         leaseRecoveryEntry === null ? [entry] : [leaseRecoveryEntry, entry],
       expectedStreamPosition: cursor.value.streamPosition,
@@ -764,7 +773,11 @@ export async function recordQueryActionEffectFailureViaJournal(input: {
       streamId: input.actionId,
       streamPosition: cursor.value.streamPosition + 1,
     };
-    const appended = await store.appendEntries({
+    const appendStore = createQueryActionJournalStore({
+      db: input.db,
+      pendingEffectIds: collectPendingProjectionEffectIds(cursor.value),
+    });
+    const appended = await appendStore.appendEntries({
       entries: [entry],
       expectedStreamPosition: cursor.value.streamPosition,
     });
@@ -806,6 +819,7 @@ function createQueryActionJournalStore(input: {
     expectedStreamPosition: number;
     tx: DatabaseTransaction;
   }) => Promise<void>;
+  pendingEffectIds?: ReadonlySet<string>;
 }): QueryActionJournalStore {
   return createDbWorkflowJournalStore({
     codec: queryActionJournalPayloadCodec,
@@ -813,6 +827,7 @@ function createQueryActionJournalStore(input: {
     onAppendEntries: async (appendInput) => {
       await projectPendingQueryActionEffects({
         entries: appendInput.entries,
+        pendingEffectIds: input.pendingEffectIds ?? new Set(),
         tx: appendInput.tx,
       });
       await input.onAppendEntries?.(appendInput);
@@ -926,11 +941,16 @@ async function projectPendingQueryActionEffects(input: {
     QueryActionEvent,
     QueryActionEffect
   >[];
+  pendingEffectIds: ReadonlySet<string>;
   tx: DatabaseTransaction;
 }) {
   for (const entry of input.entries) {
     switch (entry.kind) {
       case "effect_scheduled":
+        if (!isPendingQueryActionEffectType(entry.effectType)) {
+          break;
+        }
+
         await input.tx
           .insert(pendingWorkflowEffects)
           .values({
@@ -963,6 +983,10 @@ async function projectPendingQueryActionEffects(input: {
           });
         break;
       case "effect_started":
+        if (!input.pendingEffectIds.has(entry.effectId)) {
+          break;
+        }
+
         await input.tx
           .update(pendingWorkflowEffects)
           .set({
@@ -978,6 +1002,10 @@ async function projectPendingQueryActionEffects(input: {
           );
         break;
       case "effect_failed":
+        if (!input.pendingEffectIds.has(entry.effectId)) {
+          break;
+        }
+
         await input.tx
           .update(pendingWorkflowEffects)
           .set({
@@ -993,6 +1021,10 @@ async function projectPendingQueryActionEffects(input: {
           );
         break;
       case "effect_completed":
+        if (!input.pendingEffectIds.has(entry.effectId)) {
+          break;
+        }
+
         await input.tx
           .delete(pendingWorkflowEffects)
           .where(
@@ -1008,6 +1040,22 @@ async function projectPendingQueryActionEffects(input: {
         break;
     }
   }
+}
+
+function collectPendingProjectionEffectIds(cursor: QueryActionJournalCursor) {
+  return new Set(
+    cursor.effects
+      .filter((effect) => isPendingQueryActionEffectType(effect.effectType))
+      .map((effect) => effect.effectId)
+  );
+}
+
+function isPendingQueryActionEffectType(
+  effectType: string
+): effectType is QueryActionEffectType {
+  return PENDING_QUERY_ACTION_EFFECT_TYPES.has(
+    effectType as QueryActionEffectType
+  );
 }
 
 function requireProjectionOrganizationId(organizationId: string | undefined) {

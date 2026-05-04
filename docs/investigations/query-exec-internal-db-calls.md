@@ -12,16 +12,24 @@ Reducing a single `onequery query exec` response path to fewer than 10 internal
 DB calls is a good direction, but only if the goal is "less request-path storage
 chatter" rather than "less audit fidelity".
 
-The biggest request-path issue is not the Rust CLI or the self-host runtime
-wrapper. It is the server-side audit path:
+Implementation status:
+
+- Step 1 is done: `ExecuteQuery` no longer awaits the global audit feed
+  projection before returning the CLI response.
+- Step 3 is done for `query_action`: `pending_workflow_effects` now tracks only
+  recoverable `persist_usage` effects, while inline preparation/execution
+  effects remain journal-only.
+
+The biggest original request-path issue was not the Rust CLI or the self-host
+runtime wrapper. It was the server-side audit path:
 
 1. `ExecuteQuery` writes several durable `query_action` journal commits.
 2. Each commit also updates read/projection tables.
-3. `handleExecuteQuery` then awaits a global audit feed projection sync before
-   returning the CLI response.
+3. `handleExecuteQuery` then awaited a global audit feed projection sync before
+   returning the CLI response. This is done and no longer happens.
 
-The best first move is to remove or defer the synchronous audit feed projection
-from `handleExecuteQuery`. That preserves the durable journal and should remove
+The first move removed the synchronous audit feed projection from
+`handleExecuteQuery`. That preserves the durable journal and should remove
 roughly 12-22 DB calls from the response path on a common successful query.
 
 To reliably get the whole response path below 10 calls, deferring feed projection
@@ -103,7 +111,7 @@ The handler does:
 1. resolve session/org/source state;
 2. parse read controls;
 3. run `runCliQueryExecutionWorkflowResult`;
-4. await `syncCliQueryAuditFeedProjection`;
+4. return without waiting for audit feed projection;
 5. build the response.
 
 The org+source lookup is already combined in
@@ -186,11 +194,10 @@ If the driver counts transaction begin/commit as calls, add roughly two
 round-trips per journal/projection transaction. That makes the common total land
 comfortably in the dozens.
 
-The synchronous audit feed projection is the biggest avoidable request-path
-block. `handleExecuteQuery` awaits it in
-`packages/cli-server/src/connect/service/query/execute.ts:61`. It calls
-`syncAuditFeedProjection` through
-`packages/cli-server/src/connect/service/query/audit-projection.ts:26`.
+The synchronous audit feed projection was the biggest avoidable request-path
+block. `handleExecuteQuery` no longer awaits it before building the response.
+The removed wrapper called `syncAuditFeedProjection` through
+`packages/cli-server/src/connect/service/query/audit-projection.ts`.
 
 `syncAuditFeedProjection` advances both `query_action` and `source_api_action`
 families for up to five batches per request:
@@ -230,10 +237,9 @@ The design should keep:
 
 ## Proposed Plan
 
-### Step 1: remove audit feed sync from the response path
+### Step 1 (done): remove audit feed sync from the response path
 
-Change `handleExecuteQuery` so it does not await
-`syncCliQueryAuditFeedProjection`.
+Changed `handleExecuteQuery` so it does not await audit feed projection.
 
 Options:
 
@@ -256,7 +262,7 @@ Avoid calling the global projector that advances both workflow families. A
 targeted path can use the already-known action/cursor data from the query
 workflow and upsert one `audit_feed_entries` row.
 
-### Step 3: stop pending-effect projection for inline effects
+### Step 3 (done): stop pending-effect projection for inline effects
 
 `prepare_execute_query` and `execute_query` run inline in the request handler.
 The only startup recovery path I found consumes `persist_usage`.

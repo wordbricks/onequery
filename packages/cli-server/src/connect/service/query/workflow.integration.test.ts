@@ -788,7 +788,7 @@ describe("query workflow audit runtime", () => {
     ]);
   });
 
-  it("records failed effects in the journal and retries them", async () => {
+  it("records failed inline effects in the journal and retries them without pending projection", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -832,13 +832,7 @@ describe("query workflow audit runtime", () => {
         effectType: row.effectType,
         status: row.status,
       }))
-    ).toEqual([
-      {
-        attemptCount: 0,
-        effectType: "prepare_validate_query",
-        status: "failed",
-      },
-    ]);
+    ).toEqual([]);
     await db.delete(pendingWorkflowEffects);
     const rebuilt = await rebuildPendingQueryActionEffectsViaJournal({ db });
     expect(rebuilt.isOk()).toBe(true);
@@ -851,12 +845,7 @@ describe("query workflow audit runtime", () => {
         effectType: row.effectType,
         status: row.status,
       }))
-    ).toEqual([
-      {
-        effectType: "prepare_validate_query",
-        status: "failed",
-      },
-    ]);
+    ).toEqual([]);
 
     const retriedResult = await runCliQueryValidationWorkflowResult({
       actorSnapshot,
