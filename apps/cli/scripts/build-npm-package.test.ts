@@ -1,3 +1,5 @@
+// Comment: this test uses Bun's runner APIs directly; Vitest cannot resolve
+// the `bun:test` import.
 import { describe, expect, it } from "bun:test";
 import { chmod, mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";

@@ -23,15 +23,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export const cliRootDir = resolve(__dirname, "..");
-export const workspaceRootDir = resolve(cliRootDir, "..", "..");
-export const cliManifestPath = join(cliRootDir, "Cargo.toml");
-export const cliBinaryName = binaryNameForPlatform(
-  process.platform,
-  "onequery"
-);
-export const targetTriple = resolveTargetTriple(process.platform, process.arch);
+const workspaceRootDir = resolve(cliRootDir, "..", "..");
+const cliManifestPath = join(cliRootDir, "Cargo.toml");
+const cliBinaryName = binaryNameForPlatform(process.platform, "onequery");
+const targetTriple = resolveTargetTriple(process.platform, process.arch);
 
-export function resolveCargoBinaryPath() {
+function resolveCargoBinaryPath() {
   const targetDir = process.env.CARGO_TARGET_DIR
     ? resolve(process.env.CARGO_TARGET_DIR)
     : join(workspaceRootDir, "apps", "cli", "target");
@@ -39,7 +36,7 @@ export function resolveCargoBinaryPath() {
   return join(targetDir, "debug", cliBinaryName);
 }
 
-export function resolveBundledRuntimeRoot(stagingRoot) {
+function resolveBundledRuntimeRoot(stagingRoot) {
   return join(stagingRoot, "vendor", targetTriple);
 }
 
@@ -66,7 +63,7 @@ export function createBundledRuntimeEnv(stagingRoot, env = {}) {
   };
 }
 
-export function buildCliBinary() {
+function buildCliBinary() {
   const result = spawnSync(
     "cargo",
     ["build", "--manifest-path", cliManifestPath, "--bin", "onequery"],

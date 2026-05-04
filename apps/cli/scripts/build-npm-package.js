@@ -426,7 +426,7 @@ export async function stagePackagedRuntime({ runtimeRoot }) {
   ]);
 }
 
-export async function stageRuntimeAssets({ runtimeRoot }) {
+async function stageRuntimeAssets({ runtimeRoot }) {
   const runtimeAssetCopyPlans = await Promise.all(
     getRuntimeAssetFamilyIds().map(async (family) => ({
       family,
