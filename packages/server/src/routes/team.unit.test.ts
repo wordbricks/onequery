@@ -2,7 +2,10 @@ import { Hono } from "hono";
 import { testClient } from "hono/testing";
 import { describe, expect, it, vi } from "vitest";
 
-import type { SessionData, SessionVariables } from "../middleware/session";
+import type {
+  BetterAuthSessionData,
+  BetterAuthSessionVariables,
+} from "../middleware/better-auth-session";
 import type { StorageVariables } from "../storage";
 import { teamRoute } from "./team";
 
@@ -26,7 +29,7 @@ function createMockStorage(input: {
   } as unknown as StorageVariables["storage"];
 }
 
-function createSession(): SessionData {
+function createSession(): BetterAuthSessionData {
   return {
     session: {
       activeOrganizationId: "org_1",
@@ -60,14 +63,14 @@ describe("team route", () => {
       role: "owner",
     }));
     const app = new Hono<{
-      Variables: SessionVariables;
+      Variables: BetterAuthSessionVariables;
     }>()
       .use("*", async (c, next) => {
         (
           c as typeof c & {
             set: (
               key: "storage" | "session",
-              value: StorageVariables["storage"] | SessionData
+              value: StorageVariables["storage"] | BetterAuthSessionData
             ) => void;
           }
         ).set(
@@ -79,7 +82,7 @@ describe("team route", () => {
         );
         (
           c as typeof c & {
-            set: (key: "session", value: SessionData) => void;
+            set: (key: "session", value: BetterAuthSessionData) => void;
           }
         ).set("session", createSession());
         await next();

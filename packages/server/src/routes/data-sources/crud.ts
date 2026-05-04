@@ -17,8 +17,8 @@ import {
   isDataSourceNameConflict,
 } from "../../lib/db-errors";
 import { verifyOrgAccess } from "../../lib/verify-org-access";
+import type { BetterAuthSessionVariables } from "../../middleware/better-auth-session";
 import { requireOrgAccess } from "../../middleware/require-org-access";
-import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
 import { ensureConnectorOrganization } from "../../services/connectors/broker";
@@ -121,7 +121,7 @@ async function revokeLinearToken(input: {
 }
 
 export const dataSourcesCrudRoute = new Hono<{
-  Variables: ServerRuntimeVariables & SessionVariables;
+  Variables: ServerRuntimeVariables & BetterAuthSessionVariables;
 }>()
   .get(
     "/",

@@ -3,9 +3,9 @@ import { requestId } from "hono/request-id";
 import type { RequestIdVariables } from "hono/request-id";
 
 import { createMemoryApiRateLimitStorage } from "./lib/rate-limit-storage";
+import { betterAuthSessionMiddleware } from "./middleware/better-auth-session";
+import type { BetterAuthSessionVariables } from "./middleware/better-auth-session";
 import { apiRateLimiter } from "./middleware/rate-limit";
-import { sessionMiddleware } from "./middleware/session";
-import type { SessionVariables } from "./middleware/session";
 import { createProblemDetailsErrorHandler } from "./observability/error-reporting";
 import {
   buildHonoRequestLogDetails,
@@ -27,11 +27,11 @@ import type { ServerRuntimeVariables } from "./runtime-context";
 import { createServerStorage, serverStorageMiddleware } from "./storage";
 import type { ServerStorage } from "./storage";
 
-export type { SessionVariables } from "./middleware/session";
+export type { BetterAuthSessionVariables } from "./middleware/better-auth-session";
 
 type ServerApiVariables = RequestIdVariables &
   ServerRuntimeVariables &
-  SessionVariables &
+  BetterAuthSessionVariables &
   HonoStructuredLoggerVariables;
 
 export interface CreateServerApiOptions {
@@ -96,17 +96,17 @@ export function createServerApiRoutes(input: CreateServerApiOptions) {
       .use("*", serverStorageMiddleware(storage))
       // Rate limiting (applied first to reject requests early)
       .use("*", apiRateLimiter({ enabled: input.runtime.rateLimit.enabled }))
-      // Session middleware for protected routes
-      .use("/organizations", sessionMiddleware())
-      .use("/organizations/*", sessionMiddleware())
-      .use("/stats", sessionMiddleware())
-      .use("/stats/*", sessionMiddleware())
-      .use("/team", sessionMiddleware())
-      .use("/team/*", sessionMiddleware())
-      .use("/data-sources", sessionMiddleware())
-      .use("/data-sources/*", sessionMiddleware())
-      .use("/budget", sessionMiddleware())
-      .use("/budget/*", sessionMiddleware())
+      // Better Auth session resolver for protected routes
+      .use("/organizations", betterAuthSessionMiddleware())
+      .use("/organizations/*", betterAuthSessionMiddleware())
+      .use("/stats", betterAuthSessionMiddleware())
+      .use("/stats/*", betterAuthSessionMiddleware())
+      .use("/team", betterAuthSessionMiddleware())
+      .use("/team/*", betterAuthSessionMiddleware())
+      .use("/data-sources", betterAuthSessionMiddleware())
+      .use("/data-sources/*", betterAuthSessionMiddleware())
+      .use("/budget", betterAuthSessionMiddleware())
+      .use("/budget/*", betterAuthSessionMiddleware())
       .route("/", healthRoute)
       .route("/bootstrap", bootstrapRoute)
       .route("/budget", budgetRoute)

@@ -10,7 +10,7 @@ import { Hono } from "hono";
 import { testClient } from "hono/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { SessionData } from "../../middleware/session";
+import type { BetterAuthSessionData } from "../../middleware/better-auth-session";
 import type { ServerRuntimeVariables } from "../../runtime-context";
 import type { StorageVariables } from "../../storage";
 import {
@@ -21,7 +21,7 @@ import type { ClosableDatabase } from "../../test/integration-helpers";
 import { createTestRuntimeConfigFromDatabaseUrl } from "../test-env";
 import { dataSourcesCrudRoute } from "./crud";
 
-function createSession(userId: string): SessionData {
+function createSession(userId: string): BetterAuthSessionData {
   return {
     session: {
       activeOrganizationId: null,
@@ -82,7 +82,7 @@ describe("dataSourcesCrudRoute", () => {
 
     const app = new Hono<{
       Variables: ServerRuntimeVariables &
-        StorageVariables & { session: SessionData | null };
+        StorageVariables & { session: BetterAuthSessionData | null };
     }>()
       .use("*", async (c, next) => {
         c.set("storage", {

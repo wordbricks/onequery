@@ -25,7 +25,7 @@ import {
   organizationPermissionChecks,
 } from "../auth/organization-permissions";
 import { verifyOrgAccess } from "../lib/verify-org-access";
-import type { SessionVariables } from "../middleware/session";
+import type { BetterAuthSessionVariables } from "../middleware/better-auth-session";
 import { zodProblemHook } from "../problem-details/zod-problem-hook";
 
 const OrganizationSlugParamsSchema = z.object({
@@ -97,7 +97,7 @@ async function findOrganizationMembershipBySlug(input: {
  * @route GET /:slug
  */
 export const organizationsRoute = new Hono<{
-  Variables: SessionVariables;
+  Variables: BetterAuthSessionVariables;
 }>()
   .get("/:slug", async (c) => {
     const slug = c.req.param("slug");

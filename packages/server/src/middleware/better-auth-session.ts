@@ -18,15 +18,15 @@ const AuthSessionSchema = z.object({
   userId: z.string(),
 });
 
-interface SessionUser {
+interface BetterAuthSessionUser {
   id: string;
   name: string;
   email: string;
   image: string | null | undefined;
 }
 
-export interface SessionData {
-  user: SessionUser;
+export interface BetterAuthSessionData {
+  user: BetterAuthSessionUser;
   session: {
     id: string;
     expiresAt: Date;
@@ -36,14 +36,14 @@ export interface SessionData {
   };
 }
 
-export interface SessionVariables extends StorageVariables {
-  session: SessionData | null;
+export interface BetterAuthSessionVariables extends StorageVariables {
+  session: BetterAuthSessionData | null;
 }
 
-async function readSessionData(input: {
+async function readBetterAuthSessionData(input: {
   auth: StorageVariables["storage"]["auth"];
   headers: Headers;
-}): Promise<SessionData | null> {
+}): Promise<BetterAuthSessionData | null> {
   try {
     const authSession = await input.auth.api.getSession({
       headers: input.headers,
@@ -83,16 +83,16 @@ async function readSessionData(input: {
 }
 
 /**
- * Session middleware that attaches the user session to context.
+ * Better Auth session resolver that attaches normalized auth session data to context.
  * Does not block requests - just makes session data accessible via c.get('session').
  */
-export function sessionMiddleware() {
+export function betterAuthSessionMiddleware() {
   return createMiddleware<{
-    Variables: SessionVariables;
+    Variables: BetterAuthSessionVariables;
   }>(async (c, next) => {
     c.set(
       "session",
-      await readSessionData({
+      await readBetterAuthSessionData({
         auth: c.var.storage.auth,
         headers: c.req.raw.headers,
       })

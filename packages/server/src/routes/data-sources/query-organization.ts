@@ -5,7 +5,7 @@ import type { Context } from "hono";
 import { z } from "zod";
 
 import { verifyOrgAccess } from "../../lib/verify-org-access";
-import type { SessionVariables } from "../../middleware/session";
+import type { BetterAuthSessionVariables } from "../../middleware/better-auth-session";
 import type { ServerRuntimeVariables } from "../../runtime-context";
 
 export const organizationLocatorSchema = z
@@ -47,7 +47,9 @@ async function resolveOrganizationId(
 }
 
 export async function resolveAccessibleOrganizationId(
-  c: Context<{ Variables: ServerRuntimeVariables & SessionVariables }>,
+  c: Context<{
+    Variables: ServerRuntimeVariables & BetterAuthSessionVariables;
+  }>,
   db: Database,
   input: {
     organizationId?: string;

@@ -3,8 +3,8 @@ import { count, dataSources, eq } from "@onequery/db/server";
 import { Hono } from "hono";
 import { z } from "zod";
 
+import type { BetterAuthSessionVariables } from "../middleware/better-auth-session";
 import { requireOrgAccess } from "../middleware/require-org-access";
-import type { SessionVariables } from "../middleware/session";
 import { zodProblemHook } from "../problem-details/zod-problem-hook";
 
 const QuerySchema = z.object({
@@ -12,7 +12,7 @@ const QuerySchema = z.object({
 });
 
 export const statsRoute = new Hono<{
-  Variables: SessionVariables;
+  Variables: BetterAuthSessionVariables;
 }>()
   .use("*", requireOrgAccess())
   .get("/", zValidator("query", QuerySchema, zodProblemHook()), async (c) => {

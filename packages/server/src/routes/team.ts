@@ -10,7 +10,7 @@ import {
   organizationPermissionChecks,
 } from "../auth/organization-permissions";
 import type { OrganizationPermissionCheck } from "../auth/organization-permissions";
-import type { SessionVariables } from "../middleware/session";
+import type { BetterAuthSessionVariables } from "../middleware/better-auth-session";
 import { zodProblemHook } from "../problem-details/zod-problem-hook";
 
 const TeamRoleSchema = z.enum(["owner", "admin", "member"]);
@@ -63,7 +63,7 @@ async function requireTeamPermission(input: {
   db: Database;
   organizationId: string;
   permission: OrganizationPermissionCheck;
-  session: SessionVariables["session"];
+  session: BetterAuthSessionVariables["session"];
 }) {
   const { db, organizationId, permission, session } = input;
 
@@ -101,7 +101,7 @@ async function requireTeamPermission(input: {
 }
 
 export const teamRoute = new Hono<{
-  Variables: SessionVariables;
+  Variables: BetterAuthSessionVariables;
 }>()
   .post(
     "/organizations/:organizationId/invitations",

@@ -1,11 +1,11 @@
 import type { MiddlewareHandler } from "hono";
 
 import { verifyOrgAccess } from "../lib/verify-org-access";
-import type { SessionVariables } from "./session";
+import type { BetterAuthSessionVariables } from "./better-auth-session";
 
 /**
  * Requires:
- * - an authenticated session (sessionMiddleware must have run earlier)
+ * - an authenticated session (betterAuthSessionMiddleware must have run earlier)
  * - an `organizationId` query param
  * - the user to be a member of that organization
  *
@@ -13,7 +13,7 @@ import type { SessionVariables } from "./session";
  * query string.
  */
 export function requireOrgAccess(): MiddlewareHandler<{
-  Variables: SessionVariables;
+  Variables: BetterAuthSessionVariables;
 }> {
   return async (c, next) => {
     const session = c.get("session");
