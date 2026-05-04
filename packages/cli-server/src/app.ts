@@ -93,9 +93,9 @@ function createCliRouter<
 function applyCliRouteMiddleware<
   Variables extends Record<string, unknown> = Record<string, never>,
 >(app: Hono<CliRouteEnv<Variables>>, input: CreateCliAppOptions) {
+  app.use(cliRequestStructuredLoggerMiddleware);
   app.use(cliRuntimeMiddleware(input.runtime));
   app.use(serverStorageMiddleware(input.storage));
-  app.use(cliRequestStructuredLoggerMiddleware);
   return app;
 }
 

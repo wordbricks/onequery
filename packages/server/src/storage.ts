@@ -127,17 +127,11 @@ function createServerStorageFromDatabase(
   };
 }
 
-export function serverStorageMiddleware<
-  Variables extends Record<string, unknown> = Record<string, never>,
->(storage: ServerStorage) {
+export function serverStorageMiddleware(storage: ServerStorage) {
   return createMiddleware<{
-    Variables: StorageVariables & Variables;
+    Variables: StorageVariables;
   }>(async (c, next) => {
-    (
-      c as typeof c & {
-        set: (key: "storage", value: ServerStorage) => void;
-      }
-    ).set("storage", storage);
+    c.set("storage", storage);
     await next();
   });
 }

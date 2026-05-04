@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from "hono";
+import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 
 import type { StorageVariables } from "../storage";
@@ -86,17 +86,11 @@ async function readSessionData(input: {
  * Session middleware that attaches the user session to context.
  * Does not block requests - just makes session data accessible via c.get('session').
  */
-export function sessionMiddleware<
-  Variables extends Record<string, unknown> = Record<string, never>,
->(): MiddlewareHandler<{
-  Variables: SessionVariables & Variables;
-}> {
-  return async (c, next) => {
-    (
-      c as typeof c & {
-        set: (key: "session", value: SessionData | null) => void;
-      }
-    ).set(
+export function sessionMiddleware() {
+  return createMiddleware<{
+    Variables: SessionVariables;
+  }>(async (c, next) => {
+    c.set(
       "session",
       await readSessionData({
         auth: c.var.storage.auth,
@@ -105,5 +99,5 @@ export function sessionMiddleware<
     );
 
     await next();
-  };
+  });
 }
