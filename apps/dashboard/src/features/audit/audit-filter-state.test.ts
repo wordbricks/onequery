@@ -1,25 +1,20 @@
-import type { AuditSearch } from "@onequery/audit-contracts/audit";
+import type { AuditListParams } from "@onequery/audit-contracts/audit";
 import { describe, expect, it } from "vitest";
 
 import {
-  buildAuditSearchWithDraft,
+  buildAuditListParamsWithDraft,
   hasPendingAuditDraftFilters,
 } from "@/features/audit/audit-filter-state";
 
 describe("audit-filter-state", () => {
   it("applies the current text draft when an immediate filter changes", () => {
-    const search: AuditSearch = {
-      actionName: undefined,
+    const search: AuditListParams = {
       cursor: "older-cursor",
-      family: undefined,
       limit: 25,
-      outcome: undefined,
-      q: undefined,
-      sourceKey: undefined,
     };
 
     expect(
-      buildAuditSearchWithDraft(
+      buildAuditListParamsWithDraft(
         search,
         {
           q: "customers",
@@ -31,29 +26,23 @@ describe("audit-filter-state", () => {
         }
       )
     ).toEqual({
-      actionName: undefined,
-      cursor: undefined,
-      family: undefined,
       limit: 25,
       outcome: "failed",
       q: "customers",
       sourceKey: "warehouse",
-    } satisfies AuditSearch);
+    } satisfies AuditListParams);
   });
 
   it("clears an incompatible action when the family changes", () => {
-    const search: AuditSearch = {
+    const search: AuditListParams = {
       actionName: "execute",
-      cursor: undefined,
       family: "query_action",
       limit: 25,
-      outcome: undefined,
       q: "customers",
-      sourceKey: undefined,
     };
 
     expect(
-      buildAuditSearchWithDraft(
+      buildAuditListParamsWithDraft(
         search,
         {
           q: "customers",
@@ -65,14 +54,10 @@ describe("audit-filter-state", () => {
         }
       )
     ).toEqual({
-      actionName: undefined,
-      cursor: undefined,
       family: "source_api_action",
       limit: 25,
-      outcome: undefined,
       q: "customers",
-      sourceKey: undefined,
-    } satisfies AuditSearch);
+    } satisfies AuditListParams);
   });
 
   it("treats whitespace-only differences as unchanged draft filters", () => {

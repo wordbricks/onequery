@@ -1,7 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import {
   AUDIT_FAMILIES,
-  auditListQuerySchema,
+  auditListParamsSchema,
 } from "@onequery/audit-contracts/audit";
 import {
   and,
@@ -25,7 +25,7 @@ import {
   organizationPermissionChecks,
 } from "../auth/organization-permissions";
 import { verifyOrgAccess } from "../lib/verify-org-access";
-import type { SessionVariables } from "../middleware/session";
+import type { BetterAuthSessionVariables } from "../middleware/better-auth-session";
 import { zodProblemHook } from "../problem-details/zod-problem-hook";
 
 const OrganizationSlugParamsSchema = z.object({
@@ -97,7 +97,7 @@ async function findOrganizationMembershipBySlug(input: {
  * @route GET /:slug
  */
 export const organizationsRoute = new Hono<{
-  Variables: SessionVariables;
+  Variables: BetterAuthSessionVariables;
 }>()
   .get("/:slug", async (c) => {
     const slug = c.req.param("slug");
@@ -141,10 +141,10 @@ export const organizationsRoute = new Hono<{
   .get(
     "/:slug/audit",
     zValidator("param", OrganizationSlugParamsSchema, zodProblemHook()),
-    zValidator("query", auditListQuerySchema, zodProblemHook()),
+    zValidator("query", auditListParamsSchema, zodProblemHook()),
     async (c) => {
       const { slug } = c.req.valid("param");
-      const query = c.req.valid("query");
+      const auditListParams = c.req.valid("query");
       const db = c.var.storage.db;
       const session = c.get("session");
 
@@ -180,7 +180,7 @@ export const organizationsRoute = new Hono<{
         const response = await listAuditFeedPage({
           db,
           organizationId: membership.organizationId,
-          query,
+          params: auditListParams,
         });
 
         return c.json(response);

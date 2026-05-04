@@ -78,12 +78,12 @@ type CliRouteEnv = cliBrowserApp.CliRouteEnv;
 type CreateCliAppOptions = cliBrowserApp.CreateCliAppOptions;
 type CliBrowserContext = Context<CliRouteEnv>;
 
-export function createDeviceAuthorizationBrowserRoute(
+export function createDeviceAuthorizationBrowserRoutes(
   input: CreateCliAppOptions
 ) {
   return (
     cliBrowserApp
-      .createCliBrowserApp(input)
+      .createCliBrowserRoutes(input)
       .get("/", async (c) => {
         const userCode = normalizeUserCode(c.req.query("user_code"));
         return c.redirect(buildDevicePageUrl(c.req.url, userCode), 302);

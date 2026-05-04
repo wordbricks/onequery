@@ -8,7 +8,7 @@ import { Result, TaggedError } from "better-result";
 import { Hono } from "hono";
 import { testClient } from "hono/testing";
 
-import { createServerApi } from "../app";
+import { createServerApiApp } from "../app";
 import { createMemoryApiRateLimitStorage } from "../lib/rate-limit-storage";
 import { createTestRuntimeConfigFromDatabaseUrl } from "../routes/test-env";
 import type { TestRuntimeConfigOverrides } from "../routes/test-env";
@@ -117,7 +117,7 @@ export async function createRouteIntegrationHarness(
   );
   const app = new Hono().route(
     "/api",
-    createServerApi({
+    createServerApiApp({
       enableAuthTestUtils: true,
       runtime: runtimeConfig.value,
       storage,

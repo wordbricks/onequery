@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 
-import type { SessionVariables } from "../middleware/session";
+import type { BetterAuthSessionVariables } from "../middleware/better-auth-session";
 import type { ServerRuntimeVariables } from "../runtime-context";
 import { dataSourcesCrudRoute } from "./data-sources/crud";
 import { dataSourcesGitHubRepositoriesRoute } from "./data-sources/github-repositories";
@@ -15,7 +15,7 @@ import { dataSourcesTestRoute } from "./data-sources/test";
  * - test.ts: Test data source connection
  */
 export const dataSourcesRoute = new Hono<{
-  Variables: ServerRuntimeVariables & SessionVariables;
+  Variables: ServerRuntimeVariables & BetterAuthSessionVariables;
 }>()
   .route("/", dataSourcesCrudRoute)
   .route("/", dataSourcesGitHubRepositoriesRoute)

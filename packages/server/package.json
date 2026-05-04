@@ -23,7 +23,7 @@
     "./routes/test-env": "./src/routes/test-env.ts",
     "./storage": "./src/storage.ts",
     "./middleware/require-org-access": "./src/middleware/require-org-access.ts",
-    "./middleware/session": "./src/middleware/session.ts",
+    "./middleware/better-auth-session": "./src/middleware/better-auth-session.ts",
     "./services/connectors/broker": "./src/services/connectors/broker.ts",
     "./services/crypto/credential-encryption": "./src/services/crypto/credential-encryption.ts",
     "./services/data-source-credentials/prepare-data-source-credentials": "./src/services/data-source-credentials/prepare-data-source-credentials.ts",
@@ -36,7 +36,8 @@
     "./services/testers/mysql-tester": "./src/services/testers/mysql-tester.ts",
     "./services/data-source-tester": "./src/services/data-source-tester.ts",
     "./problem-details/zod-problem-hook": "./src/problem-details/zod-problem-hook.ts",
-    "./observability/error-reporting": "./src/observability/error-reporting.ts"
+    "./observability/error-reporting": "./src/observability/error-reporting.ts",
+    "./observability/structured-logging": "./src/observability/structured-logging.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",
@@ -48,6 +49,7 @@
     "@bufbuild/protobuf": "catalog:",
     "@bufbuild/protovalidate": "catalog:",
     "@casual-simulation/sql-parser": "0.1.0",
+    "@hono/structured-logger": "catalog:",
     "@hono/zod-validator": "catalog:",
     "@noble/ciphers": "2.1.1",
     "@onequery/audit-contracts": "workspace:*",

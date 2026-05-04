@@ -2,8 +2,6 @@ import { structuredLogger } from "@hono/structured-logger";
 import { Hono } from "hono";
 import { requestId } from "hono/request-id";
 
-import * as landingLogger from "./landing/landing-logger";
-import type { LandingLogger } from "./landing/landing-logger";
 import { landingRoute } from "./routes/landing";
 import type { LandingInternalErrorResponse } from "./routes/landing/shared";
 import type { LandingAppEnv } from "./types";
@@ -16,51 +14,48 @@ export type {
   LandingValidationErrorResponse,
 } from "./routes/landing/shared";
 
-function getLandingRequestLogMethod(logger: LandingLogger, status: number) {
-  if (status >= 500) {
-    return logger.error.bind(logger);
-  }
-
-  if (status >= 400) {
-    return logger.warn.bind(logger);
-  }
-
-  return logger.info.bind(logger);
-}
-
 export const landingApp = new Hono<LandingAppEnv>()
   .basePath("/api")
   .use("*", requestId())
   .use(
     "*",
-    structuredLogger<LandingLogger>({
-      createLogger: (c) =>
-        landingLogger.createLandingLogger({
-          method: c.req.method,
-          path: c.req.path,
-          requestId: c.var.requestId,
-        }),
+    structuredLogger({
+      createLogger: () => console,
+      onRequest: (logger, c) => {
+        logger.info(
+          {
+            event: "landing.request.started",
+            method: c.req.method,
+            path: c.req.path,
+            requestId: c.get("requestId"),
+          },
+          "landing request started"
+        );
+      },
+      onResponse: (logger, c, elapsedMs) => {
+        logger.info(
+          {
+            elapsedMs,
+            event: "landing.request.completed",
+            method: c.req.method,
+            path: c.req.path,
+            requestId: c.get("requestId"),
+            status: c.res.status,
+          },
+          "landing request completed"
+        );
+      },
       onError: (logger, error, c) => {
         logger.error(
           {
             err: error,
-            event: "request.failed",
+            event: "landing.request.failed",
+            method: c.req.method,
+            path: c.req.path,
+            requestId: c.get("requestId"),
             status: c.res.status,
           },
-          "request failed"
-        );
-      },
-      onRequest: () => {},
-      onResponse: (logger, c, elapsedMs) => {
-        const log = getLandingRequestLogMethod(logger, c.res.status);
-
-        log(
-          {
-            durationMs: Math.max(0, Math.round(elapsedMs)),
-            event: "request.finished",
-            status: c.res.status,
-          },
-          "request finished"
+          "landing request failed"
         );
       },
     })

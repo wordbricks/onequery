@@ -200,6 +200,14 @@ export const heroProductMachine = setup({
       },
     })),
   },
+  delays: {
+    auditDwell: HERO_TAB_DWELL_MS.audit,
+    integrationsDwell: HERO_TAB_DWELL_MS.integrations,
+    queryDwell: HERO_TAB_DWELL_MS.query,
+    safeQueryInitialDelay: SAFE_QUERY_INITIAL_DELAY_MS,
+    safeQueryResultHold: SAFE_QUERY_RESULT_HOLD_MS,
+    safeQueryStepDelay: SAFE_QUERY_STEP_DELAY_MS,
+  },
   guards: {
     selectedAuditTab: ({ event }) => event.tab === "audit",
     selectedIntegrationsTab: ({ event }) => event.tab === "integrations",
@@ -210,9 +218,9 @@ export const heroProductMachine = setup({
 }).createMachine({
   id: "heroProduct",
   initial: "integrations",
-  context: {
+  context: () => ({
     safeQuery: createInitialSafeQueryState(),
-  },
+  }),
   on: {
     "heroProduct/tabSelected": [
       {
@@ -232,19 +240,19 @@ export const heroProductMachine = setup({
   states: {
     integrations: {
       after: {
-        [HERO_TAB_DWELL_MS.integrations]: "query",
+        integrationsDwell: "query",
       },
     },
     query: {
       entry: "resetSafeQuery",
       initial: "initialDelay",
       after: {
-        [HERO_TAB_DWELL_MS.query]: "#heroProduct.audit",
+        queryDwell: "#heroProduct.audit",
       },
       states: {
         initialDelay: {
           after: {
-            [SAFE_QUERY_INITIAL_DELAY_MS]: "advancing",
+            safeQueryInitialDelay: "advancing",
           },
         },
         advancing: {
@@ -265,12 +273,12 @@ export const heroProductMachine = setup({
         },
         waitingForNextCheck: {
           after: {
-            [SAFE_QUERY_STEP_DELAY_MS]: "advancing",
+            safeQueryStepDelay: "advancing",
           },
         },
         passed: {
           after: {
-            [SAFE_QUERY_RESULT_HOLD_MS]: {
+            safeQueryResultHold: {
               actions: "restartSafeQuery",
               target: "initialDelay",
             },
@@ -278,7 +286,7 @@ export const heroProductMachine = setup({
         },
         blocked: {
           after: {
-            [SAFE_QUERY_RESULT_HOLD_MS]: {
+            safeQueryResultHold: {
               actions: "restartSafeQuery",
               target: "initialDelay",
             },
@@ -288,7 +296,7 @@ export const heroProductMachine = setup({
     },
     audit: {
       after: {
-        [HERO_TAB_DWELL_MS.audit]: "integrations",
+        auditDwell: "integrations",
       },
     },
   },

@@ -10,8 +10,8 @@ import { Result } from "better-result";
 import { Hono } from "hono";
 import { z } from "zod";
 
+import type { BetterAuthSessionVariables } from "../../middleware/better-auth-session";
 import { requireOrgAccess } from "../../middleware/require-org-access";
-import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
 import {
@@ -39,7 +39,7 @@ const GitHubRepositorySchema = z.object({
 const GitHubRepositoriesSchema = z.array(GitHubRepositorySchema);
 
 export const dataSourcesGitHubRepositoriesRoute = new Hono<{
-  Variables: ServerRuntimeVariables & SessionVariables;
+  Variables: ServerRuntimeVariables & BetterAuthSessionVariables;
 }>()
   .use("*", requireOrgAccess())
   .get(

@@ -27,7 +27,9 @@ describe("cli connect request context", () => {
       .mockResolvedValue(sessionResult);
 
     const c = {
-      get: vi.fn().mockReturnValue("req_cli_123"),
+      var: {
+        requestId: "req_cli_123",
+      },
     } as never;
     const requestContext = createCliConnectRequestContext(c, {
       resolveAuthenticatedCliSession,
@@ -52,7 +54,9 @@ describe("cli connect request context", () => {
       .mockResolvedValueOnce(sessionWithActiveOrgResult);
 
     const c = {
-      get: vi.fn().mockReturnValue("req_cli_123"),
+      var: {
+        requestId: "req_cli_123",
+      },
     } as never;
     const requestContext = createCliConnectRequestContext(c, {
       resolveAuthenticatedCliSession,
@@ -103,7 +107,9 @@ describe("cli connect request context", () => {
       .mockResolvedValueOnce(sourceReadOrgResult);
 
     const c = {
-      get: vi.fn().mockReturnValue("req_cli_123"),
+      var: {
+        requestId: "req_cli_123",
+      },
     } as never;
     const requestContext = createCliConnectRequestContext(c, {
       resolveAuthenticatedCliSession,
@@ -147,7 +153,9 @@ describe("cli connect request context", () => {
 
   it("stores the request context in connect context values", () => {
     const c = {
-      get: vi.fn().mockReturnValue("req_cli_123"),
+      var: {
+        requestId: "req_cli_123",
+      },
     } as never;
 
     const requestContext = requireCliConnectRequestContext({

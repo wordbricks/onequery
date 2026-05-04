@@ -8,7 +8,11 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": ["ONEQUERY_E2E"],
+      "env": [
+        "ONEQUERY_BUNDLE_REPORT",
+        "ONEQUERY_BUNDLE_REPORT_TEMPLATE",
+        "ONEQUERY_E2E"
+      ],
       "inputs": ["$TURBO_DEFAULT$", "!**/.DS_Store", "!**/target/**"],
       "outputs": ["dist/**", "dist-worker/**"]
     },

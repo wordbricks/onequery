@@ -1,8 +1,12 @@
 import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
 import { testClient } from "hono/testing";
 import { describe, expect, it, vi } from "vitest";
 
-import type { SessionData, SessionVariables } from "../middleware/session";
+import type {
+  BetterAuthSessionData,
+  BetterAuthSessionVariables,
+} from "../middleware/better-auth-session";
 import type { StorageVariables } from "../storage";
 import { teamRoute } from "./team";
 
@@ -26,7 +30,7 @@ function createMockStorage(input: {
   } as unknown as StorageVariables["storage"];
 }
 
-function createSession(): SessionData {
+function createSession(): BetterAuthSessionData {
   return {
     session: {
       activeOrganizationId: "org_1",
@@ -42,6 +46,19 @@ function createSession(): SessionData {
       name: "Owner",
     },
   };
+}
+
+function useTestBetterAuthSessionContext(input: {
+  session: BetterAuthSessionData;
+  storage: StorageVariables["storage"];
+}) {
+  return createMiddleware<{
+    Variables: BetterAuthSessionVariables;
+  }>(async (c, next) => {
+    c.set("storage", input.storage);
+    c.set("session", input.session);
+    await next();
+  });
 }
 
 describe("team route", () => {
@@ -60,30 +77,18 @@ describe("team route", () => {
       role: "owner",
     }));
     const app = new Hono<{
-      Variables: SessionVariables;
+      Variables: BetterAuthSessionVariables;
     }>()
-      .use("*", async (c, next) => {
-        (
-          c as typeof c & {
-            set: (
-              key: "storage" | "session",
-              value: StorageVariables["storage"] | SessionData
-            ) => void;
-          }
-        ).set(
-          "storage",
-          createMockStorage({
+      .use(
+        "*",
+        useTestBetterAuthSessionContext({
+          session: createSession(),
+          storage: createMockStorage({
             createInvitation,
             findMembership,
-          })
-        );
-        (
-          c as typeof c & {
-            set: (key: "session", value: SessionData) => void;
-          }
-        ).set("session", createSession());
-        await next();
-      })
+          }),
+        })
+      )
       .route("/", teamRoute);
 
     const response = await testClient(app).organizations[

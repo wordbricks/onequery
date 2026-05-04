@@ -1,10 +1,7 @@
-import type { Context } from "hono";
+import type { RequestIdVariables } from "hono/request-id";
 
 export const CLI_REQUEST_ID_HEADER = "x-request-id";
 
-export function getCliRequestId(c: Context) {
-  const requestId = c.get("requestId");
-  return typeof requestId === "string" && requestId.length > 0
-    ? requestId
-    : "unknown";
-}
+export type CliRequestContext = {
+  readonly var: Readonly<RequestIdVariables>;
+};

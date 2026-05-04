@@ -1,11 +1,13 @@
 import type { Http2Bindings, HttpBindings } from "@hono/node-server";
 import type { Database } from "@onequery/db/server";
+import { createHonoRequestStructuredLogger } from "@onequery/server/observability/structured-logging";
+import type { HonoStructuredLoggerVariables } from "@onequery/server/observability/structured-logging";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
 import { serverStorageMiddleware } from "@onequery/server/storage";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { requestId as requestIdMiddleware } from "hono/request-id";
+import { requestId } from "hono/request-id";
 import type { RequestIdVariables } from "hono/request-id";
 
 import type { AuthorizedCliOrgContext } from "./authorization";
@@ -13,7 +15,6 @@ import type { CliSessionIdentity } from "./domain/workflows";
 import {
   buildCliRequestLogDetails,
   getCliLogLevelForStatus,
-  logCliEvent,
   toCliErrorMessage,
 } from "./observability";
 import { CLI_REQUEST_ID_HEADER } from "./request-context";
@@ -25,10 +26,10 @@ export type CliRouteEnv<
 > = {
   Bindings: HonoNodeBindings;
   Variables: RequestIdVariables & {
-    requestStartedAtMs: number;
     runtime: ServerRuntimeConfig;
     storage: ServerStorage;
-  } & Variables;
+  } & HonoStructuredLoggerVariables &
+    Variables;
 };
 
 export type CliSessionRouteVariables = {
@@ -45,57 +46,38 @@ export interface CreateCliAppOptions {
   storage: ServerStorage;
 }
 
-const cliRequestObservabilityMiddleware = createMiddleware<CliRouteEnv>(
-  async (c, next) => {
-    const requestStartedAtMs = Date.now();
-    c.set("requestStartedAtMs", requestStartedAtMs);
+const cliRequestStructuredLoggerMiddleware =
+  createHonoRequestStructuredLogger<CliRouteEnv>({
+    buildErrorDetails: (error, c) => ({
+      error: toCliErrorMessage(error),
+      status: c.res.status,
+    }),
+    buildRequestDetails: buildCliRequestLogDetails,
+    buildResponseDetails: (c, elapsedMs) => ({
+      durationMs: Math.max(0, Math.trunc(elapsedMs)),
+      status: c.res.status,
+    }),
+    events: {
+      completed: "request.finished",
+      failed: "request.failed",
+      started: "request.started",
+    },
+    getLogLevelForStatus: getCliLogLevelForStatus,
+    messages: {
+      completed: "cli request finished",
+      failed: "cli request failed",
+      started: "cli request started",
+    },
+    scope: "cli",
+  });
 
-    logCliEvent({
-      details: buildCliRequestLogDetails(c),
-      event: "request.started",
-      level: "info",
-    });
-
-    let thrownError: unknown = null;
-    try {
-      await next();
-    } catch (error) {
-      thrownError = error;
-      throw error;
-    } finally {
-      if (thrownError) {
-        logCliEvent({
-          details: buildCliRequestLogDetails(c, {
-            error: toCliErrorMessage(thrownError),
-          }),
-          event: "request.failed",
-          level: "error",
-        });
-      } else {
-        logCliEvent({
-          details: buildCliRequestLogDetails(c, {
-            status: c.res.status,
-            durationMs: Math.max(0, Date.now() - requestStartedAtMs),
-          }),
-          event: "request.finished",
-          level: getCliLogLevelForStatus(c.res.status),
-        });
-      }
-    }
-  }
-);
-
-function cliRuntimeMiddleware<
-  Variables extends Record<string, unknown> = Record<string, never>,
->(runtime: ServerRuntimeConfig) {
+function cliRuntimeMiddleware(runtime: ServerRuntimeConfig) {
   return createMiddleware<{
-    Variables: { runtime: ServerRuntimeConfig } & Variables;
+    Variables: {
+      runtime: ServerRuntimeConfig;
+    };
   }>(async (c, next) => {
-    (
-      c as typeof c & {
-        set: (key: "runtime", value: ServerRuntimeConfig) => void;
-      }
-    ).set("runtime", runtime);
+    c.set("runtime", runtime);
     await next();
   });
 }
@@ -108,32 +90,49 @@ function createCliRouter<
   );
 }
 
+function applyCliRouteMiddleware<
+  Variables extends Record<string, unknown> = Record<string, never>,
+>(app: Hono<CliRouteEnv<Variables>>, input: CreateCliAppOptions) {
+  app.use(cliRequestStructuredLoggerMiddleware);
+  app.use(cliRuntimeMiddleware(input.runtime));
+  app.use(serverStorageMiddleware(input.storage));
+  return app;
+}
+
+export function createCliRoutes<
+  Variables extends Record<string, unknown> = Record<string, never>,
+>(input: CreateCliAppOptions) {
+  const app = createCliRouter<Variables>();
+  return applyCliRouteMiddleware(app, input);
+}
+
+export function createCliBrowserRoutes<
+  Variables extends Record<string, unknown> = Record<string, never>,
+>(input: CreateCliAppOptions) {
+  const app = createCliRouter<Variables>();
+  return applyCliRouteMiddleware(app, input);
+}
+
 export function createCliApp<
   Variables extends Record<string, unknown> = Record<string, never>,
 >(input: CreateCliAppOptions) {
   const app = createCliRouter<Variables>();
-  app.use(cliRuntimeMiddleware(input.runtime));
-  app.use(serverStorageMiddleware(input.storage));
   app.use(
-    requestIdMiddleware({
+    requestId({
       headerName: CLI_REQUEST_ID_HEADER,
     })
   );
-  app.use(cliRequestObservabilityMiddleware);
-  return app;
+  return applyCliRouteMiddleware(app, input);
 }
 
 export function createCliBrowserApp<
   Variables extends Record<string, unknown> = Record<string, never>,
 >(input: CreateCliAppOptions) {
   const app = createCliRouter<Variables>();
-  app.use(cliRuntimeMiddleware(input.runtime));
-  app.use(serverStorageMiddleware(input.storage));
   app.use(
-    requestIdMiddleware({
+    requestId({
       headerName: CLI_REQUEST_ID_HEADER,
     })
   );
-  app.use(cliRequestObservabilityMiddleware);
-  return app;
+  return applyCliRouteMiddleware(app, input);
 }

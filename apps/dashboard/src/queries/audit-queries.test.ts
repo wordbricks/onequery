@@ -1,3 +1,4 @@
+import { auditListParamsSchema } from "@onequery/audit-contracts/audit";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,6 +9,30 @@ import {
 } from "@/queries/audit-queries";
 
 describe("audit query options", () => {
+  it("uses one canonical params schema for route and API audit list inputs", () => {
+    expect(auditListParamsSchema.parse({})).toEqual({ limit: 25 });
+    expect(
+      auditListParamsSchema.parse({
+        limit: "50",
+        q: " customers ",
+        sourceKey: "   ",
+      })
+    ).toEqual({
+      limit: 50,
+      q: "customers",
+    });
+    expect(() => auditListParamsSchema.parse({ limit: "bad" })).toThrow();
+  });
+
+  it("rejects incompatible family and action filters", () => {
+    expect(() =>
+      auditListParamsSchema.parse({
+        actionName: "execute",
+        family: "source_api_action",
+      })
+    ).toThrow();
+  });
+
   it("treats audit data as immediately stale", () => {
     const options = auditListQueryOptions("user_1", "acme", { limit: 25 });
 
@@ -26,7 +51,7 @@ describe("audit query options", () => {
             sourceApiAction: false,
           },
         },
-        search: { cursor: undefined },
+        params: {},
       })
     ).toBe(AUDIT_LIVE_REFETCH_INTERVAL_MS);
   });
@@ -40,7 +65,7 @@ describe("audit query options", () => {
             sourceApiAction: false,
           },
         },
-        search: { cursor: undefined },
+        params: {},
       })
     ).toBe(AUDIT_PROJECTION_CATCH_UP_REFETCH_INTERVAL_MS);
   });
@@ -54,7 +79,7 @@ describe("audit query options", () => {
             sourceApiAction: true,
           },
         },
-        search: { cursor: "older" },
+        params: { cursor: "older" },
       })
     ).toBe(false);
   });

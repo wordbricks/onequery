@@ -11,8 +11,8 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 
+import type { BetterAuthSessionVariables } from "../middleware/better-auth-session";
 import { requireOrgAccess } from "../middleware/require-org-access";
-import type { SessionVariables } from "../middleware/session";
 import { zodProblemHook } from "../problem-details/zod-problem-hook";
 import { addUtcDays, clampBudgetWindow } from "./budget/availability";
 
@@ -80,7 +80,7 @@ function buildDailyCostSeries(input: {
 // app does not yet persist org-level budget targets. This endpoint therefore
 // exposes usage and cost rollups rather than budget-versus-limit data.
 export const budgetRoute = new Hono<{
-  Variables: SessionVariables;
+  Variables: BetterAuthSessionVariables;
 }>()
   .use("*", requireOrgAccess())
   .get(

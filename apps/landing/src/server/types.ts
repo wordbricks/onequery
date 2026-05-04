@@ -1,6 +1,5 @@
+import type { BaseLogger } from "@hono/structured-logger";
 import type { RequestIdVariables } from "hono/request-id";
-
-import type { LandingLogger } from "./landing/landing-logger";
 
 export interface LandingWorkerBindings {
   // Local dev can intentionally omit the webhook binding and use the loopback
@@ -11,6 +10,6 @@ export interface LandingWorkerBindings {
 export type LandingAppEnv = {
   Bindings: LandingWorkerBindings;
   Variables: RequestIdVariables & {
-    logger: LandingLogger;
+    logger: BaseLogger;
   };
 };

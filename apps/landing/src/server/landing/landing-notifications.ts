@@ -1,7 +1,5 @@
 import { Result, TaggedError } from "better-result";
 
-import type { LandingLogger } from "./landing-logger";
-
 export const LEAD_CAPTURE_SOURCE = "onequery_landing";
 
 export type LandingNotificationDelivery =
@@ -140,18 +138,15 @@ export function createContactNotification(input: {
   };
 }
 
-export async function deliverLandingNotification(
-  input: {
-    delivery: LandingNotificationDelivery;
-    notificationType: LandingNotificationType;
-    payload: LandingNotificationPayload;
-  },
-  logger: LandingLogger = console
-): Promise<Result<void, LandingNotificationError>> {
+export async function deliverLandingNotification(input: {
+  delivery: LandingNotificationDelivery;
+  notificationType: LandingNotificationType;
+  payload: LandingNotificationPayload;
+}): Promise<Result<void, LandingNotificationError>> {
   const { delivery, notificationType, payload } = input;
 
   if (delivery.kind === "local-dev-null-sink") {
-    logger.info(
+    console.info(
       {
         delivery: delivery.kind,
         event: "landing.notification.delivered_local",
@@ -163,7 +158,7 @@ export async function deliverLandingNotification(
   }
 
   if (delivery.kind === "unconfigured") {
-    logger.error(
+    console.error(
       {
         delivery: delivery.kind,
         event: "landing.notification.delivery_unconfigured",
@@ -192,7 +187,7 @@ export async function deliverLandingNotification(
       }),
   });
   if (responseResult.isErr()) {
-    logger.error(
+    console.error(
       {
         cause: responseResult.error.cause,
         delivery: delivery.kind,
@@ -216,7 +211,7 @@ export async function deliverLandingNotification(
   );
   // Public lead-capture requests should not leak upstream webhook
   // details back to the browser, so worker errors stay generic.
-  logger.error(
+  console.error(
     {
       delivery: delivery.kind,
       event: "landing.notification.webhook_rejected",

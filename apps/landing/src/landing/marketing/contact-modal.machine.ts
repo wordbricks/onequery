@@ -1,4 +1,4 @@
-import { assertEvent, assign, setup } from "xstate";
+import { assertEvent, assign, fromPromise, setup } from "xstate";
 import type { SnapshotFrom } from "xstate";
 
 export const DEFAULT_CONTACT_ERROR_MESSAGE = "Failed to send message";
@@ -16,15 +16,12 @@ type ContactModalSubmissionFailure = {
   message: string;
 };
 
-type PendingContactSubmission = {
+export type ContactModalSubmissionInput = {
   form: ContactForm;
-  requestId: number;
 };
 
 type ContactModalContext = {
   form: ContactForm;
-  nextSubmissionRequestId: number;
-  pendingSubmission: PendingContactSubmission | null;
   submission: ContactModalSubmission;
 };
 
@@ -42,15 +39,6 @@ type ContactModalEvent =
     }
   | {
       type: "contactModal/submit";
-    }
-  | {
-      type: "contactModal/submitFailed";
-      message: string;
-      requestId: number;
-    }
-  | {
-      type: "contactModal/submitSucceeded";
-      requestId: number;
     };
 
 function createEmptyContactForm(): ContactForm {
@@ -70,124 +58,126 @@ function createIdleSubmission(): ContactModalSubmission {
 function createInitialContext(): ContactModalContext {
   return {
     form: createEmptyContactForm(),
-    nextSubmissionRequestId: 1,
-    pendingSubmission: null,
     submission: createIdleSubmission(),
   };
 }
 
-export function createContactModalMachine() {
-  return setup({
-    types: {
-      context: {} as ContactModalContext,
-      events: {} as ContactModalEvent,
-    },
-    actions: {
-      closeWithSuccess: assign({
-        form: () => createEmptyContactForm(),
-        pendingSubmission: () => null,
-        submission: () => createIdleSubmission(),
-      }),
-      clearPendingSubmission: assign({
-        pendingSubmission: () => null,
-      }),
-      resetForm: assign(() => ({
-        form: createEmptyContactForm(),
-        pendingSubmission: null,
+function readContactSubmitError(error: unknown): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.length > 0
+  ) {
+    return error.message;
+  }
+
+  return DEFAULT_CONTACT_ERROR_MESSAGE;
+}
+
+const contactModalMachine = setup({
+  types: {
+    context: {} as ContactModalContext,
+    events: {} as ContactModalEvent,
+  },
+  actions: {
+    closeWithSuccess: assign({
+      form: () => createEmptyContactForm(),
+      submission: () => createIdleSubmission(),
+    }),
+    resetForm: assign(() => ({
+      form: createEmptyContactForm(),
+      submission: createIdleSubmission(),
+    })),
+    storeFieldValue: assign(({ context, event }) => {
+      assertEvent(event, "contactModal/fieldChanged");
+      return {
+        form: {
+          ...context.form,
+          [event.field]: event.value,
+        },
         submission: createIdleSubmission(),
-      })),
-      startSubmitRequest: assign(({ context }) => ({
-        nextSubmissionRequestId: context.nextSubmissionRequestId + 1,
-        pendingSubmission: {
-          form: { ...context.form },
-          requestId: context.nextSubmissionRequestId,
-        },
-      })),
-      storeFieldValue: assign(({ context, event }) => {
-        assertEvent(event, "contactModal/fieldChanged");
-        return {
-          form: {
-            ...context.form,
-            [event.field]: event.value,
-          },
-          submission: createIdleSubmission(),
-        };
+      };
+    }),
+    storeSubmitError: assign({
+      submission: (_, params: { error: unknown }) => ({
+        kind: "submitFailed" as const,
+        message: readContactSubmitError(params.error),
       }),
-      storeSubmitError: assign({
-        submission: ({ context, event }) => {
-          assertEvent(event, "contactModal/submitFailed");
-
-          if (context.pendingSubmission?.requestId !== event.requestId) {
-            return context.submission;
-          }
-
-          return {
-            kind: "submitFailed" as const,
-            message: event.message,
-          };
+    }),
+    trackOpenRequested: () => undefined,
+    trackSubmitSucceeded: () => undefined,
+  },
+  actors: {
+    submitContact: fromPromise<void, ContactModalSubmissionInput>(
+      async () => undefined
+    ),
+  },
+}).createMachine({
+  id: "contactModal",
+  initial: "closed",
+  context: () => createInitialContext(),
+  states: {
+    closed: {
+      on: {
+        "contactModal/openRequested": {
+          actions: "trackOpenRequested",
+          target: "open",
         },
-      }),
-    },
-    guards: {
-      matchesPendingSubmission: ({ context, event }) => {
-        if (
-          event.type !== "contactModal/submitFailed" &&
-          event.type !== "contactModal/submitSucceeded"
-        ) {
-          return false;
-        }
-
-        return context.pendingSubmission?.requestId === event.requestId;
       },
     },
-  }).createMachine({
-    id: "contactModal",
-    initial: "closed",
-    context: createInitialContext(),
-    states: {
-      closed: {
-        on: {
-          "contactModal/openRequested": "open",
+    open: {
+      initial: "editing",
+      on: {
+        "contactModal/closeRequested": {
+          actions: "resetForm",
+          target: "closed",
         },
       },
-      open: {
-        initial: "editing",
-        on: {
-          "contactModal/closeRequested": {
-            actions: "resetForm",
-            target: "closed",
-          },
-        },
-        states: {
-          editing: {
-            on: {
-              "contactModal/fieldChanged": {
-                actions: "storeFieldValue",
-              },
-              "contactModal/submit": {
-                actions: "startSubmitRequest",
-                target: "submitting",
-              },
+      states: {
+        editing: {
+          on: {
+            "contactModal/fieldChanged": {
+              actions: "storeFieldValue",
+            },
+            "contactModal/submit": {
+              target: "submitting",
             },
           },
-          submitting: {
-            on: {
-              "contactModal/submitFailed": {
-                actions: ["storeSubmitError", "clearPendingSubmission"],
-                guard: "matchesPendingSubmission",
-                target: "editing",
+        },
+        submitting: {
+          invoke: {
+            src: "submitContact",
+            input: ({ context, event }) => {
+              assertEvent(event, "contactModal/submit");
+
+              return {
+                form: { ...context.form },
+              };
+            },
+            onDone: {
+              actions: ["trackSubmitSucceeded", "closeWithSuccess"],
+              target: "#contactModal.closed",
+            },
+            onError: {
+              actions: {
+                type: "storeSubmitError",
+                params: ({ event }) => ({
+                  error: event.error,
+                }),
               },
-              "contactModal/submitSucceeded": {
-                actions: ["closeWithSuccess", "clearPendingSubmission"],
-                guard: "matchesPendingSubmission",
-                target: "#contactModal.closed",
-              },
+              target: "editing",
             },
           },
         },
       },
     },
-  });
+  },
+});
+
+export function createContactModalMachine() {
+  return contactModalMachine;
 }
 
 export function readContactModalErrorMessage(

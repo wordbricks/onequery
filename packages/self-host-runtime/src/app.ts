@@ -1,14 +1,19 @@
-import { structuredLogger } from "@hono/structured-logger";
+import type { Http2Bindings, HttpBindings } from "@hono/node-server";
 import {
-  createCliRoute,
-  createDeviceAuthorizationBrowserRoute,
+  createCliConnectRoutes,
+  createDeviceAuthorizationBrowserRoutes,
 } from "@onequery/cli-server";
 import {
   createInstallScriptResponse,
   shouldServeInstallScript,
 } from "@onequery/installer";
-import { createServerApi } from "@onequery/server/app";
+import { createServerApiRoutes } from "@onequery/server/app";
 import { createMemoryApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
+import {
+  buildHonoRequestLogDetails,
+  createHonoRequestStructuredLogger,
+} from "@onequery/server/observability/structured-logging";
+import type { HonoStructuredLoggerVariables } from "@onequery/server/observability/structured-logging";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import { createServerStorage } from "@onequery/server/storage";
 import type { ServerStorage } from "@onequery/server/storage";
@@ -23,12 +28,12 @@ import {
   DEVICE_AUTHORIZATION_API_ROUTE_PREFIX,
   isApiRoutePath,
 } from "./constants";
-import * as runtimeLogger from "./runtime-logger";
-import type { RuntimeLogger } from "./runtime-logger";
 
 type SpaAssetBinding = {
   fetch: (request: Request) => Promise<Response>;
 };
+
+type RuntimeNodeBindings = HttpBindings | Http2Bindings;
 
 export interface CreateRuntimeAppOptions {
   enableAuthTestUtils?: boolean;
@@ -38,22 +43,14 @@ export interface CreateRuntimeAppOptions {
 }
 
 type RuntimeApiEnv = {
-  Variables: RequestIdVariables & {
-    logger: RuntimeLogger;
-  };
+  Bindings: RuntimeNodeBindings;
+  Variables: RequestIdVariables;
 };
 
-function getRuntimeRequestLogMethod(logger: RuntimeLogger, status: number) {
-  if (status >= 500) {
-    return logger.error.bind(logger);
-  }
-
-  if (status >= 400) {
-    return logger.warn.bind(logger);
-  }
-
-  return logger.info.bind(logger);
-}
+type RuntimeAppEnv = {
+  Bindings: RuntimeNodeBindings;
+  Variables: RequestIdVariables & HonoStructuredLoggerVariables;
+};
 
 function resolveStorage(input: CreateRuntimeAppOptions): ServerStorage {
   return (
@@ -64,60 +61,44 @@ function resolveStorage(input: CreateRuntimeAppOptions): ServerStorage {
   );
 }
 
-// Build the runtime API surface on top of the shared OSS-safe server routes.
-export function createApiApp(input: CreateRuntimeAppOptions) {
+const selfHostRuntimeStructuredLogger =
+  createHonoRequestStructuredLogger<RuntimeAppEnv>({
+    buildRequestDetails: (c) =>
+      buildHonoRequestLogDetails(c, {
+        requestId: c.var.requestId,
+      }),
+    events: {
+      completed: "runtime.request.completed",
+      failed: "runtime.request.failed",
+      started: "runtime.request.started",
+    },
+    messages: {
+      completed: "runtime request completed",
+      failed: "runtime request failed",
+      started: "runtime request started",
+    },
+    scope: "self-host-runtime",
+  });
+
+// Build the runtime API surface on top of shared mountable route graphs.
+export function createRuntimeApiRoutes(input: CreateRuntimeAppOptions) {
   const storage = resolveStorage(input);
 
   return (
     new Hono<RuntimeApiEnv>()
-      .use("*", requestId())
-      .use(
-        "*",
-        structuredLogger<RuntimeLogger>({
-          createLogger: (c) =>
-            runtimeLogger.createRuntimeLogger({
-              method: c.req.method,
-              path: c.req.path,
-              requestId: c.var.requestId,
-            }),
-          onError: (logger, error, c) => {
-            logger.error(
-              {
-                err: error,
-                event: "request.failed",
-                status: c.res.status,
-              },
-              "request failed"
-            );
-          },
-          onRequest: () => {},
-          onResponse: (logger, c, elapsedMs) => {
-            const log = getRuntimeRequestLogMethod(logger, c.res.status);
-
-            log(
-              {
-                durationMs: Math.max(0, Math.round(elapsedMs)),
-                event: "request.finished",
-                status: c.res.status,
-              },
-              "request finished"
-            );
-          },
-        })
-      )
       // Comment: mount the more specific `/api/*` children before the broad
       // `/api` app so Hono does not run the general control-plane middleware
       // for CLI or device-authorization requests.
       .route(
         DEVICE_AUTHORIZATION_API_ROUTE_PREFIX,
-        createDeviceAuthorizationBrowserRoute({
+        createDeviceAuthorizationBrowserRoutes({
           runtime: input.runtime,
           storage,
         })
       )
       .route(
         CLI_API_ROUTE_PREFIX,
-        createCliRoute({
+        createCliConnectRoutes({
           requestPathPrefix: CLI_API_ROUTE_PREFIX,
           runtime: input.runtime,
           storage,
@@ -128,7 +109,7 @@ export function createApiApp(input: CreateRuntimeAppOptions) {
       // the route graph.
       .route(
         API_ROUTE_PREFIX,
-        createServerApi({
+        createServerApiRoutes({
           enableAuthTestUtils: input.enableAuthTestUtils,
           runtime: input.runtime,
           storage,
@@ -137,13 +118,22 @@ export function createApiApp(input: CreateRuntimeAppOptions) {
   );
 }
 
+// Build a standalone API app for callers that only serve the `/api` surface.
+export function createApiApp(input: CreateRuntimeAppOptions) {
+  return new Hono<RuntimeApiEnv>()
+    .use("*", requestId())
+    .route("/", createRuntimeApiRoutes(input));
+}
+
 export function createApp(input: CreateRuntimeAppOptions) {
-  const apiApp = createApiApp(input);
+  const apiRoutes = createRuntimeApiRoutes(input);
 
   return (
-    new Hono()
+    new Hono<RuntimeAppEnv>()
+      .use("*", requestId())
+      .use("*", selfHostRuntimeStructuredLogger)
       .onError(problemDetailsHandler())
-      .route("/", apiApp)
+      .route("/", apiRoutes)
       // Removed/private API endpoints should fail as API 404s instead of serving
       // the SPA shell through the assets binding.
       .notFound(async (c) => {
@@ -160,4 +150,5 @@ export function createApp(input: CreateRuntimeAppOptions) {
   );
 }
 
+export type RuntimeApiRoutesType = ReturnType<typeof createRuntimeApiRoutes>;
 export type ApiType = ReturnType<typeof createApiApp>;

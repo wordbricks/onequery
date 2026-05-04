@@ -2,7 +2,7 @@ import { createTestRuntimeConfig } from "@onequery/server/routes/test-env";
 import type { ServerStorage } from "@onequery/server/storage";
 import { describe, expect, it } from "vitest";
 
-import { createCliRoute } from "./hono";
+import { createCliConnectRoutes } from "./hono";
 
 describe("cli connect hono routing", () => {
   it("registers the Connect methods as concrete Hono routes", () => {
@@ -13,7 +13,7 @@ describe("cli connect hono routing", () => {
       return;
     }
 
-    const app = createCliRoute({
+    const app = createCliConnectRoutes({
       requestPathPrefix: "/api/cli",
       runtime: runtime.value,
       storage: {} as ServerStorage,

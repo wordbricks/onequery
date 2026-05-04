@@ -2,8 +2,8 @@ import { zValidator } from "@hono/zod-validator";
 import { and, dataSources, eq } from "@onequery/db/server";
 import { Hono } from "hono";
 
+import type { BetterAuthSessionVariables } from "../../middleware/better-auth-session";
 import { requireOrgAccess } from "../../middleware/require-org-access";
-import type { SessionVariables } from "../../middleware/session";
 import { zodProblemHook } from "../../problem-details/zod-problem-hook";
 import type { ServerRuntimeVariables } from "../../runtime-context";
 import { prepareDataSourceCredentials } from "../../services/data-source-credentials/prepare-data-source-credentials";
@@ -14,7 +14,7 @@ import {
 import { OrgQuerySchema } from "./schemas";
 
 export const dataSourcesTestRoute = new Hono<{
-  Variables: ServerRuntimeVariables & SessionVariables;
+  Variables: ServerRuntimeVariables & BetterAuthSessionVariables;
 }>()
   .use("*", requireOrgAccess())
   .post(

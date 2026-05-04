@@ -1,4 +1,4 @@
-import { assertEvent, assign, setup } from "xstate";
+import { assertEvent, assign, fromPromise, setup } from "xstate";
 import type { SnapshotFrom } from "xstate";
 
 export const DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE =
@@ -15,16 +15,9 @@ type ProductUpdatesFeedback =
       email: string;
     };
 
-type PendingProductUpdatesSubmission = {
-  email: string;
-  requestId: number;
-};
-
 type ProductUpdatesContext = {
   email: string;
   feedback: ProductUpdatesFeedback;
-  nextSubmissionRequestId: number;
-  pendingSubmission: PendingProductUpdatesSubmission | null;
 };
 
 type ProductUpdatesEvent =
@@ -34,24 +27,20 @@ type ProductUpdatesEvent =
     }
   | {
       type: "productUpdates/submit";
-    }
-  | {
-      type: "productUpdates/submissionFailed";
-      message: string;
-      requestId: number;
-    }
-  | {
-      type: "productUpdates/submissionSucceeded";
-      email: string;
-      requestId: number;
     };
+
+export type ProductUpdatesSubmissionInput = {
+  email: string;
+};
+
+export type ProductUpdatesSubmissionOutput = {
+  email: string;
+};
 
 function createInitialContext(): ProductUpdatesContext {
   return {
     email: "",
     feedback: createIdleFeedback(),
-    nextSubmissionRequestId: 1,
-    pendingSubmission: null,
   };
 }
 
@@ -61,128 +50,129 @@ function createIdleFeedback(): ProductUpdatesFeedback {
   };
 }
 
+function readProductUpdatesSubmissionError(error: unknown): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.length > 0
+  ) {
+    return error.message;
+  }
+
+  return DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE;
+}
+
+const productUpdatesMachine = setup({
+  types: {
+    context: {} as ProductUpdatesContext,
+    events: {} as ProductUpdatesEvent,
+  },
+  actions: {
+    recordSuccess: assign({
+      email: () => "",
+      feedback: (_, params: ProductUpdatesSubmissionOutput) => ({
+        kind: "success" as const,
+        email: params.email,
+      }),
+    }),
+    storeEmail: assign(({ event }) => {
+      assertEvent(event, "productUpdates/emailChanged");
+      return {
+        email: event.email,
+        feedback: createIdleFeedback(),
+      };
+    }),
+    storeSubmitError: assign({
+      feedback: (_, params: { error: unknown }) => ({
+        kind: "failure" as const,
+        message: readProductUpdatesSubmissionError(params.error),
+      }),
+    }),
+    trackSubmissionSucceeded: () => undefined,
+  },
+  actors: {
+    submitProductUpdates: fromPromise<
+      ProductUpdatesSubmissionOutput,
+      ProductUpdatesSubmissionInput
+    >(async ({ input }) => ({
+      email: input.email.trim().toLowerCase(),
+    })),
+  },
+}).createMachine({
+  id: "productUpdates",
+  initial: "editing",
+  context: () => createInitialContext(),
+  states: {
+    editing: {
+      on: {
+        "productUpdates/emailChanged": {
+          actions: "storeEmail",
+        },
+        "productUpdates/submit": {
+          target: "submitting",
+        },
+      },
+    },
+    submitting: {
+      invoke: {
+        src: "submitProductUpdates",
+        input: ({ context, event }) => {
+          assertEvent(event, "productUpdates/submit");
+
+          return {
+            email: context.email,
+          };
+        },
+        onDone: {
+          actions: [
+            {
+              type: "recordSuccess",
+              params: ({ event }) => event.output,
+            },
+            "trackSubmissionSucceeded",
+          ],
+          target: "success",
+        },
+        onError: {
+          actions: {
+            type: "storeSubmitError",
+            params: ({ event }) => ({
+              error: event.error,
+            }),
+          },
+          target: "failure",
+        },
+      },
+    },
+    success: {
+      on: {
+        "productUpdates/emailChanged": {
+          actions: "storeEmail",
+          target: "editing",
+        },
+        "productUpdates/submit": {
+          target: "submitting",
+        },
+      },
+    },
+    failure: {
+      on: {
+        "productUpdates/emailChanged": {
+          actions: "storeEmail",
+          target: "editing",
+        },
+        "productUpdates/submit": {
+          target: "submitting",
+        },
+      },
+    },
+  },
+});
+
 export function createProductUpdatesMachine() {
-  return setup({
-    types: {
-      context: {} as ProductUpdatesContext,
-      events: {} as ProductUpdatesEvent,
-    },
-    actions: {
-      clearPendingSubmission: assign({
-        pendingSubmission: () => null,
-      }),
-      recordSuccess: assign({
-        email: () => "",
-        feedback: ({ context, event }) => {
-          assertEvent(event, "productUpdates/submissionSucceeded");
-
-          if (context.pendingSubmission?.requestId !== event.requestId) {
-            return context.feedback;
-          }
-
-          return {
-            kind: "success" as const,
-            email: event.email,
-          };
-        },
-      }),
-      startSubmission: assign(({ context }) => ({
-        nextSubmissionRequestId: context.nextSubmissionRequestId + 1,
-        pendingSubmission: {
-          email: context.email,
-          requestId: context.nextSubmissionRequestId,
-        },
-      })),
-      storeEmail: assign(({ event }) => {
-        assertEvent(event, "productUpdates/emailChanged");
-        return {
-          email: event.email,
-          feedback: createIdleFeedback(),
-        };
-      }),
-      storeSubmitError: assign({
-        feedback: ({ context, event }) => {
-          assertEvent(event, "productUpdates/submissionFailed");
-
-          if (context.pendingSubmission?.requestId !== event.requestId) {
-            return context.feedback;
-          }
-
-          return {
-            kind: "failure" as const,
-            message: event.message,
-          };
-        },
-      }),
-    },
-    guards: {
-      matchesPendingSubmission: ({ context, event }) => {
-        if (
-          event.type !== "productUpdates/submissionFailed" &&
-          event.type !== "productUpdates/submissionSucceeded"
-        ) {
-          return false;
-        }
-
-        return context.pendingSubmission?.requestId === event.requestId;
-      },
-    },
-  }).createMachine({
-    id: "productUpdates",
-    initial: "editing",
-    context: createInitialContext(),
-    states: {
-      editing: {
-        on: {
-          "productUpdates/emailChanged": {
-            actions: "storeEmail",
-          },
-          "productUpdates/submit": {
-            actions: "startSubmission",
-            target: "submitting",
-          },
-        },
-      },
-      submitting: {
-        on: {
-          "productUpdates/submissionFailed": {
-            actions: ["storeSubmitError", "clearPendingSubmission"],
-            guard: "matchesPendingSubmission",
-            target: "failure",
-          },
-          "productUpdates/submissionSucceeded": {
-            actions: ["recordSuccess", "clearPendingSubmission"],
-            guard: "matchesPendingSubmission",
-            target: "success",
-          },
-        },
-      },
-      success: {
-        on: {
-          "productUpdates/emailChanged": {
-            actions: "storeEmail",
-            target: "editing",
-          },
-          "productUpdates/submit": {
-            actions: "startSubmission",
-            target: "submitting",
-          },
-        },
-      },
-      failure: {
-        on: {
-          "productUpdates/emailChanged": {
-            actions: "storeEmail",
-            target: "editing",
-          },
-          "productUpdates/submit": {
-            actions: "startSubmission",
-            target: "submitting",
-          },
-        },
-      },
-    },
-  });
+  return productUpdatesMachine;
 }
 
 export function readProductUpdatesFeedback(

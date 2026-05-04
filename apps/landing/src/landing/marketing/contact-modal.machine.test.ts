@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getPathsFromEvents, getShortestPaths } from "xstate/graph";
+import { createActor, fromPromise, waitFor } from "xstate";
+import { getShortestPaths } from "xstate/graph";
 
 import { createContactModalMachine } from "./contact-modal.machine";
+import type { ContactModalSubmissionInput } from "./contact-modal.machine";
 
 const CONTACT_FORM = {
   email: "jane@onequery.dev",
@@ -15,26 +17,6 @@ function buildContactModalShortestPaths() {
     events: (state) => {
       if (state.matches("closed")) {
         return [{ type: "contactModal/openRequested" as const }];
-      }
-
-      if (state.matches({ open: "submitting" })) {
-        const pendingSubmission = state.context.pendingSubmission;
-
-        if (pendingSubmission === null) {
-          return [];
-        }
-
-        return [
-          {
-            type: "contactModal/submitSucceeded" as const,
-            requestId: pendingSubmission.requestId,
-          },
-          {
-            type: "contactModal/submitFailed" as const,
-            message: FAILURE_MESSAGE,
-            requestId: pendingSubmission.requestId,
-          },
-        ];
       }
 
       if (state.matches({ open: "editing" })) {
@@ -74,9 +56,7 @@ function buildContactModalShortestPaths() {
       return [];
     },
     filterEvents: (state, event) => state.can(event),
-    stopWhen: (state) =>
-      (state.matches("closed") && state.context.nextSubmissionRequestId > 1) ||
-      state.context.submission.kind === "submitFailed",
+    stopWhen: (state) => state.matches({ open: "submitting" }),
   });
 }
 
@@ -89,94 +69,134 @@ function describeGraphPath(path: {
     .join(" -> ")}`;
 }
 
+function fillContactForm(actor: ReturnType<typeof createActor>) {
+  actor.send({
+    type: "contactModal/fieldChanged",
+    field: "name",
+    value: CONTACT_FORM.name,
+  });
+  actor.send({
+    type: "contactModal/fieldChanged",
+    field: "email",
+    value: CONTACT_FORM.email,
+  });
+  actor.send({
+    type: "contactModal/fieldChanged",
+    field: "message",
+    value: CONTACT_FORM.message,
+  });
+}
+
 describe("createContactModalMachine", () => {
-  it("closes on success and resets the captured form state", () => {
-    const [path] = getPathsFromEvents(createContactModalMachine(), [
-      {
-        type: "contactModal/openRequested",
-      },
-      {
-        type: "contactModal/fieldChanged",
-        field: "name",
-        value: CONTACT_FORM.name,
-      },
-      {
-        type: "contactModal/fieldChanged",
-        field: "email",
-        value: CONTACT_FORM.email,
-      },
-      {
-        type: "contactModal/fieldChanged",
-        field: "message",
-        value: CONTACT_FORM.message,
-      },
-      {
-        type: "contactModal/submit",
-      },
-      {
-        type: "contactModal/submitSucceeded",
-        requestId: 1,
-      },
-    ]);
+  it("closes on success and resets the captured form state", async () => {
+    const actor = createActor(createContactModalMachine());
 
-    expect(path).toBeDefined();
+    actor.start();
+    actor.send({
+      type: "contactModal/openRequested",
+    });
+    fillContactForm(actor);
+    actor.send({
+      type: "contactModal/submit",
+    });
 
-    if (!path) {
-      throw new Error("expected a graph path for the contact success flow");
-    }
+    const closed = await waitFor(actor, (snapshot) =>
+      snapshot.matches("closed")
+    );
 
-    expect(path.state.matches("closed")).toBe(true);
-    expect(path.state.context.form).toEqual({
+    expect(closed.context.form).toEqual({
       email: "",
       message: "",
       name: "",
     });
-    expect(path.state.context.submission).toEqual({
+    expect(closed.context.submission).toEqual({
       kind: "idle",
     });
   });
 
-  it("returns to editing with the previous form contents after a failed submit", () => {
-    const [path] = getPathsFromEvents(createContactModalMachine(), [
-      {
-        type: "contactModal/openRequested",
-      },
-      {
-        type: "contactModal/fieldChanged",
-        field: "name",
-        value: CONTACT_FORM.name,
-      },
-      {
-        type: "contactModal/fieldChanged",
-        field: "email",
-        value: CONTACT_FORM.email,
-      },
-      {
-        type: "contactModal/fieldChanged",
-        field: "message",
-        value: CONTACT_FORM.message,
-      },
-      {
-        type: "contactModal/submit",
-      },
-      {
-        type: "contactModal/submitFailed",
-        message: FAILURE_MESSAGE,
-        requestId: 1,
-      },
-    ]);
+  it("returns to editing with the previous form contents after a failed submit", async () => {
+    const actor = createActor(
+      createContactModalMachine().provide({
+        actors: {
+          submitContact: fromPromise<void, ContactModalSubmissionInput>(
+            async () => {
+              throw new Error(FAILURE_MESSAGE);
+            }
+          ),
+        },
+      })
+    );
 
-    expect(path).toBeDefined();
+    actor.start();
+    actor.send({
+      type: "contactModal/openRequested",
+    });
+    fillContactForm(actor);
+    actor.send({
+      type: "contactModal/submit",
+    });
 
-    if (!path) {
-      throw new Error("expected a graph path for the contact failure flow");
-    }
+    const editing = await waitFor(actor, (snapshot) =>
+      snapshot.matches({ open: "editing" })
+    );
 
-    expect(path.state.matches({ open: "editing" })).toBe(true);
-    expect(path.state.context.form).toEqual(CONTACT_FORM);
-    expect(path.state.context.submission).toEqual({
+    expect(editing.context.form).toEqual(CONTACT_FORM);
+    expect(editing.context.submission).toEqual({
       kind: "submitFailed",
       message: FAILURE_MESSAGE,
+    });
+  });
+
+  it("aborts the active submit actor when the modal closes", async () => {
+    let abortCount = 0;
+    let resolveSubmitStarted!: () => void;
+    const submitStarted = new Promise<void>((resolve) => {
+      resolveSubmitStarted = resolve;
+    });
+    const actor = createActor(
+      createContactModalMachine().provide({
+        actors: {
+          submitContact: fromPromise<void, ContactModalSubmissionInput>(
+            async ({ signal }) => {
+              signal.addEventListener(
+                "abort",
+                () => {
+                  abortCount += 1;
+                },
+                { once: true }
+              );
+              resolveSubmitStarted();
+
+              await new Promise(() => {});
+            }
+          ),
+        },
+      })
+    );
+
+    actor.start();
+    actor.send({
+      type: "contactModal/openRequested",
+    });
+    fillContactForm(actor);
+    actor.send({
+      type: "contactModal/submit",
+    });
+
+    await submitStarted;
+    actor.send({
+      type: "contactModal/closeRequested",
+    });
+
+    const closed = await waitFor(actor, (snapshot) =>
+      snapshot.matches("closed")
+    );
+
+    expect(abortCount).toBe(1);
+    expect(closed.context.form).toEqual({
+      email: "",
+      message: "",
+      name: "",
     });
   });
 
@@ -189,7 +209,6 @@ describe("createContactModalMachine", () => {
             message: "",
             name: "",
           });
-          expect(path.state.context.pendingSubmission).toBeNull();
           expect(path.state.context.submission).toEqual({
             kind: "idle",
           });
@@ -197,10 +216,7 @@ describe("createContactModalMachine", () => {
         }
 
         if (path.state.matches({ open: "submitting" })) {
-          expect(path.state.context.pendingSubmission).toEqual({
-            form: CONTACT_FORM,
-            requestId: 1,
-          });
+          expect(path.state.context.form).toEqual(CONTACT_FORM);
           expect(path.state.context.submission).toEqual({
             kind: "idle",
           });
@@ -208,17 +224,6 @@ describe("createContactModalMachine", () => {
         }
 
         expect(path.state.matches({ open: "editing" })).toBe(true);
-        expect(path.state.context.pendingSubmission).toBeNull();
-
-        if (path.state.context.submission.kind === "submitFailed") {
-          expect(path.state.context.form).toEqual(CONTACT_FORM);
-          expect(path.state.context.submission).toEqual({
-            kind: "submitFailed",
-            message: FAILURE_MESSAGE,
-          });
-          return;
-        }
-
         expect(path.state.context.submission).toEqual({
           kind: "idle",
         });

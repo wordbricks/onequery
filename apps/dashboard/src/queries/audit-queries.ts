@@ -1,15 +1,13 @@
 import {
   auditActionDetailSchema,
+  auditListParamsToHttpQuery,
   auditListResponseSchema,
-  auditSearchSchema,
-  sanitizeAuditSearch,
 } from "@onequery/audit-contracts/audit";
 import type {
   AuditActionDetail,
   AuditFamily,
-  AuditListItem,
+  AuditListParams,
   AuditListResponse,
-  AuditSearch,
 } from "@onequery/audit-contracts/audit";
 import { queryOptions } from "@tanstack/react-query";
 
@@ -17,9 +15,6 @@ import { createApiClient } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/queries/api-error";
 import { organizationQueryKeys } from "@/queries/organization-query-keys";
 import type { UserScope } from "@/queries/organization-query-keys";
-
-export { auditSearchSchema };
-export type { AuditActionDetail, AuditFamily, AuditListItem, AuditSearch };
 
 const client = createApiClient();
 export const AUDIT_LIVE_REFETCH_INTERVAL_MS = 5 * 1000;
@@ -33,9 +28,9 @@ function hasAuditProjectionLag(
 
 export function resolveAuditListRefetchInterval(input: {
   data: Pick<AuditListResponse, "projectionLag"> | undefined;
-  search: Pick<AuditSearch, "cursor">;
+  params: Pick<AuditListParams, "cursor">;
 }): number | false {
-  if (input.search.cursor) {
+  if (input.params.cursor) {
     return false;
   }
 
@@ -50,27 +45,16 @@ export function resolveAuditListRefetchInterval(input: {
 
 async function fetchAuditList(
   slug: string,
-  search: AuditSearch
+  params: AuditListParams,
+  signal?: AbortSignal
 ): Promise<AuditListResponse> {
-  const normalizedSearch = sanitizeAuditSearch(search);
-  const query = {
-    ...(normalizedSearch.actionName
-      ? { actionName: normalizedSearch.actionName }
-      : {}),
-    ...(normalizedSearch.cursor ? { cursor: normalizedSearch.cursor } : {}),
-    ...(normalizedSearch.family ? { family: normalizedSearch.family } : {}),
-    limit: `${normalizedSearch.limit}`,
-    ...(normalizedSearch.outcome ? { outcome: normalizedSearch.outcome } : {}),
-    ...(normalizedSearch.q ? { q: normalizedSearch.q } : {}),
-    ...(normalizedSearch.sourceKey
-      ? { sourceKey: normalizedSearch.sourceKey }
-      : {}),
-  };
-
-  const response = await client.api.organizations[":slug"].audit.$get({
-    param: { slug },
-    query,
-  });
+  const response = await client.api.organizations[":slug"].audit.$get(
+    {
+      param: { slug },
+      query: auditListParamsToHttpQuery(params),
+    },
+    { init: { signal } }
+  );
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
@@ -83,17 +67,15 @@ async function fetchAuditList(
 export function auditListQueryOptions(
   userId: UserScope,
   slug: string,
-  search: AuditSearch
+  params: AuditListParams
 ) {
-  const normalizedSearch = sanitizeAuditSearch(search);
-
   return queryOptions({
-    queryFn: async () => fetchAuditList(slug, normalizedSearch),
-    queryKey: organizationQueryKeys.audit(userId, slug, normalizedSearch),
+    queryFn: async ({ signal }) => fetchAuditList(slug, params, signal),
+    queryKey: organizationQueryKeys.auditList(userId, slug, params),
     refetchInterval: (query) =>
       resolveAuditListRefetchInterval({
         data: query.state.data,
-        search: normalizedSearch,
+        params,
       }),
     refetchOnMount: "always",
     refetchOnReconnect: "always",
@@ -105,13 +87,17 @@ export function auditListQueryOptions(
 async function fetchAuditActionDetail(
   slug: string,
   family: AuditFamily,
-  actionId: string
+  actionId: string,
+  signal?: AbortSignal
 ): Promise<AuditActionDetail> {
   const response = await client.api.organizations[":slug"].audit[":family"][
     ":actionId"
-  ].$get({
-    param: { actionId, family, slug },
-  });
+  ].$get(
+    {
+      param: { actionId, family, slug },
+    },
+    { init: { signal } }
+  );
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
@@ -128,7 +114,8 @@ export function auditActionDetailQueryOptions(
   actionId: string
 ) {
   return queryOptions({
-    queryFn: async () => fetchAuditActionDetail(slug, family, actionId),
+    queryFn: async ({ signal }) =>
+      fetchAuditActionDetail(slug, family, actionId, signal),
     queryKey: organizationQueryKeys.auditDetail(userId, slug, family, actionId),
     refetchOnMount: "always",
     refetchOnReconnect: "always",

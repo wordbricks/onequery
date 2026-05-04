@@ -12,7 +12,7 @@ import type { MiddlewareHandler } from "hono";
 import { rateLimiter, UnstorageStore } from "hono-rate-limiter";
 
 import type { ServerStorage } from "../storage";
-import type { SessionVariables } from "./session";
+import type { BetterAuthSessionVariables } from "./better-auth-session";
 
 /**
  * Get client IP from request headers with multiple fallbacks.
@@ -70,11 +70,11 @@ function shouldSkipPath(path: string): boolean {
  * - Uses user ID for authenticated requests, IP for anonymous
  */
 export function apiRateLimiter(input: { enabled: boolean }): MiddlewareHandler<{
-  Variables: SessionVariables;
+  Variables: BetterAuthSessionVariables;
 }> {
   const middlewareCache = new WeakMap<
     ServerStorage,
-    MiddlewareHandler<{ Variables: SessionVariables }>
+    MiddlewareHandler<{ Variables: BetterAuthSessionVariables }>
   >();
 
   return async (c, next) => {

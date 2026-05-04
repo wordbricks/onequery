@@ -2,6 +2,7 @@ import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { useActorRef, useSelector } from "@xstate/react";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
+import { fromPromise } from "xstate";
 
 import { landingApiClient } from "../../app/runtime/landing-api-client";
 import type { LandingApiErrorResponse } from "../../app/runtime/landing-api-client";
@@ -10,20 +11,24 @@ import {
   trackContactModalOpened,
   trackProductUpdatesSignup,
 } from "../analytics/landing-analytics";
-import type { ContactForm } from "./contact-modal.machine";
 import {
   DEFAULT_CONTACT_ERROR_MESSAGE,
   createContactModalMachine,
   readContactModalErrorMessage,
+} from "./contact-modal.machine";
+import type {
+  ContactForm,
+  ContactModalSubmissionInput,
 } from "./contact-modal.machine";
 import {
   DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
   createProductUpdatesMachine,
   readProductUpdatesFeedback,
 } from "./product-updates.machine";
-
-const productUpdatesMachine = createProductUpdatesMachine();
-const contactModalMachine = createContactModalMachine();
+import type {
+  ProductUpdatesSubmissionInput,
+  ProductUpdatesSubmissionOutput,
+} from "./product-updates.machine";
 
 class ProductUpdatesSubmissionError extends TaggedError(
   "ProductUpdatesSubmissionError"
@@ -38,9 +43,7 @@ class ContactSubmissionError extends TaggedError("ContactSubmissionError")<{
 }>() {}
 
 type ProductUpdatesSubmissionResult = ResultType<
-  {
-    email: string;
-  },
+  ProductUpdatesSubmissionOutput,
   ProductUpdatesSubmissionError
 >;
 
@@ -58,76 +61,84 @@ function readLandingApiErrorMessage(
 }
 
 async function submitProductUpdatesRequest(
-  email: string
+  input: ProductUpdatesSubmissionInput & { signal: AbortSignal }
 ): Promise<ProductUpdatesSubmissionResult> {
   const responseResult = await Result.tryPromise({
-    try: () =>
-      landingApiClient.api["product-updates"].$post({
-        json: { email },
-      }),
+    try: async () => {
+      const response = await landingApiClient.api["product-updates"].$post(
+        {
+          json: { email: input.email },
+        },
+        {
+          init: { signal: input.signal },
+        }
+      );
+
+      if (response.ok) {
+        const body = await response.json();
+        return {
+          email: body.email,
+        };
+      }
+
+      const payload: LandingApiErrorResponse = await response.json();
+      throw new ProductUpdatesSubmissionError({
+        cause: response,
+        message: readLandingApiErrorMessage(
+          payload,
+          DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
+        ),
+      });
+    },
     catch: (cause: unknown) =>
-      new ProductUpdatesSubmissionError({
-        cause,
-        message: DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
-      }),
+      cause instanceof ProductUpdatesSubmissionError
+        ? cause
+        : new ProductUpdatesSubmissionError({
+            cause,
+            message: DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
+          }),
   });
-  if (responseResult.isErr()) {
-    return Result.err(responseResult.error);
-  }
 
-  const response = responseResult.value;
-  if (response.ok) {
-    const body = await response.json();
-    return Result.ok({
-      email: body.email,
-    });
-  }
-
-  const payload: LandingApiErrorResponse = await response.json();
-  return Result.err(
-    new ProductUpdatesSubmissionError({
-      cause: response,
-      message: readLandingApiErrorMessage(
-        payload,
-        DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
-      ),
-    })
-  );
+  return responseResult;
 }
 
 async function submitContactRequest(
-  form: ContactForm
+  input: ContactModalSubmissionInput & { signal: AbortSignal }
 ): Promise<ContactSubmissionResult> {
   const responseResult = await Result.tryPromise({
-    try: () =>
-      landingApiClient.api.contact.$post({
-        json: form,
-      }),
+    try: async () => {
+      const response = await landingApiClient.api.contact.$post(
+        {
+          json: input.form,
+        },
+        {
+          init: { signal: input.signal },
+        }
+      );
+
+      if (response.ok) {
+        return undefined;
+      }
+
+      const payload: LandingApiErrorResponse = await response.json();
+      throw new ContactSubmissionError({
+        cause: response,
+        message: readLandingApiErrorMessage(
+          payload,
+          DEFAULT_CONTACT_ERROR_MESSAGE
+        ),
+      });
+    },
     catch: (cause: unknown) =>
-      new ContactSubmissionError({
-        cause,
-        message: DEFAULT_CONTACT_ERROR_MESSAGE,
-      }),
+      cause instanceof ContactSubmissionError
+        ? cause
+        : new ContactSubmissionError({
+            cause,
+            message: DEFAULT_CONTACT_ERROR_MESSAGE,
+          }),
   });
-  if (responseResult.isErr()) {
-    return Result.err(responseResult.error);
-  }
 
-  const response = responseResult.value;
-  if (response.ok) {
-    return Result.ok(undefined);
-  }
-
-  const payload: LandingApiErrorResponse = await response.json();
-  return Result.err(
-    new ContactSubmissionError({
-      cause: response,
-      message: readLandingApiErrorMessage(
-        payload,
-        DEFAULT_CONTACT_ERROR_MESSAGE
-      ),
-    })
-  );
+  return responseResult;
 }
 
 function runBestEffort(action: () => void) {
@@ -139,6 +150,56 @@ function runBestEffort(action: () => void) {
   }
 }
 
+const productUpdatesMachine = createProductUpdatesMachine().provide({
+  actions: {
+    trackSubmissionSucceeded: () => {
+      runBestEffort(trackProductUpdatesSignup);
+    },
+  },
+  actors: {
+    submitProductUpdates: fromPromise<
+      ProductUpdatesSubmissionOutput,
+      ProductUpdatesSubmissionInput
+    >(async ({ input, signal }) => {
+      const result = await submitProductUpdatesRequest({
+        ...input,
+        signal,
+      });
+
+      if (result.isErr()) {
+        throw result.error;
+      }
+
+      return result.value;
+    }),
+  },
+});
+
+const contactModalMachine = createContactModalMachine().provide({
+  actions: {
+    trackOpenRequested: () => {
+      runBestEffort(trackContactModalOpened);
+    },
+    trackSubmitSucceeded: () => {
+      runBestEffort(trackContactFormSubmitted);
+    },
+  },
+  actors: {
+    submitContact: fromPromise<void, ContactModalSubmissionInput>(
+      async ({ input, signal }) => {
+        const result = await submitContactRequest({
+          ...input,
+          signal,
+        });
+
+        if (result.isErr()) {
+          throw result.error;
+        }
+      }
+    ),
+  },
+});
+
 function useProductUpdatesController() {
   const actorRef = useActorRef(productUpdatesMachine);
   const email = useSelector(actorRef, (snapshot) => snapshot.context.email);
@@ -146,60 +207,6 @@ function useProductUpdatesController() {
   const isSubmitting = useSelector(actorRef, (snapshot) =>
     snapshot.matches("submitting")
   );
-
-  useMountEffect(() => {
-    let isActive = true;
-    let lastStartedSubmissionRequestId = 0;
-
-    async function handleSnapshot(
-      snapshot: ReturnType<typeof actorRef.getSnapshot>
-    ) {
-      const pendingSubmission = snapshot.context.pendingSubmission;
-
-      if (
-        !snapshot.matches("submitting") ||
-        pendingSubmission === null ||
-        pendingSubmission.requestId === lastStartedSubmissionRequestId
-      ) {
-        return;
-      }
-
-      lastStartedSubmissionRequestId = pendingSubmission.requestId;
-
-      const result = await submitProductUpdatesRequest(pendingSubmission.email);
-
-      if (!isActive) {
-        return;
-      }
-
-      if (result.isErr()) {
-        actorRef.send({
-          type: "productUpdates/submissionFailed",
-          message: result.error.message,
-          requestId: pendingSubmission.requestId,
-        });
-        return;
-      }
-
-      actorRef.send({
-        type: "productUpdates/submissionSucceeded",
-        email: result.value.email,
-        requestId: pendingSubmission.requestId,
-      });
-      runBestEffort(trackProductUpdatesSignup);
-    }
-
-    void handleSnapshot(actorRef.getSnapshot());
-
-    const subscription = actorRef.subscribe((snapshot) => {
-      void handleSnapshot(snapshot);
-    });
-
-    return () => {
-      isActive = false;
-      subscription.unsubscribe();
-    };
-  });
 
   return {
     email,
@@ -237,59 +244,6 @@ function useContactModalController(): ContactModalController {
     snapshot.matches({ open: "submitting" })
   );
 
-  useMountEffect(() => {
-    let isActive = true;
-    let lastStartedSubmissionRequestId = 0;
-
-    async function handleSnapshot(
-      snapshot: ReturnType<typeof actorRef.getSnapshot>
-    ) {
-      const pendingSubmission = snapshot.context.pendingSubmission;
-
-      if (
-        !snapshot.matches({ open: "submitting" }) ||
-        pendingSubmission === null ||
-        pendingSubmission.requestId === lastStartedSubmissionRequestId
-      ) {
-        return;
-      }
-
-      lastStartedSubmissionRequestId = pendingSubmission.requestId;
-
-      const result = await submitContactRequest(pendingSubmission.form);
-
-      if (!isActive) {
-        return;
-      }
-
-      if (result.isErr()) {
-        actorRef.send({
-          type: "contactModal/submitFailed",
-          message: result.error.message,
-          requestId: pendingSubmission.requestId,
-        });
-        return;
-      }
-
-      actorRef.send({
-        type: "contactModal/submitSucceeded",
-        requestId: pendingSubmission.requestId,
-      });
-      runBestEffort(trackContactFormSubmitted);
-    }
-
-    void handleSnapshot(actorRef.getSnapshot());
-
-    const subscription = actorRef.subscribe((snapshot) => {
-      void handleSnapshot(snapshot);
-    });
-
-    return () => {
-      isActive = false;
-      subscription.unsubscribe();
-    };
-  });
-
   return {
     errorMessage,
     form,
@@ -299,7 +253,6 @@ function useContactModalController(): ContactModalController {
       actorRef.send({ type: "contactModal/closeRequested" });
     },
     open: () => {
-      runBestEffort(trackContactModalOpened);
       actorRef.send({ type: "contactModal/openRequested" });
     },
     setField: (field, value) => {

@@ -1,6 +1,4 @@
-import type { Context } from "hono";
-
-import { getCliRequestId } from "./request-context";
+import type { CliRequestContext } from "./request-context";
 
 type CliLogLevel = "info" | "warn" | "error";
 
@@ -160,14 +158,21 @@ export function getCliLogLevelForStatus(status: number): CliLogLevel {
   return "info";
 }
 
+type CliRequestLogContext = CliRequestContext & {
+  req: {
+    method: string;
+    url: string;
+  };
+};
+
 export function buildCliRequestLogDetails(
-  c: Context,
+  c: CliRequestLogContext,
   extra: Record<string, unknown> = {}
 ) {
   return {
     method: c.req.method,
     path: new URL(c.req.url).pathname,
-    requestId: getCliRequestId(c),
+    requestId: c.var.requestId,
     ...extra,
   };
 }

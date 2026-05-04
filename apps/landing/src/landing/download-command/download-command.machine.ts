@@ -1,4 +1,4 @@
-import { assertEvent, assign, setup } from "xstate";
+import { assertEvent, assign, fromPromise, setup } from "xstate";
 import type { SnapshotFrom } from "xstate";
 
 import {
@@ -9,16 +9,8 @@ import {
 export type InstallMethod = (typeof INSTALL_COMMANDS)[number];
 export type InstallMethodLabel = InstallMethod["label"];
 
-type PendingCopyRequest = {
-  command: string;
-  label: InstallMethodLabel;
-  requestId: number;
-};
-
 type DownloadCommandContext = {
   copiedMethodLabel: InstallMethodLabel | null;
-  pendingCopyRequest: PendingCopyRequest | null;
-  nextCopyRequestId: number;
   selectedMethodLabel: InstallMethodLabel;
 };
 
@@ -27,18 +19,18 @@ type DownloadCommandEvent =
       type: "downloadCommand/copyRequested";
     }
   | {
-      type: "downloadCommand/copyFailed";
-      requestId: number;
-    }
-  | {
-      type: "downloadCommand/copySucceeded";
-      label: InstallMethodLabel;
-      requestId: number;
-    }
-  | {
       type: "downloadCommand/methodSelected";
       label: InstallMethodLabel;
     };
+
+export type DownloadCommandCopyInput = {
+  command: string;
+  label: InstallMethodLabel;
+};
+
+export type DownloadCommandCopyOutput = {
+  label: InstallMethodLabel;
+};
 
 type DownloadCommandMachineOptions = {
   copyFeedbackResetDelayMs?: number;
@@ -49,8 +41,6 @@ const defaultInstallMethod = INSTALL_COMMANDS[0];
 function createInitialContext(): DownloadCommandContext {
   return {
     copiedMethodLabel: null,
-    nextCopyRequestId: 1,
-    pendingCopyRequest: null,
     selectedMethodLabel: defaultInstallMethod.label,
   };
 }
@@ -62,115 +52,161 @@ export function getInstallMethod(label: InstallMethodLabel): InstallMethod {
   );
 }
 
+const downloadCommandMachine = setup({
+  types: {
+    context: {} as DownloadCommandContext,
+    events: {} as DownloadCommandEvent,
+  },
+  actions: {
+    clearCopiedMethod: assign({
+      copiedMethodLabel: () => null,
+    }),
+    selectMethod: assign({
+      selectedMethodLabel: (_, params: { label: InstallMethodLabel }) =>
+        params.label,
+    }),
+    storeCopiedMethod: assign({
+      copiedMethodLabel: (_, params: DownloadCommandCopyOutput) => params.label,
+    }),
+    trackCopySucceeded: (_, params: { label: InstallMethodLabel }) => {
+      void params;
+    },
+    trackMethodSelected: (_, params: { label: InstallMethodLabel }) => {
+      void params;
+    },
+  },
+  actors: {
+    copyCommand: fromPromise<
+      DownloadCommandCopyOutput,
+      DownloadCommandCopyInput
+    >(async ({ input }) => ({
+      label: input.label,
+    })),
+  },
+  delays: {
+    copyFeedbackReset: COPY_FEEDBACK_RESET_DELAY_MS,
+  },
+}).createMachine({
+  id: "downloadCommand",
+  initial: "idle",
+  context: () => createInitialContext(),
+  states: {
+    idle: {
+      on: {
+        "downloadCommand/copyRequested": {
+          target: "copying",
+        },
+        "downloadCommand/methodSelected": {
+          actions: [
+            {
+              type: "selectMethod",
+              params: ({ event }) => ({
+                label: event.label,
+              }),
+            },
+            {
+              type: "trackMethodSelected",
+              params: ({ event }) => ({
+                label: event.label,
+              }),
+            },
+          ],
+        },
+      },
+    },
+    copying: {
+      invoke: {
+        src: "copyCommand",
+        input: ({ context, event }) => {
+          assertEvent(event, "downloadCommand/copyRequested");
+
+          const installMethod = getInstallMethod(context.selectedMethodLabel);
+
+          return {
+            command: installMethod.command,
+            label: installMethod.label,
+          };
+        },
+        onDone: {
+          actions: [
+            {
+              type: "storeCopiedMethod",
+              params: ({ event }) => event.output,
+            },
+            {
+              type: "trackCopySucceeded",
+              params: ({ event }) => ({
+                label: event.output.label,
+              }),
+            },
+          ],
+          target: "copied",
+        },
+        onError: {
+          actions: "clearCopiedMethod",
+          target: "idle",
+        },
+      },
+      on: {
+        "downloadCommand/methodSelected": {
+          actions: [
+            {
+              type: "selectMethod",
+              params: ({ event }) => ({
+                label: event.label,
+              }),
+            },
+            {
+              type: "trackMethodSelected",
+              params: ({ event }) => ({
+                label: event.label,
+              }),
+            },
+          ],
+        },
+      },
+    },
+    copied: {
+      after: {
+        copyFeedbackReset: {
+          actions: "clearCopiedMethod",
+          target: "idle",
+        },
+      },
+      on: {
+        "downloadCommand/copyRequested": {
+          target: "copying",
+        },
+        "downloadCommand/methodSelected": {
+          actions: [
+            {
+              type: "selectMethod",
+              params: ({ event }) => ({
+                label: event.label,
+              }),
+            },
+            {
+              type: "trackMethodSelected",
+              params: ({ event }) => ({
+                label: event.label,
+              }),
+            },
+          ],
+        },
+      },
+    },
+  },
+});
+
 export function createDownloadCommandMachine(
   options: DownloadCommandMachineOptions = {}
 ) {
   const copyFeedbackResetDelayMs =
     options.copyFeedbackResetDelayMs ?? COPY_FEEDBACK_RESET_DELAY_MS;
 
-  return setup({
-    types: {
-      context: {} as DownloadCommandContext,
-      events: {} as DownloadCommandEvent,
-    },
-    actions: {
-      clearCopiedMethod: assign({
-        copiedMethodLabel: () => null,
-      }),
-      clearPendingCopyRequest: assign({
-        pendingCopyRequest: () => null,
-      }),
-      startCopyRequest: assign(({ context }) => {
-        const installMethod = getInstallMethod(context.selectedMethodLabel);
-
-        return {
-          nextCopyRequestId: context.nextCopyRequestId + 1,
-          pendingCopyRequest: {
-            command: installMethod.command,
-            label: installMethod.label,
-            requestId: context.nextCopyRequestId,
-          },
-        };
-      }),
-      selectMethod: assign(({ event }) => {
-        assertEvent(event, "downloadCommand/methodSelected");
-        return {
-          selectedMethodLabel: event.label,
-        };
-      }),
-      storeCopiedMethod: assign(({ context, event }) => {
-        assertEvent(event, "downloadCommand/copySucceeded");
-
-        return {
-          copiedMethodLabel:
-            context.pendingCopyRequest?.requestId === event.requestId
-              ? event.label
-              : context.copiedMethodLabel,
-        };
-      }),
-    },
-    guards: {
-      matchesPendingCopyRequest: ({ context, event }) => {
-        if (
-          event.type !== "downloadCommand/copyFailed" &&
-          event.type !== "downloadCommand/copySucceeded"
-        ) {
-          return false;
-        }
-
-        return context.pendingCopyRequest?.requestId === event.requestId;
-      },
-    },
-  }).createMachine({
-    id: "downloadCommand",
-    initial: "idle",
-    context: createInitialContext(),
-    states: {
-      idle: {
-        on: {
-          "downloadCommand/copyRequested": {
-            actions: "startCopyRequest",
-            target: "copying",
-          },
-          "downloadCommand/methodSelected": {
-            actions: "selectMethod",
-          },
-        },
-      },
-      copying: {
-        on: {
-          "downloadCommand/copyFailed": {
-            actions: ["clearCopiedMethod", "clearPendingCopyRequest"],
-            guard: "matchesPendingCopyRequest",
-            target: "idle",
-          },
-          "downloadCommand/copySucceeded": {
-            actions: ["storeCopiedMethod", "clearPendingCopyRequest"],
-            guard: "matchesPendingCopyRequest",
-            target: "copied",
-          },
-          "downloadCommand/methodSelected": {
-            actions: "selectMethod",
-          },
-        },
-      },
-      copied: {
-        after: {
-          [copyFeedbackResetDelayMs]: {
-            actions: "clearCopiedMethod",
-            target: "idle",
-          },
-        },
-        on: {
-          "downloadCommand/copyRequested": {
-            actions: "startCopyRequest",
-            target: "copying",
-          },
-          "downloadCommand/methodSelected": {
-            actions: "selectMethod",
-          },
-        },
-      },
+  return downloadCommandMachine.provide({
+    delays: {
+      copyFeedbackReset: copyFeedbackResetDelayMs,
     },
   });
 }

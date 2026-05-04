@@ -8,7 +8,7 @@ import {
   auditTargetSchema,
 } from "@onequery/audit-contracts/audit";
 import type {
-  AuditListQuery,
+  AuditListParams,
   AuditListResponse,
   AuditOutcome,
   AuditProjectionLag,
@@ -22,11 +22,13 @@ import type {
 } from "@onequery/audit-contracts/audit";
 import {
   and,
+  asc,
   auditFeedEntries,
   auditProjectionCheckpoints,
   desc,
   eq,
   gt,
+  inArray,
   lt,
   or,
   sql,
@@ -160,7 +162,8 @@ async function loadAuditProjectionLag(
 }
 
 export function serializeAuditFeedItem(
-  row: typeof auditFeedEntries.$inferSelect
+  row: typeof auditFeedEntries.$inferSelect,
+  requestId: string | null = null
 ) {
   const originActor = auditOriginActorSchema.parse(row.originActorJson);
   const target = auditTargetSchema.parse(row.targetJson);
@@ -213,6 +216,7 @@ export function serializeAuditFeedItem(
       outcome: row.outcome as AuditOutcome,
       phase: row.phase as AuditQueryActionPhase,
       preview,
+      requestId,
       startedAt: row.startedAt.toISOString(),
       subtitle: row.subtitle,
       target,
@@ -268,6 +272,7 @@ export function serializeAuditFeedItem(
     outcome: row.outcome as AuditOutcome,
     phase: row.phase as AuditSourceApiActionPhase,
     preview,
+    requestId,
     startedAt: row.startedAt.toISOString(),
     subtitle: row.subtitle,
     target,
@@ -275,10 +280,57 @@ export function serializeAuditFeedItem(
   };
 }
 
+async function loadAuditFeedRequestIds(input: {
+  db: DatabaseExecutor;
+  organizationId: string;
+  rows: readonly (typeof auditFeedEntries.$inferSelect)[];
+}) {
+  const familyActionIds = [
+    ...new Set(input.rows.map((row) => row.familyActionId)),
+  ];
+  const families = [...new Set(input.rows.map((row) => row.family))];
+
+  if (familyActionIds.length === 0 || families.length === 0) {
+    return new Map<string, string | null>();
+  }
+
+  const commandRows = await input.db
+    .select({
+      family: workflowJournal.family,
+      requestId: workflowJournal.requestId,
+      streamId: workflowJournal.streamId,
+    })
+    .from(workflowJournal)
+    .where(
+      and(
+        eq(workflowJournal.entryKind, "command"),
+        eq(workflowJournal.organizationId, input.organizationId),
+        inArray(workflowJournal.family, families),
+        inArray(workflowJournal.streamId, familyActionIds)
+      )
+    )
+    .orderBy(
+      asc(workflowJournal.family),
+      asc(workflowJournal.streamId),
+      asc(workflowJournal.streamPosition),
+      asc(workflowJournal.id)
+    );
+
+  const requestIds = new Map<string, string | null>();
+  for (const row of commandRows) {
+    const key = `${row.family}:${row.streamId}`;
+    if (!requestIds.has(key)) {
+      requestIds.set(key, row.requestId);
+    }
+  }
+
+  return requestIds;
+}
+
 export async function listAuditFeedPage(input: {
   db: Database;
   organizationId: string;
-  query: AuditListQuery;
+  params: AuditListParams;
 }): Promise<AuditListResponse> {
   await syncAuditFeedProjection(input.db);
   const checkpointSnapshot = await loadAuditProjectionCheckpointSnapshot(
@@ -294,38 +346,38 @@ export async function listAuditFeedPage(input: {
     eq(auditFeedEntries.organizationId, input.organizationId),
   ];
 
-  if (input.query.family) {
-    conditions.push(eq(auditFeedEntries.family, input.query.family));
+  if (input.params.family) {
+    conditions.push(eq(auditFeedEntries.family, input.params.family));
   }
 
-  if (input.query.actionName) {
-    conditions.push(eq(auditFeedEntries.actionName, input.query.actionName));
+  if (input.params.actionName) {
+    conditions.push(eq(auditFeedEntries.actionName, input.params.actionName));
   }
 
-  if (input.query.outcome) {
-    conditions.push(eq(auditFeedEntries.outcome, input.query.outcome));
+  if (input.params.outcome) {
+    conditions.push(eq(auditFeedEntries.outcome, input.params.outcome));
   }
 
-  if (input.query.sourceKey) {
+  if (input.params.sourceKey) {
     conditions.push(
       buildCaseInsensitiveEquals(
         sql`${auditFeedEntries.targetJson} ->> 'sourceKey'`,
-        input.query.sourceKey
+        input.params.sourceKey
       )
     );
   }
 
-  if (input.query.q) {
+  if (input.params.q) {
     conditions.push(
       buildCaseInsensitiveContains(
         auditFeedEntries.searchDocument,
-        input.query.q
+        input.params.q
       )
     );
   }
 
-  if (input.query.cursor) {
-    const cursor = decodeAuditCursor(input.query.cursor);
+  if (input.params.cursor) {
+    const cursor = decodeAuditCursor(input.params.cursor);
     if (!cursor) {
       throw new InvalidAuditCursorError();
     }
@@ -358,18 +410,28 @@ export async function listAuditFeedPage(input: {
       desc(auditFeedEntries.family),
       desc(auditFeedEntries.familyActionId)
     )
-    .limit(input.query.limit + 1);
+    .limit(input.params.limit + 1);
 
-  const pageRows = rows.slice(0, input.query.limit);
+  const pageRows = rows.slice(0, input.params.limit);
   const lastRow = pageRows.at(-1);
-  const items = pageRows.map(serializeAuditFeedItem);
+  const requestIds = await loadAuditFeedRequestIds({
+    db: input.db,
+    organizationId: input.organizationId,
+    rows: pageRows,
+  });
+  const items = pageRows.map((row) =>
+    serializeAuditFeedItem(
+      row,
+      requestIds.get(`${row.family}:${row.familyActionId}`) ?? null
+    )
+  );
   const families = [...new Set(items.map((item) => item.family))];
 
   return auditListResponseSchema.parse({
     families,
     items,
     nextCursor:
-      rows.length > input.query.limit && lastRow
+      rows.length > input.params.limit && lastRow
         ? encodeAuditCursor({
             family: lastRow.family,
             familyActionId: lastRow.familyActionId,

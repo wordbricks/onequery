@@ -28,7 +28,6 @@
     "@connectrpc/connect-node": "catalog:",
     "@connectrpc/validate": "catalog:",
     "@hono/node-server": "catalog:",
-    "@hono/structured-logger": "catalog:",
     "@hono/zod-validator": "catalog:",
     "@onequery/base": "workspace:*",
     "@onequery/cli-server": "workspace:*",
@@ -41,7 +40,6 @@
     "better-result": "catalog:",
     "hono": "catalog:",
     "hono-problem-details": "catalog:",
-    "pino": "catalog:",
     "unstorage": "catalog:",
     "zod": "catalog:"
   },
