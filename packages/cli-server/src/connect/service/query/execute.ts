@@ -7,7 +7,6 @@ import { createCliFailureForQueryWorkflowResult } from "../errors";
 import { buildCliPage, parseCliPageRequest } from "../read-controls";
 import type { CliResultServiceMethod } from "../result";
 import { liftCliServiceMethod } from "../result";
-import { syncCliQueryAuditFeedProjection } from "./audit-projection";
 import { resolveCliQueryRequestState } from "./context";
 import { createCliQueryExecutionDispatch } from "./dispatch";
 import {
@@ -58,10 +57,6 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
 
     const result = yield* workflowResult;
     const durationMs = Math.max(0, Date.now() - startedAtMs);
-    await syncCliQueryAuditFeedProjection({
-      c: resolved.c,
-      sourceKey: request.sourceKey,
-    });
 
     recordCliHistogramMetric({
       name: "cli.query.latency_ms",
