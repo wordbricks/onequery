@@ -7,16 +7,16 @@ alpha-black structure, and one compact brand mark.
 The product should not feel warm, decorative, gradient-heavy, or campaign-like.
 Color supports hierarchy and proof. It should not become the story.
 
-<!-- Comment: apps/landing/DESIGN.md names a blue icon color (`#1f84d1` approximate), but the current shipped icon is near-black. This guide keeps the design guide's monochrome principles and updates the logo-specific palette to match the actual asset. -->
+<!-- Comment: DESIGN.md names a blue icon color (`#1f84d1` approximate), but the current shipped icon is near-black. This guide keeps the design guide's monochrome principles and updates the logo-specific palette to match the actual asset. -->
 
 ## Source Of Truth
 
 This guide is based on:
 
-- `apps/landing/DESIGN.md`
-- `apps/landing/src/app/styles.css`
-- `apps/landing-video/src/compositions/open-claw-demo/tokens.ts`
-- `apps/landing/public/onequery-icon.png`
+- `DESIGN.md`
+- `src/app/styles.css`
+- `../landing-video/src/compositions/open-claw-demo/tokens.ts`
+- `public/onequery-icon.png`
 
 Use the implemented CSS tokens and shipped icon before introducing new color
 values.
@@ -54,7 +54,7 @@ the icon itself rather than copying its colors into a background.
 
 ## Legacy Blue Note
 
-`apps/landing/DESIGN.md` mentions **Brand Blue** (`#1f84d1` approximate) for an
+`DESIGN.md` mentions **Brand Blue** (`#1f84d1` approximate) for an
 earlier blue whale icon direction. The current shipped icon is not blue.
 
 Until the icon asset changes:
@@ -176,4 +176,4 @@ If the OneQuery icon changes back to a blue tile, update this file and
 - Replace `Icon Tile Black` with the new approved tile color.
 - Decide whether the new color is logo-only or a general accent.
 - Regenerate favicon and app icon exports.
-- Update `apps/landing/DESIGN.md` so the design guide and shipped asset agree.
+- Update `DESIGN.md` so the design guide and shipped asset agree.

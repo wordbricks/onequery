@@ -8,9 +8,9 @@ compact UI labels, and code typography only where code is real.
 
 This guide is based on:
 
-- `apps/landing/DESIGN.md`
-- `apps/landing/src/app/styles.css`
-- `apps/landing-video/src/compositions/open-claw-demo/tokens.ts`
+- `DESIGN.md`
+- `src/app/styles.css`
+- `../landing-video/src/compositions/open-claw-demo/tokens.ts`
 
 ## Font Families
 

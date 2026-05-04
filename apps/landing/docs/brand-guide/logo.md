@@ -5,18 +5,18 @@ quiet infrastructure: precise, developer-first, and trustworthy enough to stay
 out of the way. The logo is the one place where the brand becomes a compact
 object.
 
-<!-- Comment: apps/landing/DESIGN.md describes the mark as a blue rounded square, but the current shipped OneQuery asset is a black rounded square with a pale whale mark. This guide treats the shipped PNG as the source of truth until the asset changes. -->
+<!-- Comment: DESIGN.md describes the mark as a blue rounded square, but the current shipped OneQuery asset is a black rounded square with a pale whale mark. This guide treats the shipped PNG as the source of truth until the asset changes. -->
 
 ## Source Of Truth
 
 Use the shipped raster asset for the primary mark:
 
-- Primary app icon: `apps/landing/public/onequery-icon.png`
-- Marketing video icon: `apps/landing-video/public/onequery-icon.png`
-- OpenClaw variant: `apps/landing/public/onequery-openclaw-icon.png`
-- Dashboard favicon: `apps/dashboard/public/favicon.ico`
+- Primary app icon: `public/onequery-icon.png`
+- Marketing video icon: `../landing-video/public/onequery-icon.png`
+- OpenClaw variant: `public/onequery-openclaw-icon.png`
+- Dashboard favicon: `../dashboard/public/favicon.ico`
 
-Design-system exports live in `brand-guide/design-system/assets/`:
+Design-system exports live in `docs/brand-guide/design-system/assets/`:
 
 - `apple-touch-icon.png`: 180x180 app icon for Apple touch surfaces
 - `favicon.svg`: self-contained SVG favicon using the primary app icon
@@ -156,7 +156,7 @@ Avoid:
 
 ## Do
 
-- Use `apps/landing/public/onequery-icon.png` for the primary web mark.
+- Use `public/onequery-icon.png` for the primary web mark.
 - Pair the icon with the text `OneQuery` for most brand introductions.
 - Keep the icon small and deliberate in navigation.
 - Preserve the PNG's internal lighting, silhouette, and rounded tile.
