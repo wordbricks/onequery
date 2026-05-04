@@ -7,7 +7,13 @@
   </head>
   <body>
     <script type="module">
-      import { button, iconButton, renderPage, row, section } from "./components.js";
+      import {
+        button,
+        iconButton,
+        renderPage,
+        row,
+        section,
+      } from "./components.js";
 
       renderPage({
         title: "Buttons",
@@ -16,25 +22,47 @@
         sections: [
           section({
             title: "Variants",
-            description: "Default action hierarchy for product and marketing surfaces.",
+            description:
+              "Default action hierarchy for product and marketing surfaces.",
             content: row([
-              button({ label: "Connect source", variant: "primary", iconName: "database" }),
-              button({ label: "Run query", variant: "secondary", iconName: "play" }),
-              button({ label: "View audit log", variant: "outline", iconName: "file" }),
+              button({
+                label: "Connect source",
+                variant: "primary",
+                iconName: "database",
+              }),
+              button({
+                label: "Run query",
+                variant: "secondary",
+                iconName: "play",
+              }),
+              button({
+                label: "View audit log",
+                variant: "outline",
+                iconName: "file",
+              }),
               button({ label: "More details", variant: "ghost" }),
-              button({ label: "Block query", variant: "danger", iconName: "x" }),
+              button({
+                label: "Block query",
+                variant: "danger",
+                iconName: "x",
+              }),
               button({ label: "Disabled", variant: "outline", disabled: true }),
             ]),
           }),
           section({
             title: "Sizes",
-            description: "Prefer the default size. Smaller buttons fit dense product chrome.",
+            description:
+              "Prefer the default size. Smaller buttons fit dense product chrome.",
             content: row([
               button({ label: "Small", variant: "outline", size: "sm" }),
               button({ label: "Default", variant: "primary" }),
               button({ label: "Large", variant: "secondary", size: "lg" }),
               iconButton({ iconName: "terminal", label: "Open terminal" }),
-              iconButton({ iconName: "shield", label: "View policy", variant: "secondary" }),
+              iconButton({
+                iconName: "shield",
+                label: "View policy",
+                variant: "secondary",
+              }),
             ]),
           }),
         ],

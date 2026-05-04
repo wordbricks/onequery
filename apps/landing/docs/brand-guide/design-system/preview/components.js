@@ -64,7 +64,13 @@ export function icon(name) {
   return `<svg class="oq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
 }
 
-export function button({ label, variant = "primary", size = "", iconName, disabled = false } = {}) {
+export function button({
+  label,
+  variant = "primary",
+  size = "",
+  iconName,
+  disabled = false,
+} = {}) {
   const classes = ["oq-button", `oq-button-${variant}`];
   if (size) classes.push(`oq-button-${size}`);
   return `<button class="${classes.join(" ")}" type="button" ${disabled ? "disabled" : ""}>${iconName ? icon(iconName) : ""}<span>${label}</span></button>`;
@@ -78,7 +84,13 @@ export function badge({ label, variant = "default", iconName }) {
   return `<span class="oq-badge oq-badge-${variant}">${iconName ? icon(iconName) : ""}${label}</span>`;
 }
 
-export function card({ title, description, footer, badgeLabel, compact = false }) {
+export function card({
+  title,
+  description,
+  footer,
+  badgeLabel,
+  compact = false,
+}) {
   return `<article class="oq-card ${compact ? "oq-card-sm" : ""}">
     ${badgeLabel ? badge({ label: badgeLabel, variant: "secondary" }) : ""}
     <div class="oq-stack">
@@ -89,7 +101,14 @@ export function card({ title, description, footer, badgeLabel, compact = false }
   </article>`;
 }
 
-export function field({ label, value = "", help = "", type = "text", textarea = false, select = false }) {
+export function field({
+  label,
+  value = "",
+  help = "",
+  type = "text",
+  textarea = false,
+  select = false,
+}) {
   const control = textarea
     ? `<textarea class="oq-textarea">${value}</textarea>`
     : select
@@ -138,7 +157,12 @@ export function row(items) {
   return `<div class="oq-row">${items.join("")}</div>`;
 }
 
-export function renderPage({ title, eyebrow = "OneQuery Design System", description, sections }) {
+export function renderPage({
+  title,
+  eyebrow = "OneQuery Design System",
+  description,
+  sections,
+}) {
   const current = location.pathname.split("/").pop() || "index.html";
   document.title = `${title} - OneQuery Design System`;
   document.body.innerHTML = `<div class="oq-shell">

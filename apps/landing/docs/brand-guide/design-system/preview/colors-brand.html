@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <script type="module">
+      import {
+        grid,
+        renderPage,
+        section,
+        swatch,
+        tokens,
+      } from "./components.js";
+
+      renderPage({
+        title: "Brand Colors",
+        description:
+          "OneQuery is mostly monochrome. The icon palette belongs to the asset and should not become generic UI color.",
+        sections: [
+          section({
+            title: "Core brand palette",
+            description:
+              "Use white, ink, and the actual icon asset as the brand foundation.",
+            content: grid(
+              [
+                swatch({
+                  name: "Page White",
+                  value: tokens.colors.pageWhite,
+                  usage: "Main canvas and documentation pages",
+                }),
+                swatch({
+                  name: "Core Ink",
+                  value: tokens.colors.coreInk,
+                  usage: "Primary text and filled CTAs",
+                }),
+                swatch({
+                  name: "Icon Tile Black",
+                  value: tokens.colors.iconTileBlack,
+                  usage: "Inside the OneQuery icon only",
+                }),
+                swatch({
+                  name: "Whale Mark",
+                  value: tokens.colors.whaleMark,
+                  usage: "Inside the OneQuery icon only",
+                }),
+              ],
+              4
+            ),
+          }),
+        ],
+      });
+    </script>
+  </body>
+</html>

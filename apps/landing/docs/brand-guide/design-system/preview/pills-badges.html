@@ -16,15 +16,24 @@
         sections: [
           section({
             title: "Badge variants",
-            description: "Use semantic variants for lifecycle states and outline badges for policies or scope.",
+            description:
+              "Use semantic variants for lifecycle states and outline badges for policies or scope.",
             content: row([
               badge({ label: "primary", variant: "default" }),
               badge({ label: "read-only", variant: "outline" }),
-              badge({ label: "connected", variant: "success", iconName: "check" }),
+              badge({
+                label: "connected",
+                variant: "success",
+                iconName: "check",
+              }),
               badge({ label: "validating", variant: "warning" }),
               badge({ label: "blocked", variant: "error", iconName: "x" }),
               badge({ label: "cost limit $5", variant: "secondary" }),
-              badge({ label: "agent approved", variant: "outline", iconName: "shield" }),
+              badge({
+                label: "agent approved",
+                variant: "outline",
+                iconName: "shield",
+              }),
             ]),
           }),
         ],
