@@ -9,11 +9,6 @@ alias o := onequery
 onequery *args:
     cargo run --bin onequery -- "$@"
 
-# Run `onequery api --source <SOURCE>`
-alias a := api
-api source:
-    cargo run --bin onequery -- api --source {{source}}
-
 # format code
 fmt:
     cargo fmt -- --config imports_granularity=Item 2>/dev/null
@@ -57,9 +52,15 @@ check:
 # Regenerate CLI transport adapters from the protobuf source of truth.
 regen-proto:
     bun run --cwd {{justfile_directory()}}/../.. proto:generate
+    just regen-rust-proto
 
 check-proto:
     bun run --cwd {{justfile_directory()}}/../.. proto:check
+    just regen-rust-proto
+    git diff --exit-code -- crates/proto-cli/src/generated crates/proto-runtime/src/generated
+
+regen-rust-proto:
+    mise exec -- bun run --cwd {{justfile_directory()}}/../.. proto:generate:rust
 
 insta-pending *args:
     cargo insta pending-snapshots "$@"

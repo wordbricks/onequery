@@ -7,12 +7,9 @@ license.workspace = true
 [dependencies]
 buffa = { workspace = true, features = ["json"] }
 buffa-types = { workspace = true, features = ["json"] }
-connectrpc = { workspace = true, features = ["client"] }
+connectrpc = { workspace = true, features = ["client", "gzip"] }
 http-body = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-
-[build-dependencies]
-onequery-proto-build-support = { workspace = true }
 
 [lints]
 workspace = true

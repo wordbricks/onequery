@@ -10,7 +10,7 @@ blake3 = { workspace = true }
 buffa = { workspace = true, features = ["json"] }
 buffa-types = { workspace = true, features = ["json"] }
 chrono = { workspace = true, features = ["serde"] }
-connectrpc = { workspace = true, features = ["client", "server"] }
+connectrpc = { workspace = true, features = ["client", "server", "gzip"] }
 futures = { workspace = true }
 getrandom = { workspace = true }
 http = { workspace = true }

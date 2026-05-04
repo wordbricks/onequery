@@ -219,6 +219,7 @@ fn connect_config(
             }
         })?)
         .default_timeout(request_timeout)
+        .compress_requests("gzip")
         .default_headers(default_headers),
     )
 }
@@ -335,6 +336,21 @@ mod tests {
                 .and_then(|value| value.to_str().ok()),
             Some(CLI_USER_AGENT)
         );
+    }
+
+    #[test]
+    fn connect_config_uses_gzip_compression() {
+        let config = connect_config(
+            "http://example.test/api/cli",
+            Duration::from_secs(5),
+            None,
+            None,
+        )
+        .expect("expected connect config");
+
+        assert_eq!(config.request_compression.as_deref(), Some("gzip"));
+        assert!(config.compression.supports("gzip"));
+        assert!(!config.compression.supports("zstd"));
     }
 
     #[test]
