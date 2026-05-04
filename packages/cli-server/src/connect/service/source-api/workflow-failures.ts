@@ -1,17 +1,17 @@
 import type { SourceApiActionFailureCode } from "../../../audit";
 import type { CliProblemKey } from "../../../domain/problems";
 
-export type SourceApiDescriptorResolutionFailureCode = Extract<
+type SourceApiDescriptorResolutionFailureCode = Extract<
   SourceApiActionFailureCode,
   "descriptor_unavailable" | "permission_denied"
 >;
 
-export type SourceApiRequestPreparationFailureCode = Extract<
+type SourceApiRequestPreparationFailureCode = Extract<
   SourceApiActionFailureCode,
   "invalid_request" | "permission_denied" | "execution_state_invalid"
 >;
 
-export type SourceApiPageFetchFailureCode = Extract<
+type SourceApiPageFetchFailureCode = Extract<
   SourceApiActionFailureCode,
   | "invalid_request"
   | "request_timed_out"

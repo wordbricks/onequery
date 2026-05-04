@@ -17,27 +17,10 @@ export type CliSessionIdentity = {
 
 export type CliSessionAuthMode = "browser_session" | "bearer_token";
 
-export type CliAuthUserView = {
+type CliAuthUserView = {
   id: string;
   email: string;
   displayName: string;
-};
-
-export type CliAuthWhoAmIResult = {
-  authMode: CliSessionAuthMode;
-  user: CliAuthUserView;
-  activeOrgSlug: string | null;
-  issuedAt: string | null;
-  expiresAt: string | null;
-};
-
-export type CliAuthSessionRefreshResult = {
-  accessToken: string;
-  authMode: CliSessionAuthMode;
-  user: CliAuthUserView;
-  activeOrgSlug: string | null;
-  issuedAt: string | null;
-  expiresAt: string | null;
 };
 
 export type CliOrgSummary = {

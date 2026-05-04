@@ -15,7 +15,7 @@ import {
 } from "./resource-cache";
 import type { SourceApiWorkflowResourceCache } from "./resource-cache";
 
-export type ResolvedSourceApiWorkflowContext = {
+type ResolvedSourceApiWorkflowContext = {
   actor: SourceApiActorContext;
   actorSnapshot: WorkflowActorSnapshot;
   c: CliHonoContext;
@@ -63,7 +63,7 @@ export async function resolveSourceApiWorkflowContext(input: {
   });
 }
 
-export function buildResolvedSourceApiWorkflowContext(input: {
+function buildResolvedSourceApiWorkflowContext(input: {
   authorizedOrg: AuthorizedCliOrgContext;
   c: CliHonoContext;
   requestId: string;

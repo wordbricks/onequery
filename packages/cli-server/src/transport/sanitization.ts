@@ -50,18 +50,6 @@ export function sanitizeCliRemoteText(text: string): string {
   return sanitizedText.split("\n").map(sanitizeCliRemoteLine).join("\n");
 }
 
-// Comment: the OpenAPI and CLI schema already advertise `default-v1`, so keep the
-// concrete server-side profile behavior centralized here instead of drifting route by route.
-export function sanitizeUndefinedableCliRemoteText(
-  value: string | undefined
-): string | undefined {
-  if (value === undefined) {
-    return value;
-  }
-
-  return sanitizeCliRemoteText(value);
-}
-
 export function buildCliSanitization(
   sanitizedPaths: readonly string[] | undefined
 ): CliSanitizationInit | undefined {

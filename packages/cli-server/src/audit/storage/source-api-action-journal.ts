@@ -2,7 +2,6 @@ import {
   and,
   asc,
   eq,
-  inArray,
   pendingWorkflowEffects,
   sql,
   sourceApiActions,
@@ -295,59 +294,6 @@ export async function loadSourceApiActionCommandViaJournal(input: {
     store,
   });
   return replayed;
-}
-
-export async function loadPendingSourceApiActionEffectsViaJournal(input: {
-  db: Database;
-  limit?: number;
-  organizationId?: string;
-}): Promise<
-  ResultType<
-    WorkflowJournalEffectToken<SourceApiActionEffect>[],
-    SourceApiActionJournalStorageError
-  >
-> {
-  const conditions = [
-    eq(pendingWorkflowEffects.family, "source_api_action"),
-    inArray(pendingWorkflowEffects.status, ["pending", "leased", "failed"]),
-  ];
-  if (input.organizationId !== undefined) {
-    conditions.push(
-      eq(pendingWorkflowEffects.organizationId, input.organizationId)
-    );
-  }
-
-  const rows = await input.db
-    .select()
-    .from(pendingWorkflowEffects)
-    .where(and(...conditions))
-    .orderBy(asc(pendingWorkflowEffects.scheduledAt))
-    .limit(input.limit ?? 100);
-
-  const pending: WorkflowJournalEffectToken<SourceApiActionEffect>[] = [];
-
-  for (const row of rows) {
-    const effect = decodeSourceApiActionEffectPayload(row.payloadBytes, {
-      actionId: row.streamId,
-      payloadType: row.effectType,
-    });
-    if (effect.isErr()) {
-      return Result.err(effect.error);
-    }
-
-    pending.push({
-      effect: effect.value,
-      effectId: row.effectId,
-      effectType: row.effectType,
-      organizationId: row.organizationId,
-      scheduledAt: row.scheduledAt,
-      scheduledByEntryId: row.scheduledByEntryId,
-      streamId: row.streamId,
-      streamPosition: row.streamPosition,
-    });
-  }
-
-  return Result.ok(pending);
 }
 
 export async function rebuildPendingSourceApiActionEffectsViaJournal(input: {

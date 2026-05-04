@@ -1,11 +1,4 @@
-import { z } from "zod";
-
-import { WORKFLOW_OUTCOMES } from "../kernel";
 import type { WorkflowStateBase } from "../kernel";
-import {
-  QUERY_ACTION_MODES,
-  QueryActionSourceDescriptorSchema,
-} from "./descriptors";
 import type {
   QueryActionMode,
   QueryActionSourceDescriptor,
@@ -51,20 +44,3 @@ export type QueryActionState = WorkflowStateBase<
   validatedQuery: string | null;
   usageRecordingStatus: QueryActionUsageRecordingStatus;
 };
-
-export const QueryActionStateSchema = z
-  .object({
-    completedAt: z.date().nullable(),
-    failureCode: z.enum(QUERY_ACTION_FAILURE_CODES).nullable(),
-    lastEventId: z.string(),
-    lastEventSequence: z.number().int(),
-    outcome: z.enum(WORKFLOW_OUTCOMES),
-    phase: z.enum(QUERY_ACTION_PHASES),
-    queryMode: z.enum(QUERY_ACTION_MODES),
-    queryText: z.string(),
-    sourceDescriptor: QueryActionSourceDescriptorSchema.nullable(),
-    startedAt: z.date(),
-    usageRecordingStatus: z.enum(QUERY_ACTION_USAGE_RECORDING_STATUSES),
-    validatedQuery: z.string().nullable(),
-  })
-  .strict();

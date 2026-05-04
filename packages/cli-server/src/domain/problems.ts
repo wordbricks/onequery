@@ -218,7 +218,3 @@ export const CLI_PROBLEM_DEFINITIONS = {
 
 export type CliProblemReason = keyof typeof CLI_PROBLEM_DEFINITIONS;
 export type CliProblemKey = CliProblemReason;
-export const CLI_PROBLEM_REASONS = Object.keys(
-  CLI_PROBLEM_DEFINITIONS
-) as CliProblemReason[];
-export const CLI_PROBLEM_KEYS = CLI_PROBLEM_REASONS;

@@ -1,4 +1,3 @@
-import type { Database } from "@onequery/db/server";
 import type {
   PreparedSourceConnection,
   SourceApiActorContext,
@@ -173,11 +172,4 @@ export type PreparedSourceApiWorkflowInput = SourceApiWorkflowContext & {
     SourceApiActionCommandPayload,
     { type: "start_describe" | "start_invoke" }
   >;
-};
-
-export type SourceApiWorkflowDispatchContext = {
-  actorSnapshot: WorkflowActorSnapshot;
-  db: Database;
-  organizationId: string;
-  requestId: string;
 };

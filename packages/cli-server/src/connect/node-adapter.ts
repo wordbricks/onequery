@@ -77,10 +77,7 @@ const cliConnectRouterOptions = {
   "connect" | "grpc" | "grpcWeb" | "interceptors"
 >;
 
-export type CreateCliConnectHandlerOptions = Omit<
-  ConnectNodeAdapterOptions,
-  "routes"
->;
+type CreateCliConnectHandlerOptions = Omit<ConnectNodeAdapterOptions, "routes">;
 
 const cliConnectRequestPaths = (() => {
   const router = createConnectRouter(cliConnectRouterOptions);

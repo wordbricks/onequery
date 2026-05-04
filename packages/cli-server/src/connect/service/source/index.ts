@@ -5,4 +5,3 @@ export {
   handleListSources,
   handleTestSource,
 } from "./handlers";
-export { buildGetSourceResponse } from "./response";

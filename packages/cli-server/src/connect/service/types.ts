@@ -9,7 +9,6 @@ import {
 import type { Context } from "hono";
 
 import type { CliRouteEnv } from "../../app";
-import type { CliAction } from "../../authorization";
 
 type CliServiceImplementation = ServiceImpl<typeof CliAuthService> &
   ServiceImpl<typeof CliOrganizationService> &
@@ -28,9 +27,3 @@ export type CliServiceResponse<Name extends CliServiceMethodName> = Awaited<
 >;
 
 export type CliHonoContext = Context<CliRouteEnv>;
-
-export type RequireAuthorizedCliOrgInput = {
-  c: CliHonoContext;
-  action: CliAction;
-  orgSlug: string;
-};

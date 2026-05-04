@@ -106,15 +106,6 @@ export type QuerySourceLookupResult =
       status: DataSourceStatus;
     };
 
-export type QueryCredentialsLoadResult =
-  | {
-      kind: "loaded";
-    }
-  | {
-      detail: string;
-      kind: "credentials_invalid";
-    };
-
 export type QueryPreparationEffectResult =
   | {
       kind: "query_ready";

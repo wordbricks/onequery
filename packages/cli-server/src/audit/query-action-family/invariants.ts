@@ -62,18 +62,3 @@ export function requireQueryActionSourceDescriptor(
 
   return Result.ok(state.sourceDescriptor);
 }
-
-export function requireValidatedQuery(
-  state: Pick<QueryActionState, "phase" | "validatedQuery">,
-  context: QueryActionInvariantContext
-): ResultType<string, WorkflowInternalInvariantError> {
-  if (state.validatedQuery === null) {
-    return queryActionInvariant({
-      context,
-      invariant: "validated_query_required",
-      phase: state.phase,
-    });
-  }
-
-  return Result.ok(state.validatedQuery);
-}
