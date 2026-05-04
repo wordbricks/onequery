@@ -36,7 +36,7 @@ type SupervisorSessionSendEvent = (
   signal?: AbortSignal
 ) => Promise<void>;
 
-export class SupervisorRuntimeSessionError extends TaggedError(
+class SupervisorRuntimeSessionError extends TaggedError(
   "SupervisorRuntimeSessionError"
 )<{
   cause: unknown;

@@ -13,25 +13,23 @@ type ResolvedNodeAddress = {
   port: number;
 };
 
-export class NodeServerListenError extends TaggedError(
-  "NodeServerListenError"
-)<{
+class NodeServerListenError extends TaggedError("NodeServerListenError")<{
   cause: unknown;
   hostname: string;
   message: string;
   port: number;
 }>() {}
 
-export class NodeServerStopError extends TaggedError("NodeServerStopError")<{
+class NodeServerStopError extends TaggedError("NodeServerStopError")<{
   cause: unknown;
   hostname: string;
   message: string;
   port: number;
 }>() {}
 
-export type ServeWithNodeError = NodeServerListenError;
+type ServeWithNodeError = NodeServerListenError;
 
-export type ServeWithNodeResult = ResultType<
+type ServeWithNodeResult = ResultType<
   Awaited<ReturnType<StartServerDependencies["serve"]>>,
   ServeWithNodeError
 >;

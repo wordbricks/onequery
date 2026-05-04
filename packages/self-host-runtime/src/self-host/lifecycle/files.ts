@@ -139,7 +139,7 @@ export async function replaceFileWithCompleteContents(
   return Result.ok(undefined);
 }
 
-export async function writeLifecycleFile(
+async function writeLifecycleFile(
   path: string,
   contents: string,
   operation: RuntimeLifecycleFileError["operation"],
@@ -178,7 +178,7 @@ export async function appendLifecycleFile(
   }).then((result) => result.map(() => undefined));
 }
 
-export async function renameLifecycleFile(
+async function renameLifecycleFile(
   fromPath: string,
   toPath: string,
   message: string

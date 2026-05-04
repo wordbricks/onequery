@@ -11,7 +11,7 @@ import type {
 
 export type ShutdownResult = ResultType<void, RuntimeShutdownError>;
 
-export type ShutdownCompletion = RuntimeShutdownCompletion;
+type ShutdownCompletion = RuntimeShutdownCompletion;
 
 export type ShutdownMachineEvent =
   | {

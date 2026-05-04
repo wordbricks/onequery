@@ -8,7 +8,7 @@ import type { AppendLifecycleLogError } from "./errors";
 import { appendLifecycleFile, ensureRuntimeDirectory } from "./files";
 import type { LifecycleLogWriter, SelfHostLifecyclePaths } from "./types";
 
-export async function appendLifecycleLogResult(
+async function appendLifecycleLogResult(
   paths: SelfHostLifecyclePaths,
   message: string,
   now: () => Date = () => new Date()

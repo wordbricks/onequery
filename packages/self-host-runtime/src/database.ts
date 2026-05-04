@@ -3,7 +3,7 @@ import type { DatabasePreparationResult } from "@onequery/db/server";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-export class RuntimeDatabasePreparationError extends TaggedError(
+class RuntimeDatabasePreparationError extends TaggedError(
   "RuntimeDatabasePreparationError"
 )<{
   cause: unknown;
@@ -11,9 +11,9 @@ export class RuntimeDatabasePreparationError extends TaggedError(
   migrationsDir: string;
 }>() {}
 
-export type PrepareRuntimeDatabaseError = RuntimeDatabasePreparationError;
+type PrepareRuntimeDatabaseError = RuntimeDatabasePreparationError;
 
-export type PrepareRuntimeDatabaseResult = ResultType<
+type PrepareRuntimeDatabaseResult = ResultType<
   DatabasePreparationResult,
   PrepareRuntimeDatabaseError
 >;
@@ -35,20 +35,4 @@ export async function prepareRuntimeDatabaseResult(options: {
         migrationsDir: options.migrationsDir,
       }),
   });
-}
-
-export async function prepareRuntimeDatabase(options: {
-  databaseUrl: string;
-  migrationsDir: string;
-}) {
-  // Comment: launch.json is the single source of truth for runtime asset paths;
-  // the packaged server bundle cannot reliably derive migrations from
-  // import.meta.url.
-  const databasePreparationResult = await prepareRuntimeDatabaseResult(options);
-
-  if (databasePreparationResult.isErr()) {
-    throw databasePreparationResult.error;
-  }
-
-  return databasePreparationResult.value;
 }

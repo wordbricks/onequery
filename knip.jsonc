@@ -17,6 +17,7 @@
   "ignoreIssues": {
     "apps/dashboard/src/server/auth-rate-limit.ts": ["unlisted"],
     ".github/workflows/cli-release.yml": ["binaries"],
+    "apps/landing/src/app/routeTree.gen.ts": ["types"],
     "packages/cli-server/generated/**/*.ts": ["exports", "types"],
   },
   "workspaces": {

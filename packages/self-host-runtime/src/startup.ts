@@ -2,10 +2,7 @@ import type { ServerLaunchConfig } from "@onequery/config/server-launch";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-import type {
-  LoadLaunchConfigFileError,
-  LoadLaunchConfigFileResult,
-} from "./launch-config";
+import type { LoadLaunchConfigFileResult } from "./launch-config";
 import { loadLaunchConfigFileResult } from "./launch-config";
 
 export type ServerStartupInput =
@@ -16,23 +13,21 @@ export type ServerStartupInput =
       launchConfigPath: string;
     };
 
-export class MissingLaunchConfigPathError extends TaggedError(
+class MissingLaunchConfigPathError extends TaggedError(
   "MissingLaunchConfigPathError"
 )<{
   argv: readonly string[];
   message: string;
 }>() {}
 
-export type ResolveStartupInputError = MissingLaunchConfigPathError;
+type ResolveStartupInputError = MissingLaunchConfigPathError;
 
-export type ResolveStartupInputResult = ResultType<
+type ResolveStartupInputResult = ResultType<
   ServerStartupInput,
   ResolveStartupInputError
 >;
 
-export type LoadStartupLaunchConfigError = LoadLaunchConfigFileError;
-
-export type LoadStartupLaunchConfigResult = LoadLaunchConfigFileResult;
+type LoadStartupLaunchConfigResult = LoadLaunchConfigFileResult;
 
 export function loadStartupLaunchConfigResult(
   input: ServerStartupInput
@@ -56,7 +51,7 @@ export function loadStartupLaunchConfig(
   return launchConfig.value;
 }
 
-export function resolveStartupInputFromArgvResult(
+function resolveStartupInputFromArgvResult(
   argv: readonly string[]
 ): ResolveStartupInputResult {
   const launchConfigPath = argv[2]?.trim();
