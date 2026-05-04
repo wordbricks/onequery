@@ -8,15 +8,16 @@ import {
   TableHeader,
   TableRow,
 } from "@onequery/ui/components/table";
+import { cn } from "@onequery/ui/lib/utils";
 import { IconChevronRight } from "@tabler/icons-react";
 
 import {
+  AUDIT_OUTCOME_DOT_CLASS_NAMES,
   formatAuditEnumLabel,
   getAuditActorLabel,
   getAuditDetailLine,
   getAuditDurationLabel,
   getAuditMetricsLabel,
-  getAuditOutcomeDotClassName,
   getAuditRequestIdLabel,
   getAuditTargetLabel,
   getAuditTraceIdLabel,
@@ -45,11 +46,11 @@ function AuditTableRow({
 
   return (
     <TableRow
-      className={
+      className={cn(
         isSelected
           ? "border-l-blue-500 bg-blue-50/60 hover:bg-blue-50/70"
           : "border-l-transparent hover:bg-muted/40"
-      }
+      )}
       onClick={onSelect}
       data-state={isSelected ? "selected" : undefined}
       aria-expanded={isSelected ? isDetailOpen : undefined}
@@ -62,9 +63,10 @@ function AuditTableRow({
       <TableCell className="w-[104px] py-2 align-middle">
         <div className="flex items-center gap-2 text-xs">
           <span
-            className={`size-2 rounded-full ${getAuditOutcomeDotClassName(
-              item.outcome
-            )}`}
+            className={cn(
+              "size-2 rounded-full",
+              AUDIT_OUTCOME_DOT_CLASS_NAMES[item.outcome]
+            )}
           />
           {formatAuditEnumLabel(item.outcome)}
         </div>
@@ -107,9 +109,10 @@ function AuditTableRow({
       </TableCell>
       <TableCell className="w-8 py-2 align-middle">
         <IconChevronRight
-          className={`text-muted-foreground size-4 transition-transform ${
-            isSelected && isDetailOpen ? "rotate-90" : ""
-          }`}
+          className={cn(
+            "text-muted-foreground size-4 transition-transform",
+            isSelected && isDetailOpen && "rotate-90"
+          )}
         />
       </TableCell>
     </TableRow>

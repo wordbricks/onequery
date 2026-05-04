@@ -1,5 +1,6 @@
 import { AUDIT_FAMILIES } from "@onequery/audit-contracts/audit";
 import type {
+  AuditOutcome,
   AuditListItem,
   AuditListParams,
   AuditProjectionLag,
@@ -20,17 +21,11 @@ function truncateAuditText(value: string, maxLength = 160): string {
   return `${value.slice(0, maxLength - 1)}…`;
 }
 
-export function getAuditOutcomeDotClassName(outcome: AuditListItem["outcome"]) {
-  if (outcome === "succeeded") {
-    return "bg-emerald-500";
-  }
-
-  if (outcome === "pending") {
-    return "bg-amber-500";
-  }
-
-  return "bg-red-500";
-}
+export const AUDIT_OUTCOME_DOT_CLASS_NAMES = {
+  failed: "bg-red-500",
+  pending: "bg-amber-500",
+  succeeded: "bg-emerald-500",
+} satisfies Record<AuditOutcome, string>;
 
 export function getAuditActorLabel(item: AuditListItem) {
   return item.originActor.email ?? "System";

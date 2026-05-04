@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@onequery/ui/components/select";
+import { cn } from "@onequery/ui/lib/utils";
 import {
   IconAlertTriangle,
   IconArrowLeft,
@@ -41,8 +42,8 @@ import {
 } from "@/features/audit/audit-filter-state";
 
 import {
+  AUDIT_OUTCOME_DOT_CLASS_NAMES,
   formatAuditEnumLabel,
-  getAuditOutcomeDotClassName,
   getLaggingAuditFamilyLabel,
 } from "./audit-display";
 
@@ -261,9 +262,10 @@ export function AuditFiltersSection({
                   }
                 >
                   <span
-                    className={`size-1.5 rounded-full ${getAuditOutcomeDotClassName(
-                      outcome
-                    )}`}
+                    className={cn(
+                      "size-1.5 rounded-full",
+                      AUDIT_OUTCOME_DOT_CLASS_NAMES[outcome]
+                    )}
                   />
                   {formatAuditEnumLabel(outcome)}
                 </Button>

@@ -9,16 +9,17 @@ import {
   AlertTitle,
 } from "@onequery/ui/components/alert";
 import { CopyButton } from "@onequery/ui/components/copy-button";
+import { cn } from "@onequery/ui/lib/utils";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { z } from "zod";
 
 import {
+  AUDIT_OUTCOME_DOT_CLASS_NAMES,
   formatAuditBytes,
   formatAuditEnumLabel,
   getAuditActorLabel,
   getAuditDurationLabel,
-  getAuditOutcomeDotClassName,
   getAuditTraceIdLabel,
   getAuditVolumeLabel,
 } from "./audit-display";
@@ -147,7 +148,10 @@ function EvidenceBlock({
         <CopyButton value={formattedValue} className="size-7 shrink-0" />
       </div>
       <pre
-        className={`bg-muted/40 ${maxHeightClassName} overflow-auto rounded-md border p-3 font-mono text-[11px] leading-5 break-words whitespace-pre-wrap`}
+        className={cn(
+          "bg-muted/40 overflow-auto rounded-md border p-3 font-mono text-[11px] leading-5 break-words whitespace-pre-wrap",
+          maxHeightClassName
+        )}
       >
         {formattedValue}
       </pre>
@@ -371,9 +375,10 @@ function AuditTraceHeader({
       <div className="min-w-0">
         <div className="flex items-center gap-2 text-xs">
           <span
-            className={`size-2 rounded-full ${getAuditOutcomeDotClassName(
-              item.outcome
-            )}`}
+            className={cn(
+              "size-2 rounded-full",
+              AUDIT_OUTCOME_DOT_CLASS_NAMES[item.outcome]
+            )}
           />
           <span className="font-medium">
             {formatAuditEnumLabel(item.outcome)}
