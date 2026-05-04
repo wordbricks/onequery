@@ -13,6 +13,7 @@ import {
   logCliQueryExecutionFailure,
   logCliQueryExecutionSuccess,
 } from "./logging";
+import { createQueryWorkflowResourceCache } from "./resource-cache";
 import {
   buildQueryExecuteResponse,
   buildQueryExecuteSanitization,
@@ -44,6 +45,11 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
       dispatch: createCliQueryExecutionDispatch(resolved.c),
       org: resolved.authorizedOrg.org,
       requestId: resolved.requestId,
+      resourceCache: createQueryWorkflowResourceCache({
+        organizationId: resolved.authorizedOrg.org.id,
+        sourceKey: request.sourceKey,
+        sourceLookup: resolved.sourceLookup,
+      }),
       sourceName: request.sourceKey,
       sql: resolved.query.sql,
       timeoutMs: resolved.resultWindow.timeoutMs,
@@ -90,7 +96,11 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
       sourceKey: request.sourceKey,
     });
 
-    const page = paginateItems(windowedResponse.rows, readControls);
+    const page = selectQueryResponseRows({
+      allPages: request.allPages,
+      readControls,
+      rows: windowedResponse.rows,
+    });
     const data = buildQueryExecuteResponse({
       columns: windowedResponse.columns,
       elapsedMs: windowedResponse.elapsedMs,
@@ -108,3 +118,22 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
   });
 
 export const handleExecuteQuery = liftCliServiceMethod(handleExecuteQueryImpl);
+
+export function selectQueryResponseRows<Row>(input: {
+  allPages: boolean;
+  readControls: { limit: number; offset: number };
+  rows: readonly Row[];
+}) {
+  if (!input.allPages) {
+    return paginateItems(input.rows, input.readControls);
+  }
+
+  const items = input.rows.slice(input.readControls.offset);
+  return {
+    items,
+    page: {
+      nextCursor: null,
+      returnedCount: items.length,
+    },
+  };
+}

@@ -1,7 +1,6 @@
 import type {
   DataSourceStatus,
   Database,
-  DatabaseCredentials,
   ProviderType,
 } from "@onequery/db/server";
 
@@ -18,13 +17,13 @@ import type {
 } from "../../../audit";
 import type {
   AccessibleCliOrg,
-  CliQuerySourceRecord,
   CliQuerySuccessResult,
 } from "../../../domain/workflows";
 import type {
   createCliQueryExecutionDispatch,
   createCliQueryValidationDispatch,
 } from "./dispatch";
+import type { QueryWorkflowResourceCache } from "./resource-cache";
 
 export type CliQueryExecutionDispatch = ReturnType<
   typeof createCliQueryExecutionDispatch
@@ -39,6 +38,7 @@ export type QueryWorkflowRuntimeBaseInput = {
   db: Database;
   org: AccessibleCliOrg;
   requestId: string;
+  resourceCache?: QueryWorkflowResourceCache;
   sourceName: string;
   sql: string;
   timeoutMs: number;
@@ -155,9 +155,4 @@ export type StoredAcceptedQueryActionResultCommand = {
   commandPayload: QueryActionCommandPayload;
   completedEffectIds: readonly string[];
   decision: StoredAcceptedQueryActionDecision;
-};
-
-export type QueryWorkflowResourceCache = {
-  loadedCredentials: DatabaseCredentials | null;
-  loadedSource: CliQuerySourceRecord | null;
 };

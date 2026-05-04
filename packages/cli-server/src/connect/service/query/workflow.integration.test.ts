@@ -32,6 +32,7 @@ import type {
   CliQueryExecutionResult,
   CliQuerySourceRecord,
 } from "../../../domain/workflows";
+import { createQueryWorkflowResourceCache } from "./resource-cache";
 import {
   recoverPendingQueryUsagePersistenceEffects,
   runCliQueryExecutionWorkflowResult,
@@ -233,6 +234,54 @@ describe("query workflow audit runtime", () => {
     ]);
   });
 
+  it("uses cached source misses without dispatching loadSource", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const loadSource = vi
+      .fn<() => Promise<CliLoadSourceEffectResult>>()
+      .mockRejectedValue(new Error("loadSource should not run"));
+    const validateQuery = vi
+      .fn<() => Promise<CliValidateQueryEffectResult>>()
+      .mockRejectedValue(new Error("validateQuery should not run"));
+
+    const result = await runCliQueryValidationWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        loadSource,
+        validateQuery,
+      },
+      org,
+      requestId: "req-validate-cached-miss-1",
+      resourceCache: createQueryWorkflowResourceCache({
+        organizationId: org.id,
+        sourceKey: source.sourceKey,
+        sourceLookup: {
+          kind: "not_found",
+        },
+      }),
+      sourceName: source.sourceKey,
+      sql: "select 1",
+      timeoutMs: 5_000,
+    });
+
+    expect(unwrapOk(result)).toMatchObject({
+      kind: "source_not_found",
+      orgSlug: org.slug,
+      requestId: "req-validate-cached-miss-1",
+      sourceName: source.sourceKey,
+    });
+    expect(loadSource).not.toHaveBeenCalled();
+    expect(validateQuery).not.toHaveBeenCalled();
+
+    const commandRows = await selectQueryJournalCommandRows(db);
+    expect(commandRows.map((row) => row.payloadType)).toEqual([
+      "start_validate",
+      "record_validate_preparation_source_not_found",
+    ]);
+  });
+
   it("records executeQuery and persists usage as an asynchronous follow-up", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
@@ -244,6 +293,18 @@ describe("query workflow audit runtime", () => {
     const persistUsage = vi.fn().mockResolvedValue({
       kind: "usage_persisted",
     } satisfies CliPersistUsageEffectResult);
+    const loadSource = vi.fn().mockResolvedValue({
+      kind: "found",
+      source,
+    } satisfies CliLoadSourceEffectResult);
+    const resourceCache = createQueryWorkflowResourceCache({
+      organizationId: org.id,
+      sourceKey: source.sourceKey,
+      sourceLookup: {
+        kind: "found",
+        source,
+      },
+    });
 
     const result = await runCliQueryExecutionWorkflowResult({
       actorSnapshot,
@@ -259,10 +320,7 @@ describe("query workflow audit runtime", () => {
           kind: "credentials_loaded",
           source,
         }),
-        loadSource: async (): Promise<CliLoadSourceEffectResult> => ({
-          kind: "found",
-          source,
-        }),
+        loadSource,
         persistUsage,
         validateQuery: async (): Promise<CliValidateQueryEffectResult> => ({
           kind: "query_ready",
@@ -272,11 +330,15 @@ describe("query workflow audit runtime", () => {
       },
       org,
       requestId: "req-execute-1",
+      resourceCache,
       sourceName: source.sourceKey,
       sql: "select 42 as answer",
       timeoutMs: 30_000,
     });
 
+    if (result.isErr()) {
+      throw result.error;
+    }
     const execution = unwrapOk(result);
     expect(execution).toMatchObject({
       kind: "response_ready",
@@ -303,6 +365,7 @@ describe("query workflow audit runtime", () => {
       .orderBy(asc(pendingWorkflowEffects.scheduledAt));
 
     expect(persistUsage).toHaveBeenCalledTimes(1);
+    expect(loadSource).not.toHaveBeenCalled();
     expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_execute",
       "record_execute_preparation_succeeded",
@@ -725,7 +788,7 @@ describe("query workflow audit runtime", () => {
     ]);
   });
 
-  it("records failed effects in the journal and retries them", async () => {
+  it("records failed inline effects in the journal and retries them without pending projection", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
 
@@ -769,13 +832,7 @@ describe("query workflow audit runtime", () => {
         effectType: row.effectType,
         status: row.status,
       }))
-    ).toEqual([
-      {
-        attemptCount: 0,
-        effectType: "prepare_validate_query",
-        status: "failed",
-      },
-    ]);
+    ).toEqual([]);
     await db.delete(pendingWorkflowEffects);
     const rebuilt = await rebuildPendingQueryActionEffectsViaJournal({ db });
     expect(rebuilt.isOk()).toBe(true);
@@ -788,12 +845,7 @@ describe("query workflow audit runtime", () => {
         effectType: row.effectType,
         status: row.status,
       }))
-    ).toEqual([
-      {
-        effectType: "prepare_validate_query",
-        status: "failed",
-      },
-    ]);
+    ).toEqual([]);
 
     const retriedResult = await runCliQueryValidationWorkflowResult({
       actorSnapshot,

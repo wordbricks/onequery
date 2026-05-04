@@ -18,6 +18,8 @@ import {
   createWorkflowAuditCorruptionFailure,
   createWorkflowAuditFailure,
 } from "../workflow-audit-failure";
+import { readCachedQuerySourceLookup } from "./resource-cache";
+import type { CachedQuerySourceLookup } from "./resource-cache";
 import type {
   CliQueryExecutionDispatch,
   DispatchedQueryActionEffect,
@@ -272,19 +274,23 @@ export async function storeAcceptedQueryActionCommand(
 }
 
 export async function loadRequiredCliQuerySourceRecord(input: {
-  cachedSource: CliQuerySourceRecord | null;
   dispatch: Pick<CliQueryExecutionDispatch, "loadSource">;
+  sourceLookup: CachedQuerySourceLookup | null;
   sourceDescriptor: QueryActionSourceDescriptor;
 }): Promise<CliQuerySourceRecord> {
-  if (input.cachedSource !== null) {
-    return input.cachedSource;
-  }
-
-  const loaded = await input.dispatch.loadSource({
-    kind: "load_source",
-    organizationId: input.sourceDescriptor.organizationId,
-    sourceKey: input.sourceDescriptor.sourceKey,
-  });
+  const loaded =
+    input.sourceLookup !== null
+      ? readCachedQuerySourceLookup({
+          cached: input.sourceLookup,
+          organizationId: input.sourceDescriptor.organizationId,
+          sourceKey: input.sourceDescriptor.sourceKey,
+          use: "execution effect",
+        })
+      : await input.dispatch.loadSource({
+          kind: "load_source",
+          organizationId: input.sourceDescriptor.organizationId,
+          sourceKey: input.sourceDescriptor.sourceKey,
+        });
 
   if (loaded.kind !== "found") {
     throw createQueryAuditProblem(

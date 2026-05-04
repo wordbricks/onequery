@@ -9,6 +9,7 @@ import {
   logCliQueryValidationAccepted,
   logCliQueryValidationFailure,
 } from "./logging";
+import { createQueryWorkflowResourceCache } from "./resource-cache";
 import { buildQueryValidateResponse } from "./response";
 import { runCliQueryValidationWorkflowResult } from "./workflow";
 
@@ -31,6 +32,11 @@ const handleValidateQueryImpl: CliResultServiceMethod<"validateQuery"> = async (
       dispatch: createCliQueryValidationDispatch(resolved.c),
       org: resolved.authorizedOrg.org,
       requestId: resolved.requestId,
+      resourceCache: createQueryWorkflowResourceCache({
+        organizationId: resolved.authorizedOrg.org.id,
+        sourceKey: request.sourceKey,
+        sourceLookup: resolved.sourceLookup,
+      }),
       sourceName: request.sourceKey,
       sql: resolved.query.sql,
       timeoutMs: resolved.resultWindow.timeoutMs,

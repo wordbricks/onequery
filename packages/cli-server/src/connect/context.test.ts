@@ -41,6 +41,38 @@ describe("cli connect request context", () => {
     expect(resolveAuthenticatedCliSession).toHaveBeenCalledWith(c);
   });
 
+  it("resolves active org slug only for opt-in session requests", async () => {
+    const sessionResult = Result.ok({ activeOrg: null } as never);
+    const sessionWithActiveOrgResult = Result.ok({
+      activeOrg: "acme",
+    } as never);
+    const resolveAuthenticatedCliSession = vi
+      .fn()
+      .mockResolvedValueOnce(sessionResult)
+      .mockResolvedValueOnce(sessionWithActiveOrgResult);
+
+    const c = {
+      get: vi.fn().mockReturnValue("req_cli_123"),
+    } as never;
+    const requestContext = createCliConnectRequestContext(c, {
+      resolveAuthenticatedCliSession,
+    });
+
+    await expect(requestContext.resolveSession()).resolves.toBe(sessionResult);
+    await expect(
+      requestContext.resolveSession({ includeActiveOrgSlug: true })
+    ).resolves.toBe(sessionWithActiveOrgResult);
+    await expect(
+      requestContext.resolveSession({ includeActiveOrgSlug: true })
+    ).resolves.toBe(sessionWithActiveOrgResult);
+
+    expect(resolveAuthenticatedCliSession).toHaveBeenCalledTimes(2);
+    expect(resolveAuthenticatedCliSession).toHaveBeenNthCalledWith(1, c);
+    expect(resolveAuthenticatedCliSession).toHaveBeenNthCalledWith(2, c, {
+      includeActiveOrgSlug: true,
+    });
+  });
+
   it("caches org authorization by action and org slug", async () => {
     const session = {
       user: {

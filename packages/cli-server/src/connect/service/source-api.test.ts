@@ -52,6 +52,24 @@ function summarizeCliSourceProvider(provider: SourceProvider): string {
   return SourceProvider[provider].toLowerCase();
 }
 
+function summarizeLoadOrgSourceAccessCall(
+  call:
+    | {
+        orgSlug: string;
+        sourceKey: string;
+        userId: string;
+      }
+    | undefined
+) {
+  return call
+    ? {
+        orgSlug: call.orgSlug,
+        sourceKey: call.sourceKey,
+        userId: call.userId,
+      }
+    : null;
+}
+
 expect.addSnapshotSerializer({
   serialize(value, config, indentation, depth, refs, printer) {
     const { $typeName: _ignored, ...rest } = value;
@@ -287,6 +305,18 @@ async function createHarness() {
       })
     ),
     prepareSourceApiDraft: vi.fn().mockResolvedValue(prepared),
+    runCliLoadOrgAccessWithSource: vi.fn().mockResolvedValue({
+      access: {
+        kind: "found",
+        org: {
+          id: authorizedOrg.org.id,
+          name: "Acme",
+          slug: authorizedOrg.org.slug,
+        },
+        rawMembershipRole: "owner",
+      },
+      source: loadedSource,
+    }),
     runCliLoadSourceEffect: vi.fn().mockResolvedValue(loadedSource),
     toCliErrorMessage: vi.fn((error: unknown) =>
       error instanceof Error ? error.message : String(error)
@@ -722,8 +752,9 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     expect({
       describeSourceApiCall:
         harness.dependencies.describeSourceApi.mock.calls[0]?.[0] ?? null,
-      requireAuthorizedOrgCall:
-        harness.requestContext.resolveAuthorizedOrg.mock.calls[0]?.[0] ?? null,
+      loadOrgSourceAccessCall: summarizeLoadOrgSourceAccessCall(
+        harness.dependencies.runCliLoadOrgAccessWithSource.mock.calls[0]?.[0]
+      ),
       response: summarizeDescribeSourceApiResponse(response),
     }).toMatchSnapshot();
   });
@@ -800,8 +831,9 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     expect({
       prepareSourceApiDraftCall:
         harness.dependencies.prepareSourceApiDraft.mock.calls[0]?.[0] ?? null,
-      requireAuthorizedOrgCall:
-        harness.requestContext.resolveAuthorizedOrg.mock.calls[0]?.[0] ?? null,
+      loadOrgSourceAccessCall: summarizeLoadOrgSourceAccessCall(
+        harness.dependencies.runCliLoadOrgAccessWithSource.mock.calls[0]?.[0]
+      ),
       response: summarizePreviewSourceApiResponse(response),
     }).toMatchSnapshot();
   });
@@ -908,8 +940,9 @@ describe("source api connect service", { timeout: 15_000 }, () => {
       executePreparedSourceApiCall:
         harness.dependencies.executePreparedSourceApi.mock.calls[0]?.[0] ??
         null,
-      requireAuthorizedOrgCall:
-        harness.requestContext.resolveAuthorizedOrg.mock.calls[0]?.[0] ?? null,
+      loadOrgSourceAccessCall: summarizeLoadOrgSourceAccessCall(
+        harness.dependencies.runCliLoadOrgAccessWithSource.mock.calls[0]?.[0]
+      ),
       response: summarizeExecuteSourceApiResponse(response),
     }).toMatchSnapshot();
   });
@@ -1287,8 +1320,19 @@ describe("source api connect service", { timeout: 15_000 }, () => {
 
   it("resolves the requested resume source before decoding continuation tokens", async () => {
     const harness = await createTrackedHarness();
-    harness.dependencies.runCliLoadSourceEffect.mockResolvedValueOnce({
-      kind: "not_found",
+    harness.dependencies.runCliLoadOrgAccessWithSource.mockResolvedValueOnce({
+      access: {
+        kind: "found",
+        org: {
+          id: authorizedOrg.org.id,
+          name: "Acme",
+          slug: authorizedOrg.org.slug,
+        },
+        rawMembershipRole: "owner",
+      },
+      source: {
+        kind: "not_found",
+      },
     });
     harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
       () => {

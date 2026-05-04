@@ -180,6 +180,24 @@ function expectSingle<T>(values: readonly T[]): T {
   return value;
 }
 
+function emptyCursor(): WorkflowJournalCursor<
+  TestState,
+  TestCommand,
+  TestEvent,
+  TestEffect
+> {
+  return {
+    checkpoint: null,
+    commands: [],
+    effects: [],
+    events: [],
+    pendingEffects: [],
+    state: null,
+    streamId: "action_1",
+    streamPosition: 0,
+  };
+}
+
 describe("workflow journal core", () => {
   it("replays duplicate command appends without appending entries or returning fresh effects", async () => {
     const store = createTestStore();
@@ -381,6 +399,48 @@ describe("workflow journal core", () => {
     ]);
     expect(prepared.freshEffects.map((effect) => effect.effect.type)).toEqual([
       "persist",
+    ]);
+  });
+
+  it("appends from an empty cursor without preloading command idempotency or stream state", async () => {
+    const store = createTestStore();
+    let commandLookupCount = 0;
+    let streamLoadCount = 0;
+    const countedStore: TestStore = {
+      ...store,
+      loadEntriesByCommandInvocation: async (input) => {
+        commandLookupCount += 1;
+        return store.loadEntriesByCommandInvocation(input);
+      },
+      loadStream: async (input) => {
+        streamLoadCount += 1;
+        return store.loadStream(input);
+      },
+    };
+
+    const started = unwrap(
+      await appendTestBatch(countedStore, {
+        commandInvocationId: "cmd-start",
+        commandPayload: {
+          name: "query",
+          type: "start",
+        },
+        currentCursor: emptyCursor(),
+        events: [
+          {
+            name: "query",
+            type: "started",
+          },
+        ],
+        expectedStreamPosition: 0,
+      })
+    );
+
+    expect(commandLookupCount).toBe(0);
+    expect(streamLoadCount).toBe(0);
+    expect(started.cursor.streamPosition).toBe(2);
+    expect(started.cursor.commands.map((entry) => entry.commandType)).toEqual([
+      "start",
     ]);
   });
 

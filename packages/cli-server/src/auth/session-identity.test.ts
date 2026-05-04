@@ -103,4 +103,73 @@ describe("cli session identity", () => {
       },
     });
   });
+
+  it("defers active org slug lookup by default", async () => {
+    const select = vi.fn();
+    const storage = {
+      auth: {
+        api: {
+          getSession: vi.fn().mockResolvedValue({
+            session: {
+              token: "session_token",
+              activeOrganizationId: "org_1",
+              createdAt: null,
+              expiresAt: null,
+            },
+            user: {
+              id: "user-1",
+              email: "alice@example.com",
+            },
+          }),
+        },
+      },
+      db: {
+        select,
+      },
+    } as never;
+
+    await expect(
+      resolveCliSessionIdentity(storage, new Headers())
+    ).resolves.toMatchObject({
+      activeOrg: null,
+    });
+    expect(select).not.toHaveBeenCalled();
+  });
+
+  it("resolves active org slug when requested", async () => {
+    const limit = vi.fn().mockResolvedValue([{ slug: "acme" }]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const select = vi.fn().mockReturnValue({ from });
+    const storage = {
+      auth: {
+        api: {
+          getSession: vi.fn().mockResolvedValue({
+            session: {
+              token: "session_token",
+              activeOrganizationId: "org_1",
+              createdAt: null,
+              expiresAt: null,
+            },
+            user: {
+              id: "user-1",
+              email: "alice@example.com",
+            },
+          }),
+        },
+      },
+      db: {
+        select,
+      },
+    } as never;
+
+    await expect(
+      resolveCliSessionIdentity(storage, new Headers(), {
+        includeActiveOrgSlug: true,
+      })
+    ).resolves.toMatchObject({
+      activeOrg: "acme",
+    });
+    expect(select).toHaveBeenCalledTimes(1);
+  });
 });

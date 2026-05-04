@@ -20,6 +20,7 @@ import type {
 } from "../../../audit";
 import type { CliHonoContext } from "../types";
 import type { SourceApiServiceDependencies } from "./dependencies";
+import type { SourceApiWorkflowResourceCache } from "./resource-cache";
 
 export type SourceApiWorkflowContext = {
   actor: SourceApiActorContext;
@@ -28,6 +29,7 @@ export type SourceApiWorkflowContext = {
   organizationId: string;
   orgSlug: string;
   requestId: string;
+  resourceCache: SourceApiWorkflowResourceCache;
 };
 
 export type DescribeSourceApiWorkflowInput = SourceApiWorkflowContext & {
@@ -157,6 +159,7 @@ export type LoadedPreparedSourceResult =
 export type PreparedSourceApiWorkflow = {
   decision: StoredAcceptedSourceApiActionDecision;
   descriptor: SourceApiDescriptor;
+  resourceCache: SourceApiWorkflowResourceCache;
 };
 
 export type PreparedSourceApiWorkflowInput = SourceApiWorkflowContext & {

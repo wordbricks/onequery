@@ -22,7 +22,6 @@ use crate::transport::pagination::page_info_from_generated;
 use crate::transport::pagination::page_request_from_controls;
 use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
-use crate::transport::read_controls::SinglePageReadControls;
 use crate::transport::response_decode::decode_required_bool;
 use crate::transport::response_decode::decode_required_u32_as_usize;
 use crate::transport::response_decode::require_non_empty_text;
@@ -122,45 +121,7 @@ pub(crate) async fn execute_read_only_query_with_controls(
     controls: &ReadRequestControls,
     request_timeout: Duration,
 ) -> Result<ApiSuccess<QueryResult>, ApiFailure> {
-    let response = fetch_query_page(
-        client,
-        org,
-        source_key,
-        payload,
-        controls.single_page(),
-        request_timeout,
-    )
-    .await?;
-
-    if !controls.page_all {
-        return Ok(response);
-    }
-
-    let request_id = response.request_id.clone();
-    let mut aggregated = response.payload;
-    let mut total_returned = aggregated.page.returned_count;
-    let mut next_cursor = aggregated.page.next_cursor.clone();
-
-    while let Some(cursor) = next_cursor {
-        let next_response = fetch_query_page(
-            client,
-            org,
-            source_key,
-            payload,
-            controls.with_cursor(Some(cursor)),
-            request_timeout,
-        )
-        .await?;
-        total_returned += next_response.payload.page.returned_count;
-        aggregated.rows.extend(next_response.payload.rows);
-        next_cursor = next_response.payload.page.next_cursor;
-    }
-
-    aggregated.page = PageInfo::aggregated(total_returned);
-    Ok(ApiSuccess {
-        payload: aggregated,
-        request_id,
-    })
+    fetch_query_page(client, org, source_key, payload, controls, request_timeout).await
 }
 
 async fn fetch_query_page(
@@ -168,23 +129,14 @@ async fn fetch_query_page(
     org: &str,
     source_key: &str,
     payload: &QueryRequestPayload,
-    controls: SinglePageReadControls,
+    controls: &ReadRequestControls,
     request_timeout: Duration,
 ) -> Result<ApiSuccess<QueryResult>, ApiFailure> {
-    let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
-    let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
-    let page = page_request_from_controls(controls, ErrorStage::ExecuteQuery)?;
-    let query = query_request_from_payload(payload)?;
+    let request = execute_query_request_from_controls(org, source_key, payload, controls)?;
     let response = match client
         .query()
         .execute_query_with_options(
-            types::ExecuteQueryRequest {
-                org_slug: Some(org_slug),
-                source_key: Some(source_key),
-                page,
-                query: MessageField::some(query),
-                ..Default::default()
-            },
+            request,
             CallOptions::default().with_timeout(request_timeout),
         )
         .await
@@ -200,6 +152,27 @@ async fn fetch_query_page(
     Ok(ApiSuccess {
         payload: query_result_from_generated(payload, request_id.clone())?,
         request_id,
+    })
+}
+
+fn execute_query_request_from_controls(
+    org: &str,
+    source_key: &str,
+    payload: &QueryRequestPayload,
+    controls: &ReadRequestControls,
+) -> Result<types::ExecuteQueryRequest, ApiFailure> {
+    let org_slug: String = try_into_value(org, ErrorStage::ExecuteQuery)?;
+    let source_key: String = try_into_value(source_key, ErrorStage::ExecuteQuery)?;
+    let page = page_request_from_controls(controls.single_page(), ErrorStage::ExecuteQuery)?;
+    let query = query_request_from_payload(payload)?;
+
+    Ok(types::ExecuteQueryRequest {
+        org_slug: Some(org_slug),
+        source_key: Some(source_key),
+        page,
+        query: MessageField::some(query),
+        all_pages: controls.page_all.then_some(true),
+        ..Default::default()
     })
 }
 
@@ -532,6 +505,7 @@ mod tests {
     use crate::transport::api_failure::ApiProblem;
     use crate::transport::api_failure::ApiProblemReason;
     use crate::transport::read_controls::PageInfo;
+    use crate::transport::read_controls::ReadRequestControls;
     use crate::transport::source::SourceSummary;
 
     fn duration_ms(value: u64) -> buffa_types::google::protobuf::Duration {
@@ -703,6 +677,47 @@ mod tests {
                 max_bytes: Some(4_096),
                 cell_max_chars: Some(256),
                 timeout: buffa::MessageField::some(duration_ms(2_500)),
+                ..Default::default()
+            }
+        );
+    }
+
+    #[test]
+    fn execute_query_request_from_controls_maps_all_pages_to_query_request() {
+        let request = super::execute_query_request_from_controls(
+            "acme",
+            "warehouse",
+            &QueryRequestPayload {
+                sql: "select 42".to_owned(),
+                max_rows: Some(100),
+                max_bytes: None,
+                cell_max_chars: None,
+                timeout_ms: None,
+            },
+            &ReadRequestControls {
+                page_size: Some(25),
+                cursor: Some("cursor_2".to_owned()),
+                page_all: true,
+            },
+        )
+        .expect("expected execute query request");
+
+        assert_eq!(
+            request,
+            super::types::ExecuteQueryRequest {
+                org_slug: Some("acme".to_owned()),
+                source_key: Some("warehouse".to_owned()),
+                page: buffa::MessageField::some(super::types::CliPageRequest {
+                    limit: Some(25),
+                    cursor: Some("cursor_2".to_owned()),
+                    ..Default::default()
+                }),
+                query: buffa::MessageField::some(super::types::CliQueryRequest {
+                    sql: Some("select 42".to_owned()),
+                    max_rows: Some(100),
+                    ..Default::default()
+                }),
+                all_pages: Some(true),
                 ..Default::default()
             }
         );

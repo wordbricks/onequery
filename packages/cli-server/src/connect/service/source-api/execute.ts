@@ -135,8 +135,10 @@ async function handlePreviewSourceApiCommand(
     const workflowContext = yield* Result.await(
       resolveSourceApiWorkflowContext({
         action: "source_api.execute",
+        dependencies,
         orgSlug: input.command.target.orgSlug,
         requestContext: input.requestContext,
+        sourceKey: input.command.target.sourceKey,
       })
     );
     const response = yield* Result.await(
@@ -181,8 +183,10 @@ async function handleExecuteSourceApiCommand(
     const workflowContext = yield* Result.await(
       resolveSourceApiWorkflowContext({
         action: "source_api.execute",
+        dependencies,
         orgSlug: input.command.target.orgSlug,
         requestContext: input.requestContext,
+        sourceKey: input.command.target.sourceKey,
       })
     );
     const response = yield* Result.await(
@@ -259,18 +263,17 @@ async function handleResumeSourceApiCommand(
       dependencies
     );
 
-    const workflowContext = yield* Result.await(
-      resolveSourceApiWorkflowContext({
-        action: "source_api.execute",
-        orgSlug: input.command.target.orgSlug,
-        requestContext: input.requestContext,
-      })
-    );
     const response = yield* Result.await(
       runResumeSourceApiExecuteWorkflowResult({
-        ...workflowContext,
+        actor: access.actor,
+        actorSnapshot: access.actorSnapshot,
         continuation,
+        c: access.c,
         dependencies,
+        organizationId: access.organizationId,
+        orgSlug: access.orgSlug,
+        requestId: access.requestId,
+        resourceCache: access.resourceCache,
         source: access.source,
       })
     );
@@ -320,7 +323,9 @@ async function resolveExecuteSourceApiAccess(
   },
   dependencies: Pick<
     SourceApiServiceDependencies,
-    "prepareDataSourceCredentials" | "runCliLoadSourceEffect"
+    | "prepareDataSourceCredentials"
+    | "runCliLoadOrgAccessWithSource"
+    | "runCliLoadSourceEffect"
   >
 ): Promise<CliServiceResult<SourceApiAccessState>> {
   return resolveAuthorizedSourceApiAccess(

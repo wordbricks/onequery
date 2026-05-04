@@ -14,6 +14,7 @@ import {
   logCliEvent,
   toCliErrorMessage,
 } from "../../../observability";
+import { runCliLoadOrgAccessWithSource } from "../../../organization/effects";
 import { runCliLoadSourceEffect } from "../../../source/effects";
 
 export type SourceApiServiceDependencies = {
@@ -27,6 +28,7 @@ export type SourceApiServiceDependencies = {
   logCliEvent: typeof logCliEvent;
   prepareDataSourceCredentials: typeof prepareDataSourceCredentials;
   prepareSourceApiDraft: typeof prepareSourceApiDraft;
+  runCliLoadOrgAccessWithSource: typeof runCliLoadOrgAccessWithSource;
   runCliLoadSourceEffect: typeof runCliLoadSourceEffect;
   toCliErrorMessage: typeof toCliErrorMessage;
 };
@@ -42,6 +44,7 @@ export const defaultSourceApiServiceDependencies = {
   logCliEvent,
   prepareDataSourceCredentials,
   prepareSourceApiDraft,
+  runCliLoadOrgAccessWithSource,
   runCliLoadSourceEffect,
   toCliErrorMessage,
 } satisfies SourceApiServiceDependencies;

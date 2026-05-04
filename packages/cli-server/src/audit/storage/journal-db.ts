@@ -106,7 +106,10 @@ export function createDbWorkflowJournalStore<
 
       try {
         return await db.transaction(async (tx) => {
-          if (commandEntry !== undefined) {
+          if (
+            appendInput.skipPreflightChecks !== true &&
+            commandEntry !== undefined
+          ) {
             const existingCommand = await loadCommandRow(tx, {
               commandInvocationId: commandEntry.commandInvocationId,
               family: commandEntry.family,
@@ -120,16 +123,18 @@ export function createDbWorkflowJournalStore<
             }
           }
 
-          const currentStreamPosition = await loadCurrentStreamPosition(tx, {
-            family: firstEntry.family,
-            streamId: firstEntry.streamId,
-          });
+          if (appendInput.skipPreflightChecks !== true) {
+            const currentStreamPosition = await loadCurrentStreamPosition(tx, {
+              family: firstEntry.family,
+              streamId: firstEntry.streamId,
+            });
 
-          if (currentStreamPosition !== appendInput.expectedStreamPosition) {
-            return {
-              currentStreamPosition,
-              kind: "position_conflict",
-            };
+            if (currentStreamPosition !== appendInput.expectedStreamPosition) {
+              return {
+                currentStreamPosition,
+                kind: "position_conflict",
+              };
+            }
           }
 
           assertAppendBatchShape({
@@ -789,26 +794,40 @@ function corruptRow(row: WorkflowJournalRow, detail: string) {
 }
 
 function isUniqueViolation(error: unknown) {
-  if (typeof error !== "object" || error === null) {
-    return false;
+  const seen = new Set<unknown>();
+  let current = error;
+
+  // Comment: PGlite through Drizzle can wrap the Postgres error in `cause`,
+  // leaving the SQLSTATE off the top-level query error.
+  while (typeof current === "object" && current !== null) {
+    if (seen.has(current)) {
+      return false;
+    }
+    seen.add(current);
+
+    const maybeError = current as {
+      cause?: unknown;
+      code?: unknown;
+      message?: unknown;
+    };
+    if (maybeError.code === "23505") {
+      return true;
+    }
+
+    const message =
+      typeof maybeError.message === "string" ? maybeError.message : "";
+    if (
+      message.includes("duplicate key") ||
+      message.includes("unique constraint") ||
+      message.includes("UNIQUE constraint")
+    ) {
+      return true;
+    }
+
+    current = maybeError.cause;
   }
 
-  const maybeError = error as {
-    code?: unknown;
-    constraint?: unknown;
-    message?: unknown;
-  };
-  if (maybeError.code === "23505") {
-    return true;
-  }
-
-  const message =
-    typeof maybeError.message === "string" ? maybeError.message : "";
-  return (
-    message.includes("duplicate key") ||
-    message.includes("unique constraint") ||
-    message.includes("UNIQUE constraint")
-  );
+  return false;
 }
 
 type WorkflowJournalEffectStartedPayload = {

@@ -90,6 +90,7 @@ export async function runStartSourceApiExecuteWorkflowResult(
             draft: input.draft,
             organizationId: input.organizationId,
             requestId: input.requestId,
+            resourceCache: preparation.resourceCache,
           })
         )
       );
@@ -107,6 +108,7 @@ export async function runStartSourceApiExecuteWorkflowResult(
             descriptor: preparation.descriptor,
             draft: input.draft,
             prepared: requestPreparation.preparedRequest,
+            resourceCache: preparation.resourceCache,
             source: requestPreparation.step.effect.source,
           })
         )
@@ -133,6 +135,7 @@ export async function runStartSourceApiExecuteWorkflowResult(
                 c: input.c,
                 dependencies: input.dependencies,
                 organizationId: input.organizationId,
+                resourceCache: preparation.resourceCache,
                 source: effect.source,
               });
               const currentPrepared = await loadRequiredPreparedSourceApi({
@@ -142,6 +145,7 @@ export async function runStartSourceApiExecuteWorkflowResult(
                 descriptor: preparation.descriptor,
                 draft: input.draft,
                 prepared: preparedRequest,
+                resourceCache: preparation.resourceCache,
                 source: effect.source,
               });
               preparedRequest = currentPrepared;

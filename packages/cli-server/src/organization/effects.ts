@@ -1,11 +1,32 @@
-import { and, eq, member, organization } from "@onequery/db/server";
+import {
+  and,
+  dataSources,
+  eq,
+  member,
+  organization,
+} from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 
+import type { CliLoadSourceEffectResult } from "../domain/effects";
 import type {
   AccessibleCliOrg,
   CliOrgAccessResult,
   CliOrgSummary,
 } from "../domain/workflows";
+import { createCliQuerySourceRecord } from "../source/model";
+
+export type CliOrgAccessWithSourceResult = {
+  access: CliOrgAccessResult;
+  source: CliLoadSourceEffectResult | null;
+};
+
+type CliOrgAccessRow = {
+  membershipId: string | null;
+  membershipRole: string | null;
+  orgId: string;
+  orgName: string | null;
+  orgSlug: string | null;
+};
 
 export async function runCliLoadOrgAccess(input: {
   db: Database;
@@ -31,31 +52,59 @@ export async function runCliLoadOrgAccess(input: {
     .where(eq(organization.slug, input.orgSlug))
     .limit(1);
 
-  if (row === undefined) {
-    return { kind: "not_found" };
-  }
+  return toCliOrgAccessResult(row);
+}
 
-  if (row.orgSlug === null || row.orgSlug.trim().length === 0) {
-    return { kind: "not_found" };
-  }
+export async function runCliLoadOrgAccessWithSource(input: {
+  db: Database;
+  orgSlug: string;
+  sourceKey: string;
+  userId: string;
+}): Promise<CliOrgAccessWithSourceResult> {
+  const [row] = await input.db
+    .select({
+      orgId: organization.id,
+      orgName: organization.name,
+      orgSlug: organization.slug,
+      membershipId: member.id,
+      membershipRole: member.role,
+      sourceCredentialsEncrypted: dataSources.credentialsEncrypted,
+      sourceCredentialsIv: dataSources.credentialsIv,
+      sourceId: dataSources.id,
+      sourceName: dataSources.name,
+      sourceOrganizationId: dataSources.organizationId,
+      sourceProvider: dataSources.provider,
+      sourceStatus: dataSources.status,
+    })
+    .from(organization)
+    .leftJoin(
+      member,
+      and(
+        eq(member.organizationId, organization.id),
+        eq(member.userId, input.userId)
+      )
+    )
+    .leftJoin(
+      dataSources,
+      and(
+        eq(dataSources.organizationId, organization.id),
+        eq(dataSources.name, input.sourceKey)
+      )
+    )
+    .where(eq(organization.slug, input.orgSlug))
+    .limit(1);
 
-  const accessibleOrg: AccessibleCliOrg = {
-    id: row.orgId,
-    name:
-      row.orgName !== null && row.orgName.trim().length > 0
-        ? row.orgName.trim()
-        : row.orgSlug.trim(),
-    slug: row.orgSlug.trim(),
-  };
-
-  if (row.membershipId === null || row.membershipRole === null) {
-    return { kind: "forbidden" };
+  const access = toCliOrgAccessResult(row);
+  if (access.kind !== "found") {
+    return {
+      access,
+      source: null,
+    };
   }
 
   return {
-    kind: "found",
-    org: accessibleOrg,
-    rawMembershipRole: row.membershipRole,
+    access,
+    source: toCliLoadSourceEffectResult(row),
   };
 }
 
@@ -94,4 +143,89 @@ export async function runCliListVisibleOrgs(input: {
   });
 
   return orgs;
+}
+
+function toCliOrgAccessResult(
+  row: CliOrgAccessRow | undefined
+): CliOrgAccessResult {
+  if (row === undefined) {
+    return { kind: "not_found" };
+  }
+
+  if (row.orgSlug === null || row.orgSlug.trim().length === 0) {
+    return { kind: "not_found" };
+  }
+
+  const accessibleOrg: AccessibleCliOrg = {
+    id: row.orgId,
+    name:
+      row.orgName !== null && row.orgName.trim().length > 0
+        ? row.orgName.trim()
+        : row.orgSlug.trim(),
+    slug: row.orgSlug.trim(),
+  };
+
+  if (row.membershipId === null || row.membershipRole === null) {
+    return { kind: "forbidden" };
+  }
+
+  return {
+    kind: "found",
+    org: accessibleOrg,
+    rawMembershipRole: row.membershipRole,
+  };
+}
+
+function toCliLoadSourceEffectResult(
+  row:
+    | (CliOrgAccessRow & {
+        sourceCredentialsEncrypted: string | null;
+        sourceCredentialsIv: string | null;
+        sourceId: string | null;
+        sourceName: string | null;
+        sourceOrganizationId: string | null;
+        sourceProvider:
+          | Parameters<typeof createCliQuerySourceRecord>[0]["provider"]
+          | null;
+        sourceStatus:
+          | Parameters<typeof createCliQuerySourceRecord>[0]["status"]
+          | null;
+      })
+    | undefined
+): CliLoadSourceEffectResult {
+  if (
+    row === undefined ||
+    row.sourceCredentialsEncrypted === null ||
+    row.sourceCredentialsIv === null ||
+    row.sourceId === null ||
+    row.sourceName === null ||
+    row.sourceOrganizationId === null ||
+    row.sourceProvider === null ||
+    row.sourceStatus === null
+  ) {
+    return {
+      kind: "not_found",
+    };
+  }
+
+  const source = createCliQuerySourceRecord({
+    credentialsEncrypted: row.sourceCredentialsEncrypted,
+    credentialsIv: row.sourceCredentialsIv,
+    id: row.sourceId,
+    name: row.sourceName,
+    organizationId: row.sourceOrganizationId,
+    provider: row.sourceProvider,
+    status: row.sourceStatus,
+  });
+
+  if (!source) {
+    return {
+      kind: "not_found",
+    };
+  }
+
+  return {
+    kind: "found",
+    source,
+  };
 }
