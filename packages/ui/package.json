@@ -6,6 +6,8 @@
   "exports": {
     "./globals.css": "./src/globals.css",
     "./lib/utils": "./src/lib/utils.ts",
+    "./data-source-connection-guide-dialog": "./src/data-sources/data-source-connection-guide-dialog.tsx",
+    "./data-source-connection-guides": "./src/data-sources/connection-guides/index.ts",
     "./components/*": "./src/components/ui/*.tsx",
     "./hooks/*": "./src/hooks/*.ts"
   },
