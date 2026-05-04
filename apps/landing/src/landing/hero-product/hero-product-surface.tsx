@@ -1,6 +1,5 @@
 import { useActorRef, useSelector } from "@xstate/react";
 
-import type { HeroProductTab } from "./hero-product.machine";
 import {
   heroProductMachine,
   heroProductAuditEntries,
@@ -11,6 +10,7 @@ import {
   readActiveHeroProductTab,
   readSafeQueryAnimationState,
 } from "./hero-product.machine";
+import type { HeroProductTab } from "./hero-product.machine";
 
 function SafeQueryPanel({
   result,

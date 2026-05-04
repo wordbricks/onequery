@@ -1,5 +1,5 @@
-import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { useActorRef, useSelector } from "@xstate/react";
+import { fromPromise } from "xstate";
 
 import {
   trackInstallCommandCopied,
@@ -11,8 +11,10 @@ import {
   readCopiedMethodLabel,
   readSelectedInstallMethod,
 } from "./download-command.machine";
-
-const downloadCommandMachine = createDownloadCommandMachine();
+import type {
+  DownloadCommandCopyInput,
+  DownloadCommandCopyOutput,
+} from "./download-command.machine";
 
 function runBestEffort(action: () => void) {
   try {
@@ -23,68 +25,36 @@ function runBestEffort(action: () => void) {
   }
 }
 
+const downloadCommandMachine = createDownloadCommandMachine().provide({
+  actions: {
+    trackCopySucceeded: (_, params: DownloadCommandCopyOutput) => {
+      runBestEffort(() => trackInstallCommandCopied(params.label));
+    },
+    trackMethodSelected: (
+      _,
+      params: { label: (typeof INSTALL_COMMANDS)[number]["label"] }
+    ) => {
+      runBestEffort(() => trackInstallMethodSelected(params.label));
+    },
+  },
+  actors: {
+    copyCommand: fromPromise<
+      DownloadCommandCopyOutput,
+      DownloadCommandCopyInput
+    >(async ({ input }) => {
+      await navigator.clipboard.writeText(input.command);
+
+      return {
+        label: input.label,
+      };
+    }),
+  },
+});
+
 function useDownloadCommandController() {
   const actorRef = useActorRef(downloadCommandMachine);
   const selectedMethod = useSelector(actorRef, readSelectedInstallMethod);
   const copiedMethodLabel = useSelector(actorRef, readCopiedMethodLabel);
-
-  useMountEffect(() => {
-    let isActive = true;
-    let lastStartedCopyRequestId = 0;
-
-    async function handleSnapshot(
-      snapshot: ReturnType<typeof actorRef.getSnapshot>
-    ) {
-      const pendingCopyRequest = snapshot.context.pendingCopyRequest;
-
-      if (
-        !snapshot.matches("copying") ||
-        pendingCopyRequest === null ||
-        pendingCopyRequest.requestId === lastStartedCopyRequestId
-      ) {
-        return;
-      }
-
-      lastStartedCopyRequestId = pendingCopyRequest.requestId;
-
-      try {
-        await navigator.clipboard.writeText(pendingCopyRequest.command);
-
-        if (!isActive) {
-          return;
-        }
-
-        actorRef.send({
-          type: "downloadCommand/copySucceeded",
-          label: pendingCopyRequest.label,
-          requestId: pendingCopyRequest.requestId,
-        });
-        runBestEffort(() =>
-          trackInstallCommandCopied(pendingCopyRequest.label)
-        );
-      } catch {
-        if (!isActive) {
-          return;
-        }
-
-        actorRef.send({
-          type: "downloadCommand/copyFailed",
-          requestId: pendingCopyRequest.requestId,
-        });
-      }
-    }
-
-    void handleSnapshot(actorRef.getSnapshot());
-
-    const subscription = actorRef.subscribe((snapshot) => {
-      void handleSnapshot(snapshot);
-    });
-
-    return () => {
-      isActive = false;
-      subscription.unsubscribe();
-    };
-  });
 
   return {
     copiedMethodLabel,
@@ -93,7 +63,6 @@ function useDownloadCommandController() {
       actorRef.send({ type: "downloadCommand/copyRequested" });
     },
     selectMethod: (label: (typeof INSTALL_COMMANDS)[number]["label"]) => {
-      runBestEffort(() => trackInstallMethodSelected(label));
       actorRef.send({
         type: "downloadCommand/methodSelected",
         label,
