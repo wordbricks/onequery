@@ -153,6 +153,14 @@ code {
   gap: 96px;
 }
 
+.deferred-mount-anchor[data-mounted="false"] {
+  min-height: 1px;
+}
+
+.deferred-mount-anchor[data-mounted="true"] {
+  display: contents;
+}
+
 .hero-section {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1935,6 +1943,10 @@ code {
 
 .contact-link-button:hover {
   color: var(--ink);
+}
+
+.contact-link-button-loading {
+  cursor: progress;
 }
 
 .contact-modal-backdrop {
