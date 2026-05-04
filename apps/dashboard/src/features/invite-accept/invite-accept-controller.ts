@@ -560,7 +560,7 @@ const inviteAcceptMachineLogic = setup({
   },
 });
 
-export const inviteAcceptMachine = createInviteAcceptMachine();
+const inviteAcceptMachine = createInviteAcceptMachine();
 
 export function readInviteAcceptStatus(
   state: SnapshotFrom<ReturnType<typeof createInviteAcceptMachine>>

@@ -54,17 +54,9 @@ export type {
 } from "./device-auth-requests";
 export {
   submitDeviceDecisionActorRequest,
-  submitDeviceDecisionRequest,
   verifyDeviceActorRequest,
-  verifyDeviceRequest,
 } from "./device-auth-requests";
-export {
-  DeviceActorRequestError,
-  DeviceDecisionError,
-  DeviceVerificationError,
-  GENERIC_DEVICE_DECISION_ERROR_MESSAGE,
-  GENERIC_DEVICE_VERIFY_ERROR_MESSAGE,
-} from "./errors";
+export { DeviceActorRequestError } from "./errors";
 
 const deviceAuthMachineSetup = setup({
   actions: {

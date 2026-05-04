@@ -46,7 +46,7 @@ export type DeviceAuthController = {
   onUseDifferentCode: () => void;
 };
 
-export type DeviceAuthControllerInput = {
+type DeviceAuthControllerInput = {
   initialSession: DeviceSession;
   onboardingOrganizationId: string | null;
   requestedUserCode: string | null;

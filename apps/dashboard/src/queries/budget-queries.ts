@@ -11,10 +11,6 @@ export type BudgetDashboardResponse = InferResponseType<
   200
 >;
 export type BudgetDashboardOverview = BudgetDashboardResponse["overview"];
-export type BudgetDashboardProviderRow =
-  BudgetDashboardResponse["providerBreakdown"][number];
-export type BudgetDashboardConnectionRow =
-  BudgetDashboardResponse["connectionBreakdown"][number];
 export type BudgetDashboardDailyRow =
   BudgetDashboardResponse["dailyCost"][number];
 

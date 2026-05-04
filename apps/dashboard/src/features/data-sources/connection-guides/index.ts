@@ -16,7 +16,7 @@ import type { GuideContent } from "./types";
 import { CONNECTOR_BASE_URL_TOKEN } from "./types";
 
 export { CONNECTOR_BASE_URL_TOKEN };
-export type { GuideContent, GuideLocaleContent, GuideStep } from "./types";
+export type { GuideLocaleContent, GuideStep } from "./types";
 
 export const GUIDE_CONTENT: Record<ProviderType, GuideContent> = {
   amplitude: amplitudeGuideContent,
