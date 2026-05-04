@@ -101,8 +101,11 @@ jobs:
           # server bundle still needs the workspace graph from bun.lock first.
           bun ci
 
-      - uses: dtolnay/rust-toolchain@1.93.0
+      # COMMENT: apps/cli/rust-toolchain.toml pins nightly; install the target
+      # on that same toolchain so cross builds can find std/core.
+      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
         with:
+          toolchain: nightly-2025-09-18
           targets: ${{ matrix.target }}
 
       - if: ${{ matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-musl' }}
@@ -201,9 +204,10 @@ jobs:
           # the same Bun dependency install as the helper bundles.
           bun ci
 
-      - uses: dtolnay/rust-toolchain@1.93.0
+      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
         if: ${{ matrix.bundle == 'primary' }}
         with:
+          toolchain: nightly-2025-09-18
           targets: ${{ matrix.target }}
 
       - name: Cargo build (Windows binaries)
