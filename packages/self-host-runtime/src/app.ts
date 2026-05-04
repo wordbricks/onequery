@@ -8,13 +8,20 @@ import {
 } from "@onequery/installer";
 import { createServerApi } from "@onequery/server/app";
 import { createMemoryApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
+import {
+  buildHonoRequestLogDetails,
+  createHonoRequestStructuredLogger,
+  createRequestIdMiddleware,
+} from "@onequery/server/observability/structured-logging";
+import type {
+  HonoStructuredLoggerVariables,
+  RequestIdVariables,
+} from "@onequery/server/observability/structured-logging";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import { createServerStorage } from "@onequery/server/storage";
 import type { ServerStorage } from "@onequery/server/storage";
 import { Hono } from "hono";
 import { problemDetailsHandler } from "hono-problem-details";
-import { requestId } from "hono/request-id";
-import type { RequestIdVariables } from "hono/request-id";
 
 import {
   API_ROUTE_PREFIX,
@@ -38,6 +45,10 @@ type RuntimeApiEnv = {
   Variables: RequestIdVariables;
 };
 
+type RuntimeAppEnv = {
+  Variables: RequestIdVariables & HonoStructuredLoggerVariables;
+};
+
 function resolveStorage(input: CreateRuntimeAppOptions): ServerStorage {
   return (
     input.storage ??
@@ -47,13 +58,32 @@ function resolveStorage(input: CreateRuntimeAppOptions): ServerStorage {
   );
 }
 
+const selfHostRuntimeStructuredLogger =
+  createHonoRequestStructuredLogger<RuntimeAppEnv>({
+    buildRequestDetails: (c) =>
+      buildHonoRequestLogDetails(c, {
+        requestId: c.var.requestId,
+      }),
+    events: {
+      completed: "runtime.request.completed",
+      failed: "runtime.request.failed",
+      started: "runtime.request.started",
+    },
+    messages: {
+      completed: "runtime request completed",
+      failed: "runtime request failed",
+      started: "runtime request started",
+    },
+    scope: "self-host-runtime",
+  });
+
 // Build the runtime API surface on top of the shared OSS-safe server routes.
 export function createApiApp(input: CreateRuntimeAppOptions) {
   const storage = resolveStorage(input);
 
   return (
     new Hono<RuntimeApiEnv>()
-      .use("*", requestId())
+      .use("*", createRequestIdMiddleware())
       // Comment: mount the more specific `/api/*` children before the broad
       // `/api` app so Hono does not run the general control-plane middleware
       // for CLI or device-authorization requests.
@@ -90,7 +120,9 @@ export function createApp(input: CreateRuntimeAppOptions) {
   const apiApp = createApiApp(input);
 
   return (
-    new Hono()
+    new Hono<RuntimeAppEnv>()
+      .use("*", createRequestIdMiddleware())
+      .use("*", selfHostRuntimeStructuredLogger)
       .onError(problemDetailsHandler())
       .route("/", apiApp)
       // Removed/private API endpoints should fail as API 404s instead of serving

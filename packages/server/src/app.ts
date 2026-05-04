@@ -1,14 +1,19 @@
-import { structuredLogger } from "@hono/structured-logger";
-import type { BaseLogger } from "@hono/structured-logger";
 import { Hono } from "hono";
-import { requestId } from "hono/request-id";
-import type { RequestIdVariables } from "hono/request-id";
 
 import { createMemoryApiRateLimitStorage } from "./lib/rate-limit-storage";
 import { apiRateLimiter } from "./middleware/rate-limit";
 import { sessionMiddleware } from "./middleware/session";
 import type { SessionVariables } from "./middleware/session";
 import { createProblemDetailsErrorHandler } from "./observability/error-reporting";
+import {
+  buildHonoRequestLogDetails,
+  createHonoRequestStructuredLogger,
+  createRequestIdMiddleware,
+} from "./observability/structured-logging";
+import type {
+  HonoStructuredLoggerVariables,
+  RequestIdVariables,
+} from "./observability/structured-logging";
 import { authRoute } from "./routes/auth";
 import { bootstrapRoute } from "./routes/bootstrap";
 import { budgetRoute } from "./routes/budget";
@@ -28,9 +33,8 @@ export type { SessionVariables } from "./middleware/session";
 
 type ServerApiVariables = RequestIdVariables &
   ServerRuntimeVariables &
-  SessionVariables & {
-    logger: BaseLogger;
-  };
+  SessionVariables &
+  HonoStructuredLoggerVariables;
 
 export interface CreateServerApiOptions {
   enableAuthTestUtils?: boolean;
@@ -42,63 +46,32 @@ type ServerApiEnv = {
   Variables: ServerApiVariables;
 };
 
-type ServerApiLogLevel = "error" | "info" | "warn";
-
-function getDashboardApiLogLevelForStatus(status: number): ServerApiLogLevel {
-  if (status >= 500) {
-    return "error";
-  }
-
-  if (status >= 400) {
-    return "warn";
-  }
-
-  return "info";
-}
-
-const dashboardApiStructuredLogger = structuredLogger({
-  createLogger: () => console,
-  onError: (logger, error, c) => {
-    logger.error(
-      {
-        err: error,
-        event: "dashboard.request.failed",
-        method: c.req.method,
-        path: c.req.path,
-        requestId: c.get("requestId"),
-        scope: "dashboard",
-        status: c.res.status,
-      },
-      "dashboard request failed"
-    );
-  },
-  onRequest: (logger, c) => {
-    logger.info(
-      {
-        event: "dashboard.request.started",
-        method: c.req.method,
-        path: c.req.path,
-        requestId: c.get("requestId"),
-        scope: "dashboard",
-      },
-      "dashboard request started"
-    );
-  },
-  onResponse: (logger, c, elapsedMs) => {
-    logger[getDashboardApiLogLevelForStatus(c.res.status)](
-      {
-        elapsedMs,
-        event: "dashboard.request.completed",
-        method: c.req.method,
-        path: c.req.path,
-        requestId: c.get("requestId"),
-        scope: "dashboard",
-        status: c.res.status,
-      },
-      "dashboard request completed"
-    );
-  },
-});
+const dashboardApiStructuredLogger =
+  createHonoRequestStructuredLogger<ServerApiEnv>({
+    buildErrorDetails: (error, c) => ({
+      err: error,
+      status: c.res.status,
+    }),
+    buildRequestDetails: (c) =>
+      buildHonoRequestLogDetails(c, {
+        requestId: c.var.requestId,
+      }),
+    buildResponseDetails: (c, elapsedMs) => ({
+      elapsedMs,
+      status: c.res.status,
+    }),
+    events: {
+      completed: "dashboard.request.completed",
+      failed: "dashboard.request.failed",
+      started: "dashboard.request.started",
+    },
+    messages: {
+      completed: "dashboard request completed",
+      failed: "dashboard request failed",
+      started: "dashboard request started",
+    },
+    scope: "dashboard",
+  });
 
 /**
  * Shared OSS-safe control-plane routes.
@@ -116,7 +89,7 @@ export function createServerApi(input: CreateServerApiOptions) {
       .onError(
         createProblemDetailsErrorHandler("packages/server/createServerApi")
       )
-      .use("*", requestId())
+      .use("*", createRequestIdMiddleware())
       // Comment: apps/dashboard is a client app; its Hono API surface lives
       // here and is mounted by the self-host runtime under `/api`.
       .use("*", dashboardApiStructuredLogger)

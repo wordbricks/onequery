@@ -36,7 +36,8 @@
     "./services/testers/mysql-tester": "./src/services/testers/mysql-tester.ts",
     "./services/data-source-tester": "./src/services/data-source-tester.ts",
     "./problem-details/zod-problem-hook": "./src/problem-details/zod-problem-hook.ts",
-    "./observability/error-reporting": "./src/observability/error-reporting.ts"
+    "./observability/error-reporting": "./src/observability/error-reporting.ts",
+    "./observability/structured-logging": "./src/observability/structured-logging.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",

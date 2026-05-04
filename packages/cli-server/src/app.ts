@@ -1,14 +1,18 @@
 import type { Http2Bindings, HttpBindings } from "@hono/node-server";
-import { structuredLogger } from "@hono/structured-logger";
-import type { BaseLogger } from "@hono/structured-logger";
 import type { Database } from "@onequery/db/server";
+import {
+  createHonoRequestStructuredLogger,
+  createRequestIdMiddleware,
+} from "@onequery/server/observability/structured-logging";
+import type {
+  HonoStructuredLoggerVariables,
+  RequestIdVariables,
+} from "@onequery/server/observability/structured-logging";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
 import { serverStorageMiddleware } from "@onequery/server/storage";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { requestId as requestIdMiddleware } from "hono/request-id";
-import type { RequestIdVariables } from "hono/request-id";
 
 import type { AuthorizedCliOrgContext } from "./authorization";
 import type { CliSessionIdentity } from "./domain/workflows";
@@ -26,10 +30,10 @@ export type CliRouteEnv<
 > = {
   Bindings: HonoNodeBindings;
   Variables: RequestIdVariables & {
-    logger: BaseLogger;
     runtime: ServerRuntimeConfig;
     storage: ServerStorage;
-  } & Variables;
+  } & HonoStructuredLoggerVariables &
+    Variables;
 };
 
 export type CliSessionRouteVariables = {
@@ -46,45 +50,30 @@ export interface CreateCliAppOptions {
   storage: ServerStorage;
 }
 
-const cliRequestStructuredLoggerMiddleware = structuredLogger({
-  createLogger: () => console,
-  onError: (logger, error, c) => {
-    logger.error(
-      {
-        event: "request.failed",
-        scope: "cli",
-        ...buildCliRequestLogDetails(c, {
-          error: toCliErrorMessage(error),
-          status: c.res.status,
-        }),
-      },
-      "cli request failed"
-    );
-  },
-  onRequest: (logger, c) => {
-    logger.info(
-      {
-        event: "request.started",
-        scope: "cli",
-        ...buildCliRequestLogDetails(c),
-      },
-      "cli request started"
-    );
-  },
-  onResponse: (logger, c, elapsedMs) => {
-    logger[getCliLogLevelForStatus(c.res.status)](
-      {
-        event: "request.finished",
-        scope: "cli",
-        ...buildCliRequestLogDetails(c, {
-          durationMs: Math.max(0, Math.trunc(elapsedMs)),
-          status: c.res.status,
-        }),
-      },
-      "cli request finished"
-    );
-  },
-});
+const cliRequestStructuredLoggerMiddleware =
+  createHonoRequestStructuredLogger<CliRouteEnv>({
+    buildErrorDetails: (error, c) => ({
+      error: toCliErrorMessage(error),
+      status: c.res.status,
+    }),
+    buildRequestDetails: buildCliRequestLogDetails,
+    buildResponseDetails: (c, elapsedMs) => ({
+      durationMs: Math.max(0, Math.trunc(elapsedMs)),
+      status: c.res.status,
+    }),
+    events: {
+      completed: "request.finished",
+      failed: "request.failed",
+      started: "request.started",
+    },
+    getLogLevelForStatus: getCliLogLevelForStatus,
+    messages: {
+      completed: "cli request finished",
+      failed: "cli request failed",
+      started: "cli request started",
+    },
+    scope: "cli",
+  });
 
 function cliRuntimeMiddleware<
   Variables extends Record<string, unknown> = Record<string, never>,
@@ -116,7 +105,7 @@ export function createCliApp<
   app.use(cliRuntimeMiddleware(input.runtime));
   app.use(serverStorageMiddleware(input.storage));
   app.use(
-    requestIdMiddleware({
+    createRequestIdMiddleware({
       headerName: CLI_REQUEST_ID_HEADER,
     })
   );
@@ -131,7 +120,7 @@ export function createCliBrowserApp<
   app.use(cliRuntimeMiddleware(input.runtime));
   app.use(serverStorageMiddleware(input.storage));
   app.use(
-    requestIdMiddleware({
+    createRequestIdMiddleware({
       headerName: CLI_REQUEST_ID_HEADER,
     })
   );
