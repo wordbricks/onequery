@@ -53,6 +53,7 @@ type RunPreparedCliQueryWorkflowInput = {
   db: Database;
   org: AccessibleCliOrg;
   requestId: string;
+  resourceCache?: QueryWorkflowResourceCache;
   sourceName: string;
   sql: string;
   timeoutMs: number;
@@ -70,7 +71,8 @@ type RunPreparedCliQueryWorkflowInput = {
 export async function runPreparedCliQueryWorkflow(
   input: RunPreparedCliQueryWorkflowInput
 ): Promise<QueryWorkflowPreparationResult> {
-  let resourceCache = createEmptyQueryWorkflowResourceCache();
+  let resourceCache =
+    input.resourceCache ?? createEmptyQueryWorkflowResourceCache();
 
   const startDecision = await storeAcceptedQueryActionCommand({
     actionId: null,

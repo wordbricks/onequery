@@ -470,7 +470,7 @@ message QueryActionRecordQueryExecutionResult {
     (buf.validate.field).duration.gte = {}
   ];
   repeated QueryActionQueryColumn columns = 4 [(buf.validate.field).repeated.max_items = 512];
-  repeated QueryActionQueryRow rows = 5 [(buf.validate.field).repeated.max_items = 100];
+  repeated QueryActionQueryRow rows = 5 [(buf.validate.field).repeated.max_items = 1000];
   bool truncated = 6 [(buf.validate.field).required = true];
 }
 

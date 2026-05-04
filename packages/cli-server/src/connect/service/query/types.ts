@@ -7,6 +7,7 @@ import {
 } from "@onequery/proto-cli/cli/v1/query_pb";
 
 import type { AuthorizedCliOrgContext } from "../../../authorization";
+import type { CliLoadSourceEffectResult } from "../../../domain/effects";
 import type { CliSessionIdentity } from "../../../domain/workflows";
 import { resolveQueryResultWindow } from "../../../query/result-window";
 import type { CliSourceInit } from "../source/types";
@@ -83,4 +84,5 @@ export type ResolvedCliQueryRequest<TRequest extends CliQueryServiceRequest> = {
   requestId: string;
   resultWindow: ReturnType<typeof resolveQueryResultWindow>;
   session: CliSessionIdentity;
+  sourceLookup: CliLoadSourceEffectResult | null;
 };

@@ -38,6 +38,7 @@ import {
   runCliQueryValidationWorkflowResult,
 } from "./workflow";
 import { storeAcceptedQueryActionCommand } from "./workflow-runtime";
+import { createQueryWorkflowResourceCacheFromLookup } from "./workflow-steps";
 import type {
   CliQueryExecutionDispatch,
   CliQueryValidationDispatch,
@@ -248,6 +249,14 @@ describe("query workflow audit runtime", () => {
       kind: "found",
       source,
     } satisfies CliLoadSourceEffectResult);
+    const resourceCache = createQueryWorkflowResourceCacheFromLookup({
+      organizationId: org.id,
+      sourceKey: source.sourceKey,
+      sourceLookup: {
+        kind: "found",
+        source,
+      },
+    });
 
     const result = await runCliQueryExecutionWorkflowResult({
       actorSnapshot,
@@ -273,6 +282,7 @@ describe("query workflow audit runtime", () => {
       },
       org,
       requestId: "req-execute-1",
+      resourceCache,
       sourceName: source.sourceKey,
       sql: "select 42 as answer",
       timeoutMs: 30_000,
@@ -307,7 +317,7 @@ describe("query workflow audit runtime", () => {
       .orderBy(asc(pendingWorkflowEffects.scheduledAt));
 
     expect(persistUsage).toHaveBeenCalledTimes(1);
-    expect(loadSource).toHaveBeenCalledTimes(1);
+    expect(loadSource).not.toHaveBeenCalled();
     expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_execute",
       "record_execute_preparation_succeeded",

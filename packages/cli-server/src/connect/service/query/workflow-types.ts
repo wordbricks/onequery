@@ -16,9 +16,9 @@ import type {
   WorkflowJournalCursor,
   WorkflowJournalEffectToken,
 } from "../../../audit";
+import type { CliLoadSourceEffectResult } from "../../../domain/effects";
 import type {
   AccessibleCliOrg,
-  CliQuerySourceRecord,
   CliQuerySuccessResult,
 } from "../../../domain/workflows";
 import type {
@@ -39,6 +39,7 @@ export type QueryWorkflowRuntimeBaseInput = {
   db: Database;
   org: AccessibleCliOrg;
   requestId: string;
+  resourceCache?: QueryWorkflowResourceCache;
   sourceName: string;
   sql: string;
   timeoutMs: number;
@@ -157,7 +158,13 @@ export type StoredAcceptedQueryActionResultCommand = {
   decision: StoredAcceptedQueryActionDecision;
 };
 
+export type QuerySourceLookupCacheEntry = {
+  organizationId: string;
+  result: CliLoadSourceEffectResult;
+  sourceKey: string;
+};
+
 export type QueryWorkflowResourceCache = {
   loadedCredentials: DatabaseCredentials | null;
-  loadedSource: CliQuerySourceRecord | null;
+  sourceLookup: QuerySourceLookupCacheEntry | null;
 };

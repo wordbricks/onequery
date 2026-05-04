@@ -20,6 +20,7 @@ export async function runCliQueryValidationWorkflowResult(
         mode: "start_validate",
         org: input.org,
         requestId: input.requestId,
+        resourceCache: input.resourceCache,
         sourceName: input.sourceName,
         sql: input.sql,
         timeoutMs: input.timeoutMs,

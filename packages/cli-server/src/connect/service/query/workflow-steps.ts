@@ -5,10 +5,7 @@ import type {
   CliLoadSourceEffectResult,
   CliPersistUsageEffectResult,
 } from "../../../domain/effects";
-import type {
-  AccessibleCliOrg,
-  CliQuerySourceRecord,
-} from "../../../domain/workflows";
+import type { AccessibleCliOrg } from "../../../domain/workflows";
 import { getCliQueryDatabaseProviderType } from "../../../source/model";
 import {
   toCliSourceRecord,
@@ -29,6 +26,7 @@ import type {
   DispatchedQueryActionEffect,
   QueryExecutionEffectResult,
   QueryPreparationEffectResult,
+  QuerySourceLookupCacheEntry,
   QueryWorkflowResourceCache,
   StoredAcceptedQueryActionDecision,
 } from "./workflow-types";
@@ -58,37 +56,68 @@ type UsageDispatch = {
 export function createEmptyQueryWorkflowResourceCache(): QueryWorkflowResourceCache {
   return {
     loadedCredentials: null,
-    loadedSource: null,
+    sourceLookup: null,
+  };
+}
+
+export function createQueryWorkflowResourceCacheFromLookup(input: {
+  organizationId: string;
+  sourceKey: string;
+  sourceLookup: CliLoadSourceEffectResult | null;
+}): QueryWorkflowResourceCache {
+  if (input.sourceLookup === null) {
+    return createEmptyQueryWorkflowResourceCache();
+  }
+
+  return {
+    loadedCredentials: null,
+    sourceLookup: {
+      organizationId: input.organizationId,
+      result: input.sourceLookup,
+      sourceKey: input.sourceKey,
+    },
   };
 }
 
 async function loadQuerySourceForPreparation(input: {
-  cachedSource: CliQuerySourceRecord | null;
+  cachedSourceLookup: QuerySourceLookupCacheEntry | null;
   dispatch: Pick<ValidatePreparationDispatch, "loadSource">;
   organizationId: string;
   sourceKey: string;
-}): Promise<CliLoadSourceEffectResult> {
-  if (input.cachedSource !== null) {
+}): Promise<QuerySourceLookupCacheEntry> {
+  if (input.cachedSourceLookup !== null) {
     if (
-      input.cachedSource.organizationId !== input.organizationId ||
-      input.cachedSource.sourceKey !== input.sourceKey
+      input.cachedSourceLookup.organizationId !== input.organizationId ||
+      input.cachedSourceLookup.sourceKey !== input.sourceKey
     ) {
       throw createQueryAuditProblem(
         "cached query source does not match preparation effect"
       );
     }
 
-    return {
-      kind: "found",
-      source: input.cachedSource,
-    };
+    if (
+      input.cachedSourceLookup.result.kind === "found" &&
+      (input.cachedSourceLookup.result.source.organizationId !==
+        input.organizationId ||
+        input.cachedSourceLookup.result.source.sourceKey !== input.sourceKey)
+    ) {
+      throw createQueryAuditProblem(
+        "cached query source result does not match preparation effect"
+      );
+    }
+
+    return input.cachedSourceLookup;
   }
 
-  return input.dispatch.loadSource({
-    kind: "load_source",
+  return {
     organizationId: input.organizationId,
+    result: await input.dispatch.loadSource({
+      kind: "load_source",
+      organizationId: input.organizationId,
+      sourceKey: input.sourceKey,
+    }),
     sourceKey: input.sourceKey,
-  });
+  };
 }
 
 export async function runQueryValidatePreparationStep(input: {
@@ -107,7 +136,7 @@ export async function runQueryValidatePreparationStep(input: {
     QueryPreparationEffectResult
   >;
 }> {
-  let loadedSource = input.resourceCache.loadedSource;
+  let sourceLookup = input.resourceCache.sourceLookup;
 
   const step = await dispatchStoredQueryActionEffect<
     "prepare_validate_query",
@@ -128,14 +157,15 @@ export async function runQueryValidatePreparationStep(input: {
       }),
     requestId: input.requestId,
     run: async (effect) => {
-      const source = await loadQuerySourceForPreparation({
-        cachedSource: loadedSource,
+      const lookup = await loadQuerySourceForPreparation({
+        cachedSourceLookup: sourceLookup,
         dispatch: input.dispatch,
         organizationId: effect.organizationId,
         sourceKey: effect.sourceKey,
       });
+      sourceLookup = lookup;
 
-      if (source.kind === "not_found") {
+      if (lookup.result.kind === "not_found") {
         return {
           commandPayload: {
             kind: "not_found",
@@ -152,29 +182,30 @@ export async function runQueryValidatePreparationStep(input: {
       }
 
       const databaseType = getCliQueryDatabaseProviderType(
-        source.source.provider,
-        source.source.status
+        lookup.result.source.provider,
+        lookup.result.source.status
       );
       if (!databaseType) {
         return {
           commandPayload: {
             kind: "query_interface_missing",
-            provider: source.source.provider,
-            sourceStatus: source.source.status,
+            provider: lookup.result.source.provider,
+            sourceStatus: lookup.result.source.status,
             type: "record_validate_preparation",
           },
           result: {
             kind: "source_query_interface_missing",
-            provider: source.source.provider,
+            provider: lookup.result.source.provider,
             requestId: input.requestId,
             sourceName: input.sourceName,
-            status: source.source.status,
+            status: lookup.result.source.status,
           } satisfies QueryPreparationEffectResult,
         };
       }
 
-      loadedSource = source.source;
-      const sourceDescriptor = toQueryActionSourceDescriptor(source.source);
+      const sourceDescriptor = toQueryActionSourceDescriptor(
+        lookup.result.source
+      );
       const validationResult = await input.dispatch.validateQuery({
         databaseType,
         kind: "validate_query",
@@ -227,7 +258,7 @@ export async function runQueryValidatePreparationStep(input: {
   return {
     resourceCache: {
       ...input.resourceCache,
-      loadedSource,
+      sourceLookup,
     },
     step,
   };
@@ -250,7 +281,7 @@ export async function runQueryExecutePreparationStep(input: {
   >;
 }> {
   let loadedCredentials = input.resourceCache.loadedCredentials;
-  let loadedSource = input.resourceCache.loadedSource;
+  let sourceLookup = input.resourceCache.sourceLookup;
 
   const step = await dispatchStoredQueryActionEffect<
     "prepare_execute_query",
@@ -271,14 +302,15 @@ export async function runQueryExecutePreparationStep(input: {
       }),
     requestId: input.requestId,
     run: async (effect) => {
-      const source = await loadQuerySourceForPreparation({
-        cachedSource: loadedSource,
+      const lookup = await loadQuerySourceForPreparation({
+        cachedSourceLookup: sourceLookup,
         dispatch: input.dispatch,
         organizationId: effect.organizationId,
         sourceKey: effect.sourceKey,
       });
+      sourceLookup = lookup;
 
-      if (source.kind === "not_found") {
+      if (lookup.result.kind === "not_found") {
         return {
           commandPayload: {
             kind: "not_found",
@@ -295,29 +327,30 @@ export async function runQueryExecutePreparationStep(input: {
       }
 
       const databaseType = getCliQueryDatabaseProviderType(
-        source.source.provider,
-        source.source.status
+        lookup.result.source.provider,
+        lookup.result.source.status
       );
       if (!databaseType) {
         return {
           commandPayload: {
             kind: "query_interface_missing",
-            provider: source.source.provider,
-            sourceStatus: source.source.status,
+            provider: lookup.result.source.provider,
+            sourceStatus: lookup.result.source.status,
             type: "record_execute_preparation",
           },
           result: {
             kind: "source_query_interface_missing",
-            provider: source.source.provider,
+            provider: lookup.result.source.provider,
             requestId: input.requestId,
             sourceName: input.sourceName,
-            status: source.source.status,
+            status: lookup.result.source.status,
           } satisfies QueryPreparationEffectResult,
         };
       }
 
-      loadedSource = source.source;
-      const sourceDescriptor = toQueryActionSourceDescriptor(source.source);
+      const sourceDescriptor = toQueryActionSourceDescriptor(
+        lookup.result.source
+      );
       const validationResult = await input.dispatch.validateQuery({
         databaseType,
         kind: "validate_query",
@@ -351,7 +384,7 @@ export async function runQueryExecutePreparationStep(input: {
 
       const credentialsResult = await input.dispatch.loadCredentials({
         kind: "load_credentials",
-        source: source.source,
+        source: lookup.result.source,
       });
 
       if (credentialsResult.kind !== "credentials_loaded") {
@@ -394,7 +427,7 @@ export async function runQueryExecutePreparationStep(input: {
   return {
     resourceCache: {
       loadedCredentials,
-      loadedSource,
+      sourceLookup,
     },
     step,
   };
@@ -414,7 +447,7 @@ export async function runQueryExecutionStep(input: {
   DispatchedQueryActionEffect<"execute_query", QueryExecutionEffectResult>
 > {
   let loadedCredentials = input.resourceCache.loadedCredentials;
-  let loadedSource = input.resourceCache.loadedSource;
+  let sourceLookup = input.resourceCache.sourceLookup;
 
   return dispatchStoredQueryActionEffect<
     "execute_query",
@@ -429,11 +462,18 @@ export async function runQueryExecutionStep(input: {
     requestId: input.requestId,
     run: async (effect) => {
       const source = await loadRequiredCliQuerySourceRecord({
-        cachedSource: loadedSource,
+        cachedSourceLookup: sourceLookup,
         dispatch: input.dispatch,
         sourceDescriptor: effect.source,
       });
-      loadedSource = source;
+      sourceLookup = {
+        organizationId: effect.source.organizationId,
+        result: {
+          kind: "found",
+          source,
+        },
+        sourceKey: effect.source.sourceKey,
+      };
 
       const queryCredentials = await loadRequiredCliQueryCredentials({
         cachedCredentials: loadedCredentials,
