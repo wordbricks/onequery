@@ -1,5 +1,6 @@
+import { sourceConnectProviderGuide } from '@onequery/db/connection-guide';
+import type { SourceConnectProviderGuide } from '@onequery/db/connection-guide';
 import type { ProviderType } from "@onequery/db/server";
-import { getSourceProviderDefinition } from "@onequery/db/server";
 
 import {
   buildCliSourceConnectCommand,
@@ -8,19 +9,11 @@ import {
 import type { CliSourceRecord } from "../domain/workflows";
 
 export function buildCliSourceConnectGuide(provider: ProviderType) {
-  const definition = getSourceProviderDefinition(provider);
-  if (!definition?.connectable) {
-    throw new Error(`unsupported source connect provider: ${provider}`);
-  }
+  const guide = sourceConnectProviderGuide(provider);
 
   return {
     command: buildCliSourceConnectCommand(provider),
-    content: buildSourceConnectContent({
-      provider,
-      summary: definition.guide.summary,
-      steps: definition.guide.steps,
-      exampleInput: definition.guide.exampleInput,
-    }),
+    content: buildSourceConnectContent(guide),
     description: `Follow these steps to gather credentials and create one ${provider} org-scoped OneQuery source.`,
     format: "markdown" as const,
     title: "OneQuery Source Connect Guide",
@@ -34,12 +27,9 @@ export function buildCliSourceConnectResult(source: CliSourceRecord) {
   };
 }
 
-function buildSourceConnectContent(provider: {
-  provider: ProviderType;
-  summary: string;
-  steps: readonly string[];
-  exampleInput: Record<string, unknown>;
-}): string {
+function buildSourceConnectContent(
+  provider: SourceConnectProviderGuide
+): string {
   const lines = [
     "# OneQuery Source Connect Guide",
     "",
