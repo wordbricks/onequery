@@ -1,3 +1,0 @@
-[env]
-# Use it for Symphony workflow
-LINEAR_API_KEY = { value = "", redact = true }

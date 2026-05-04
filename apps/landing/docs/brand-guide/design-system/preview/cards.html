@@ -20,19 +20,22 @@
             content: grid([
               card({
                 title: "Source connected",
-                description: "warehouse is available through a read-only policy. Last heartbeat arrived 12s ago.",
+                description:
+                  "warehouse is available through a read-only policy. Last heartbeat arrived 12s ago.",
                 badgeLabel: "Active",
                 footer: `${badge({ label: "read-only", variant: "outline" })} ${badge({ label: "heartbeat 12s", variant: "success" })}`,
               }),
               card({
                 title: "Query validating",
-                description: "The SQL request is being checked against cost, source, and requester policy before execution.",
+                description:
+                  "The SQL request is being checked against cost, source, and requester policy before execution.",
                 badgeLabel: "Pending",
                 footer: `${badge({ label: "cost limit $5", variant: "secondary" })} ${badge({ label: "policy gate", variant: "outline" })}`,
               }),
               card({
                 title: "Agent query blocked",
-                description: "The agent requested a table outside its approved source list. The failure becomes an audit state.",
+                description:
+                  "The agent requested a table outside its approved source list. The failure becomes an audit state.",
                 badgeLabel: "Blocked",
                 footer: `${badge({ label: "source denied", variant: "error" })} ${badge({ label: "recorded", variant: "outline" })}`,
               }),

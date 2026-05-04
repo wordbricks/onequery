@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Fragment } from "react";
 
 import { SiteFooter, SiteHeader } from "./blog-page";
-import { blogPosts } from "./blog-posts";
+import { blogPostSummaries } from "./blog-posts";
 import type { BlogPost, BlogPostSection } from "./blog-posts";
 
 function getPostSections(post: BlogPost): BlogPostSection[] {
@@ -131,13 +131,13 @@ function renderSectionTable(section: BlogPostSection) {
 
 export function BlogPostPage({ post }: { post: BlogPost }) {
   const sections = getPostSections(post);
-  const relatedPosts = blogPosts
+  const relatedPosts = blogPostSummaries
     .filter(
       (relatedPost) =>
         relatedPost.slug !== post.slug && relatedPost.category === post.category
     )
     .slice(0, 3);
-  const fallbackRelatedPosts = blogPosts
+  const fallbackRelatedPosts = blogPostSummaries
     .filter((relatedPost) => relatedPost.slug !== post.slug)
     .slice(0, 3);
   const visibleRelatedPosts =

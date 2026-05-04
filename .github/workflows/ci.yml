@@ -45,7 +45,7 @@ jobs:
             esac
 
             case "$f" in
-              .github/rulesets/*|scripts/*|package.json|tsconfig.scripts.json)
+              .github/rulesets/*|scripts/*|package.json|packages/tsconfig/*)
                 # Comment: Root automation scripts are outside Turbo's package
                 # affected graph, so CI must track them explicitly or script-only
                 # changes bypass validation.

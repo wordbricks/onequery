@@ -1,11 +1,11 @@
-import type { BlogPost } from "./blog-posts";
+import type { BlogPostSummary } from "./blog-posts";
 import { thumbnailCells } from "./blog-posts";
 
 export function BlogThumbnail({
   post,
   variant = "card",
 }: {
-  post: BlogPost;
+  post: BlogPostSummary;
   variant?: "card" | "hero";
 }) {
   if (post.imageSrc) {

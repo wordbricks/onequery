@@ -1,4 +1,4 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "@onequery/tsconfig/base.json",
   "include": ["src", "remotion.config.ts"]
 }

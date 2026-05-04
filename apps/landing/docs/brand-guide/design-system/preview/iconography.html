@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <script type="module">
+      import { grid, icon, renderPage, section } from "./components.js";
+
+      const iconTile = (name, label) =>
+        `<div class="oq-stack"><span class="oq-icon-tile">${icon(name)}</span><span class="oq-code">${label}</span></div>`;
+
+      renderPage({
+        title: "Iconography",
+        description:
+          "Icons are simple line symbols for scanning product actions and source states. Keep stroke, size, and metaphor consistent.",
+        sections: [
+          section({
+            title: "Core icons",
+            description:
+              "Use icons to clarify actions, not to decorate empty space.",
+            content: grid(
+              [
+                iconTile("database", "database"),
+                iconTile("terminal", "terminal"),
+                iconTile("shield", "shield"),
+                iconTile("key", "key"),
+                iconTile("file", "file"),
+                iconTile("link", "link"),
+                iconTile("check", "check"),
+                iconTile("x", "x"),
+              ],
+              4
+            ),
+          }),
+        ],
+      });
+    </script>
+  </body>
+</html>

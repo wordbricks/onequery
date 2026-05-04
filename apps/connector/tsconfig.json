@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "@onequery/tsconfig/base.json",
   "compilerOptions": {
     "types": ["@types/bun"],
     "paths": {

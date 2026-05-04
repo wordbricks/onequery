@@ -7,7 +7,16 @@
   </head>
   <body>
     <script type="module">
-      import { badge, button, card, grid, renderPage, row, section, terminal } from "./components.js";
+      import {
+        badge,
+        button,
+        card,
+        grid,
+        renderPage,
+        row,
+        section,
+        terminal,
+      } from "./components.js";
 
       renderPage({
         title: "Design System Preview",
@@ -16,39 +25,57 @@
         sections: [
           section({
             title: "Core expression",
-            description: "Quiet, precise, developer-first components using white surfaces, near-black type, alpha-black structure, and the shipped OneQuery icon.",
+            description:
+              "Quiet, precise, developer-first components using white surfaces, near-black type, alpha-black structure, and the shipped OneQuery icon.",
             content: grid([
               card({
                 title: "Controlled query access",
-                description: "Components show bounded states: connected, validating, blocked, complete, and audited.",
+                description:
+                  "Components show bounded states: connected, validating, blocked, complete, and audited.",
                 badgeLabel: "Product proof",
               }),
               card({
                 title: "Agent-ready without AI theater",
-                description: "Agent workflows use the same controls, records, and policy surfaces as developer workflows.",
+                description:
+                  "Agent workflows use the same controls, records, and policy surfaces as developer workflows.",
                 badgeLabel: "Core",
               }),
               card({
                 title: "Evidence over decoration",
-                description: "Preview surfaces prioritize labels, records, source names, and query status over abstract visuals.",
+                description:
+                  "Preview surfaces prioritize labels, records, source names, and query status over abstract visuals.",
                 badgeLabel: "Brand rule",
               }),
             ]),
           }),
           section({
             title: "Common actions",
-            description: "Use compact literal commands. Primary actions stay black; secondary actions stay quiet.",
+            description:
+              "Use compact literal commands. Primary actions stay black; secondary actions stay quiet.",
             content: row([
               button({ label: "Connect source", iconName: "database" }),
-              button({ label: "Run query", variant: "secondary", iconName: "play" }),
-              button({ label: "View audit log", variant: "outline", iconName: "file" }),
+              button({
+                label: "Run query",
+                variant: "secondary",
+                iconName: "play",
+              }),
+              button({
+                label: "View audit log",
+                variant: "outline",
+                iconName: "file",
+              }),
               badge({ label: "read-only", variant: "outline" }),
-              badge({ label: "connected", variant: "success", iconName: "check" }),
+              badge({
+                label: "connected",
+                variant: "success",
+                iconName: "check",
+              }),
             ]),
           }),
           section({
             title: "Workflow sample",
-            description: "Product UI should prove a real state, not imply a generic dashboard.",
+            description:
+              "Product UI should prove a real state, not imply a generic dashboard.",
             content: terminal([
               '<span class="oq-muted">$</span> onequery gateway start --source warehouse',
               '<span class="oq-muted">source</span> analytics-prod connected as read-only',

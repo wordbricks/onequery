@@ -1,7 +1,7 @@
 FROM oven/bun:1.3.10 AS base
 WORKDIR /app
 
-COPY package.json bun.lock turbo.json tsconfig.json .oxlintrc.jsonc .oxfmtrc.jsonc ./
+COPY package.json bun.lock turbo.json .oxlintrc.jsonc .oxfmtrc.jsonc ./
 COPY packages ./packages
 COPY apps ./apps
 

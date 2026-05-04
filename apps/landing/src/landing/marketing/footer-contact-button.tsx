@@ -2,6 +2,7 @@ import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { useActorRef, useSelector } from "@xstate/react";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
+import type { FormEvent } from "react";
 import { fromPromise } from "xstate";
 
 import { landingApiClient } from "../../app/runtime/landing-api-client";
@@ -9,7 +10,6 @@ import type { LandingApiErrorResponse } from "../../app/runtime/landing-api-clie
 import {
   trackContactFormSubmitted,
   trackContactModalOpened,
-  trackProductUpdatesSignup,
 } from "../analytics/landing-analytics";
 import {
   DEFAULT_CONTACT_ERROR_MESSAGE,
@@ -20,34 +20,28 @@ import type {
   ContactForm,
   ContactModalSubmissionInput,
 } from "./contact-modal.machine";
-import {
-  DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
-  createProductUpdatesMachine,
-  readProductUpdatesFeedback,
-} from "./product-updates.machine";
-import type {
-  ProductUpdatesSubmissionInput,
-  ProductUpdatesSubmissionOutput,
-} from "./product-updates.machine";
-
-class ProductUpdatesSubmissionError extends TaggedError(
-  "ProductUpdatesSubmissionError"
-)<{
-  cause: unknown;
-  message: string;
-}>() {}
 
 class ContactSubmissionError extends TaggedError("ContactSubmissionError")<{
   cause: unknown;
   message: string;
 }>() {}
 
-type ProductUpdatesSubmissionResult = ResultType<
-  ProductUpdatesSubmissionOutput,
-  ProductUpdatesSubmissionError
->;
-
 type ContactSubmissionResult = ResultType<void, ContactSubmissionError>;
+
+type ContactModalController = {
+  errorMessage: string | null;
+  form: ContactForm;
+  isOpen: boolean;
+  isSubmitting: boolean;
+  close: () => void;
+  open: () => void;
+  setField: (field: keyof ContactForm, value: string) => void;
+  submit: () => void;
+};
+
+type FooterContactButtonProps = {
+  autoOpen?: boolean;
+};
 
 function readLandingApiErrorMessage(
   response: LandingApiErrorResponse,
@@ -60,46 +54,13 @@ function readLandingApiErrorMessage(
   return fallback;
 }
 
-async function submitProductUpdatesRequest(
-  input: ProductUpdatesSubmissionInput & { signal: AbortSignal }
-): Promise<ProductUpdatesSubmissionResult> {
-  const responseResult = await Result.tryPromise({
-    try: async () => {
-      const response = await landingApiClient.api["product-updates"].$post(
-        {
-          json: { email: input.email },
-        },
-        {
-          init: { signal: input.signal },
-        }
-      );
-
-      if (response.ok) {
-        const body = await response.json();
-        return {
-          email: body.email,
-        };
-      }
-
-      const payload: LandingApiErrorResponse = await response.json();
-      throw new ProductUpdatesSubmissionError({
-        cause: response,
-        message: readLandingApiErrorMessage(
-          payload,
-          DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
-        ),
-      });
-    },
-    catch: (cause: unknown) =>
-      cause instanceof ProductUpdatesSubmissionError
-        ? cause
-        : new ProductUpdatesSubmissionError({
-            cause,
-            message: DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
-          }),
-  });
-
-  return responseResult;
+function runBestEffort(action: () => void) {
+  try {
+    action();
+  } catch {
+    // Comment: landing analytics is best-effort and should never block form
+    // state transitions or RPC result handling.
+  }
 }
 
 async function submitContactRequest(
@@ -141,40 +102,6 @@ async function submitContactRequest(
   return responseResult;
 }
 
-function runBestEffort(action: () => void) {
-  try {
-    action();
-  } catch {
-    // Comment: landing analytics is best-effort and should never block form
-    // state transitions or RPC result handling.
-  }
-}
-
-const productUpdatesMachine = createProductUpdatesMachine().provide({
-  actions: {
-    trackSubmissionSucceeded: () => {
-      runBestEffort(trackProductUpdatesSignup);
-    },
-  },
-  actors: {
-    submitProductUpdates: fromPromise<
-      ProductUpdatesSubmissionOutput,
-      ProductUpdatesSubmissionInput
-    >(async ({ input, signal }) => {
-      const result = await submitProductUpdatesRequest({
-        ...input,
-        signal,
-      });
-
-      if (result.isErr()) {
-        throw result.error;
-      }
-
-      return result.value;
-    }),
-  },
-});
-
 const contactModalMachine = createContactModalMachine().provide({
   actions: {
     trackOpenRequested: () => {
@@ -199,41 +126,6 @@ const contactModalMachine = createContactModalMachine().provide({
     ),
   },
 });
-
-function useProductUpdatesController() {
-  const actorRef = useActorRef(productUpdatesMachine);
-  const email = useSelector(actorRef, (snapshot) => snapshot.context.email);
-  const feedback = useSelector(actorRef, readProductUpdatesFeedback);
-  const isSubmitting = useSelector(actorRef, (snapshot) =>
-    snapshot.matches("submitting")
-  );
-
-  return {
-    email,
-    feedback,
-    isSubmitting,
-    setEmail: (nextEmail: string) => {
-      actorRef.send({
-        type: "productUpdates/emailChanged",
-        email: nextEmail,
-      });
-    },
-    submit: () => {
-      actorRef.send({ type: "productUpdates/submit" });
-    },
-  };
-}
-
-type ContactModalController = {
-  errorMessage: string | null;
-  form: ContactForm;
-  isOpen: boolean;
-  isSubmitting: boolean;
-  close: () => void;
-  open: () => void;
-  setField: (field: keyof ContactForm, value: string) => void;
-  submit: () => void;
-};
 
 function useContactModalController(): ContactModalController {
   const actorRef = useActorRef(contactModalMachine);
@@ -268,56 +160,14 @@ function useContactModalController(): ContactModalController {
   };
 }
 
-export function ProductUpdatesSection() {
-  const { email, feedback, isSubmitting, setEmail, submit } =
-    useProductUpdatesController();
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    submit();
-  }
-
-  return (
-    <section className="section marketing-updates">
-      <div className="marketing-updates-copy">
-        <p className="eyebrow">Stay in the loop</p>
-        <h2>Get product updates from OneQuery.</h2>
-        <p>Join the list for release notes and new integrations.</p>
-      </div>
-
-      <form className="marketing-updates-form" onSubmit={handleSubmit}>
-        <div className="marketing-inline-form">
-          <input
-            type="email"
-            placeholder="you@company.com"
-            className="marketing-input"
-            aria-label="Email address"
-            value={email}
-            disabled={isSubmitting}
-            onChange={(event) => setEmail(event.currentTarget.value)}
-          />
-          <button
-            type="submit"
-            className="button button-primary marketing-submit-button"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Saving..." : "Notify me"}
-          </button>
-        </div>
-
-        <p className={feedback.className} role={feedback.role}>
-          {feedback.message}
-        </p>
-      </form>
-    </section>
-  );
-}
-
-export function FooterContactButton() {
+export function FooterContactButton({
+  autoOpen = false,
+}: FooterContactButtonProps) {
   const controller = useContactModalController();
 
   return (
     <>
+      {autoOpen ? <ContactModalAutoOpen open={controller.open} /> : null}
       <button
         type="button"
         className="contact-link-button"
@@ -330,8 +180,16 @@ export function FooterContactButton() {
   );
 }
 
+function ContactModalAutoOpen({ open }: { open: () => void }) {
+  useMountEffect(() => {
+    open();
+  });
+
+  return null;
+}
+
 function ContactModal({ controller }: { controller: ContactModalController }) {
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     controller.submit();
   }
@@ -356,7 +214,7 @@ function ContactModal({ controller }: { controller: ContactModalController }) {
           onClick={controller.close}
           aria-label="Close contact form"
         >
-          ×
+          x
         </button>
 
         <div className="contact-modal-header">

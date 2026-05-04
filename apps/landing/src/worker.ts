@@ -1,4 +1,4 @@
-import { getBlogPostBySlug } from "./landing/blog/blog-posts";
+import { getBlogPostSummaryBySlug } from "./landing/blog/blog-posts";
 import {
   getBlogPostShareMetadata,
   renderBlogPostShareTags,
@@ -44,7 +44,7 @@ function removeExistingShareTag(html: string, attributeValue: string) {
 }
 
 function injectBlogPostShareTags(html: string, slug: string) {
-  const post = getBlogPostBySlug(slug);
+  const post = getBlogPostSummaryBySlug(slug);
 
   if (!post) {
     return html;

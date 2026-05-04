@@ -1,3 +1,4 @@
+import { lazy, Suspense, useState } from "react";
 import type { ComponentPropsWithoutRef } from "react";
 
 import { trackLandingCtaClick } from "../analytics/landing-analytics";
@@ -20,13 +21,9 @@ import {
 import { ControlPlaneDiagram } from "../control-plane/control-plane-diagram";
 import { DownloadCommand } from "../download-command/download-command";
 import { HeroProductSurface } from "../hero-product/hero-product-surface";
-import {
-  FooterContactButton,
-  ProductUpdatesSection,
-} from "../marketing/marketing-forms";
-import { OpenClawDemoPlayer } from "../openclaw-demo/openclaw-demo-player";
 import { RoadmapSection } from "../roadmap/roadmap-section";
 import { TerminalSurface } from "../terminal/terminal-surface";
+import { useNearViewport, ViewportDeferredMount } from "./deferred-mount";
 
 type TrackedLinkProps = ComponentPropsWithoutRef<"a"> & {
   href: string;
@@ -44,6 +41,9 @@ type LandingCtaLink = {
   trackingName: string;
   trackingSection: string;
 };
+
+const OPENCLAW_DEMO_ROOT_MARGIN = "700px 0px";
+const PRODUCT_UPDATES_ROOT_MARGIN = "600px 0px";
 
 const heroActions = [
   {
@@ -84,6 +84,24 @@ const finalCtaActions = [
     trackingSection: "final_cta",
   },
 ] satisfies ReadonlyArray<LandingCtaLink>;
+
+const LazyOpenClawDemoPlayer = lazy(() =>
+  import("../openclaw-demo/openclaw-demo-player").then((module) => ({
+    default: module.OpenClawDemoPlayer,
+  }))
+);
+
+const LazyFooterContactButton = lazy(() =>
+  import("../marketing/footer-contact-button").then((module) => ({
+    default: module.FooterContactButton,
+  }))
+);
+
+const LazyProductUpdatesSection = lazy(() =>
+  import("../marketing/product-updates-section").then((module) => ({
+    default: module.ProductUpdatesSection,
+  }))
+);
 
 function TrackedLink({
   children,
@@ -204,6 +222,10 @@ function HeroSection() {
 }
 
 function OpenClawSection() {
+  const { isNearViewport, targetRef } = useNearViewport<HTMLDivElement>({
+    rootMargin: OPENCLAW_DEMO_ROOT_MARGIN,
+  });
+
   return (
     <section className="section openclaw-demo-section" id="demo">
       <div className="section-intro">
@@ -216,8 +238,18 @@ function OpenClawSection() {
         </p>
       </div>
 
-      <div className="openclaw-demo-frame">
-        <OpenClawDemoPlayer />
+      <div ref={targetRef} className="openclaw-demo-frame">
+        {isNearViewport ? (
+          <Suspense
+            fallback={
+              <div className="openclaw-demo-loading" aria-hidden="true" />
+            }
+          >
+            <LazyOpenClawDemoPlayer />
+          </Suspense>
+        ) : (
+          <div className="openclaw-demo-loading" aria-hidden="true" />
+        )}
       </div>
     </section>
   );
@@ -336,6 +368,8 @@ function FinalCtaSection() {
 }
 
 function SiteFooter() {
+  const [isContactRequested, setIsContactRequested] = useState(false);
+
   return (
     <footer className="site-footer">
       <p>OneQuery</p>
@@ -352,7 +386,28 @@ function SiteFooter() {
             {link.label}
           </TrackedLink>
         ))}
-        <FooterContactButton />
+        {isContactRequested ? (
+          <Suspense
+            fallback={
+              <span
+                className="contact-link-button contact-link-button-loading"
+                aria-hidden="true"
+              >
+                Contact
+              </span>
+            }
+          >
+            <LazyFooterContactButton autoOpen />
+          </Suspense>
+        ) : (
+          <button
+            type="button"
+            className="contact-link-button"
+            onClick={() => setIsContactRequested(true)}
+          >
+            Contact
+          </button>
+        )}
       </div>
     </footer>
   );
@@ -371,7 +426,14 @@ export function LandingPage() {
         <RoadmapSection />
         <OpenClawSection />
         <FinalCtaSection />
-        <ProductUpdatesSection />
+        <ViewportDeferredMount
+          className="deferred-mount-anchor"
+          rootMargin={PRODUCT_UPDATES_ROOT_MARGIN}
+        >
+          <Suspense fallback={null}>
+            <LazyProductUpdatesSection />
+          </Suspense>
+        </ViewportDeferredMount>
       </main>
 
       <SiteFooter />

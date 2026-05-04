@@ -7,7 +7,14 @@
   </head>
   <body>
     <script type="module">
-      import { button, field, grid, renderPage, row, section } from "./components.js";
+      import {
+        button,
+        field,
+        grid,
+        renderPage,
+        row,
+        section,
+      } from "./components.js";
 
       renderPage({
         title: "Forms",
@@ -16,12 +23,25 @@
         sections: [
           section({
             title: "Source setup",
-            description: "Use realistic infrastructure data and keep credential handling calm and direct.",
+            description:
+              "Use realistic infrastructure data and keep credential handling calm and direct.",
             content: `<div class="oq-stack">
-              ${grid([
-                field({ label: "Source name", value: "analytics-prod", help: "Use the name developers already recognize." }),
-                field({ label: "Access mode", value: "read-only", select: true, help: "Default to bounded access." }),
-              ], 2)}
+              ${grid(
+                [
+                  field({
+                    label: "Source name",
+                    value: "analytics-prod",
+                    help: "Use the name developers already recognize.",
+                  }),
+                  field({
+                    label: "Access mode",
+                    value: "read-only",
+                    select: true,
+                    help: "Default to bounded access.",
+                  }),
+                ],
+                2
+              )}
               ${field({ label: "Allowed tables", value: "customer_events, invoices, workspaces", textarea: true, help: "Keep scope explicit for people and agents." })}
               <div class="oq-row">
                 <span class="oq-switch" aria-hidden="true"><span></span></span>
@@ -29,7 +49,11 @@
               </div>
               ${row([
                 button({ label: "Save source", iconName: "check" }),
-                button({ label: "Test connection", variant: "outline", iconName: "link" }),
+                button({
+                  label: "Test connection",
+                  variant: "outline",
+                  iconName: "link",
+                }),
               ])}
             </div>`,
           }),
