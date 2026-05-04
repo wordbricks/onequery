@@ -3,6 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApp } from "./app";
 
+type StructuredLogEntry = {
+  event?: unknown;
+  requestId?: unknown;
+};
+
 function createTestApp(
   overrides: Parameters<typeof createTestRuntimeConfig>[0] = {}
 ) {
@@ -36,11 +41,28 @@ function createTestApp(
 }
 
 describe("runtime app", () => {
+  const originalConsoleInfo = console.info;
   const originalConsoleLog = console.log;
 
   afterEach(() => {
+    console.info = originalConsoleInfo;
     console.log = originalConsoleLog;
   });
+
+  function findStructuredLogEntry(
+    calls: readonly (readonly unknown[])[],
+    event: string
+  ) {
+    return calls
+      .map((call) => call[0])
+      .find(
+        (entry): entry is StructuredLogEntry =>
+          typeof entry === "object" &&
+          entry !== null &&
+          "event" in entry &&
+          (entry as StructuredLogEntry).event === event
+      );
+  }
 
   it("serves the SPA shell and API routes from the same app", async () => {
     console.log = () => {};
@@ -63,6 +85,34 @@ describe("runtime app", () => {
     });
 
     expect(spaAssets.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps one request id across mounted API route loggers", async () => {
+    console.log = () => {};
+    const infoCalls: unknown[][] = [];
+    console.info = (...args: unknown[]) => {
+      infoCalls.push(args);
+    };
+    const { app } = createTestApp();
+    if (!app) {
+      return;
+    }
+
+    const response = await app.fetch(new Request("http://local/api/health"));
+    const requestId = response.headers.get("x-request-id");
+
+    expect(response.status).toBe(200);
+    expect(requestId).toEqual(expect.any(String));
+    expect(
+      findStructuredLogEntry(infoCalls, "runtime.request.started")
+    ).toMatchObject({
+      requestId,
+    });
+    expect(
+      findStructuredLogEntry(infoCalls, "dashboard.request.started")
+    ).toMatchObject({
+      requestId,
+    });
   });
 
   it("returns an API 404 instead of the SPA shell for missing API paths", async () => {

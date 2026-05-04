@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { requestId } from "hono/request-id";
+import type { RequestIdVariables } from "hono/request-id";
 
 import { createMemoryApiRateLimitStorage } from "./lib/rate-limit-storage";
 import { apiRateLimiter } from "./middleware/rate-limit";
@@ -8,12 +10,8 @@ import { createProblemDetailsErrorHandler } from "./observability/error-reportin
 import {
   buildHonoRequestLogDetails,
   createHonoRequestStructuredLogger,
-  createRequestIdMiddleware,
 } from "./observability/structured-logging";
-import type {
-  HonoStructuredLoggerVariables,
-  RequestIdVariables,
-} from "./observability/structured-logging";
+import type { HonoStructuredLoggerVariables } from "./observability/structured-logging";
 import { authRoute } from "./routes/auth";
 import { bootstrapRoute } from "./routes/bootstrap";
 import { budgetRoute } from "./routes/budget";
@@ -75,9 +73,9 @@ const dashboardApiStructuredLogger =
 
 /**
  * Shared OSS-safe control-plane routes.
- * The caller owns the public mount point (for example `/api`).
+ * The caller owns the public mount point and request-id middleware.
  */
-export function createServerApi(input: CreateServerApiOptions) {
+export function createServerApiRoutes(input: CreateServerApiOptions) {
   const storage =
     input.storage ??
     createServerStorage(input.runtime, createMemoryApiRateLimitStorage(), {
@@ -87,9 +85,10 @@ export function createServerApi(input: CreateServerApiOptions) {
   return (
     new Hono<ServerApiEnv>()
       .onError(
-        createProblemDetailsErrorHandler("packages/server/createServerApi")
+        createProblemDetailsErrorHandler(
+          "packages/server/createServerApiRoutes"
+        )
       )
-      .use("*", createRequestIdMiddleware())
       // Comment: apps/dashboard is a client app; its Hono API surface lives
       // here and is mounted by the self-host runtime under `/api`.
       .use("*", dashboardApiStructuredLogger)
@@ -121,4 +120,11 @@ export function createServerApi(input: CreateServerApiOptions) {
   );
 }
 
-export type ServerApiType = ReturnType<typeof createServerApi>;
+export function createServerApiApp(input: CreateServerApiOptions) {
+  return new Hono<ServerApiEnv>()
+    .use("*", requestId())
+    .route("/", createServerApiRoutes(input));
+}
+
+export type ServerApiRoutesType = ReturnType<typeof createServerApiRoutes>;
+export type ServerApiType = ReturnType<typeof createServerApiApp>;

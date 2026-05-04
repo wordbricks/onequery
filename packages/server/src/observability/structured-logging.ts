@@ -1,10 +1,8 @@
 import { structuredLogger } from "@hono/structured-logger";
 import type { BaseLogger } from "@hono/structured-logger";
 import type { Context, Env, MiddlewareHandler } from "hono";
-import { requestId } from "hono/request-id";
 
 export type { BaseLogger } from "@hono/structured-logger";
-export type { RequestIdVariables } from "hono/request-id";
 
 export type HonoStructuredLoggerVariables = {
   logger: BaseLogger;
@@ -26,8 +24,6 @@ export type HonoRequestLogMessages = {
   started: string;
 };
 
-export type HonoRequestIdOptions = NonNullable<Parameters<typeof requestId>[0]>;
-
 export interface CreateHonoRequestStructuredLoggerOptions<TEnv extends Env> {
   buildErrorDetails?: (error: Error, c: Context<TEnv>) => HonoRequestLogDetails;
   buildRequestDetails?: (c: Context<TEnv>) => HonoRequestLogDetails;
@@ -39,24 +35,6 @@ export interface CreateHonoRequestStructuredLoggerOptions<TEnv extends Env> {
   getLogLevelForStatus?: (status: number) => HonoRequestLogLevel;
   messages: HonoRequestLogMessages;
   scope: string;
-}
-
-export function createRequestIdMiddleware(
-  options: HonoRequestIdOptions = {}
-): MiddlewareHandler {
-  const fallbackGenerator = options.generator ?? (() => crypto.randomUUID());
-
-  return requestId({
-    ...options,
-    generator: (c) => {
-      const reqId = c.get("requestId");
-      if (typeof reqId === "string" && reqId.length > 0) {
-        return reqId;
-      }
-
-      return fallbackGenerator(c);
-    },
-  });
 }
 
 export function getHonoRequestLogLevelForStatus(

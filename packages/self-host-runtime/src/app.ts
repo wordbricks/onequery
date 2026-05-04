@@ -1,27 +1,25 @@
 import {
-  createCliRoute,
-  createDeviceAuthorizationBrowserRoute,
+  createCliConnectRoutes,
+  createDeviceAuthorizationBrowserRoutes,
 } from "@onequery/cli-server";
 import {
   createInstallScriptResponse,
   shouldServeInstallScript,
 } from "@onequery/installer";
-import { createServerApi } from "@onequery/server/app";
+import { createServerApiRoutes } from "@onequery/server/app";
 import { createMemoryApiRateLimitStorage } from "@onequery/server/lib/rate-limit-storage";
 import {
   buildHonoRequestLogDetails,
   createHonoRequestStructuredLogger,
-  createRequestIdMiddleware,
 } from "@onequery/server/observability/structured-logging";
-import type {
-  HonoStructuredLoggerVariables,
-  RequestIdVariables,
-} from "@onequery/server/observability/structured-logging";
+import type { HonoStructuredLoggerVariables } from "@onequery/server/observability/structured-logging";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import { createServerStorage } from "@onequery/server/storage";
 import type { ServerStorage } from "@onequery/server/storage";
 import { Hono } from "hono";
 import { problemDetailsHandler } from "hono-problem-details";
+import { requestId } from "hono/request-id";
+import type { RequestIdVariables } from "hono/request-id";
 
 import {
   API_ROUTE_PREFIX,
@@ -77,26 +75,25 @@ const selfHostRuntimeStructuredLogger =
     scope: "self-host-runtime",
   });
 
-// Build the runtime API surface on top of the shared OSS-safe server routes.
-export function createApiApp(input: CreateRuntimeAppOptions) {
+// Build the runtime API surface on top of shared mountable route graphs.
+export function createRuntimeApiRoutes(input: CreateRuntimeAppOptions) {
   const storage = resolveStorage(input);
 
   return (
     new Hono<RuntimeApiEnv>()
-      .use("*", createRequestIdMiddleware())
       // Comment: mount the more specific `/api/*` children before the broad
       // `/api` app so Hono does not run the general control-plane middleware
       // for CLI or device-authorization requests.
       .route(
         DEVICE_AUTHORIZATION_API_ROUTE_PREFIX,
-        createDeviceAuthorizationBrowserRoute({
+        createDeviceAuthorizationBrowserRoutes({
           runtime: input.runtime,
           storage,
         })
       )
       .route(
         CLI_API_ROUTE_PREFIX,
-        createCliRoute({
+        createCliConnectRoutes({
           requestPathPrefix: CLI_API_ROUTE_PREFIX,
           runtime: input.runtime,
           storage,
@@ -107,7 +104,7 @@ export function createApiApp(input: CreateRuntimeAppOptions) {
       // the route graph.
       .route(
         API_ROUTE_PREFIX,
-        createServerApi({
+        createServerApiRoutes({
           enableAuthTestUtils: input.enableAuthTestUtils,
           runtime: input.runtime,
           storage,
@@ -116,15 +113,22 @@ export function createApiApp(input: CreateRuntimeAppOptions) {
   );
 }
 
+// Build a standalone API app for callers that only serve the `/api` surface.
+export function createApiApp(input: CreateRuntimeAppOptions) {
+  return new Hono<RuntimeApiEnv>()
+    .use("*", requestId())
+    .route("/", createRuntimeApiRoutes(input));
+}
+
 export function createApp(input: CreateRuntimeAppOptions) {
-  const apiApp = createApiApp(input);
+  const apiRoutes = createRuntimeApiRoutes(input);
 
   return (
     new Hono<RuntimeAppEnv>()
-      .use("*", createRequestIdMiddleware())
+      .use("*", requestId())
       .use("*", selfHostRuntimeStructuredLogger)
       .onError(problemDetailsHandler())
-      .route("/", apiApp)
+      .route("/", apiRoutes)
       // Removed/private API endpoints should fail as API 404s instead of serving
       // the SPA shell through the assets binding.
       .notFound(async (c) => {
@@ -141,4 +145,5 @@ export function createApp(input: CreateRuntimeAppOptions) {
   );
 }
 
+export type RuntimeApiRoutesType = ReturnType<typeof createRuntimeApiRoutes>;
 export type ApiType = ReturnType<typeof createApiApp>;

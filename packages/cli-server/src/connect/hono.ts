@@ -2,7 +2,7 @@ import { createContextValues } from "@connectrpc/connect";
 import type { ContextValues } from "@connectrpc/connect";
 import { RESPONSE_ALREADY_SENT } from "@hono/node-server/utils/response";
 
-import { createCliApp } from "../app";
+import { createCliRoutes } from "../app";
 import type { CreateCliAppOptions } from "../app";
 import { logCliEvent, toCliErrorMessage } from "../observability";
 import { runCliPersistQueryUsageEffect } from "../query/effects";
@@ -17,8 +17,8 @@ export interface CreateCliRouteOptions extends CreateCliAppOptions {
   requestPathPrefix?: string;
 }
 
-export function createCliRoute(input: CreateCliRouteOptions) {
-  const app = createCliApp(input);
+export function createCliConnectRoutes(input: CreateCliRouteOptions) {
+  const app = createCliRoutes(input);
   scheduleQueryUsagePersistenceRecovery(input);
   const contextValuesByRequest = new WeakMap<object, ContextValues>();
   const connectHandler = createCliConnectHandler({

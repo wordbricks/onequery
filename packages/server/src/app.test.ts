@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { createServerApi } from "./app";
+import { createServerApiApp } from "./app";
 import { createTestRuntimeConfig } from "./routes/test-env";
 
-describe("createServerApi", () => {
+describe("createServerApiApp", () => {
   it("assigns a request id to API responses", async () => {
     const runtime = createTestRuntimeConfig();
     expect(runtime.isOk()).toBe(true);
@@ -11,7 +11,7 @@ describe("createServerApi", () => {
       return;
     }
 
-    const app = createServerApi({ runtime: runtime.value });
+    const app = createServerApiApp({ runtime: runtime.value });
 
     const response = await app.request("/health");
 

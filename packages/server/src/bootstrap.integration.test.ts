@@ -9,7 +9,7 @@ import {
 import { testClient } from "hono/testing";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createServerApi } from "./app";
+import { createServerApiApp } from "./app";
 import { createMemoryApiRateLimitStorage } from "./lib/rate-limit-storage";
 import {
   createTestRuntimeConfigFromDatabaseUrl,
@@ -96,7 +96,7 @@ describe("self-host bootstrap", () => {
       runtimeConfig.value,
       createMemoryApiRateLimitStorage()
     );
-    const app = createServerApi({ runtime: runtimeConfig.value, storage });
+    const app = createServerApiApp({ runtime: runtimeConfig.value, storage });
     const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 
@@ -166,7 +166,7 @@ describe("self-host bootstrap", () => {
       runtimeConfig.value,
       createMemoryApiRateLimitStorage()
     );
-    const app = createServerApi({ runtime: runtimeConfig.value, storage });
+    const app = createServerApiApp({ runtime: runtimeConfig.value, storage });
     const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 
@@ -286,7 +286,7 @@ describe("self-host bootstrap", () => {
       runtimeConfig.value,
       createMemoryApiRateLimitStorage()
     );
-    const app = createServerApi({ runtime: runtimeConfig.value, storage });
+    const app = createServerApiApp({ runtime: runtimeConfig.value, storage });
     const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 
@@ -361,7 +361,7 @@ describe("self-host bootstrap", () => {
       runtimeConfig.value,
       createMemoryApiRateLimitStorage()
     );
-    const app = createServerApi({ runtime: runtimeConfig.value, storage });
+    const app = createServerApiApp({ runtime: runtimeConfig.value, storage });
     const client = testClient(app);
     openedDatabases.push(storage.db as ClosableDatabase);
 

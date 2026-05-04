@@ -1,18 +1,14 @@
 import type { Http2Bindings, HttpBindings } from "@hono/node-server";
 import type { Database } from "@onequery/db/server";
-import {
-  createHonoRequestStructuredLogger,
-  createRequestIdMiddleware,
-} from "@onequery/server/observability/structured-logging";
-import type {
-  HonoStructuredLoggerVariables,
-  RequestIdVariables,
-} from "@onequery/server/observability/structured-logging";
+import { createHonoRequestStructuredLogger } from "@onequery/server/observability/structured-logging";
+import type { HonoStructuredLoggerVariables } from "@onequery/server/observability/structured-logging";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
 import { serverStorageMiddleware } from "@onequery/server/storage";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
+import { requestId } from "hono/request-id";
+import type { RequestIdVariables } from "hono/request-id";
 
 import type { AuthorizedCliOrgContext } from "./authorization";
 import type { CliSessionIdentity } from "./domain/workflows";
@@ -98,32 +94,49 @@ function createCliRouter<
   );
 }
 
+function applyCliRouteMiddleware<
+  Variables extends Record<string, unknown> = Record<string, never>,
+>(app: Hono<CliRouteEnv<Variables>>, input: CreateCliAppOptions) {
+  app.use(cliRuntimeMiddleware(input.runtime));
+  app.use(serverStorageMiddleware(input.storage));
+  app.use(cliRequestStructuredLoggerMiddleware);
+  return app;
+}
+
+export function createCliRoutes<
+  Variables extends Record<string, unknown> = Record<string, never>,
+>(input: CreateCliAppOptions) {
+  const app = createCliRouter<Variables>();
+  return applyCliRouteMiddleware(app, input);
+}
+
+export function createCliBrowserRoutes<
+  Variables extends Record<string, unknown> = Record<string, never>,
+>(input: CreateCliAppOptions) {
+  const app = createCliRouter<Variables>();
+  return applyCliRouteMiddleware(app, input);
+}
+
 export function createCliApp<
   Variables extends Record<string, unknown> = Record<string, never>,
 >(input: CreateCliAppOptions) {
   const app = createCliRouter<Variables>();
-  app.use(cliRuntimeMiddleware(input.runtime));
-  app.use(serverStorageMiddleware(input.storage));
   app.use(
-    createRequestIdMiddleware({
+    requestId({
       headerName: CLI_REQUEST_ID_HEADER,
     })
   );
-  app.use(cliRequestStructuredLoggerMiddleware);
-  return app;
+  return applyCliRouteMiddleware(app, input);
 }
 
 export function createCliBrowserApp<
   Variables extends Record<string, unknown> = Record<string, never>,
 >(input: CreateCliAppOptions) {
   const app = createCliRouter<Variables>();
-  app.use(cliRuntimeMiddleware(input.runtime));
-  app.use(serverStorageMiddleware(input.storage));
   app.use(
-    createRequestIdMiddleware({
+    requestId({
       headerName: CLI_REQUEST_ID_HEADER,
     })
   );
-  app.use(cliRequestStructuredLoggerMiddleware);
-  return app;
+  return applyCliRouteMiddleware(app, input);
 }

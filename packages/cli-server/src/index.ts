@@ -1,3 +1,3 @@
-export { createDeviceAuthorizationBrowserRoute } from "./auth/device-browser";
+export { createDeviceAuthorizationBrowserRoutes } from "./auth/device-browser";
 export type { CreateCliAppOptions } from "./app";
-export { createCliRoute } from "./connect/hono";
+export { createCliConnectRoutes } from "./connect/hono";
