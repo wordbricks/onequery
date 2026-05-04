@@ -1,30 +1,19 @@
+import { auditListParamsSchema } from "@onequery/audit-contracts/audit";
 import { createFileRoute } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
 
 import { AuditPage } from "@/pages/audit-page";
-import {
-  auditListQueryOptions,
-  auditSearchSchema,
-} from "@/queries/audit-queries";
+import { auditListQueryOptions } from "@/queries/audit-queries";
 
 export const Route = createFileRoute("/_authenticated/$org_slug/audit")({
   component: AuditPage,
-  loaderDeps: ({ search }) => ({
-    actionName: search.actionName,
-    cursor: search.cursor,
-    family: search.family,
-    limit: search.limit,
-    outcome: search.outcome,
-    q: search.q,
-    sourceKey: search.sourceKey,
-  }),
+  loaderDeps: ({ search }) => search,
   loader: async ({
     context: { organizationSlug, queryClient, session },
     deps,
   }) => {
-    await queryClient.fetchQuery(
+    await queryClient.ensureQueryData(
       auditListQueryOptions(session.user.id, organizationSlug, deps)
     );
   },
-  validateSearch: zodValidator(auditSearchSchema),
+  validateSearch: auditListParamsSchema,
 });

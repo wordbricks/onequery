@@ -8,7 +8,7 @@ import {
   auditTargetSchema,
 } from "@onequery/audit-contracts/audit";
 import type {
-  AuditListQuery,
+  AuditListParams,
   AuditListResponse,
   AuditOutcome,
   AuditProjectionLag,
@@ -278,7 +278,7 @@ export function serializeAuditFeedItem(
 export async function listAuditFeedPage(input: {
   db: Database;
   organizationId: string;
-  query: AuditListQuery;
+  params: AuditListParams;
 }): Promise<AuditListResponse> {
   await syncAuditFeedProjection(input.db);
   const checkpointSnapshot = await loadAuditProjectionCheckpointSnapshot(
@@ -294,38 +294,38 @@ export async function listAuditFeedPage(input: {
     eq(auditFeedEntries.organizationId, input.organizationId),
   ];
 
-  if (input.query.family) {
-    conditions.push(eq(auditFeedEntries.family, input.query.family));
+  if (input.params.family) {
+    conditions.push(eq(auditFeedEntries.family, input.params.family));
   }
 
-  if (input.query.actionName) {
-    conditions.push(eq(auditFeedEntries.actionName, input.query.actionName));
+  if (input.params.actionName) {
+    conditions.push(eq(auditFeedEntries.actionName, input.params.actionName));
   }
 
-  if (input.query.outcome) {
-    conditions.push(eq(auditFeedEntries.outcome, input.query.outcome));
+  if (input.params.outcome) {
+    conditions.push(eq(auditFeedEntries.outcome, input.params.outcome));
   }
 
-  if (input.query.sourceKey) {
+  if (input.params.sourceKey) {
     conditions.push(
       buildCaseInsensitiveEquals(
         sql`${auditFeedEntries.targetJson} ->> 'sourceKey'`,
-        input.query.sourceKey
+        input.params.sourceKey
       )
     );
   }
 
-  if (input.query.q) {
+  if (input.params.q) {
     conditions.push(
       buildCaseInsensitiveContains(
         auditFeedEntries.searchDocument,
-        input.query.q
+        input.params.q
       )
     );
   }
 
-  if (input.query.cursor) {
-    const cursor = decodeAuditCursor(input.query.cursor);
+  if (input.params.cursor) {
+    const cursor = decodeAuditCursor(input.params.cursor);
     if (!cursor) {
       throw new InvalidAuditCursorError();
     }
@@ -358,9 +358,9 @@ export async function listAuditFeedPage(input: {
       desc(auditFeedEntries.family),
       desc(auditFeedEntries.familyActionId)
     )
-    .limit(input.query.limit + 1);
+    .limit(input.params.limit + 1);
 
-  const pageRows = rows.slice(0, input.query.limit);
+  const pageRows = rows.slice(0, input.params.limit);
   const lastRow = pageRows.at(-1);
   const items = pageRows.map(serializeAuditFeedItem);
   const families = [...new Set(items.map((item) => item.family))];
@@ -369,7 +369,7 @@ export async function listAuditFeedPage(input: {
     families,
     items,
     nextCursor:
-      rows.length > input.query.limit && lastRow
+      rows.length > input.params.limit && lastRow
         ? encodeAuditCursor({
             family: lastRow.family,
             familyActionId: lastRow.familyActionId,

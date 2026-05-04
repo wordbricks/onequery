@@ -1,5 +1,8 @@
-import { sanitizeAuditSearch } from "@onequery/audit-contracts/audit";
-import type { AuditSearch } from "@onequery/audit-contracts/audit";
+import {
+  auditListParamsSchema,
+  clearIncompatibleAuditActionName,
+} from "@onequery/audit-contracts/audit";
+import type { AuditListParams } from "@onequery/audit-contracts/audit";
 
 export type AuditDraftFilters = {
   q: string;
@@ -19,7 +22,7 @@ function normalizeAuditDraftFilters(draft: AuditDraftFilters) {
 }
 
 export function createAuditDraftFilters(
-  search: Pick<AuditSearch, "q" | "sourceKey">
+  search: Pick<AuditListParams, "q" | "sourceKey">
 ): AuditDraftFilters {
   return {
     q: search.q ?? "",
@@ -28,13 +31,13 @@ export function createAuditDraftFilters(
 }
 
 export function getAuditDraftResetKey(
-  search: Pick<AuditSearch, "q" | "sourceKey">
+  search: Pick<AuditListParams, "q" | "sourceKey">
 ) {
   return `${search.q ?? ""}\u0000${search.sourceKey ?? ""}`;
 }
 
 export function hasPendingAuditDraftFilters(
-  search: Pick<AuditSearch, "q" | "sourceKey">,
+  search: Pick<AuditListParams, "q" | "sourceKey">,
   draft: AuditDraftFilters
 ) {
   const normalizedDraft = normalizeAuditDraftFilters(draft);
@@ -45,14 +48,16 @@ export function hasPendingAuditDraftFilters(
   );
 }
 
-export function buildAuditSearchWithDraft(
-  search: AuditSearch,
+export function buildAuditListParamsWithDraft(
+  search: AuditListParams,
   draft: AuditDraftFilters,
-  next: Partial<AuditSearch>
-): AuditSearch {
-  return sanitizeAuditSearch({
-    ...search,
-    ...normalizeAuditDraftFilters(draft),
-    ...next,
-  });
+  next: Partial<AuditListParams>
+): AuditListParams {
+  return auditListParamsSchema.parse(
+    clearIncompatibleAuditActionName({
+      ...search,
+      ...normalizeAuditDraftFilters(draft),
+      ...next,
+    })
+  );
 }

@@ -1,3 +1,5 @@
+import type { AuditListParams } from "@onequery/audit-contracts/audit";
+
 export type UserScope = string | undefined;
 
 export function resolveUserScope(userId: UserScope): string {
@@ -7,11 +9,14 @@ export function resolveUserScope(userId: UserScope): string {
 export const organizationQueryKeys = {
   all: (userId: UserScope) =>
     ["organization", resolveUserScope(userId)] as const,
-  audit: (
-    userId: UserScope,
-    slug: string,
-    search: Record<string, string | number | undefined>
-  ) => [...organizationQueryKeys.all(userId), "audit", slug, search] as const,
+  auditList: (userId: UserScope, slug: string, params: AuditListParams) =>
+    [
+      ...organizationQueryKeys.all(userId),
+      "audit",
+      slug,
+      "list",
+      params,
+    ] as const,
   auditDetail: (
     userId: UserScope,
     slug: string,

@@ -22,9 +22,17 @@ export const AUDIT_ACTION_NAMES_BY_FAMILY = {
 export const AUDIT_OUTCOMES = ["pending", "succeeded", "failed"] as const;
 export type AuditOutcome = (typeof AUDIT_OUTCOMES)[number];
 
-type AuditSearchFilters = {
+type AuditActionFilter = {
   actionName?: AuditActionName;
   family?: AuditFamily;
+};
+
+type AuditListParamsShape = AuditActionFilter & {
+  cursor?: string;
+  limit: number;
+  outcome?: AuditOutcome;
+  q?: string;
+  sourceKey?: string;
 };
 
 export function getAuditActionNamesForFamily(family?: AuditFamily) {
@@ -44,7 +52,7 @@ export function isAuditActionNameCompatibleWithFamily(
   ).includes(actionName);
 }
 
-export function sanitizeAuditSearch<T extends AuditSearchFilters>(
+export function clearIncompatibleAuditActionName<T extends AuditActionFilter>(
   search: T
 ): T {
   if (isAuditActionNameCompatibleWithFamily(search.family, search.actionName)) {
@@ -149,90 +157,108 @@ export const AUDIT_SOURCE_API_ACTION_INVOKE_MODES = [
 export type AuditSourceApiActionInvokeMode =
   (typeof AUDIT_SOURCE_API_ACTION_INVOKE_MODES)[number];
 
-const trimmedSearchStringSchema = z.preprocess((value: unknown) => {
-  if (typeof value !== "string") {
+function trimOptionalSearchParam(value: unknown) {
+  if (value === undefined) {
     return undefined;
+  }
+
+  if (typeof value !== "string") {
+    return value;
   }
 
   const trimmed = value.trim();
   return trimmed.length === 0 ? undefined : trimmed;
-}, z.string().min(1).max(200));
+}
 
-const cursorSearchSchema = z.preprocess((value: unknown) => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
+const trimmedSearchStringSchema = z.preprocess(
+  trimOptionalSearchParam,
+  z.string().min(1).max(200).optional()
+);
 
-  const trimmed = value.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
-}, z.string().min(1).max(256));
+const cursorSearchSchema = z.preprocess(
+  trimOptionalSearchParam,
+  z.string().min(1).max(256).optional()
+);
 
-const familySearchSchema = z.preprocess((value: unknown) => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
+const familySearchSchema = z.preprocess(
+  trimOptionalSearchParam,
+  z.enum(AUDIT_FAMILIES).optional()
+);
 
-  const trimmed = value.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
-}, z.enum(AUDIT_FAMILIES));
+const actionNameSearchSchema = z.preprocess(
+  trimOptionalSearchParam,
+  z.enum(AUDIT_ACTION_NAMES).optional()
+);
 
-const actionNameSearchSchema = z.preprocess((value: unknown) => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
+const outcomeSearchSchema = z.preprocess(
+  trimOptionalSearchParam,
+  z.enum(AUDIT_OUTCOMES).optional()
+);
 
-  const trimmed = value.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
-}, z.enum(AUDIT_ACTION_NAMES));
+function omitUndefinedValues(
+  params: AuditListParamsShape
+): AuditListParamsShape {
+  return Object.fromEntries(
+    Object.entries(params).filter((entry) => entry[1] !== undefined)
+  ) as AuditListParamsShape;
+}
 
-const outcomeSearchSchema = z.preprocess((value: unknown) => {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
-}, z.enum(AUDIT_OUTCOMES));
-
-const auditSearchShape = {
-  actionName: actionNameSearchSchema.optional(),
-  cursor: cursorSearchSchema.optional(),
-  family: familySearchSchema.optional(),
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_AUDIT_LIMIT)
-    .catch(DEFAULT_AUDIT_LIMIT),
-  outcome: outcomeSearchSchema.optional(),
-  q: trimmedSearchStringSchema.optional(),
-  sourceKey: trimmedSearchStringSchema.optional(),
-} satisfies z.ZodRawShape;
-
-export const auditSearchSchema = z
-  .object(auditSearchShape)
-  .transform(sanitizeAuditSearch);
-export type AuditSearch = z.infer<typeof auditSearchSchema>;
-
-const auditListQueryShape = {
-  actionName: actionNameSearchSchema.optional(),
-  cursor: cursorSearchSchema.optional(),
-  family: familySearchSchema.optional(),
+const auditListParamsShape = {
+  actionName: actionNameSearchSchema,
+  cursor: cursorSearchSchema,
+  family: familySearchSchema,
   limit: z.coerce
     .number()
     .int()
     .min(1)
     .max(MAX_AUDIT_LIMIT)
     .default(DEFAULT_AUDIT_LIMIT),
-  outcome: outcomeSearchSchema.optional(),
-  q: trimmedSearchStringSchema.optional(),
-  sourceKey: trimmedSearchStringSchema.optional(),
+  outcome: outcomeSearchSchema,
+  q: trimmedSearchStringSchema,
+  sourceKey: trimmedSearchStringSchema,
 } satisfies z.ZodRawShape;
 
-export const auditListQuerySchema = z
-  .object(auditListQueryShape)
-  .transform(sanitizeAuditSearch);
-export type AuditListQuery = z.infer<typeof auditListQuerySchema>;
+export const auditListParamsSchema = z
+  .object(auditListParamsShape)
+  .superRefine((params, context) => {
+    if (
+      isAuditActionNameCompatibleWithFamily(params.family, params.actionName)
+    ) {
+      return;
+    }
+
+    context.addIssue({
+      code: "custom",
+      message: "Action name is not compatible with the selected audit family.",
+      path: ["actionName"],
+    });
+  })
+  .transform(omitUndefinedValues);
+export type AuditListParams = z.infer<typeof auditListParamsSchema>;
+
+export type AuditListHttpQuery = {
+  actionName?: AuditActionName;
+  cursor?: string;
+  family?: AuditFamily;
+  limit: string;
+  outcome?: AuditOutcome;
+  q?: string;
+  sourceKey?: string;
+};
+
+export function auditListParamsToHttpQuery(
+  params: AuditListParams
+): AuditListHttpQuery {
+  return {
+    ...(params.actionName ? { actionName: params.actionName } : {}),
+    ...(params.cursor ? { cursor: params.cursor } : {}),
+    ...(params.family ? { family: params.family } : {}),
+    limit: `${params.limit}`,
+    ...(params.outcome ? { outcome: params.outcome } : {}),
+    ...(params.q ? { q: params.q } : {}),
+    ...(params.sourceKey ? { sourceKey: params.sourceKey } : {}),
+  };
+}
 
 export const auditOriginActorSchema = z
   .object({

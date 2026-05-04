@@ -3,6 +3,11 @@ import {
   AUDIT_OUTCOMES,
   getAuditActionNamesForFamily,
 } from "@onequery/audit-contracts/audit";
+import type {
+  AuditActionDetail,
+  AuditListItem,
+  AuditListParams,
+} from "@onequery/audit-contracts/audit";
 import { formatDateTime } from "@onequery/datetime/format-date";
 import {
   Alert,
@@ -57,7 +62,7 @@ import { startTransition, useState } from "react";
 import type { FormEvent } from "react";
 
 import {
-  buildAuditSearchWithDraft,
+  buildAuditListParamsWithDraft,
   createAuditDraftFilters,
   getAuditDraftResetKey,
   hasPendingAuditDraftFilters,
@@ -65,11 +70,6 @@ import {
 import {
   auditActionDetailQueryOptions,
   auditListQueryOptions,
-} from "@/queries/audit-queries";
-import type {
-  AuditActionDetail,
-  AuditListItem,
-  AuditSearch,
 } from "@/queries/audit-queries";
 
 const routeApi = getRouteApi("/_authenticated/$org_slug/audit");
@@ -402,7 +402,6 @@ function AuditTraceDetail({
   item: AuditListItem;
 }) {
   const firstCommand = detail.commands.at(0);
-  const latestEvent = detail.events.at(-1);
 
   return (
     <div className="space-y-4">
@@ -454,13 +453,6 @@ function AuditTraceDetail({
         <DetailFact label="Trace ID" value={getTraceIdLabel(item)} />
       </div>
 
-      <div className="text-muted-foreground flex items-center justify-between text-xs">
-        <span>Projection caught up</span>
-        <span className="font-mono">
-          commit_position {latestEvent?.commitPosition ?? "n/a"}
-        </span>
-      </div>
-
       <div>
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-medium">Event timeline</h3>
@@ -487,8 +479,7 @@ function AuditTraceDetail({
                   </span>
                 </div>
                 <div className="text-muted-foreground mt-1 truncate font-mono text-[11px]">
-                  {formatDateTime(event.occurredAt)} · commit{" "}
-                  {event.commitPosition}
+                  {formatDateTime(event.occurredAt)}
                 </div>
               </div>
             </div>
@@ -600,7 +591,7 @@ function formatLabelList(values: readonly string[]) {
 }
 
 function getLaggingAuditFamilyLabels(
-  search: Pick<AuditSearch, "family">,
+  search: Pick<AuditListParams, "family">,
   projectionLag: {
     queryAction: boolean;
     sourceApiAction: boolean;
@@ -633,7 +624,7 @@ function AuditFiltersSection({
     queryAction: boolean;
     sourceApiAction: boolean;
   };
-  search: AuditSearch;
+  search: AuditListParams;
 }) {
   const navigate = useNavigate();
   const [draft, setDraft] = useState(() => createAuditDraftFilters(search));
@@ -644,12 +635,12 @@ function AuditFiltersSection({
     projectionLag
   );
 
-  function navigateAuditSearch(next: Partial<AuditSearch>) {
+  function navigateAuditListParams(next: Partial<AuditListParams>) {
     startTransition(() => {
       void navigate({
         params: { org_slug: organizationSlug },
         replace: true,
-        search: buildAuditSearchWithDraft(search, draft, next),
+        search: buildAuditListParamsWithDraft(search, draft, next),
         to: "/$org_slug/audit",
       });
     });
@@ -657,7 +648,7 @@ function AuditFiltersSection({
 
   function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    navigateAuditSearch({ cursor: undefined });
+    navigateAuditListParams({ cursor: undefined });
   }
 
   function handleClearFilters() {
@@ -671,13 +662,7 @@ function AuditFiltersSection({
         params: { org_slug: organizationSlug },
         replace: true,
         search: {
-          actionName: undefined,
-          cursor: undefined,
-          family: undefined,
           limit: search.limit,
-          outcome: undefined,
-          q: undefined,
-          sourceKey: undefined,
         },
         to: "/$org_slug/audit",
       });
@@ -736,7 +721,7 @@ function AuditFiltersSection({
             size="sm"
             className="flex-1"
             onClick={() =>
-              navigateAuditSearch({ cursor: undefined, outcome: undefined })
+              navigateAuditListParams({ cursor: undefined, outcome: undefined })
             }
           >
             All outcomes
@@ -749,7 +734,7 @@ function AuditFiltersSection({
               size="sm"
               className="flex-1"
               onClick={() =>
-                navigateAuditSearch({
+                navigateAuditListParams({
                   cursor: undefined,
                   outcome,
                 })
@@ -772,11 +757,11 @@ function AuditFiltersSection({
           <Select
             value={search.family ?? "all"}
             onValueChange={(value) => {
-              navigateAuditSearch({
+              navigateAuditListParams({
                 cursor: undefined,
                 family:
                   value && value !== "all"
-                    ? (value as AuditSearch["family"])
+                    ? (value as AuditListParams["family"])
                     : undefined,
               });
             }}
@@ -802,10 +787,10 @@ function AuditFiltersSection({
           <Select
             value={search.actionName ?? "all"}
             onValueChange={(value) => {
-              navigateAuditSearch({
+              navigateAuditListParams({
                 actionName:
                   value && value !== "all"
-                    ? (value as AuditSearch["actionName"])
+                    ? (value as AuditListParams["actionName"])
                     : undefined,
                 cursor: undefined,
               });
@@ -868,7 +853,7 @@ function AuditFiltersSection({
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigateAuditSearch({ cursor: undefined })}
+              onClick={() => navigateAuditListParams({ cursor: undefined })}
             >
               <IconArrowLeft size={16} stroke={2} />
               Newest
@@ -883,7 +868,7 @@ function AuditFiltersSection({
                 return;
               }
 
-              navigateAuditSearch({ cursor: nextCursor });
+              navigateAuditListParams({ cursor: nextCursor });
             }}
             // Comment: Audit cursors are tied to the exact applied URL filters,
             // so the current page token cannot be reused once the text-filter
@@ -989,12 +974,6 @@ export function AuditPage() {
             <div className="flex items-center justify-between border-b px-3 py-2">
               <div>
                 <h2 className="text-sm font-semibold">Audit entries</h2>
-              </div>
-              <div className="text-muted-foreground text-xs">
-                {data.projectedThrough.queryAction ||
-                data.projectedThrough.sourceApiAction
-                  ? "Projection caught up"
-                  : "Projection pending"}
               </div>
             </div>
             <div className="max-h-[calc(100vh-240px)] overflow-auto">
