@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { LandingServiceUnavailableErrorResponse } from "./server/app";
-import worker from "./worker";
+import app from ".";
+import type {
+  LandingServiceUnavailableErrorResponse,
+  LandingWorkerBindings,
+} from "./server/app";
 
-type WorkerFetchHandler = NonNullable<(typeof worker)["fetch"]>;
-type WorkerEnv = Parameters<WorkerFetchHandler>[1];
-type WorkerExecutionContext = Parameters<WorkerFetchHandler>[2];
-type WorkerRequest = Parameters<WorkerFetchHandler>[0];
+type WorkerEnv = CloudflareEnv & LandingWorkerBindings;
+type WorkerExecutionContext = ExecutionContext;
+type LandingAppRequest = Request;
 
 function createExecutionContext(): WorkerExecutionContext {
   return {
@@ -31,24 +33,26 @@ function createAssetsBinding() {
 function createWorkerRequest(
   input: ConstructorParameters<typeof Request>[0],
   init?: ConstructorParameters<typeof Request>[1]
-): WorkerRequest {
-  return new Request(input, init) as WorkerRequest;
+): LandingAppRequest {
+  return new Request(input, init);
 }
 
-describe("landing worker", () => {
-  const fetchHandler = worker.fetch;
+function requestLandingApp(
+  request: LandingAppRequest,
+  env: WorkerEnv,
+  executionContext: WorkerExecutionContext = createExecutionContext()
+) {
+  return app.request(request, undefined, env, executionContext);
+}
 
-  if (!fetchHandler) {
-    throw new Error("landing worker must export a fetch handler");
-  }
-
+describe("landing app", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it("routes API requests to the Hono app instead of static assets", async () => {
     const assets = createAssetsBinding();
-    const response = await fetchHandler(
+    const response = await requestLandingApp(
       createWorkerRequest("https://landing.onequery.dev/api/product-updates", {
         body: JSON.stringify({ email: "team@example.com" }),
         headers: { "content-type": "application/json" },
@@ -56,8 +60,7 @@ describe("landing worker", () => {
       }),
       {
         ASSETS: assets.assets,
-      } as WorkerEnv,
-      createExecutionContext()
+      } as WorkerEnv
     );
     const body: LandingServiceUnavailableErrorResponse = await response.json();
 
@@ -80,18 +83,69 @@ describe("landing worker", () => {
     );
 
     const request = createWorkerRequest("https://landing.onequery.dev/");
-    const response = await fetchHandler(
-      request,
-      {
-        ASSETS: assets.assets,
-      } as WorkerEnv,
-      createExecutionContext()
-    );
+    const response = await requestLandingApp(request, {
+      ASSETS: assets.assets,
+    } as WorkerEnv);
 
     expect(assets.fetch).toHaveBeenCalledWith(request);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("text/html");
+    expect(response.headers.get("Link")).toContain(
+      '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"'
+    );
+    expect(response.headers.get("Link")).toContain('rel="service-desc"');
+    expect(response.headers.get("Link")).toContain('rel="service-doc"');
+    expect(response.headers.get("Link")).toContain('rel="describedby"');
     expect(await response.text()).toBe("<html>asset payload</html>");
+  });
+
+  it("serves the API catalog well-known resource", async () => {
+    const assets = createAssetsBinding();
+
+    const response = await requestLandingApp(
+      createWorkerRequest("https://onequery.dev/.well-known/api-catalog"),
+      {
+        ASSETS: assets.assets,
+      } as WorkerEnv
+    );
+    const body = (await response.json()) as {
+      linkset: ReadonlyArray<Record<string, unknown>>;
+    };
+
+    expect(assets.fetch).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe(
+      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"'
+    );
+    expect(response.headers.get("Link")).toContain(
+      '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"'
+    );
+    expect(body.linkset).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "api-catalog": [
+            {
+              href: "https://onequery.dev/.well-known/api-catalog",
+              type: "application/linkset+json",
+            },
+          ],
+          anchor: "https://onequery.dev/",
+        }),
+        expect.objectContaining({
+          anchor: "https://onequery.dev/.well-known/api-catalog",
+          item: [
+            {
+              href: "https://onequery.dev/api/product-updates",
+              title: "Landing product updates API",
+            },
+            {
+              href: "https://onequery.dev/api/contact",
+              title: "Landing contact API",
+            },
+          ],
+        }),
+      ])
+    );
   });
 
   it("injects post-specific share metadata into blog post HTML", async () => {
@@ -120,13 +174,9 @@ describe("landing worker", () => {
     const request = createWorkerRequest(
       "https://onequery.dev/blog/do-not-give-agents-production-keys"
     );
-    const response = await fetchHandler(
-      request,
-      {
-        ASSETS: assets.assets,
-      } as WorkerEnv,
-      createExecutionContext()
-    );
+    const response = await requestLandingApp(request, {
+      ASSETS: assets.assets,
+    } as WorkerEnv);
     const body = await response.text();
 
     expect(assets.fetch).toHaveBeenCalledWith(request);
