@@ -119,7 +119,6 @@
         "@onequery/landing-video": "workspace:*",
         "@onequery/ui": "workspace:*",
         "@remotion/player": "4.0.448",
-        "@tanstack/react-query": "catalog:",
         "@tanstack/react-router": "catalog:",
         "@xstate/react": "catalog:",
         "better-result": "catalog:",
