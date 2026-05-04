@@ -1,7 +1,7 @@
 import { AUDIT_FAMILIES } from "@onequery/audit-contracts/audit";
 import type { AuditFamily } from "@onequery/audit-contracts/audit";
 
-export type AuditCursor = {
+type AuditCursor = {
   family: AuditFamily;
   familyActionId: string;
   startedAt: Date;

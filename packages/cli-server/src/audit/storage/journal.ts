@@ -159,22 +159,22 @@ export type WorkflowJournalAppendResult<
   idempotency: "fresh" | "replayed";
 };
 
-export type WorkflowJournalEffectStartIntent = {
+type WorkflowJournalEffectStartIntent = {
   effectId: string;
   workerId?: string | null;
 };
 
-export type WorkflowJournalEffectCompletionIntent = {
+type WorkflowJournalEffectCompletionIntent = {
   effectId: string;
 };
 
-export type WorkflowJournalEffectFailureIntent = {
+type WorkflowJournalEffectFailureIntent = {
   effectId: string;
   errorCode: string;
   errorDetail?: string | null;
 };
 
-export type WorkflowJournalCommandMetadata = {
+type WorkflowJournalCommandMetadata = {
   actorSnapshot: WorkflowActorSnapshot;
   causedByEventId: string | null;
   requestId: string;

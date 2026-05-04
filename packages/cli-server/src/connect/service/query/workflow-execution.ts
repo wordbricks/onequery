@@ -18,7 +18,7 @@ import {
 } from "./workflow-steps";
 import type { CliQueryExecutionWorkflowInput } from "./workflow-types";
 
-export type QueryUsagePersistenceRecoveryResult = {
+type QueryUsagePersistenceRecoveryResult = {
   failed: number;
   recovered: number;
   skipped: number;

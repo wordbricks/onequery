@@ -2,7 +2,6 @@ import type { MessageInitShape } from "@bufbuild/protobuf";
 import type { Duration } from "@bufbuild/protobuf/wkt";
 import {
   QueryLogicalType,
-  ExecuteQueryResponseSchema,
   ValidateQueryResponseSchema,
 } from "@onequery/proto-cli/cli/v1/query_pb";
 
@@ -20,9 +19,6 @@ import type {
 
 type ValidateQueryResponseMessageInit = MessageInitShape<
   typeof ValidateQueryResponseSchema
->;
-type ExecuteQueryResponseMessageInit = MessageInitShape<
-  typeof ExecuteQueryResponseSchema
 >;
 
 export type CliQueryServiceRequest = {
@@ -74,8 +70,6 @@ export type ExecuteQueryPayload = {
   source: CliSourceInit;
   truncated: boolean;
 };
-
-export type ExecuteQueryResponseInit = ExecuteQueryResponseMessageInit;
 
 export type ResolvedCliQueryRequest<TRequest extends CliQueryServiceRequest> = {
   authorizedOrg: AuthorizedCliOrgContext;

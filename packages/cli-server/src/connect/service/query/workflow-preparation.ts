@@ -26,7 +26,7 @@ type QueryWorkflowPreparationMode = Extract<
   { type: "start_execute" | "start_validate" }
 >["type"];
 
-export type PreparedCliQueryWorkflow = {
+type PreparedCliQueryWorkflow = {
   resourceCache: QueryWorkflowResourceCache;
   normalizedSql: string;
   preparationDecision: StoredAcceptedQueryActionDecision;
@@ -44,7 +44,7 @@ type QueryWorkflowPreparationFinished = {
   result: CliQueryWorkflowPreparationFailureResult;
 };
 
-export type QueryWorkflowPreparationResult =
+type QueryWorkflowPreparationResult =
   | QueryWorkflowPreparationReady
   | QueryWorkflowPreparationFinished;
 

@@ -37,13 +37,13 @@ const MONGODB_DESCRIPTOR_VERSION = "mongodb.v1";
 const MONGODB_CONTENT_TYPE = "application/json";
 const MONGODB_ALLOWED_RESPONSE_HEADERS = ["content-type"] as const;
 
-export const mongodbSourceApiOperationSchema = z.enum([
+const mongodbSourceApiOperationSchema = z.enum([
   "list_databases",
   "list_collections",
   "find_documents",
 ]);
 
-export type MongoDbSourceApiOperation = z.infer<
+type MongoDbSourceApiOperation = z.infer<
   typeof mongodbSourceApiOperationSchema
 >;
 
@@ -95,7 +95,7 @@ type MongoDbSourceApiRequest =
       selector: string;
     };
 
-export type MongoDbTransportResponse = {
+type MongoDbTransportResponse = {
   body: SourceApiResponseBody;
   contentType: string;
   headers: SourceApiHeader[];
@@ -114,7 +114,7 @@ const DEFAULT_MONGODB_SOURCE_API_DEPENDENCIES: MongoDbSourceApiDependencies = {
   listDatabases: listMongoDatabases,
 };
 
-export class MongoDbInvalidRequestError extends SourceApiInvalidRequestError {}
+class MongoDbInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export function createMongoDbSourceApiAdapter(
   dependencies: MongoDbSourceApiDependencies = DEFAULT_MONGODB_SOURCE_API_DEPENDENCIES
@@ -260,7 +260,7 @@ export function createMongoDbSourceApiAdapter(
 
 export const mongodbSourceApiAdapter = createMongoDbSourceApiAdapter();
 
-export async function requestMongoDbSourceApi(input: {
+async function requestMongoDbSourceApi(input: {
   credentials: MongoDBCredentials;
   dependencies?: MongoDbSourceApiDependencies;
   operation: MongoDbSourceApiOperation;

@@ -33,7 +33,7 @@ export type SourceApiServiceDependencies = {
   toCliErrorMessage: typeof toCliErrorMessage;
 };
 
-export const defaultSourceApiServiceDependencies = {
+const defaultSourceApiServiceDependencies = {
   buildCliRequestLogDetails,
   createSourceApiPreview,
   decodeSourceApiContinuationToken,

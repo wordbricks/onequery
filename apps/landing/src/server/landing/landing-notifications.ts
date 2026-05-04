@@ -1,6 +1,6 @@
 import { Result, TaggedError } from "better-result";
 
-export const LEAD_CAPTURE_SOURCE = "onequery_landing";
+const LEAD_CAPTURE_SOURCE = "onequery_landing";
 
 export type LandingNotificationDelivery =
   | {
@@ -69,12 +69,12 @@ type SlackContextBlock = {
   elements: readonly SlackMarkdownText[];
 };
 
-export type LandingNotificationPayload = {
+type LandingNotificationPayload = {
   text: string;
   blocks: readonly (SlackContextBlock | SlackHeaderBlock | SlackSectionBlock)[];
 };
 
-export type LandingNotificationType = "contact" | "product_updates";
+type LandingNotificationType = "contact" | "product_updates";
 
 function escapeSlackText(value: string) {
   return value

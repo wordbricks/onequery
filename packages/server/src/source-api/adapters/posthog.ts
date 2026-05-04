@@ -35,12 +35,6 @@ import type {
 const POSTHOG_DESCRIPTOR_VERSION = "posthog.v1";
 const POSTHOG_ALLOWED_RESPONSE_HEADERS = ["content-type"] as const;
 
-export const postHogSourceApiOperationSchema = z.enum(["run_query"]);
-
-export type PostHogSourceApiOperation = z.infer<
-  typeof postHogSourceApiOperationSchema
->;
-
 const postHogRunQueryRequestSchema = z
   .object({
     query: z.record(z.string(), z.unknown()),
@@ -54,15 +48,13 @@ const postHogRunQueryRequestSchema = z
   })
   .strict();
 
-export type PostHogRunQueryRequest = z.infer<
-  typeof postHogRunQueryRequestSchema
->;
+type PostHogRunQueryRequest = z.infer<typeof postHogRunQueryRequestSchema>;
 
-export type PostHogTransportResponse = Awaited<
+type PostHogTransportResponse = Awaited<
   ReturnType<typeof readSourceApiHttpTransportResponse>
 >;
 
-export class PostHogInvalidRequestError extends SourceApiInvalidRequestError {}
+class PostHogInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export const postHogSourceApiAdapter: SourceApiAdapter = {
   provider: "posthog",
@@ -155,7 +147,7 @@ export const postHogSourceApiAdapter: SourceApiAdapter = {
   },
 };
 
-export function isPostHogSourceCredentials(
+function isPostHogSourceCredentials(
   value: unknown
 ): value is PostHogCredentials {
   return (
@@ -166,7 +158,7 @@ export function isPostHogSourceCredentials(
   );
 }
 
-export async function requestPostHogSourceApi(input: {
+async function requestPostHogSourceApi(input: {
   credentials: PostHogCredentials;
   request: PostHogRunQueryRequest;
 }): Promise<PostHogTransportResponse> {

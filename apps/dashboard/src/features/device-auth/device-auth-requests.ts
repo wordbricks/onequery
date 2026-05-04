@@ -60,7 +60,7 @@ export type SubmitDeviceDecisionActorOutput = {
   tone: DeviceResultTone;
 };
 
-export async function verifyDeviceRequest(
+async function verifyDeviceRequest(
   userCode: string,
   options: { signal?: AbortSignal } = {}
 ): Promise<VerifyDeviceRequestResult> {
@@ -128,7 +128,7 @@ export async function verifyDeviceRequest(
   });
 }
 
-export async function submitDeviceDecisionRequest(input: {
+async function submitDeviceDecisionRequest(input: {
   action: DeviceDecisionAction;
   signal?: AbortSignal;
   userCode: string;

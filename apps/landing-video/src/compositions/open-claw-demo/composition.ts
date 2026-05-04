@@ -14,9 +14,9 @@ import { defaultOpenClawDemoProps, normalizeOpenClawDemoProps } from "./props";
 import type { OpenClawDemoProps } from "./props";
 import { OpenClawDemoScene } from "./scene";
 
-export { getOpenClawDemoDurationInFrames, getOpenClawDemoStillFrame };
+export { getOpenClawDemoStillFrame };
 
-export const calculateOpenClawDemoMetadata: CalculateMetadataFunction<
+const calculateOpenClawDemoMetadata: CalculateMetadataFunction<
   OpenClawDemoProps
 > = ({ props }) => {
   const normalizedProps = normalizeOpenClawDemoProps(props);

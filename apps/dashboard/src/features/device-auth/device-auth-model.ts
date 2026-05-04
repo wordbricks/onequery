@@ -92,7 +92,7 @@ export type DeviceActorFailure = {
   message: string;
 };
 
-export type DeviceAuthReadableSnapshot = {
+type DeviceAuthReadableSnapshot = {
   context: DeviceAuthContext;
   value:
     | "bootstrap"

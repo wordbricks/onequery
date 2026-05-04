@@ -44,12 +44,6 @@ const BLOCKED_SENTRY_QUERY_PARAM_NAMES = new Set([
   "authorization",
 ]);
 
-export const sentrySourceApiOperationSchema = z.enum(["fetch_api"]);
-
-export type SentrySourceApiOperation = z.infer<
-  typeof sentrySourceApiOperationSchema
->;
-
 const sentryFieldPatchSchema = z
   .object({
     params: z.record(z.string(), z.unknown()).optional(),
@@ -64,11 +58,11 @@ const sentryFieldPatchSchema = z
 
 type SentryFieldPatch = z.infer<typeof sentryFieldPatchSchema>;
 
-export type SentryTransportResponse = Awaited<
+type SentryTransportResponse = Awaited<
   ReturnType<typeof readSourceApiHttpTransportResponse>
 >;
 
-export class SentryInvalidRequestError extends SourceApiInvalidRequestError {}
+class SentryInvalidRequestError extends SourceApiInvalidRequestError {}
 
 export const sentrySourceApiAdapter: SourceApiAdapter = {
   provider: "sentry",
@@ -180,9 +174,7 @@ export const sentrySourceApiAdapter: SourceApiAdapter = {
   },
 };
 
-export function isSentrySourceCredentials(
-  value: unknown
-): value is SentryCredentials {
+function isSentrySourceCredentials(value: unknown): value is SentryCredentials {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -191,7 +183,7 @@ export function isSentrySourceCredentials(
   );
 }
 
-export async function requestSentrySourceApi(input: {
+async function requestSentrySourceApi(input: {
   body: SourceApiRequestBody;
   credentials: SentryCredentials;
   method: string;
@@ -216,7 +208,7 @@ export async function requestSentrySourceApi(input: {
   return readSourceApiHttpTransportResponse(response);
 }
 
-export function buildSentryUrl(input: {
+function buildSentryUrl(input: {
   credentials: SentryCredentials;
   endpoint: string;
   params?: Record<string, unknown>;

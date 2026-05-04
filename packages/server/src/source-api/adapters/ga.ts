@@ -42,15 +42,15 @@ const googleAnalyticsSourceApiOperationSchema = z.enum([
   "run_realtime_report",
 ]);
 
-export type GoogleAnalyticsSourceApiOperation = z.infer<
+type GoogleAnalyticsSourceApiOperation = z.infer<
   typeof googleAnalyticsSourceApiOperationSchema
 >;
 
-export class GoogleAnalyticsInvalidRequestError extends SourceApiInvalidRequestError {}
+class GoogleAnalyticsInvalidRequestError extends SourceApiInvalidRequestError {}
 
-export class GoogleAnalyticsAccessTokenError extends Error {}
+class GoogleAnalyticsAccessTokenError extends Error {}
 
-export type GoogleAnalyticsTransportResponse = {
+type GoogleAnalyticsTransportResponse = {
   body: SourceApiResponseBody;
   contentType: string;
   headers: SourceApiHeader[];
@@ -191,7 +191,7 @@ function isGoogleAnalyticsSourceCredentials(
   );
 }
 
-export async function requestGoogleAnalyticsSourceApi(input: {
+async function requestGoogleAnalyticsSourceApi(input: {
   credentials: GoogleAnalyticsCredentials;
   operation: GoogleAnalyticsSourceApiOperation;
   request: JsonObject;

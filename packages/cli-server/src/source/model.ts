@@ -16,7 +16,7 @@ import { isCliSourceKey } from "../identifiers";
 // and analytics sources. CLI query intentionally maps only database credential
 // providers to the `query` source interface.
 
-export type CliSourceInterfaceType = "query" | "api";
+type CliSourceInterfaceType = "query" | "api";
 
 // The backing table still stores the CLI-visible source identity in
 // data_sources.name. The CLI domain treats that normalized org-unique name as

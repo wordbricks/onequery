@@ -22,12 +22,12 @@ import {
   readAuditFeedProjectionPayload,
 } from "./workflow-payload-codec";
 
-export type QueryActionStartCommandPayload = {
+type QueryActionStartCommandPayload = {
   sourceKey: string;
   type: "start_execute" | "start_validate";
 };
 
-export type QueryActionSourceDescriptorPayload = {
+type QueryActionSourceDescriptorPayload = {
   displayName: string | null;
   name: string;
   organizationId: string;
@@ -37,7 +37,7 @@ export type QueryActionSourceDescriptorPayload = {
   sourceStatus: DataSourceStatus;
 };
 
-export type QueryActionEventPayload =
+type QueryActionEventPayload =
   | {
       queryMode: "execute" | "validate";
       queryText: string;

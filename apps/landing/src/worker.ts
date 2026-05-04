@@ -43,7 +43,7 @@ function removeExistingShareTag(html: string, attributeValue: string) {
   return html.replace(tagPattern, "");
 }
 
-export function injectBlogPostShareTags(html: string, slug: string) {
+function injectBlogPostShareTags(html: string, slug: string) {
   const post = getBlogPostBySlug(slug);
 
   if (!post) {

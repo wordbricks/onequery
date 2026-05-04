@@ -493,7 +493,7 @@ export function requireLastCommittedEvent(
   return event;
 }
 
-export function requireResolvedSourceApiDescriptor(
+function requireResolvedSourceApiDescriptor(
   descriptor: SourceApiDescriptor | null
 ) {
   if (descriptor === null) {
@@ -505,7 +505,7 @@ export function requireResolvedSourceApiDescriptor(
   return descriptor;
 }
 
-export function ensureCliServiceFailure(error: unknown) {
+function ensureCliServiceFailure(error: unknown) {
   if (isCliFailure(error)) {
     return error;
   }

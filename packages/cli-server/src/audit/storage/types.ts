@@ -1,15 +1,6 @@
 import type { Database } from "@onequery/db/server";
-import type { Result as ResultType } from "better-result";
 
-import type { WorkflowInternalInvariantError } from "../invariant-errors";
-import type {
-  WorkflowCommandEnvelope,
-  WorkflowCommittedEvent,
-  WorkflowDecision,
-  WorkflowFamily,
-  WorkflowStateBase,
-} from "../kernel";
-import type { WorkflowStorageCorruptRowError } from "./errors";
+import type { WorkflowCommittedEvent, WorkflowFamily } from "../kernel";
 
 export const MAX_STORAGE_COMMIT_ATTEMPTS = 5;
 
@@ -20,11 +11,6 @@ export type DatabaseTransaction = Parameters<
 export type WorkflowActionRepairAnchor = {
   lastEventId: string;
   lastEventSequence: number;
-};
-
-export type WorkflowActionHistory<Event extends { type: string }> = {
-  events: readonly WorkflowCommittedEvent<Event>[];
-  organizationId: string;
 };
 
 export type StoredAcceptedWorkflowDecision<
@@ -65,91 +51,3 @@ export type StoredWorkflowDecision<
 > = StoredWorkflowDecisionCore<Family, Event, RejectCode> & {
   idempotency: "fresh" | "replayed";
 };
-
-export type WorkflowStoreAdapter<
-  Family extends WorkflowFamily,
-  CommandPayload extends { type: string },
-  State extends WorkflowStateBase<string, string>,
-  Event extends { type: string },
-  Effect extends { type: string },
-  RejectCode extends string,
-> = {
-  decide: (
-    state: State | null,
-    command: WorkflowCommandEnvelope<Family, CommandPayload>
-  ) => ResultType<
-    WorkflowDecision<Event, Effect, RejectCode>,
-    WorkflowInternalInvariantError
-  >;
-  encodeCommandPayload: (payload: CommandPayload) => Buffer;
-  encodeEffectPayload: (effect: Effect) => Buffer;
-  family: Family;
-  getCommandPayloadType: (payload: CommandPayload) => string;
-  insertAction: (input: {
-    actionId: string;
-    organizationId: string;
-    state: State;
-    tx: DatabaseTransaction;
-  }) => Promise<void>;
-  insertEvents: (input: {
-    actionId: string;
-    commandId: string;
-    events: readonly WorkflowCommittedEvent<Event>[];
-    tx: DatabaseTransaction;
-  }) => Promise<boolean>;
-  loadEventsByCommandId: (
-    db: Database,
-    commandId: string
-  ) => Promise<
-    ResultType<
-      readonly WorkflowCommittedEvent<Event>[],
-      WorkflowStorageCorruptRowError
-    >
-  >;
-  loadHistoryByActionId: (
-    db: Database,
-    actionId: string
-  ) => Promise<
-    ResultType<
-      WorkflowActionHistory<Event> | null,
-      WorkflowStorageCorruptRowError
-    >
-  >;
-  loadLatestEventPointer: (
-    db: Database,
-    actionId: string
-  ) => Promise<WorkflowActionRepairAnchor | null>;
-  loadState: (
-    db: Database,
-    actionId: string
-  ) => Promise<ResultType<State | null, WorkflowStorageCorruptRowError>>;
-  repairAction: (input: {
-    actionId: string;
-    organizationId: string;
-    repairAnchor: WorkflowActionRepairAnchor | null;
-    state: State;
-    tx: DatabaseTransaction;
-  }) => Promise<boolean>;
-  reduce: (
-    state: State | null,
-    event: WorkflowCommittedEvent<Event>
-  ) => ResultType<State, WorkflowInternalInvariantError>;
-  updateAction: (input: {
-    actionId: string;
-    expectedLastEventId: string;
-    expectedLastEventSequence: number;
-    state: State;
-    tx: DatabaseTransaction;
-  }) => Promise<boolean>;
-};
-
-export type TransactionCommitOutcome<
-  Family extends WorkflowFamily,
-  Event extends { type: string },
-  RejectCode extends string,
-> =
-  | StoredAcceptedWorkflowDecision<Family, Event>
-  | StoredRejectedWorkflowDecision<Family, RejectCode>
-  | {
-      kind: "race_lost";
-    };

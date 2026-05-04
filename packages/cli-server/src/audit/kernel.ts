@@ -94,7 +94,7 @@ export function acceptWorkflowDecision<
   };
 }
 
-export function rejectWorkflowDecision<RejectCode extends string>(input: {
+function rejectWorkflowDecision<RejectCode extends string>(input: {
   rejectCode: RejectCode;
   rejectDetail?: string;
 }): WorkflowRejectedDecision<RejectCode> {

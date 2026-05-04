@@ -100,7 +100,7 @@ export class RuntimeShutdownError extends TaggedError("RuntimeShutdownError")<{
   }
 }
 
-export function createRuntimeShutdownFailure(
+function createRuntimeShutdownFailure(
   code: RuntimeLifecycleFailureCode,
   message: string,
   retryable = false

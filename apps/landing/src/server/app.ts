@@ -9,7 +9,6 @@ import type { LandingAppEnv } from "./types";
 export type { LandingWorkerBindings } from "./types";
 export type {
   LandingInternalErrorResponse,
-  LandingProductUpdatesResponse,
   LandingServiceUnavailableErrorResponse,
   LandingValidationErrorResponse,
 } from "./routes/landing/shared";

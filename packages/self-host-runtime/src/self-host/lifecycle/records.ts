@@ -23,7 +23,7 @@ import type {
   SelfHostLifecyclePaths,
 } from "./types";
 
-export const lifecycleSchemaVersion = LifecycleRecordSchemaVersion.V1;
+const lifecycleSchemaVersion = LifecycleRecordSchemaVersion.V1;
 const defaultLeaseTtlSeconds = 60n;
 
 export const runtimeLaunchIdSchema = z

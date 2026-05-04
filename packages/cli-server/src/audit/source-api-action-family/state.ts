@@ -1,14 +1,4 @@
-import { z } from "zod";
-
-import { WORKFLOW_OUTCOMES } from "../kernel";
 import type { WorkflowStateBase } from "../kernel";
-import {
-  SOURCE_API_ACTION_INVOKE_MODES,
-  SOURCE_API_ACTION_REQUEST_KINDS,
-  SourceApiActionPageProgressSchema,
-  SourceApiActionRequestDescriptorSchema,
-  SourceApiActionSourceDescriptorSchema,
-} from "./descriptors";
 import type {
   SourceApiActionInvokeMode,
   SourceApiActionPageProgress,
@@ -51,22 +41,3 @@ export type SourceApiActionState = WorkflowStateBase<
   requestKind: SourceApiActionRequestKind;
   sourceDescriptor: SourceApiActionSourceDescriptor | null;
 };
-
-export const SourceApiActionStateSchema = z
-  .object({
-    attemptNumber: z.number().int().nullable(),
-    completedAt: z.date().nullable(),
-    failureCode: z.enum(SOURCE_API_ACTION_FAILURE_CODES).nullable(),
-    invokeMode: z.enum(SOURCE_API_ACTION_INVOKE_MODES).nullable(),
-    lastEventId: z.string(),
-    lastEventSequence: z.number().int(),
-    outcome: z.enum(WORKFLOW_OUTCOMES),
-    pageProgress: SourceApiActionPageProgressSchema.nullable(),
-    phase: z.enum(SOURCE_API_ACTION_PHASES),
-    preparedRequestFingerprint: z.string().nullable(),
-    requestDescriptor: SourceApiActionRequestDescriptorSchema.nullable(),
-    requestKind: z.enum(SOURCE_API_ACTION_REQUEST_KINDS),
-    sourceDescriptor: SourceApiActionSourceDescriptorSchema.nullable(),
-    startedAt: z.date(),
-  })
-  .strict();

@@ -29,7 +29,7 @@ import {
   readAuditFeedProjectionPayload,
 } from "./workflow-payload-codec";
 
-export type SourceApiRequestDescriptorPayload = {
+type SourceApiRequestDescriptorPayload = {
   descriptorVersion: string | null;
   kind: "http_request" | "structured_request" | null;
   method: string | null;
@@ -38,7 +38,7 @@ export type SourceApiRequestDescriptorPayload = {
   selector: string | null;
 };
 
-export type SourceApiStartCommandPayload =
+type SourceApiStartCommandPayload =
   | {
       sourceKey: string;
       type: "start_describe";
@@ -50,22 +50,22 @@ export type SourceApiStartCommandPayload =
       type: "start_invoke";
     };
 
-export type SourceApiSourceDescriptorPayload = {
+type SourceApiSourceDescriptorPayload = {
   displayName: string | null;
   provider: ProviderType;
   sourceId: string;
   sourceKey: string;
 };
 
-export type SourceApiDescriptorResolutionFailureCode = Extract<
+type SourceApiDescriptorResolutionFailureCode = Extract<
   AuditSourceApiActionFailureCode,
   "descriptor_unavailable" | "permission_denied"
 >;
-export type SourceApiRequestPreparationFailureCode = Extract<
+type SourceApiRequestPreparationFailureCode = Extract<
   AuditSourceApiActionFailureCode,
   "execution_state_invalid" | "invalid_request" | "permission_denied"
 >;
-export type SourceApiPageFetchFailureCode = Extract<
+type SourceApiPageFetchFailureCode = Extract<
   AuditSourceApiActionFailureCode,
   | "execution_failed"
   | "execution_state_invalid"
@@ -73,7 +73,7 @@ export type SourceApiPageFetchFailureCode = Extract<
   | "request_timed_out"
 >;
 
-export type SourceApiEventPayload =
+type SourceApiEventPayload =
   | {
       invokeMode: "execute" | "preview_only" | null;
       requestDescriptor: SourceApiRequestDescriptorPayload | null;

@@ -43,21 +43,6 @@ export function GitBranchIcon({ className }: { className?: string }) {
   );
 }
 
-export function RouteIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} aria-hidden="true" viewBox="0 0 24 24">
-      <path
-        d="M5 6h3a4 4 0 0 1 0 8H6a3 3 0 0 0 0 6h13M5 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm14 16a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-      />
-    </svg>
-  );
-}
-
 export function ShieldIcon({ className }: { className?: string }) {
   return (
     <svg className={className} aria-hidden="true" viewBox="0 0 24 24">

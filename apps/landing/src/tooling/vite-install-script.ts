@@ -9,7 +9,7 @@ import type { Plugin } from "vite";
 
 const VITE_REQUEST_BASE_URL = "http://onequery-landing.local";
 
-export interface InstallScriptAsset {
+interface InstallScriptAsset {
   readonly fileName: string;
   readonly headers: Readonly<Record<string, string>>;
   readonly source: string;

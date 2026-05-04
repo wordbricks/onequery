@@ -5,18 +5,18 @@ import { z } from "zod";
 
 export const CLI_DEFAULT_PAGE_LIMIT = 50;
 
-export type CliSelectedFields = ReadonlySet<string> | null;
+type CliSelectedFields = ReadonlySet<string> | null;
 
-export type CliFieldsReadControls = {
+type CliFieldsReadControls = {
   selectedFields: CliSelectedFields;
 };
 
-export type CliPaginatedReadControls = CliFieldsReadControls & {
+type CliPaginatedReadControls = CliFieldsReadControls & {
   limit: number;
   offset: number;
 };
 
-export type CliPage = {
+type CliPage = {
   nextCursor: string | null;
   returnedCount: number;
 };

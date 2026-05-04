@@ -15,7 +15,7 @@ import type {
 } from "../domain/workflows";
 import { createCliQuerySourceRecord } from "../source/model";
 
-export type CliOrgAccessWithSourceResult = {
+type CliOrgAccessWithSourceResult = {
   access: CliOrgAccessResult;
   source: CliLoadSourceEffectResult | null;
 };

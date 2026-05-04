@@ -18,7 +18,7 @@ type AmplitudeParamValue =
   | Record<string, unknown>
   | unknown[];
 
-export interface AmplitudeFetchOptions {
+interface AmplitudeFetchOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   params?: Record<string, AmplitudeParamValue>;
   body?: Record<string, unknown>;

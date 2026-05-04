@@ -6,9 +6,9 @@ import type { ServerLaunchSupervisorControlConfig } from "@onequery/config/serve
 import { SupervisorLifecycleService } from "@onequery/proto-runtime/runtime/v1/supervisor_pb";
 import { TaggedError } from "better-result";
 
-export type SupervisorControlEndpoint = ServerLaunchSupervisorControlConfig;
+type SupervisorControlEndpoint = ServerLaunchSupervisorControlConfig;
 
-export class SupervisorLifecycleClientError extends TaggedError(
+class SupervisorLifecycleClientError extends TaggedError(
   "SupervisorLifecycleClientError"
 )<{
   cause: unknown;

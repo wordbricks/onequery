@@ -30,7 +30,6 @@
     "hono": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "remotion": "catalog:",
     "xstate": "catalog:",
     "zod": "catalog:"
   },

@@ -1,5 +1,4 @@
 import type { Http2Bindings, HttpBindings } from "@hono/node-server";
-import type { Database } from "@onequery/db/server";
 import { createHonoRequestStructuredLogger } from "@onequery/server/observability/structured-logging";
 import type { HonoStructuredLoggerVariables } from "@onequery/server/observability/structured-logging";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
@@ -10,8 +9,6 @@ import { createMiddleware } from "hono/factory";
 import { requestId } from "hono/request-id";
 import type { RequestIdVariables } from "hono/request-id";
 
-import type { AuthorizedCliOrgContext } from "./authorization";
-import type { CliSessionIdentity } from "./domain/workflows";
 import {
   buildCliRequestLogDetails,
   getCliLogLevelForStatus,
@@ -30,15 +27,6 @@ export type CliRouteEnv<
     storage: ServerStorage;
   } & HonoStructuredLoggerVariables &
     Variables;
-};
-
-export type CliSessionRouteVariables = {
-  session: CliSessionIdentity;
-};
-
-export type CliOrgRouteVariables = CliSessionRouteVariables & {
-  db: Database;
-  authorizedOrg: AuthorizedCliOrgContext;
 };
 
 export interface CreateCliAppOptions {
@@ -114,18 +102,6 @@ export function createCliBrowserRoutes<
 }
 
 export function createCliApp<
-  Variables extends Record<string, unknown> = Record<string, never>,
->(input: CreateCliAppOptions) {
-  const app = createCliRouter<Variables>();
-  app.use(
-    requestId({
-      headerName: CLI_REQUEST_ID_HEADER,
-    })
-  );
-  return applyCliRouteMiddleware(app, input);
-}
-
-export function createCliBrowserApp<
   Variables extends Record<string, unknown> = Record<string, never>,
 >(input: CreateCliAppOptions) {
   const app = createCliRouter<Variables>();

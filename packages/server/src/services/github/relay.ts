@@ -19,7 +19,7 @@ interface GitHubFetchOptions {
   timeoutMs?: number;
 }
 
-export type GitHubRelayResponse =
+type GitHubRelayResponse =
   | Record<string, unknown>
   | unknown[]
   | string

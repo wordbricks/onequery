@@ -2,10 +2,6 @@ export function stagePackagedRuntime(options: {
   runtimeRoot: string;
 }): Promise<void>;
 
-export function stageRuntimeAssets(options: {
-  runtimeRoot: string;
-}): Promise<void>;
-
 export function tarballNameForPackage(
   packageName: string,
   version: string

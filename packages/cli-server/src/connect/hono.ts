@@ -13,7 +13,7 @@ import {
 } from "./node-adapter";
 import { recoverPendingQueryUsagePersistenceEffects } from "./service/query/workflow";
 
-export interface CreateCliRouteOptions extends CreateCliAppOptions {
+interface CreateCliRouteOptions extends CreateCliAppOptions {
   requestPathPrefix?: string;
 }
 
