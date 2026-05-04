@@ -51,6 +51,7 @@ message ExecuteQueryRequest {
   ];
   CliPageRequest page = 3;
   CliQueryRequest query = 4 [(buf.validate.field).required = true];
+  bool all_pages = 5;
 }
 
 message ExecuteQueryResponse {
@@ -64,7 +65,7 @@ message ExecuteQueryResponse {
     (buf.validate.field).duration.gte = {}
   ];
   repeated CliQueryColumn columns = 4 [(buf.validate.field).repeated.max_items = 512];
-  repeated CliQueryRow rows = 5 [(buf.validate.field).repeated.max_items = 100];
+  repeated CliQueryRow rows = 5 [(buf.validate.field).repeated.max_items = 1000];
   bool truncated = 6 [(buf.validate.field).required = true];
   CliPage page = 7 [(buf.validate.field).required = true];
   CliSanitization sanitization = 8;

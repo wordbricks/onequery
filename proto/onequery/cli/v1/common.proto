@@ -13,7 +13,7 @@ message CliPage {
   ];
   uint32 returned_count = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).uint32.lte = 100
+    (buf.validate.field).uint32.lte = 1000
   ];
 }
 
