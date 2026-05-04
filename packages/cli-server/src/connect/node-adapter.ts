@@ -1,6 +1,6 @@
 import { Code, ConnectError, createConnectRouter } from "@connectrpc/connect";
 import type { ConnectRouterOptions, Interceptor } from "@connectrpc/connect";
-import { connectNodeAdapter } from "@connectrpc/connect-node";
+import { compressionGzip, connectNodeAdapter } from "@connectrpc/connect-node";
 import type { ConnectNodeAdapterOptions } from "@connectrpc/connect-node";
 import { createValidateInterceptor } from "@connectrpc/validate";
 import { ViolationsSchema } from "@onequery/proto-cli/buf/validate/validate_pb";
@@ -64,6 +64,7 @@ const cliValidationErrorInterceptor: Interceptor =
   };
 
 const cliConnectRouterOptions = {
+  acceptCompression: [compressionGzip],
   connect: true,
   grpc: false,
   grpcWeb: false,
@@ -74,10 +75,13 @@ const cliConnectRouterOptions = {
   ],
 } satisfies Pick<
   ConnectRouterOptions,
-  "connect" | "grpc" | "grpcWeb" | "interceptors"
+  "acceptCompression" | "connect" | "grpc" | "grpcWeb" | "interceptors"
 >;
 
-type CreateCliConnectHandlerOptions = Omit<ConnectNodeAdapterOptions, "routes">;
+type CreateCliConnectHandlerOptions = Omit<
+  ConnectNodeAdapterOptions,
+  "acceptCompression" | "routes"
+>;
 
 const cliConnectRequestPaths = (() => {
   const router = createConnectRouter(cliConnectRouterOptions);

@@ -7,7 +7,7 @@ license.workspace = true
 [dependencies]
 buffa = { workspace = true, features = ["json"] }
 buffa-types = { workspace = true, features = ["json"] }
-connectrpc = { workspace = true, features = ["client", "server"] }
+connectrpc = { workspace = true, features = ["client", "server", "gzip"] }
 futures = { workspace = true }
 http-body = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

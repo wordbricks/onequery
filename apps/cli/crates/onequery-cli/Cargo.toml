@@ -15,7 +15,7 @@ buffa = { workspace = true, features = ["json"] }
 buffa-types = { workspace = true, features = ["json"] }
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive"] }
-connectrpc = { workspace = true, features = ["client", "client-tls"] }
+connectrpc = { workspace = true, features = ["client", "client-tls", "gzip"] }
 ctor = { workspace = true }
 flate2 = { workspace = true }
 http = { workspace = true }

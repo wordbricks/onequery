@@ -10,7 +10,10 @@ import {
   createContextValues,
   ConnectError,
 } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-node";
+import {
+  compressionBrotli,
+  createConnectTransport,
+} from "@connectrpc/connect-node";
 import {
   CliAuthService,
   CliOrganizationService,
@@ -162,6 +165,71 @@ describe("cli connect node integration", () => {
 
     expect(response.user?.email).toBe("cli@example.test");
     expect(responseHeaders.get("x-request-id")).toBe("req_cli_success");
+  });
+
+  it("rejects brotli-compressed requests", async () => {
+    const server = http.createServer(
+      createCliConnectHandler({
+        contextValues(request) {
+          const requestIdHeader = request.headers["x-request-id"];
+          const requestId = Array.isArray(requestIdHeader)
+            ? requestIdHeader[0]
+            : requestIdHeader;
+
+          return createContextValues().set(cliConnectRequestContextKey, {
+            honoContext: null,
+            requestId: requestId ?? "unknown",
+            resolveAuthorizedOrg: async () => {
+              throw new Error("brotli test should not resolve org access");
+            },
+            resolveSession: async () => {
+              throw new Error("brotli test should not resolve session");
+            },
+          } as unknown as CliConnectRequestContext);
+        },
+      })
+    );
+    openServers.add(server);
+    const port = await listen(server);
+    const client = createClient(
+      CliQueryService,
+      createConnectTransport({
+        baseUrl: `http://127.0.0.1:${port}`,
+        compressMinBytes: 0,
+        httpVersion: "1.1",
+        sendCompression: compressionBrotli,
+      })
+    );
+
+    try {
+      await client.validateQuery(
+        {
+          orgSlug: "acme",
+          query: {
+            cellMaxChars: 32,
+            maxBytes: 1024,
+            maxRows: 10,
+            sql: "select 1",
+            timeout: durationFromMs(1000),
+          },
+          sourceKey: "source-1",
+        },
+        {
+          headers: {
+            "x-request-id": "req_cli_brotli",
+          },
+        }
+      );
+    } catch (error) {
+      const connectError = ConnectError.from(error);
+
+      expect(connectError.code).toBe(Code.Unimplemented);
+      expect(connectError.rawMessage).toContain('unknown compression "br"');
+      expect(connectError.rawMessage).toContain("gzip");
+      return;
+    }
+
+    throw new Error("expected brotli-compressed request to reject");
   });
 
   it("normalizes protovalidate failures into typed cli connect problems", async () => {
