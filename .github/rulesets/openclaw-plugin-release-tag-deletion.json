@@ -1,0 +1,17 @@
+{
+  "name": "Block OpenClaw plugin release tag deletion",
+  "target": "tag",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/tags/openclaw-plugin-v*"],
+      "exclude": []
+    }
+  },
+  "bypass_actors": [],
+  "rules": [
+    {
+      "type": "deletion"
+    }
+  ]
+}
