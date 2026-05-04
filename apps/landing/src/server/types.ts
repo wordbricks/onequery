@@ -1,3 +1,4 @@
+import type { BaseLogger } from "@hono/structured-logger";
 import type { RequestIdVariables } from "hono/request-id";
 
 export interface LandingWorkerBindings {
@@ -8,5 +9,7 @@ export interface LandingWorkerBindings {
 
 export type LandingAppEnv = {
   Bindings: LandingWorkerBindings;
-  Variables: RequestIdVariables;
+  Variables: RequestIdVariables & {
+    logger: BaseLogger;
+  };
 };
