@@ -118,7 +118,6 @@
     "@onequery/config": "workspace:*",
     "@onequery/config-loader": "workspace:*",
     "@onequery/config-node": "workspace:*",
-    "@onequery/db": "workspace:*",
     "@onequery/self-host-runtime": "workspace:*",
     "@testing-library/jest-dom": "6.9.1",
     "@types/bun": "catalog:",

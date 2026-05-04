@@ -6,7 +6,11 @@
     "config": [".oxlintrc.jsonc"],
   },
   "treatConfigHintsAsErrors": true,
-  "ignoreDependencies": ["eslint-plugin-turbo"],
+  "ignoreDependencies": [
+    "eslint-plugin-turbo",
+    // Buf resolves this local plugin name from proto/buf.gen.yaml.
+    "@bufbuild/protoc-gen-es",
+  ],
   // `apps/cli/package.json` intentionally shells out to the system `just` binary.
   // The full Knip run reports it as unlisted without this ignore.
   "ignoreBinaries": ["just"],
@@ -42,7 +46,19 @@
         "!src/**/*.test.{ts,tsx}",
         "!src/vite-env.d.ts",
       ],
-      "ignoreDependencies": ["tailwindcss"],
+      "ignoreDependencies": [
+        "tailwindcss",
+        // Loaded via a variable dynamic import in vite.config.ts for dev-only config.
+        "@onequery/config-node",
+      ],
+    },
+    "apps/landing-video": {
+      "entry": ["remotion.config.ts"],
+      "ignoreDependencies": [
+        // Used from src/index.css via `@import "tailwindcss"`.
+        "tailwindcss",
+      ],
+      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
     },
     "packages/*": {
       "project": ["src/**/*.ts", "!src/**/*.test.ts"],
