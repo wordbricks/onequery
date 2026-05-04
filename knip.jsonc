@@ -56,7 +56,11 @@
       ],
     },
     "apps/landing-video": {
-      "entry": ["remotion.config.ts"],
+      "entry": [
+        "remotion.config.ts",
+        // Remotion CLI takes this as a positional source argument in package scripts.
+        "src/index.ts",
+      ],
       "ignoreDependencies": [
         // Used from src/index.css via `@import "tailwindcss"`.
         "tailwindcss",
