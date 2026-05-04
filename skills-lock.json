@@ -16,11 +16,6 @@
       "sourceType": "github",
       "computedHash": "e58764b88123c65e617368a65d90ea82db6935da26a54d652e82a8c820346b67"
     },
-    "pino-logging": {
-      "source": "oakoss/agent-skills",
-      "sourceType": "github",
-      "computedHash": "c134e85733f5906ed5ea017a87d468157ff75b896df367aef84e6e27208271c1"
-    },
     "protobuf": {
       "source": "bufbuild/claude-plugins",
       "sourceType": "github",
