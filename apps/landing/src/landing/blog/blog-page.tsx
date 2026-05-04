@@ -3,7 +3,11 @@ import { useState } from "react";
 
 import { REPOSITORY_URL } from "../config/landing-config";
 import { BRAND_ICON_PATHS } from "../content/brand-icon-paths";
-import { blogCategories, blogPosts, comparePostDates } from "./blog-posts";
+import {
+  blogCategories,
+  blogPostSummaries,
+  comparePostDates,
+} from "./blog-posts";
 import type { BlogCategory } from "./blog-posts";
 import { BlogThumbnail } from "./blog-thumbnail";
 
@@ -68,7 +72,7 @@ export function BlogPage() {
   const [sortDirection, setSortDirection] = useState<"Latest" | "Oldest">(
     "Latest"
   );
-  const filteredPosts = blogPosts
+  const filteredPosts = blogPostSummaries
     .filter(
       (post) => activeCategory === "All" || post.category === activeCategory
     )

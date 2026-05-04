@@ -22,6 +22,8 @@ export interface BlogPost {
   title: string;
 }
 
+export type BlogPostSummary = Omit<BlogPost, "body" | "sections">;
+
 export interface BlogPostSection {
   imageAlt?: string;
   imagePlacement?: "after-title" | "after-paragraphs";

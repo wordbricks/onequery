@@ -1,13 +1,13 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 
 import { BlogPostPage } from "../../landing/blog/blog-post-page";
-import { getBlogPostBySlug } from "../../landing/blog/blog-posts";
+import { loadBlogPostBySlug } from "../../landing/blog/blog-posts";
 import { getBlogPostHeadMeta } from "../../landing/blog/blog-share-metadata";
 
 export const Route = createFileRoute("/blog_/$postSlug")({
   component: BlogPostRouteComponent,
-  loader: ({ params }) => {
-    const post = getBlogPostBySlug(params.postSlug);
+  loader: async ({ params }) => {
+    const post = await loadBlogPostBySlug(params.postSlug);
     if (!post) {
       throw notFound();
     }

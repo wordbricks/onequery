@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import type { ComponentPropsWithoutRef } from "react";
 
 import { trackLandingCtaClick } from "../analytics/landing-analytics";
@@ -20,11 +21,6 @@ import {
 import { ControlPlaneDiagram } from "../control-plane/control-plane-diagram";
 import { DownloadCommand } from "../download-command/download-command";
 import { HeroProductSurface } from "../hero-product/hero-product-surface";
-import {
-  FooterContactButton,
-  ProductUpdatesSection,
-} from "../marketing/marketing-forms";
-import { OpenClawDemoPlayer } from "../openclaw-demo/openclaw-demo-player";
 import { RoadmapSection } from "../roadmap/roadmap-section";
 import { TerminalSurface } from "../terminal/terminal-surface";
 
@@ -84,6 +80,24 @@ const finalCtaActions = [
     trackingSection: "final_cta",
   },
 ] satisfies ReadonlyArray<LandingCtaLink>;
+
+const LazyOpenClawDemoPlayer = lazy(() =>
+  import("../openclaw-demo/openclaw-demo-player").then((module) => ({
+    default: module.OpenClawDemoPlayer,
+  }))
+);
+
+const LazyFooterContactButton = lazy(() =>
+  import("../marketing/marketing-forms").then((module) => ({
+    default: module.FooterContactButton,
+  }))
+);
+
+const LazyProductUpdatesSection = lazy(() =>
+  import("../marketing/marketing-forms").then((module) => ({
+    default: module.ProductUpdatesSection,
+  }))
+);
 
 function TrackedLink({
   children,
@@ -217,7 +231,13 @@ function OpenClawSection() {
       </div>
 
       <div className="openclaw-demo-frame">
-        <OpenClawDemoPlayer />
+        <Suspense
+          fallback={
+            <div className="openclaw-demo-loading" aria-hidden="true" />
+          }
+        >
+          <LazyOpenClawDemoPlayer />
+        </Suspense>
       </div>
     </section>
   );
@@ -352,7 +372,9 @@ function SiteFooter() {
             {link.label}
           </TrackedLink>
         ))}
-        <FooterContactButton />
+        <Suspense fallback={null}>
+          <LazyFooterContactButton />
+        </Suspense>
       </div>
     </footer>
   );
@@ -371,7 +393,9 @@ export function LandingPage() {
         <RoadmapSection />
         <OpenClawSection />
         <FinalCtaSection />
-        <ProductUpdatesSection />
+        <Suspense fallback={null}>
+          <LazyProductUpdatesSection />
+        </Suspense>
       </main>
 
       <SiteFooter />
