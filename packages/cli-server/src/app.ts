@@ -1,4 +1,6 @@
 import type { Http2Bindings, HttpBindings } from "@hono/node-server";
+import { structuredLogger } from "@hono/structured-logger";
+import type { BaseLogger } from "@hono/structured-logger";
 import type { Database } from "@onequery/db/server";
 import type { ServerRuntimeConfig } from "@onequery/server/runtime";
 import type { ServerStorage } from "@onequery/server/storage";
@@ -13,7 +15,6 @@ import type { CliSessionIdentity } from "./domain/workflows";
 import {
   buildCliRequestLogDetails,
   getCliLogLevelForStatus,
-  logCliEvent,
   toCliErrorMessage,
 } from "./observability";
 import { CLI_REQUEST_ID_HEADER } from "./request-context";
@@ -25,7 +26,7 @@ export type CliRouteEnv<
 > = {
   Bindings: HonoNodeBindings;
   Variables: RequestIdVariables & {
-    requestStartedAtMs: number;
+    logger: BaseLogger;
     runtime: ServerRuntimeConfig;
     storage: ServerStorage;
   } & Variables;
@@ -45,45 +46,45 @@ export interface CreateCliAppOptions {
   storage: ServerStorage;
 }
 
-const cliRequestObservabilityMiddleware = createMiddleware<CliRouteEnv>(
-  async (c, next) => {
-    const requestStartedAtMs = Date.now();
-    c.set("requestStartedAtMs", requestStartedAtMs);
-
-    logCliEvent({
-      details: buildCliRequestLogDetails(c),
-      event: "request.started",
-      level: "info",
-    });
-
-    let thrownError: unknown = null;
-    try {
-      await next();
-    } catch (error) {
-      thrownError = error;
-      throw error;
-    } finally {
-      if (thrownError) {
-        logCliEvent({
-          details: buildCliRequestLogDetails(c, {
-            error: toCliErrorMessage(thrownError),
-          }),
-          event: "request.failed",
-          level: "error",
-        });
-      } else {
-        logCliEvent({
-          details: buildCliRequestLogDetails(c, {
-            status: c.res.status,
-            durationMs: Math.max(0, Date.now() - requestStartedAtMs),
-          }),
-          event: "request.finished",
-          level: getCliLogLevelForStatus(c.res.status),
-        });
-      }
-    }
-  }
-);
+const cliRequestStructuredLoggerMiddleware = structuredLogger({
+  createLogger: () => console,
+  onError: (logger, error, c) => {
+    logger.error(
+      {
+        event: "request.failed",
+        scope: "cli",
+        ...buildCliRequestLogDetails(c, {
+          error: toCliErrorMessage(error),
+          status: c.res.status,
+        }),
+      },
+      "cli request failed"
+    );
+  },
+  onRequest: (logger, c) => {
+    logger.info(
+      {
+        event: "request.started",
+        scope: "cli",
+        ...buildCliRequestLogDetails(c),
+      },
+      "cli request started"
+    );
+  },
+  onResponse: (logger, c, elapsedMs) => {
+    logger[getCliLogLevelForStatus(c.res.status)](
+      {
+        event: "request.finished",
+        scope: "cli",
+        ...buildCliRequestLogDetails(c, {
+          durationMs: Math.max(0, Math.trunc(elapsedMs)),
+          status: c.res.status,
+        }),
+      },
+      "cli request finished"
+    );
+  },
+});
 
 function cliRuntimeMiddleware<
   Variables extends Record<string, unknown> = Record<string, never>,
@@ -119,7 +120,7 @@ export function createCliApp<
       headerName: CLI_REQUEST_ID_HEADER,
     })
   );
-  app.use(cliRequestObservabilityMiddleware);
+  app.use(cliRequestStructuredLoggerMiddleware);
   return app;
 }
 
@@ -134,6 +135,6 @@ export function createCliBrowserApp<
       headerName: CLI_REQUEST_ID_HEADER,
     })
   );
-  app.use(cliRequestObservabilityMiddleware);
+  app.use(cliRequestStructuredLoggerMiddleware);
   return app;
 }

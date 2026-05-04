@@ -1,3 +1,5 @@
+import { structuredLogger } from "@hono/structured-logger";
+import type { BaseLogger } from "@hono/structured-logger";
 import { Hono } from "hono";
 import { requestId } from "hono/request-id";
 import type { RequestIdVariables } from "hono/request-id";
@@ -26,7 +28,9 @@ export type { SessionVariables } from "./middleware/session";
 
 type ServerApiVariables = RequestIdVariables &
   ServerRuntimeVariables &
-  SessionVariables;
+  SessionVariables & {
+    logger: BaseLogger;
+  };
 
 export interface CreateServerApiOptions {
   enableAuthTestUtils?: boolean;
@@ -37,6 +41,64 @@ export interface CreateServerApiOptions {
 type ServerApiEnv = {
   Variables: ServerApiVariables;
 };
+
+type ServerApiLogLevel = "error" | "info" | "warn";
+
+function getDashboardApiLogLevelForStatus(status: number): ServerApiLogLevel {
+  if (status >= 500) {
+    return "error";
+  }
+
+  if (status >= 400) {
+    return "warn";
+  }
+
+  return "info";
+}
+
+const dashboardApiStructuredLogger = structuredLogger({
+  createLogger: () => console,
+  onError: (logger, error, c) => {
+    logger.error(
+      {
+        err: error,
+        event: "dashboard.request.failed",
+        method: c.req.method,
+        path: c.req.path,
+        requestId: c.get("requestId"),
+        scope: "dashboard",
+        status: c.res.status,
+      },
+      "dashboard request failed"
+    );
+  },
+  onRequest: (logger, c) => {
+    logger.info(
+      {
+        event: "dashboard.request.started",
+        method: c.req.method,
+        path: c.req.path,
+        requestId: c.get("requestId"),
+        scope: "dashboard",
+      },
+      "dashboard request started"
+    );
+  },
+  onResponse: (logger, c, elapsedMs) => {
+    logger[getDashboardApiLogLevelForStatus(c.res.status)](
+      {
+        elapsedMs,
+        event: "dashboard.request.completed",
+        method: c.req.method,
+        path: c.req.path,
+        requestId: c.get("requestId"),
+        scope: "dashboard",
+        status: c.res.status,
+      },
+      "dashboard request completed"
+    );
+  },
+});
 
 /**
  * Shared OSS-safe control-plane routes.
@@ -55,6 +117,9 @@ export function createServerApi(input: CreateServerApiOptions) {
         createProblemDetailsErrorHandler("packages/server/createServerApi")
       )
       .use("*", requestId())
+      // Comment: apps/dashboard is a client app; its Hono API surface lives
+      // here and is mounted by the self-host runtime under `/api`.
+      .use("*", dashboardApiStructuredLogger)
       .use("*", serverRuntimeMiddleware(input.runtime))
       .use("*", serverStorageMiddleware(storage))
       // Rate limiting (applied first to reject requests early)
