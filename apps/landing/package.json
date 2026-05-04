@@ -42,6 +42,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:tooling",
     "babel-plugin-react-compiler": "catalog:tooling",
+    "pino-pretty": "catalog:",
     "vite": "catalog:tooling",
     "vitest": "catalog:testing"
   }

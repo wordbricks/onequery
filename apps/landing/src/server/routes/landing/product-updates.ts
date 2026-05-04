@@ -19,14 +19,11 @@ export const productUpdatesRoute = new Hono<LandingAppEnv>().post(
   async (c) => {
     const { email } = c.req.valid("json");
     const normalizedEmail = email.toLowerCase();
-    const result = await deliverLandingNotification(
-      {
-        delivery: resolveLandingNotificationDeliveryFromContext(c),
-        notificationType: "product_updates",
-        payload: createProductUpdatesNotification(normalizedEmail),
-      },
-      c.var.logger
-    );
+    const result = await deliverLandingNotification({
+      delivery: resolveLandingNotificationDeliveryFromContext(c),
+      notificationType: "product_updates",
+      payload: createProductUpdatesNotification(normalizedEmail),
+    });
     if (result.isErr()) {
       return notificationServiceUnavailableResponse(c, result.error);
     }

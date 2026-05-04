@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { LandingServiceUnavailableErrorResponse } from "./server/app";
 import worker from "./worker";
@@ -41,6 +41,10 @@ describe("landing worker", () => {
   if (!fetchHandler) {
     throw new Error("landing worker must export a fetch handler");
   }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it("routes API requests to the Hono app instead of static assets", async () => {
     const assets = createAssetsBinding();

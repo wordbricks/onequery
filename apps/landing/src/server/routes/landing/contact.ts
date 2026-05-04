@@ -18,18 +18,15 @@ export const contactRoute = new Hono<LandingAppEnv>().post(
   async (c) => {
     const { email, message, name } = c.req.valid("json");
     const normalizedEmail = email.toLowerCase();
-    const result = await deliverLandingNotification(
-      {
-        delivery: resolveLandingNotificationDeliveryFromContext(c),
-        notificationType: "contact",
-        payload: createContactNotification({
-          email: normalizedEmail,
-          message,
-          name,
-        }),
-      },
-      c.var.logger
-    );
+    const result = await deliverLandingNotification({
+      delivery: resolveLandingNotificationDeliveryFromContext(c),
+      notificationType: "contact",
+      payload: createContactNotification({
+        email: normalizedEmail,
+        message,
+        name,
+      }),
+    });
     if (result.isErr()) {
       return notificationServiceUnavailableResponse(c, result.error);
     }

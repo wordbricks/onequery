@@ -15,12 +15,6 @@ afterEach(() => {
 
 describe("deliverLandingNotification", () => {
   it("accepts local loopback requests without a configured webhook", async () => {
-    const logger = {
-      debug: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-    };
     const fetchSpy = vi.fn<typeof globalThis.fetch>();
     installFetchMock(fetchSpy);
     const payload = {
@@ -28,75 +22,41 @@ describe("deliverLandingNotification", () => {
       blocks: [],
     };
 
-    const result = await deliverLandingNotification(
-      {
-        delivery: {
-          kind: "local-dev-null-sink",
-        },
-        notificationType: "product_updates",
-        payload,
+    const result = await deliverLandingNotification({
+      delivery: {
+        kind: "local-dev-null-sink",
       },
-      logger
-    );
+      notificationType: "product_updates",
+      payload,
+    });
 
     expect(result.isOk()).toBe(true);
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(logger.info).toHaveBeenCalledWith(
-      {
-        delivery: "local-dev-null-sink",
-        event: "landing.notification.delivered_local",
-        notificationType: "product_updates",
-      },
-      "landing notification routed to local sink"
-    );
   });
 
   it("stays unavailable outside local loopback when the webhook is missing", async () => {
-    const logger = {
-      debug: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-    };
     const fetchSpy = vi.fn<typeof globalThis.fetch>();
     installFetchMock(fetchSpy);
 
-    const result = await deliverLandingNotification(
-      {
-        delivery: {
-          kind: "unconfigured",
-        },
-        notificationType: "product_updates",
-        payload: {
-          text: "New product updates signup: test@example.com",
-          blocks: [],
-        },
+    const result = await deliverLandingNotification({
+      delivery: {
+        kind: "unconfigured",
       },
-      logger
-    );
+      notificationType: "product_updates",
+      payload: {
+        text: "New product updates signup: test@example.com",
+        blocks: [],
+      },
+    });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toBe("Landing ingest is not configured");
     }
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(logger.error).toHaveBeenCalledWith(
-      {
-        delivery: "unconfigured",
-        event: "landing.notification.delivery_unconfigured",
-        notificationType: "product_updates",
-      },
-      "landing notification delivery is unconfigured"
-    );
   });
 
   it("delivers to the configured webhook when present", async () => {
-    const logger = {
-      debug: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-    };
     const fetchSpy = vi.fn<typeof globalThis.fetch>();
     fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));
     installFetchMock(fetchSpy);
@@ -105,17 +65,14 @@ describe("deliverLandingNotification", () => {
       blocks: [],
     };
 
-    const result = await deliverLandingNotification(
-      {
-        delivery: {
-          kind: "slack-webhook",
-          webhookUrl: "https://example.com/hooks/landing",
-        },
-        notificationType: "product_updates",
-        payload,
+    const result = await deliverLandingNotification({
+      delivery: {
+        kind: "slack-webhook",
+        webhookUrl: "https://example.com/hooks/landing",
       },
-      logger
-    );
+      notificationType: "product_updates",
+      payload,
+    });
 
     expect(result.isOk()).toBe(true);
     expect(fetchSpy).toHaveBeenCalledWith("https://example.com/hooks/landing", {
@@ -123,87 +80,55 @@ describe("deliverLandingNotification", () => {
       headers: { "Content-Type": "application/json" },
       method: "POST",
     });
-    expect(logger.info).not.toHaveBeenCalled();
-    expect(logger.error).not.toHaveBeenCalled();
   });
 
-  it("logs request failures before returning the request error", async () => {
-    const logger = {
-      debug: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-    };
+  it("returns request failures as request errors", async () => {
     const fetchSpy = vi.fn<typeof globalThis.fetch>();
     fetchSpy.mockRejectedValue(new Error("boom"));
     installFetchMock(fetchSpy);
 
-    const result = await deliverLandingNotification(
-      {
-        delivery: {
-          kind: "slack-webhook",
-          webhookUrl: "https://example.com/hooks/landing",
-        },
-        notificationType: "product_updates",
-        payload: {
-          text: "New product updates signup: test@example.com",
-          blocks: [],
-        },
+    const result = await deliverLandingNotification({
+      delivery: {
+        kind: "slack-webhook",
+        webhookUrl: "https://example.com/hooks/landing",
       },
-      logger
-    );
+      notificationType: "product_updates",
+      payload: {
+        text: "New product updates signup: test@example.com",
+        blocks: [],
+      },
+    });
 
     expect(result.isErr()).toBe(true);
-    expect(logger.error).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cause: expect.any(Error),
-        delivery: "slack-webhook",
-        errorMessage: "Failed to send landing notification: boom",
-        event: "landing.notification.webhook_request_failed",
-        notificationType: "product_updates",
-      }),
-      "landing notification webhook request failed"
-    );
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "Failed to send landing notification: boom"
+      );
+    }
   });
 
-  it("logs webhook rejections with a bounded upstream preview", async () => {
-    const logger = {
-      debug: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-    };
+  it("returns webhook rejections as response errors", async () => {
     const fetchSpy = vi.fn<typeof globalThis.fetch>();
     fetchSpy.mockResolvedValue(
       new Response("invalid payload", { status: 400 })
     );
     installFetchMock(fetchSpy);
 
-    const result = await deliverLandingNotification(
-      {
-        delivery: {
-          kind: "slack-webhook",
-          webhookUrl: "https://example.com/hooks/landing",
-        },
-        notificationType: "contact",
-        payload: {
-          text: "New contact request from Jane Doe (team@example.com)",
-          blocks: [],
-        },
+    const result = await deliverLandingNotification({
+      delivery: {
+        kind: "slack-webhook",
+        webhookUrl: "https://example.com/hooks/landing",
       },
-      logger
-    );
+      notificationType: "contact",
+      payload: {
+        text: "New contact request from Jane Doe (team@example.com)",
+        blocks: [],
+      },
+    });
 
     expect(result.isErr()).toBe(true);
-    expect(logger.error).toHaveBeenCalledWith(
-      expect.objectContaining({
-        delivery: "slack-webhook",
-        event: "landing.notification.webhook_rejected",
-        notificationType: "contact",
-        status: 400,
-        upstreamBodyPreview: "invalid payload",
-      }),
-      "landing notification webhook rejected"
-    );
+    if (result.isErr()) {
+      expect(result.error.message).toBe("Failed to deliver notification");
+    }
   });
 });

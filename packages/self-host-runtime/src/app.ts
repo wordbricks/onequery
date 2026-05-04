@@ -1,4 +1,3 @@
-import { structuredLogger } from "@hono/structured-logger";
 import {
   createCliRoute,
   createDeviceAuthorizationBrowserRoute,
@@ -23,8 +22,6 @@ import {
   DEVICE_AUTHORIZATION_API_ROUTE_PREFIX,
   isApiRoutePath,
 } from "./constants";
-import * as runtimeLogger from "./runtime-logger";
-import type { RuntimeLogger } from "./runtime-logger";
 
 type SpaAssetBinding = {
   fetch: (request: Request) => Promise<Response>;
@@ -38,22 +35,8 @@ export interface CreateRuntimeAppOptions {
 }
 
 type RuntimeApiEnv = {
-  Variables: RequestIdVariables & {
-    logger: RuntimeLogger;
-  };
+  Variables: RequestIdVariables;
 };
-
-function getRuntimeRequestLogMethod(logger: RuntimeLogger, status: number) {
-  if (status >= 500) {
-    return logger.error.bind(logger);
-  }
-
-  if (status >= 400) {
-    return logger.warn.bind(logger);
-  }
-
-  return logger.info.bind(logger);
-}
 
 function resolveStorage(input: CreateRuntimeAppOptions): ServerStorage {
   return (
@@ -71,40 +54,6 @@ export function createApiApp(input: CreateRuntimeAppOptions) {
   return (
     new Hono<RuntimeApiEnv>()
       .use("*", requestId())
-      .use(
-        "*",
-        structuredLogger<RuntimeLogger>({
-          createLogger: (c) =>
-            runtimeLogger.createRuntimeLogger({
-              method: c.req.method,
-              path: c.req.path,
-              requestId: c.var.requestId,
-            }),
-          onError: (logger, error, c) => {
-            logger.error(
-              {
-                err: error,
-                event: "request.failed",
-                status: c.res.status,
-              },
-              "request failed"
-            );
-          },
-          onRequest: () => {},
-          onResponse: (logger, c, elapsedMs) => {
-            const log = getRuntimeRequestLogMethod(logger, c.res.status);
-
-            log(
-              {
-                durationMs: Math.max(0, Math.round(elapsedMs)),
-                event: "request.finished",
-                status: c.res.status,
-              },
-              "request finished"
-            );
-          },
-        })
-      )
       // Comment: mount the more specific `/api/*` children before the broad
       // `/api` app so Hono does not run the general control-plane middleware
       // for CLI or device-authorization requests.

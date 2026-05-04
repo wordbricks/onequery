@@ -37,11 +37,9 @@ function createTestApp(
 
 describe("runtime app", () => {
   const originalConsoleLog = console.log;
-  const originalConsoleInfo = console.info;
 
   afterEach(() => {
     console.log = originalConsoleLog;
-    console.info = originalConsoleInfo;
   });
 
   it("serves the SPA shell and API routes from the same app", async () => {
@@ -65,34 +63,6 @@ describe("runtime app", () => {
     });
 
     expect(spaAssets.fetch).toHaveBeenCalledTimes(1);
-  });
-
-  it("emits structured request logs for API routes", async () => {
-    const logs: unknown[] = [];
-    console.info = (...args: unknown[]) => {
-      logs.push(...args);
-    };
-
-    const { app } = createTestApp();
-    if (!app) {
-      return;
-    }
-    const response = await app.fetch(new Request("http://local/api/health"));
-
-    expect(response.status).toBe(200);
-    expect(logs).toContainEqual(
-      expect.objectContaining({
-        durationMs: expect.any(Number),
-        event: "request.finished",
-        level: "info",
-        message: "request finished",
-        method: "GET",
-        path: "/api/health",
-        requestId: expect.any(String),
-        service: "@onequery/self-host-runtime",
-        status: 200,
-      })
-    );
   });
 
   it("returns an API 404 instead of the SPA shell for missing API paths", async () => {
