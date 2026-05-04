@@ -39,39 +39,33 @@ const evidenceTextSchema = z
   })
   .catch("Not recorded");
 
-const auditSourceDescriptorSchema = z
-  .object({
-    displayName: z.string().nullable().optional(),
-    name: z.string().optional(),
-    provider: z.string().optional(),
-    sourceId: z.string().optional(),
-    sourceKey: z.string().optional(),
-    sourceStatus: z.string().optional(),
-  })
-  .passthrough();
+const auditSourceDescriptorSchema = z.looseObject({
+  displayName: z.string().nullable().optional(),
+  name: z.string().optional(),
+  provider: z.string().optional(),
+  sourceId: z.string().optional(),
+  sourceKey: z.string().optional(),
+  sourceStatus: z.string().optional(),
+});
 const auditSourceDescriptorViewSchema = auditSourceDescriptorSchema
   .nullable()
   .catch(null);
 
-const auditRequestDescriptorSchema = z
-  .object({
-    descriptorVersion: z.string().nullable().optional(),
-    kind: z.string().nullable().optional(),
-    method: z.string().nullable().optional(),
-    operation: z.string().optional(),
-    paginationPolicy: z.string().nullable().optional(),
-    selector: z.string().nullable().optional(),
-  })
-  .passthrough();
+const auditRequestDescriptorSchema = z.looseObject({
+  descriptorVersion: z.string().nullable().optional(),
+  kind: z.string().nullable().optional(),
+  method: z.string().nullable().optional(),
+  operation: z.string().optional(),
+  paginationPolicy: z.string().nullable().optional(),
+  selector: z.string().nullable().optional(),
+});
 const auditRequestDescriptorViewSchema = auditRequestDescriptorSchema
   .nullable()
   .catch(null);
 
-const auditPageProgressSchema = z
-  .object({
-    nextPageIndex: z.number().int().optional(),
-  })
-  .passthrough();
+const auditPageProgressSchema = z.looseObject({
+  nextPageIndex: z.number().int().optional(),
+});
 const auditPageProgressViewSchema = auditPageProgressSchema
   .nullable()
   .catch(null);
