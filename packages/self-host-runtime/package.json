@@ -41,7 +41,6 @@
     "better-result": "catalog:",
     "hono": "catalog:",
     "hono-problem-details": "catalog:",
-    "pino": "catalog:",
     "unstorage": "catalog:",
     "zod": "catalog:"
   },
