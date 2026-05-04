@@ -21,6 +21,7 @@ main
 
 - Stable releases increment the normal semver version, for example from `0.1.49` to `0.1.50`.
 - Check npm dist-tags before choosing the next version: `npm view @onequery/cli dist-tags --json`.
+- Treat npm-published versions as the source of truth; a failed `cli-v<version>` tag without a GitHub release/npm publish does not reserve that semver version.
 - Prereleases keep the same base semver version and increment only the prerelease number while continuing that release line.
 - If the latest CLI release is `0.1.50-alpha.1`, the next alpha release is `0.1.50-alpha.2`, not `0.1.51-alpha.1`.
 - Start `0.1.51-alpha.1` only when beginning prereleases for the next base version after `0.1.50`.
