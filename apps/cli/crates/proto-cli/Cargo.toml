@@ -11,8 +11,5 @@ connectrpc = { workspace = true, features = ["client"] }
 http-body = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 
-[build-dependencies]
-onequery-proto-build-support = { workspace = true }
-
 [lints]
 workspace = true

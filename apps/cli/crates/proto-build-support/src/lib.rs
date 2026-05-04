@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::env;
 use std::ffi::OsString;
 use std::io::ErrorKind;
@@ -13,21 +14,23 @@ const PROTO_ROOT: &str = "proto";
 const GOOGLE_RPC_ERROR_DETAILS_PROTO: &str = "google/rpc/error_details.proto";
 
 #[derive(Debug, Clone)]
-pub struct ConnectProtoBuildConfig {
+struct ConnectProtoBuildConfig {
     proto_dir: &'static str,
     descriptor_path: &'static str,
     descriptor_file_name: &'static str,
     include_file_name: &'static str,
+    output_dir: &'static str,
     crate_name: &'static str,
 }
 
 impl ConnectProtoBuildConfig {
     #[must_use]
-    pub const fn new(
+    const fn new(
         proto_dir: &'static str,
         descriptor_path: &'static str,
         descriptor_file_name: &'static str,
         include_file_name: &'static str,
+        output_dir: &'static str,
         crate_name: &'static str,
     ) -> Self {
         Self {
@@ -35,10 +38,30 @@ impl ConnectProtoBuildConfig {
             descriptor_path,
             descriptor_file_name,
             include_file_name,
+            output_dir,
             crate_name,
         }
     }
 }
+
+const CONNECT_PROTO_CONFIGS: &[ConnectProtoBuildConfig] = &[
+    ConnectProtoBuildConfig::new(
+        "onequery/cli/v1",
+        "onequery/cli/v1/cli.proto",
+        "onequery-proto-cli.fds",
+        "_connectrpc.rs",
+        "apps/cli/crates/proto-cli/src/generated",
+        "onequery-proto-cli",
+    ),
+    ConnectProtoBuildConfig::new(
+        "onequery/runtime/v1",
+        "onequery/runtime/v1",
+        "onequery-proto-runtime.fds",
+        "_runtime_control_connectrpc.rs",
+        "apps/cli/crates/proto-runtime/src/generated",
+        "onequery-proto-runtime",
+    ),
+];
 
 struct BufCommand {
     program: PathBuf,
@@ -65,24 +88,41 @@ impl BufCommand {
     }
 }
 
-pub fn generate_connect_proto(config: &ConnectProtoBuildConfig) {
+pub fn generate_all_connect_proto() {
+    for config in CONNECT_PROTO_CONFIGS {
+        generate_connect_proto(config);
+    }
+}
+
+fn generate_connect_proto(config: &ConnectProtoBuildConfig) {
     let repo_root = onequery_utils::repo_root()
         .unwrap_or_else(|error| panic!("expected repo root from onequery-utils: {error}"));
     let discovered_proto_files = discover_proto_files(&repo_root, config.proto_dir);
-    emit_rerun_triggers(&repo_root, config.proto_dir, &discovered_proto_files);
 
-    let out_dir = env::var("OUT_DIR").unwrap_or_else(|error| panic!("expected OUT_DIR: {error}"));
-    let descriptor_path = Path::new(&out_dir).join(config.descriptor_file_name);
+    let descriptor_dir = repo_root
+        .join("apps")
+        .join("cli")
+        .join("target")
+        .join("proto-descriptors");
+    std::fs::create_dir_all(&descriptor_dir).unwrap_or_else(|error| {
+        panic!(
+            "expected descriptor directory {} to be creatable: {error}",
+            descriptor_dir.display()
+        )
+    });
+    let descriptor_path = descriptor_dir.join(config.descriptor_file_name);
     build_descriptor_set(
         &repo_root,
         descriptor_path.as_path(),
         Path::new(config.descriptor_path),
         config.crate_name,
     );
+    let output_dir = repo_root.join(config.output_dir);
     generate_connect_modules(
         descriptor_path.as_path(),
         &discovered_proto_files,
         config.include_file_name,
+        &output_dir,
     );
 }
 
@@ -136,32 +176,6 @@ fn discover_proto_files(repo_root: &Path, proto_dir: &str) -> Vec<PathBuf> {
     }
 
     proto_files
-}
-
-fn emit_rerun_triggers(repo_root: &Path, proto_dir: &str, proto_files: &[PathBuf]) {
-    let proto_root = repo_root.join(PROTO_ROOT);
-    println!(
-        "cargo:rerun-if-changed={}",
-        proto_root.join("buf.yaml").display()
-    );
-    println!(
-        "cargo:rerun-if-changed={}",
-        proto_root.join("buf.gen.yaml").display()
-    );
-    println!(
-        "cargo:rerun-if-changed={}",
-        proto_root.join("buf.lock").display()
-    );
-    println!(
-        "cargo:rerun-if-changed={}",
-        proto_root.join(proto_dir).display()
-    );
-    for proto_file in proto_files {
-        println!(
-            "cargo:rerun-if-changed={}",
-            proto_root.join(proto_file).display()
-        );
-    }
 }
 
 fn build_descriptor_set(
@@ -263,6 +277,7 @@ fn generate_connect_modules(
     descriptor_path: &Path,
     discovered_proto_files: &[PathBuf],
     include_file_name: &str,
+    output_dir: &Path,
 ) {
     let descriptor_bytes = std::fs::read(descriptor_path).unwrap_or_else(|error| {
         panic!(
@@ -287,6 +302,7 @@ fn generate_connect_modules(
     connectrpc_build::Config::new()
         .files(&files_to_generate)
         .descriptor_set(descriptor_path)
+        .out_dir(output_dir)
         .include_file(include_file_name)
         .emit_register_fn(false)
         .compile()
@@ -296,6 +312,7 @@ fn generate_connect_modules(
                 descriptor_path.display()
             )
         });
+    remove_stale_generated_modules(output_dir, include_file_name, &proto_files_to_generate);
 }
 
 fn proto_relative_names(proto_files: &[PathBuf]) -> Vec<String> {
@@ -332,4 +349,47 @@ fn proto_relative_name(proto_file: &Path) -> String {
     // Normalize the discovered proto paths before handing them to Buffa and
     // Connect codegen so descriptor lookups stay platform-independent.
     proto_relative_name.replace(MAIN_SEPARATOR, "/")
+}
+
+fn remove_stale_generated_modules(
+    output_dir: &Path,
+    include_file_name: &str,
+    proto_files_to_generate: &[String],
+) {
+    let mut expected_files = proto_files_to_generate
+        .iter()
+        .map(|proto_file| buffa_codegen::proto_path_to_rust_module(proto_file))
+        .collect::<BTreeSet<_>>();
+    expected_files.insert(include_file_name.to_owned());
+
+    let entries = std::fs::read_dir(output_dir).unwrap_or_else(|error| {
+        panic!(
+            "expected generated output directory {}: {error}",
+            output_dir.display()
+        )
+    });
+    for entry in entries {
+        let entry = entry.unwrap_or_else(|error| {
+            panic!(
+                "expected to read generated output directory entry under {}: {error}",
+                output_dir.display()
+            )
+        });
+        let path = entry.path();
+        if !path.is_file() || path.extension().is_none_or(|extension| extension != "rs") {
+            continue;
+        }
+
+        let file_name = entry.file_name().to_string_lossy().into_owned();
+        if expected_files.contains(&file_name) {
+            continue;
+        }
+
+        std::fs::remove_file(&path).unwrap_or_else(|error| {
+            panic!(
+                "expected stale generated Rust file {} to be removable: {error}",
+                path.display()
+            )
+        });
+    }
 }

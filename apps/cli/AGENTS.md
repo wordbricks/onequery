@@ -42,6 +42,10 @@ Before finalizing a large change, run `just fix -p <project>` to fix any linter 
 3. Verify generated artifacts are current: `just check-proto`.
 4. If contract changes, update `crates/onequery-cli/src/transport/*` to match and run Rust fmt/tests.
 
+The checked-in Rust Connect output under `crates/proto-cli/src/generated/**`
+and `crates/proto-runtime/src/generated/**` is generated; do not edit it
+manually.
+
 ## Tests
 
 ### Snapshot tests

@@ -16,6 +16,7 @@ Supported entrypoints:
 
 - canonical entrypoint: `bun run proto:lint`, `bun run proto:boundaries`,
   `bun run proto:generate`, `bun run proto:check`
+- Rust CLI entrypoint from `apps/cli`: `just regen-proto`, `just check-proto`
 - low-level Buf usage from the repo root: `buf lint proto`,
   `buf generate proto --template proto/buf.gen.yaml --path proto/onequery/cli/v1 -o packages/proto-cli`,
   `buf generate proto --template proto/buf.gen.yaml --path proto/onequery/runtime/v1 -o packages/proto-runtime`,
@@ -30,6 +31,10 @@ workspace packages.
 - `packages/proto-cli/src` is generated from `onequery/cli/v1`.
 - `packages/proto-runtime/src` is generated from `onequery/runtime/v1`.
 - `packages/proto-workflow/src` is generated from `onequery/workflow/v1`.
+- `apps/cli/crates/proto-cli/src/generated` is generated from
+  `onequery/cli/v1` for Rust Connect clients.
+- `apps/cli/crates/proto-runtime/src/generated` is generated from
+  `onequery/runtime/v1` for Rust Connect clients and servers.
 - `packages/audit-contracts/src` contains handwritten Zod/read-model
   contracts and is not generated from protobuf.
 
@@ -39,7 +44,7 @@ names remain the ownership and compatibility boundary: `onequery.workflow.v1`,
 `bun run proto:boundaries` to enforce those import edges directly on source
 `.proto` files before generated TypeScript mirrors them.
 
-The Rust CLI generated proto crates consume this workspace for descriptor
-generation.
+The Rust CLI generated proto crates check in their generated Rust output so
+ordinary `cargo check` does not run Connect codegen.
 
 Don't follow 1-1-1 principle since it's too verbose.

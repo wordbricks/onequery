@@ -1746,7 +1746,6 @@ dependencies = [
  "buffa-types",
  "connectrpc",
  "http-body",
- "onequery-proto-build-support",
  "serde",
 ]
 
@@ -1759,7 +1758,6 @@ dependencies = [
  "connectrpc",
  "futures",
  "http-body",
- "onequery-proto-build-support",
  "serde",
  "tokio",
 ]

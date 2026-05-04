@@ -8,6 +8,7 @@ If you encounter something surprising or confusing in this project, flag it as a
 - For checking lint/format for whole monorepo, use `bunx turbo check --json`, to fix, `bunx turbo check:fix`
 - For type checking, use `bunx turbo typecheck --json`.
 - For testing, use `bunx turbo test --json`, not `bun test`.
+- For tools, use `mise exec`.
 
 ### Auto-generated files and how to generate them:
 NOTE: Don't edit them manually.

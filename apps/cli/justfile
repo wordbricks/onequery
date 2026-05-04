@@ -9,11 +9,6 @@ alias o := onequery
 onequery *args:
     cargo run --bin onequery -- "$@"
 
-# Run `onequery api --source <SOURCE>`
-alias a := api
-api source:
-    cargo run --bin onequery -- api --source {{source}}
-
 # format code
 fmt:
     cargo fmt -- --config imports_granularity=Item 2>/dev/null
@@ -55,11 +50,16 @@ check:
     just check-proto
 
 # Regenerate CLI transport adapters from the protobuf source of truth.
+# COMMENT: connectrpc-build still prints cargo metadata when used outside
+# build.rs; keep successful Rust codegen output focused on real work.
 regen-proto:
     bun run --cwd {{justfile_directory()}}/../.. proto:generate
+    @cargo run --quiet -p onequery-proto-build-support >/dev/null
 
 check-proto:
     bun run --cwd {{justfile_directory()}}/../.. proto:check
+    @cargo run --quiet -p onequery-proto-build-support >/dev/null
+    git diff --exit-code -- crates/proto-cli/src/generated crates/proto-runtime/src/generated
 
 insta-pending *args:
     cargo insta pending-snapshots "$@"
