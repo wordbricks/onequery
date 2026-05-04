@@ -6,4 +6,4 @@ Gateway started in background.
 PID: 4242
 Listen: 127.0.0.1:5656
 Log path: /tmp/onequery/logs/server.log
-Next steps: onequery gateway status | onequery gateway logs | onequery gateway stop
+Next steps: onequery web | onequery auth login | onequery gateway status | onequery gateway logs

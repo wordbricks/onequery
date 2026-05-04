@@ -74,7 +74,7 @@ pub(super) fn render_gateway_start_output(
             format!("PID: {started_pid}"),
             format!("Listen: {listen}"),
             format!("Log path: {}", state.paths.server_log_path.display()),
-            "Next steps: onequery gateway status | onequery gateway logs | onequery gateway stop"
+            "Next steps: onequery web | onequery auth login | onequery gateway status | onequery gateway logs"
                 .to_owned(),
         ],
         json!({
