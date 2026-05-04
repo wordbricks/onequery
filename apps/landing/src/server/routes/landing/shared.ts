@@ -37,7 +37,7 @@ function isLoopbackHostname(hostname: string) {
   );
 }
 
-export function resolveLandingNotificationDelivery(input: {
+function resolveLandingNotificationDelivery(input: {
   hostname: string;
   slackWebhookUrl: string | undefined;
 }): LandingNotificationDelivery {

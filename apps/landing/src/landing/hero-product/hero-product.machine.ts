@@ -8,12 +8,9 @@ export const HERO_PRODUCT_TAB_ORDER = [
 ] as const;
 
 export type HeroProductTab = (typeof HERO_PRODUCT_TAB_ORDER)[number];
-export type SafeQueryCheckId =
-  | "nonDestructive"
-  | "budgetLimit"
-  | "accessPermission";
-export type SafeQueryCheckStatus = "pending" | "success" | "failure";
-export type SafeQueryResult = "pending" | "pass" | "blocked";
+type SafeQueryCheckId = "nonDestructive" | "budgetLimit" | "accessPermission";
+type SafeQueryCheckStatus = "pending" | "success" | "failure";
+type SafeQueryResult = "pending" | "pass" | "blocked";
 
 type SafeQueryAnimationState = {
   cycleIndex: number;

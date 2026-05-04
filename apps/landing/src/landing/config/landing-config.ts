@@ -36,11 +36,6 @@ export const INSTALL_COMMANDS = [
   },
 ] as const;
 
-export const INSTALL_SNIPPET = `${DOWNLOAD_COMMAND}
-
-onequery gateway start
-onequery auth login` as const;
-
 export const COPY_FEEDBACK_RESET_DELAY_MS = 1500;
 export const DEFAULT_DEV_PORT = 4546;
 export const DEV_SERVER_HOST = "0.0.0.0" as const;

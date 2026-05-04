@@ -68,7 +68,7 @@ function loadGoogleTagManager(measurementId: string) {
   }
 }
 
-export function initializeAnalytics() {
+function initializeAnalytics() {
   const measurementId = getMeasurementId();
   if (!measurementId) {
     return false;
@@ -93,7 +93,7 @@ export function initializeAnalytics() {
   return true;
 }
 
-export function trackEvent(name: string, params: AnalyticsEventParams = {}) {
+function trackEvent(name: string, params: AnalyticsEventParams = {}) {
   if (!initializeAnalytics()) {
     return;
   }
@@ -161,8 +161,4 @@ export function trackContactFormSubmitted() {
     form_id: "contact",
     location: "footer_modal",
   });
-}
-
-export function resetAnalyticsStateForTests() {
-  configuredMeasurementIds.clear();
 }

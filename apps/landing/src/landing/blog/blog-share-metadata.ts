@@ -4,7 +4,7 @@ const ONEQUERY_SITE_URL = "https://onequery.dev";
 const ONEQUERY_SITE_NAME = "OneQuery";
 const BLOG_SHARE_IMAGE_SIZE = 1254;
 
-export interface BlogPostShareMetadata {
+interface BlogPostShareMetadata {
   canonicalUrl: string;
   description: string;
   imageAlt: string;
@@ -15,7 +15,7 @@ export interface BlogPostShareMetadata {
   twitterTitle: string;
 }
 
-export type BlogPostHeadMeta = (
+type BlogPostHeadMeta = (
   | { title: string }
   | { name: string; content: string }
   | { property: string; content: string }

@@ -17,15 +17,15 @@ type NavigationItem = {
   label: string;
 };
 
-export type RoadmapStatus = "shipped" | "next" | "later";
+type RoadmapStatus = "shipped" | "next" | "later";
 
-export type RoadmapItem = {
+type RoadmapItem = {
   key: string;
   title: string;
   description: string;
 };
 
-export type RoadmapLane = {
+type RoadmapLane = {
   eyebrow: string;
   items: ReadonlyArray<RoadmapItem>;
   status: RoadmapStatus;
