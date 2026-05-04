@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <script type="module">
+      import { button, field, grid, renderPage, row, section } from "./components.js";
+
+      renderPage({
+        title: "Forms",
+        description:
+          "Forms should feel operational and explicit. Labels describe the resource, helper text explains constraints, and actions are literal.",
+        sections: [
+          section({
+            title: "Source setup",
+            description: "Use realistic infrastructure data and keep credential handling calm and direct.",
+            content: `<div class="oq-stack">
+              ${grid([
+                field({ label: "Source name", value: "analytics-prod", help: "Use the name developers already recognize." }),
+                field({ label: "Access mode", value: "read-only", select: true, help: "Default to bounded access." }),
+              ], 2)}
+              ${field({ label: "Allowed tables", value: "customer_events, invoices, workspaces", textarea: true, help: "Keep scope explicit for people and agents." })}
+              <div class="oq-row">
+                <span class="oq-switch" aria-hidden="true"><span></span></span>
+                <span class="oq-label">Require approval for agent queries</span>
+              </div>
+              ${row([
+                button({ label: "Save source", iconName: "check" }),
+                button({ label: "Test connection", variant: "outline", iconName: "link" }),
+              ])}
+            </div>`,
+          }),
+        ],
+      });
+    </script>
+  </body>
+</html>
