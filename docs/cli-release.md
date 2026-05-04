@@ -5,7 +5,7 @@ Release flow for the `onequery` CLI:
 - Keep `apps/cli/package.json` at `0.0.0-dev`.
 - Keep `apps/cli/Cargo.toml` and `apps/cli/Cargo.lock` at `0.0.0` on normal development commits.
 - Only temporary `release/...` branches should change `apps/cli/Cargo.toml` and `apps/cli/Cargo.lock` to the real release version before tagging.
-- Install `git-cliff` locally and generate the release changelog before tagging, for example `git cliff --config cliff.toml --tag "v0.1.0" > /tmp/cli-v0.1.0-notes.md`.
+- Install `git-cliff` locally (or use `mise exec`) and generate the release changelog before tagging, for example `git cliff --config cliff.toml --tag "v0.1.0" > /tmp/cli-v0.1.0-notes.md`.
 - Use the generated changelog as the tagged release commit message so the GitHub release notes match the changelog content published for that version.
 - After the release is tagged, close or delete that temporary release branch/PR so `origin/main` stays at `0.0.0`.
 - Configure npm trusted publishing for `@onequery/cli` with GitHub Actions using the workflow filename `cli-release.yml`.
@@ -16,7 +16,7 @@ Release flow for the `onequery` CLI:
 - Additional GNU Linux tarballs are attached to GitHub releases for direct download, but they are not published to npm.
 - Windows npm tarballs are built on GitHub-hosted Windows runners and now include the bundled self-host runtime.
 - Lint workflow changes locally with the repo-pinned tool version: `mise exec -- actionlint`.
-
+main
 ## Version selection
 
 - Stable releases increment the normal semver version, for example from `0.1.49` to `0.1.50`.
