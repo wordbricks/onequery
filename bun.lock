@@ -12,6 +12,7 @@
         "@onequery/config-loader": "workspace:*",
         "@onequery/config-node": "workspace:*",
         "@onequery/self-host-runtime": "workspace:*",
+        "@onequery/tsconfig": "workspace:*",
         "@testing-library/jest-dom": "6.9.1",
         "@types/bun": "catalog:",
         "@types/nodemailer": "7.0.11",
@@ -358,6 +359,10 @@
       "devDependencies": {
         "@types/pg": "catalog:",
       },
+    },
+    "packages/tsconfig": {
+      "name": "@onequery/tsconfig",
+      "version": "0.0.0",
     },
     "packages/ui": {
       "name": "@onequery/ui",
@@ -1139,6 +1144,8 @@
     "@onequery/self-host-runtime": ["@onequery/self-host-runtime@workspace:packages/self-host-runtime"],
 
     "@onequery/server": ["@onequery/server@workspace:packages/server"],
+
+    "@onequery/tsconfig": ["@onequery/tsconfig@workspace:packages/tsconfig"],
 
     "@onequery/ui": ["@onequery/ui@workspace:packages/ui"],
 
