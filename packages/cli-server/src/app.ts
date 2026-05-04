@@ -71,17 +71,13 @@ const cliRequestStructuredLoggerMiddleware =
     scope: "cli",
   });
 
-function cliRuntimeMiddleware<
-  Variables extends Record<string, unknown> = Record<string, never>,
->(runtime: ServerRuntimeConfig) {
+function cliRuntimeMiddleware(runtime: ServerRuntimeConfig) {
   return createMiddleware<{
-    Variables: { runtime: ServerRuntimeConfig } & Variables;
+    Variables: {
+      runtime: ServerRuntimeConfig;
+    };
   }>(async (c, next) => {
-    (
-      c as typeof c & {
-        set: (key: "runtime", value: ServerRuntimeConfig) => void;
-      }
-    ).set("runtime", runtime);
+    c.set("runtime", runtime);
     await next();
   });
 }

@@ -12,7 +12,6 @@ import type { CliRouteEnv } from "../app";
 import type { ResolveCliSessionIdentityOptions } from "../auth/session-identity";
 import type { AuthorizedCliOrgContext, CliAction } from "../authorization";
 import type { CliSessionIdentity } from "../domain/workflows";
-import { getCliRequestId } from "../request-context";
 import {
   resolveAuthenticatedCliSession,
   resolveAuthorizedCliOrg,
@@ -73,7 +72,7 @@ export function createCliConnectRequestContext(
 
   const requestContext: CliConnectRequestContext = {
     honoContext: c,
-    requestId: getCliRequestId(c),
+    requestId: c.var.requestId,
     resolveSession(options) {
       if (options?.includeActiveOrgSlug === true) {
         sessionWithActiveOrgSlugPromise ??= resolveAuthenticatedCliSessionImpl(

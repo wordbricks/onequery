@@ -1,3 +1,4 @@
+import type { Http2Bindings, HttpBindings } from "@hono/node-server";
 import {
   createCliConnectRoutes,
   createDeviceAuthorizationBrowserRoutes,
@@ -32,6 +33,8 @@ type SpaAssetBinding = {
   fetch: (request: Request) => Promise<Response>;
 };
 
+type RuntimeNodeBindings = HttpBindings | Http2Bindings;
+
 export interface CreateRuntimeAppOptions {
   enableAuthTestUtils?: boolean;
   runtime: ServerRuntimeConfig;
@@ -40,10 +43,12 @@ export interface CreateRuntimeAppOptions {
 }
 
 type RuntimeApiEnv = {
+  Bindings: RuntimeNodeBindings;
   Variables: RequestIdVariables;
 };
 
 type RuntimeAppEnv = {
+  Bindings: RuntimeNodeBindings;
   Variables: RequestIdVariables & HonoStructuredLoggerVariables;
 };
 

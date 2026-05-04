@@ -1,4 +1,3 @@
-import { getCliRequestId } from "./request-context";
 import type { CliRequestContext } from "./request-context";
 
 type CliLogLevel = "info" | "warn" | "error";
@@ -173,7 +172,7 @@ export function buildCliRequestLogDetails(
   return {
     method: c.req.method,
     path: new URL(c.req.url).pathname,
-    requestId: getCliRequestId(c),
+    requestId: c.var.requestId,
     ...extra,
   };
 }
