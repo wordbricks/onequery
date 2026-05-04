@@ -77,7 +77,6 @@ chrono = "0.4"
 clap = "4"
 connectrpc = { version = "0.3.3", default-features = false }
 connectrpc-build = "0.3.3"
-ctor = "0.6.3"
 dirs = "6"
 dunce = "1.0.4"
 flate2 = "1.1.9"
