@@ -49,7 +49,6 @@ import {
   IconAlertTriangle,
   IconArrowLeft,
   IconArrowRight,
-  IconChevronDown,
   IconChevronRight,
   IconDownload,
   IconHistory,
@@ -59,7 +58,8 @@ import {
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { startTransition, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { z } from "zod";
 
 import {
   buildAuditListParamsWithDraft,
@@ -73,6 +73,59 @@ import {
 } from "@/queries/audit-queries";
 
 const routeApi = getRouteApi("/_authenticated/$org_slug/audit");
+
+const evidenceTextSchema = z
+  .unknown()
+  .transform((value) => {
+    if (value === null || value === undefined) {
+      return "Not recorded";
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : "Not recorded";
+    }
+
+    return JSON.stringify(value, null, 2) ?? String(value);
+  })
+  .catch("Not recorded");
+
+const auditSourceDescriptorSchema = z
+  .object({
+    displayName: z.string().nullable().optional(),
+    name: z.string().optional(),
+    provider: z.string().optional(),
+    sourceId: z.string().optional(),
+    sourceKey: z.string().optional(),
+    sourceStatus: z.string().optional(),
+  })
+  .passthrough();
+const auditSourceDescriptorViewSchema = auditSourceDescriptorSchema
+  .nullable()
+  .catch(null);
+
+const auditRequestDescriptorSchema = z
+  .object({
+    descriptorVersion: z.string().nullable().optional(),
+    kind: z.string().nullable().optional(),
+    method: z.string().nullable().optional(),
+    operation: z.string().optional(),
+    paginationPolicy: z.string().nullable().optional(),
+    selector: z.string().nullable().optional(),
+  })
+  .passthrough();
+const auditRequestDescriptorViewSchema = auditRequestDescriptorSchema
+  .nullable()
+  .catch(null);
+
+const auditPageProgressSchema = z
+  .object({
+    nextPageIndex: z.number().int().optional(),
+  })
+  .passthrough();
+const auditPageProgressViewSchema = auditPageProgressSchema
+  .nullable()
+  .catch(null);
 
 function formatEnumLabel(value: string): string {
   return value
@@ -208,6 +261,16 @@ function getTraceIdLabel(item: AuditListItem) {
   return item.id.length > 12 ? item.id.slice(0, 12) : item.id;
 }
 
+function getRequestIdLabel(item: AuditListItem) {
+  if (!item.requestId) {
+    return "n/a";
+  }
+
+  return item.requestId.length > 18
+    ? `${item.requestId.slice(0, 17)}…`
+    : item.requestId;
+}
+
 function escapeCsvValue(value: string) {
   if (!/[",\n\r]/.test(value)) {
     return value;
@@ -226,6 +289,7 @@ function buildAuditCsv(items: readonly AuditListItem[]) {
     getTargetLabel(item),
     getDurationLabel(item),
     getVolumeLabel(item) || "n/a",
+    item.requestId ?? "n/a",
     item.id,
   ]);
 
@@ -239,6 +303,7 @@ function buildAuditCsv(items: readonly AuditListItem[]) {
       "Target",
       "Duration",
       "Rows / Pages",
+      "Request ID",
       "Trace ID",
     ],
     ...rows,
@@ -317,6 +382,14 @@ function AuditTableRow({
       <TableCell className="w-[112px] py-2 text-right align-middle text-xs tabular-nums">
         {getVolumeLabel(item) || metricsLabel || "n/a"}
       </TableCell>
+      <TableCell className="w-[152px] py-2 align-middle">
+        <div
+          className="text-muted-foreground truncate font-mono text-[11px]"
+          title={item.requestId ?? undefined}
+        >
+          {getRequestIdLabel(item)}
+        </div>
+      </TableCell>
       <TableCell className="w-[112px] py-2 align-middle">
         <div className="text-muted-foreground truncate font-mono text-[11px]">
           {getTraceIdLabel(item)}
@@ -329,7 +402,17 @@ function AuditTableRow({
   );
 }
 
-function DetailFact({ label, value }: { label: string; value: string }) {
+function DetailFact({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  if (!value) {
+    return null;
+  }
+
   return (
     <div className="min-w-0">
       <div className="text-muted-foreground text-xs">{label}</div>
@@ -338,34 +421,271 @@ function DetailFact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EvidenceDisclosure({
-  defaultOpen = false,
+function DetailFactGrid({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-2 gap-x-4 gap-y-3">{children}</div>;
+}
+
+function getOptionalText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function formatOptionalEnumLabel(value: string | null | undefined) {
+  const text = getOptionalText(value);
+  return text ? formatEnumLabel(text) : null;
+}
+
+function formatEvidenceValue(value: unknown) {
+  return evidenceTextSchema.parse(value);
+}
+
+function DetailSection({
+  children,
+  meta,
+  title,
+}: {
+  children: ReactNode;
+  meta?: string;
+  title: string;
+}) {
+  return (
+    <section className="space-y-2 border-t pt-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-medium">{title}</h3>
+        {meta ? (
+          <span className="text-muted-foreground shrink-0 text-xs">{meta}</span>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EvidenceBlock({
+  maxHeightClassName = "max-h-64",
   title,
   value,
 }: {
-  defaultOpen?: boolean;
+  maxHeightClassName?: string;
   title: string;
   value: unknown;
 }) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const formattedValue = formatEvidenceValue(value);
 
   return (
-    <details
-      className="group rounded-md border"
-      open={isOpen}
-      onToggle={(event) => setIsOpen(event.currentTarget.open)}
-    >
-      <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs font-medium">
-        {title}
-        <IconChevronDown
-          className="text-muted-foreground size-3.5 transition-transform group-open:rotate-180"
-          stroke={2}
-        />
-      </summary>
-      <pre className="border-t p-3 text-xs break-words whitespace-pre-wrap">
-        {typeof value === "string" ? value : JSON.stringify(value, null, 2)}
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-xs font-medium">{title}</h4>
+        <CopyButton value={formattedValue} className="size-7 shrink-0" />
+      </div>
+      <pre
+        className={`bg-muted/40 ${maxHeightClassName} overflow-auto rounded-md border p-3 font-mono text-[11px] leading-5 break-words whitespace-pre-wrap`}
+      >
+        {formattedValue}
       </pre>
-    </details>
+    </div>
+  );
+}
+
+function AuditFailureNotice({ item }: { item: AuditListItem }) {
+  const errorDetail = item.preview?.errorDetail;
+  const errorHint =
+    item.family === "query_action" ? item.preview?.errorHint : null;
+
+  if (!errorDetail) {
+    return null;
+  }
+
+  return (
+    <Alert variant="destructive">
+      <IconAlertTriangle className="size-4" />
+      <AlertTitle>Failure detail</AlertTitle>
+      <AlertDescription className="space-y-2">
+        {item.failureCode ? (
+          <div className="text-xs font-medium">
+            {formatEnumLabel(item.failureCode)}
+          </div>
+        ) : null}
+        <p className="whitespace-pre-wrap">{errorDetail}</p>
+        {errorHint ? (
+          <p className="text-muted-foreground whitespace-pre-wrap">
+            {errorHint}
+          </p>
+        ) : null}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function SourceDescriptorOverview({ value }: { value: unknown }) {
+  const source = auditSourceDescriptorViewSchema.parse(value);
+
+  return (
+    <div className="space-y-3">
+      {source ? (
+        <DetailFactGrid>
+          <DetailFact
+            label="Display name"
+            value={getOptionalText(source.displayName)}
+          />
+          <DetailFact label="Name" value={getOptionalText(source.name)} />
+          <DetailFact
+            label="Provider"
+            value={formatOptionalEnumLabel(source.provider)}
+          />
+          <DetailFact label="Source key" value={source.sourceKey} />
+          <DetailFact label="Source ID" value={source.sourceId} />
+          <DetailFact
+            label="Status"
+            value={formatOptionalEnumLabel(source.sourceStatus)}
+          />
+        </DetailFactGrid>
+      ) : null}
+      <EvidenceBlock
+        maxHeightClassName="max-h-48"
+        title="Descriptor"
+        value={value}
+      />
+    </div>
+  );
+}
+
+function SourceApiRequestOverview({
+  action,
+}: {
+  action: Extract<AuditActionDetail, { family: "source_api_action" }>["action"];
+}) {
+  const request = auditRequestDescriptorViewSchema.parse(
+    action.requestDescriptor
+  );
+  const pageProgress = auditPageProgressViewSchema.parse(action.pageProgress);
+  const method = getOptionalText(request?.method);
+  const operation = getOptionalText(request?.operation);
+  const selector = getOptionalText(request?.selector);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-md border p-3">
+        <div className="mb-3 flex min-w-0 items-center gap-2">
+          {method ? (
+            <span className="bg-muted shrink-0 rounded px-1.5 py-0.5 font-mono text-[11px] font-medium">
+              {method}
+            </span>
+          ) : null}
+          <div className="min-w-0 truncate text-xs font-medium">
+            {operation ??
+              selector ??
+              action.preparedRequestFingerprint ??
+              "n/a"}
+          </div>
+        </div>
+        <DetailFactGrid>
+          <DetailFact label="Selector" value={selector} />
+          <DetailFact
+            label="Request kind"
+            value={formatEnumLabel(action.requestKind)}
+          />
+          <DetailFact
+            label="Invoke mode"
+            value={formatOptionalEnumLabel(action.invokeMode)}
+          />
+          <DetailFact
+            label="Operation kind"
+            value={formatOptionalEnumLabel(request?.kind)}
+          />
+          <DetailFact
+            label="Pagination"
+            value={formatOptionalEnumLabel(request?.paginationPolicy)}
+          />
+          <DetailFact
+            label="Next page"
+            value={
+              pageProgress?.nextPageIndex === undefined
+                ? null
+                : `${pageProgress.nextPageIndex}`
+            }
+          />
+          <DetailFact
+            label="Attempt"
+            value={
+              action.attemptNumber === null ? null : `${action.attemptNumber}`
+            }
+          />
+        </DetailFactGrid>
+      </div>
+
+      <EvidenceBlock
+        maxHeightClassName="max-h-48"
+        title="Request descriptor"
+        value={action.requestDescriptor}
+      />
+      <EvidenceBlock
+        maxHeightClassName="max-h-36"
+        title="Page progress"
+        value={action.pageProgress}
+      />
+    </div>
+  );
+}
+
+function QueryActionOverview({
+  action,
+}: {
+  action: Extract<AuditActionDetail, { family: "query_action" }>["action"];
+}) {
+  return (
+    <div className="space-y-3">
+      <EvidenceBlock
+        maxHeightClassName="max-h-72"
+        title="SQL"
+        value={action.queryText}
+      />
+      <DetailFactGrid>
+        <DetailFact
+          label="Query mode"
+          value={formatOptionalEnumLabel(action.queryMode)}
+        />
+        <DetailFact
+          label="Usage recording"
+          value={formatEnumLabel(action.usageRecordingStatus)}
+        />
+      </DetailFactGrid>
+      <EvidenceBlock
+        maxHeightClassName="max-h-56"
+        title="Validated query"
+        value={action.validatedQuery}
+      />
+    </div>
+  );
+}
+
+function AuditTimeline({ events }: { events: AuditActionDetail["events"] }) {
+  return (
+    <div className="divide-y rounded-md border">
+      {events.map((event) => (
+        <div
+          key={event.id}
+          className="grid grid-cols-[28px_minmax(0,1fr)] gap-2 px-3 py-2"
+        >
+          <div className="bg-muted flex size-6 items-center justify-center rounded-full text-[11px] tabular-nums">
+            {event.sequence}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="truncate text-xs font-medium">
+                {formatEnumLabel(event.eventType)}
+              </span>
+              <span className="text-muted-foreground shrink-0 text-[11px]">
+                {formatBytes(event.payload.byteLength)}
+              </span>
+            </div>
+            <div className="text-muted-foreground mt-1 truncate font-mono text-[11px]">
+              {formatDateTime(event.occurredAt)}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -453,127 +773,55 @@ function AuditTraceDetail({
         <DetailFact label="Trace ID" value={getTraceIdLabel(item)} />
       </div>
 
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-medium">Event timeline</h3>
-          <span className="text-muted-foreground text-xs">
-            {detail.events.length} events
-          </span>
-        </div>
-        <div className="divide-y rounded-md border">
-          {detail.events.map((event) => (
-            <div
-              key={event.id}
-              className="grid grid-cols-[28px_minmax(0,1fr)] gap-2 px-3 py-2"
-            >
-              <div className="bg-muted flex size-6 items-center justify-center rounded-full text-[11px] tabular-nums">
-                {event.sequence}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-xs font-medium">
-                    {formatEnumLabel(event.eventType)}
-                  </span>
-                  <span className="text-muted-foreground shrink-0 text-[11px]">
-                    {formatBytes(event.payload.byteLength)}
-                  </span>
-                </div>
-                <div className="text-muted-foreground mt-1 truncate font-mono text-[11px]">
-                  {formatDateTime(event.occurredAt)}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <AuditFailureNotice item={item} />
 
       {detail.family === "query_action" ? (
-        <div className="grid gap-2">
-          {item.family === "query_action" && item.preview?.errorDetail ? (
-            <EvidenceDisclosure
-              defaultOpen
-              title="Failure detail"
-              value={{
-                detail: item.preview.errorDetail,
-                failureCode: item.failureCode,
-                hint: item.preview.errorHint,
-                lastEventType: item.lastEventType,
-              }}
-            />
-          ) : null}
-          <EvidenceDisclosure
-            defaultOpen
-            title="SQL"
-            value={detail.action.queryText}
-          />
-          <EvidenceDisclosure
-            title="Validated query"
-            value={
-              detail.action.validatedQuery ?? "No validated query recorded"
-            }
-          />
-          <EvidenceDisclosure
-            title="Metrics"
-            value={item.metrics ?? "No metrics recorded"}
-          />
-          <EvidenceDisclosure
-            title="Usage recording"
-            value={detail.action.usageRecordingStatus}
-          />
-          <EvidenceDisclosure
-            title="Source descriptor"
-            value={detail.action.sourceDescriptor}
-          />
-        </div>
+        <DetailSection title="Query">
+          <QueryActionOverview action={detail.action} />
+        </DetailSection>
       ) : (
-        <div className="grid gap-2">
-          {item.family === "source_api_action" && item.preview?.errorDetail ? (
-            <EvidenceDisclosure
-              defaultOpen
-              title="Failure detail"
-              value={{
-                detail: item.preview.errorDetail,
-                failureCode: item.failureCode,
-                lastEventType: item.lastEventType,
-              }}
-            />
-          ) : null}
-          <EvidenceDisclosure
-            defaultOpen
-            title="Request"
-            value={detail.action.requestDescriptor}
-          />
-          <EvidenceDisclosure
-            title="Payload"
-            value={detail.action.pageProgress}
-          />
-          <EvidenceDisclosure
-            title="Metrics"
-            value={item.metrics ?? "No metrics recorded"}
-          />
-          <EvidenceDisclosure
-            title="Source descriptor"
-            value={detail.action.sourceDescriptor}
-          />
-        </div>
+        <DetailSection title="Request">
+          <SourceApiRequestOverview action={detail.action} />
+        </DetailSection>
       )}
 
-      <div className="grid gap-2">
-        <EvidenceDisclosure
-          title="Command payload"
-          value={firstCommand?.decodedPayload ?? null}
+      <DetailSection title="Source">
+        <SourceDescriptorOverview value={detail.action.sourceDescriptor} />
+      </DetailSection>
+
+      <DetailSection title="Metrics">
+        <EvidenceBlock
+          maxHeightClassName="max-h-40"
+          title="Metrics"
+          value={item.metrics}
         />
-        <EvidenceDisclosure
-          title="Raw Events"
-          value={detail.events.map((event) => ({
-            commandId: event.commandId,
-            eventType: event.eventType,
-            id: event.id,
-            payload: event.decodedPayload,
-            sequence: event.sequence,
-          }))}
-        />
-      </div>
+      </DetailSection>
+
+      <DetailSection
+        meta={`${detail.events.length} events`}
+        title="Event timeline"
+      >
+        <AuditTimeline events={detail.events} />
+      </DetailSection>
+
+      <DetailSection title="Raw trace">
+        <div className="grid gap-3">
+          <EvidenceBlock
+            title="Command payload"
+            value={firstCommand?.decodedPayload}
+          />
+          <EvidenceBlock
+            title="Events"
+            value={detail.events.map((event) => ({
+              commandId: event.commandId,
+              eventType: event.eventType,
+              id: event.id,
+              payload: event.decodedPayload,
+              sequence: event.sequence,
+            }))}
+          />
+        </div>
+      </DetailSection>
     </div>
   );
 }
@@ -977,7 +1225,7 @@ export function AuditPage() {
               </div>
             </div>
             <div className="max-h-[calc(100vh-240px)] overflow-auto">
-              <Table className="min-w-[1220px]">
+              <Table className="min-w-[1372px]">
                 <TableHeader className="bg-background sticky top-0 z-10">
                   <TableRow>
                     <TableHead className="w-[132px]">Time</TableHead>
@@ -992,6 +1240,7 @@ export function AuditPage() {
                     <TableHead className="w-[112px] text-right">
                       Rows / Pages
                     </TableHead>
+                    <TableHead className="w-[152px]">Request ID</TableHead>
                     <TableHead className="w-[112px]">Trace ID</TableHead>
                     <TableHead />
                   </TableRow>

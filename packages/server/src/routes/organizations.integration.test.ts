@@ -1480,6 +1480,7 @@ describe("organizations audit route", () => {
         familyActionId: `query-success-${runId}`,
         id: `query_action:query-success-${runId}`,
         outcome: "succeeded",
+        requestId: `req-query-success-${runId}`,
         startedAt: "2026-03-27T10:00:00.000Z",
       });
       expect(firstItem.preview).toMatchObject({
@@ -1530,6 +1531,7 @@ describe("organizations audit route", () => {
         id: `source_api_action:source-api-pending-${runId}`,
         lastEventAt: "2026-03-27T11:00:00.000Z",
         outcome: "pending",
+        requestId: `req-source-api-${runId}`,
         startedAt: "2026-03-27T09:30:00.000Z",
       });
       expect(secondItem.preview).toMatchObject({
@@ -1581,7 +1583,7 @@ describe("organizations audit route", () => {
         },
       });
 
-      const sanitizedActionResponse = await client.api.organizations[
+      const incompatibleActionResponse = await client.api.organizations[
         ":slug"
       ].audit.$get(
         {
@@ -1598,18 +1600,7 @@ describe("organizations audit route", () => {
         }
       );
 
-      expect(sanitizedActionResponse.status).toBe(200);
-
-      const sanitizedActionPage = auditListResponseSchema.parse(
-        await sanitizedActionResponse.json()
-      );
-
-      expect(sanitizedActionPage.items).toHaveLength(1);
-      expect(sanitizedActionPage.items[0]).toMatchObject({
-        actionName: "invoke",
-        family: "source_api_action",
-        familyActionId: `source-api-pending-${runId}`,
-      });
+      expect(incompatibleActionResponse.status).toBe(422);
 
       const hiddenHintResponse = await client.api.organizations[
         ":slug"

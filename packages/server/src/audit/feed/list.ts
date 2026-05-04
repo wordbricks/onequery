@@ -22,11 +22,13 @@ import type {
 } from "@onequery/audit-contracts/audit";
 import {
   and,
+  asc,
   auditFeedEntries,
   auditProjectionCheckpoints,
   desc,
   eq,
   gt,
+  inArray,
   lt,
   or,
   sql,
@@ -160,7 +162,8 @@ async function loadAuditProjectionLag(
 }
 
 export function serializeAuditFeedItem(
-  row: typeof auditFeedEntries.$inferSelect
+  row: typeof auditFeedEntries.$inferSelect,
+  requestId: string | null = null
 ) {
   const originActor = auditOriginActorSchema.parse(row.originActorJson);
   const target = auditTargetSchema.parse(row.targetJson);
@@ -213,6 +216,7 @@ export function serializeAuditFeedItem(
       outcome: row.outcome as AuditOutcome,
       phase: row.phase as AuditQueryActionPhase,
       preview,
+      requestId,
       startedAt: row.startedAt.toISOString(),
       subtitle: row.subtitle,
       target,
@@ -268,11 +272,59 @@ export function serializeAuditFeedItem(
     outcome: row.outcome as AuditOutcome,
     phase: row.phase as AuditSourceApiActionPhase,
     preview,
+    requestId,
     startedAt: row.startedAt.toISOString(),
     subtitle: row.subtitle,
     target,
     title: row.title,
   };
+}
+
+async function loadAuditFeedRequestIds(input: {
+  db: DatabaseExecutor;
+  organizationId: string;
+  rows: readonly (typeof auditFeedEntries.$inferSelect)[];
+}) {
+  const familyActionIds = [
+    ...new Set(input.rows.map((row) => row.familyActionId)),
+  ];
+  const families = [...new Set(input.rows.map((row) => row.family))];
+
+  if (familyActionIds.length === 0 || families.length === 0) {
+    return new Map<string, string | null>();
+  }
+
+  const commandRows = await input.db
+    .select({
+      family: workflowJournal.family,
+      requestId: workflowJournal.requestId,
+      streamId: workflowJournal.streamId,
+    })
+    .from(workflowJournal)
+    .where(
+      and(
+        eq(workflowJournal.entryKind, "command"),
+        eq(workflowJournal.organizationId, input.organizationId),
+        inArray(workflowJournal.family, families),
+        inArray(workflowJournal.streamId, familyActionIds)
+      )
+    )
+    .orderBy(
+      asc(workflowJournal.family),
+      asc(workflowJournal.streamId),
+      asc(workflowJournal.streamPosition),
+      asc(workflowJournal.id)
+    );
+
+  const requestIds = new Map<string, string | null>();
+  for (const row of commandRows) {
+    const key = `${row.family}:${row.streamId}`;
+    if (!requestIds.has(key)) {
+      requestIds.set(key, row.requestId);
+    }
+  }
+
+  return requestIds;
 }
 
 export async function listAuditFeedPage(input: {
@@ -362,7 +414,17 @@ export async function listAuditFeedPage(input: {
 
   const pageRows = rows.slice(0, input.params.limit);
   const lastRow = pageRows.at(-1);
-  const items = pageRows.map(serializeAuditFeedItem);
+  const requestIds = await loadAuditFeedRequestIds({
+    db: input.db,
+    organizationId: input.organizationId,
+    rows: pageRows,
+  });
+  const items = pageRows.map((row) =>
+    serializeAuditFeedItem(
+      row,
+      requestIds.get(`${row.family}:${row.familyActionId}`) ?? null
+    )
+  );
   const families = [...new Set(items.map((item) => item.family))];
 
   return auditListResponseSchema.parse({

@@ -342,6 +342,7 @@ const auditBaseListItemSchema = z
     originActor: auditOriginActorSchema,
     originSurface: z.string(),
     outcome: z.enum(AUDIT_OUTCOMES),
+    requestId: z.string().nullable(),
     startedAt: z.iso.datetime(),
     subtitle: z.string(),
     target: auditTargetSchema,
