@@ -1,0 +1,17 @@
+{
+  "name": "Block CLI release tag deletion",
+  "target": "tag",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/tags/cli-v*"],
+      "exclude": []
+    }
+  },
+  "bypass_actors": [],
+  "rules": [
+    {
+      "type": "deletion"
+    }
+  ]
+}

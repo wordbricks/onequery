@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -256,11 +256,10 @@ async function getRepoInfo(): Promise<RepoInfo> {
 }
 
 async function loadRulesetSpecs(): Promise<RulesetSpec[]> {
-  const files = [
-    resolve(RULESET_DIR, "main.json"),
-    resolve(RULESET_DIR, "cli-release-tags.json"),
-    resolve(RULESET_DIR, "openclaw-plugin-release-tags.json"),
-  ];
+  const files = readdirSync(RULESET_DIR)
+    .filter((file) => file.endsWith(".json") && file !== "teams.json")
+    .sort()
+    .map((file) => resolve(RULESET_DIR, file));
 
   return files.map((path) => readJsonFile<RulesetSpec>(path));
 }
