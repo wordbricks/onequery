@@ -4,7 +4,7 @@ import {
 } from "@onequery/audit-contracts/audit";
 import type { AuditListParams } from "@onequery/audit-contracts/audit";
 
-export type AuditDraftFilters = {
+type AuditDraftFilters = {
   q: string;
   sourceKey: string;
 };
