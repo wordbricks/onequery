@@ -23,6 +23,29 @@ members = [
   "crates/utils/string",
   "crates/utils/template",
 ]
+default-members = [
+  "crates/async-utils",
+  "crates/config",
+  "crates/connect-support",
+  "crates/core",
+  "crates/core/tests/common",
+  "crates/gateway",
+  "crates/git-utils",
+  "crates/install-context",
+  "crates/onequery-cli",
+  "crates/process-hardening",
+  "crates/proto-cli",
+  "crates/proto-runtime",
+  "crates/utils",
+  "crates/utils/absolute-path",
+  "crates/utils/cargo-bin",
+  "crates/utils/elapsed",
+  "crates/utils/home-dir",
+  "crates/utils/path-utils",
+  "crates/utils/readiness",
+  "crates/utils/string",
+  "crates/utils/template",
+]
 resolver = "2"
 
 [workspace.package]
