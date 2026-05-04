@@ -6,6 +6,8 @@
     "config": [".oxlintrc.jsonc"],
   },
   "treatConfigHintsAsErrors": true,
+  // Examples are standalone demo projects, not part of the monorepo package surface.
+  "ignore": ["examples/**"],
   "ignoreDependencies": [
     "eslint-plugin-turbo",
     // Buf resolves this local plugin name from proto/buf.gen.yaml.
