@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
 
 import type { Statement } from "@casual-simulation/sql-parser";
+import type { InitInput } from "@casual-simulation/sql-parser/pkg/sql_parser_wasm.js";
 import initWasm, {
   format,
   initSync,
   parse_sql,
-  type InitInput,
 } from "@casual-simulation/sql-parser/pkg/sql_parser_wasm.js";
 import { isRecord } from "@onequery/base";
 import {
