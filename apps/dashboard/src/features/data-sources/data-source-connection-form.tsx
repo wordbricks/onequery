@@ -8,6 +8,7 @@ import {
 } from "@/features/data-sources/data-source-provider-metadata";
 import type { ProviderType } from "@/features/data-sources/data-source-provider-metadata";
 import { AmplitudeDataSourceForm } from "@/features/data-sources/forms/amplitude-data-source-form";
+import { CloudflareWorkersObservabilityDataSourceForm } from "@/features/data-sources/forms/cloudflare-workers-observability-data-source-form";
 import { ConnectorDataSourceForm } from "@/features/data-sources/forms/connector-data-source-form";
 import { CredentialDataSourceForm } from "@/features/data-sources/forms/credential-data-source-form";
 import { DatabaseDataSourceForm } from "@/features/data-sources/forms/database-data-source-form";
@@ -122,6 +123,13 @@ export function DataSourceConnectionForm(props: DataSourceConnectionFormProps) {
 
       {selectedProvider === "laminar" && (
         <LaminarDataSourceForm
+          organizationId={props.organizationId}
+          onSuccess={props.onSuccess}
+        />
+      )}
+
+      {selectedProvider === "cloudflare_workers_observability" && (
+        <CloudflareWorkersObservabilityDataSourceForm
           organizationId={props.organizationId}
           onSuccess={props.onSuccess}
         />

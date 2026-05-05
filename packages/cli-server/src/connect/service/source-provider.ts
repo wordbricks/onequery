@@ -35,6 +35,8 @@ export function toCliSourceProvider(value: ProviderType): SourceProvider {
       return SourceProvider.GITHUB;
     case "linear":
       return SourceProvider.LINEAR;
+    case "cloudflare_workers_observability":
+      return SourceProvider.CLOUDFLARE_WORKERS_OBSERVABILITY;
     default:
       return assertNever(value);
   }
@@ -72,6 +74,8 @@ export function fromCliSourceProvider(
       return Result.ok("github");
     case SourceProvider.LINEAR:
       return Result.ok("linear");
+    case SourceProvider.CLOUDFLARE_WORKERS_OBSERVABILITY:
+      return Result.ok("cloudflare_workers_observability");
     default:
       return cliServiceErr({
         detail: "unsupported source provider",

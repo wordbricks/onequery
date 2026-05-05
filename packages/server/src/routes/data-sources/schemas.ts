@@ -29,6 +29,7 @@ export const CreateDataSourceSchema = z.object({
     "sentry",
     "github",
     "linear",
+    "cloudflare_workers_observability",
   ]),
 });
 

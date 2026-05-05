@@ -215,6 +215,18 @@ export const GitHubCredentialsSchema = z.object({
 
 export type GitHubCredentials = z.infer<typeof GitHubCredentialsSchema>;
 
+export const CloudflareWorkersObservabilityCredentialsSchema = z.object({
+  accountId: trimmedString("Account ID is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiToken: requiredOpaqueString("API token is required"),
+  scriptName: optionalTrimmedString("Worker script name is required"),
+  type: z.literal("cloudflare_workers_observability"),
+});
+
+export type CloudflareWorkersObservabilityCredentials = z.infer<
+  typeof CloudflareWorkersObservabilityCredentialsSchema
+>;
+
 export const LinearApiKeyCredentialsSchema = z.object({
   apiKey: requiredOpaqueString("API key is required"),
   type: z.literal("linear"),
@@ -254,6 +266,7 @@ export const CredentialsSchema = z.union([
   PostHogCredentialsSchema,
   SentryCredentialsSchema,
   GitHubCredentialsSchema,
+  CloudflareWorkersObservabilityCredentialsSchema,
   LinearCredentialsSchema,
 ]);
 
@@ -291,6 +304,8 @@ export const credentialSchemaMap = {
   bigquery: BigQueryCredentialsSchema,
   ga: GoogleAnalyticsCredentialsSchema,
   github: GitHubCredentialsSchema,
+  cloudflare_workers_observability:
+    CloudflareWorkersObservabilityCredentialsSchema,
   laminar: LaminarCredentialsSchema,
   linear: LinearCredentialsSchema,
   mixpanel: MixpanelCredentialsSchema,

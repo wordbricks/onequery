@@ -103,6 +103,8 @@ export function fromWorkflowSourceProvider(
       return "github";
     case WorkflowSourceProvider.LINEAR:
       return "linear";
+    case WorkflowSourceProvider.CLOUDFLARE_WORKERS_OBSERVABILITY:
+      return "cloudflare_workers_observability";
     case WorkflowSourceProvider.UNSPECIFIED:
       throw new Error("workflow source provider is unspecified");
     default:

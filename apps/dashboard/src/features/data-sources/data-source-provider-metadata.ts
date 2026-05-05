@@ -16,6 +16,11 @@ const CONNECTABLE_DATA_SOURCE_METADATA = {
     label: "BigQuery",
     testable: false,
   },
+  cloudflare_workers_observability: {
+    icon: ProviderIcons.cloudflare_workers_observability,
+    label: "Cloudflare Workers Observability",
+    testable: false,
+  },
   ga: {
     icon: ProviderIcons.ga,
     label: "Google Analytics",
@@ -92,6 +97,10 @@ export const CONNECTABLE_DATA_SOURCE_OPTIONS = [
   {
     value: "bigquery",
     ...CONNECTABLE_DATA_SOURCE_METADATA.bigquery,
+  },
+  {
+    value: "cloudflare_workers_observability",
+    ...CONNECTABLE_DATA_SOURCE_METADATA.cloudflare_workers_observability,
   },
   {
     value: "laminar",
