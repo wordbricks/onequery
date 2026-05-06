@@ -11,6 +11,10 @@ export type { BlogCategory, BlogPost, BlogPostSection, BlogPostSummary };
 export { blogCategories, blogPostSummaries, thumbnailCells };
 
 const blogPostLoaders = {
+  "debug-production-agent-runs-with-onequery": () =>
+    import("./posts/debug-production-agent-runs-with-onequery").then(
+      (module) => module.debugProductionAgentRunsWithOneQueryPost
+    ),
   "context-enrichment-with-onequery": () =>
     import("./posts/context-enrichment-with-onequery").then(
       (module) => module.contextEnrichmentWithOneQueryPost
