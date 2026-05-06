@@ -9,6 +9,18 @@ import type { BlogPostSummary } from "./blog-types";
 export const blogPostSummaries: BlogPostSummary[] = [
   {
     category: "Engineering",
+    date: "May 6, 2026",
+    description:
+      "How Codex can use OneQuery-connected Cloudflare logs to inspect production failures, separate evidence from guesses, and make targeted code changes.",
+    icon: GitBranchIcon,
+    imageSrc: "/images/blog/debug-production-agent-runs-with-onequery-icon.png",
+    readTime: "7 min read",
+    slug: "debug-production-agent-runs-with-onequery",
+    thumbnail: "blog-thumbnail-teal",
+    title: "Debuggin production deployed on cloudflare with Codex.",
+  },
+  {
+    category: "Engineering",
     date: "May 1, 2026",
     description:
       "A practical workflow for implementing the context enrichment layer described in OpenAI's in-house data agent writeup with schema facts, bounded SQL evidence, and code references.",
