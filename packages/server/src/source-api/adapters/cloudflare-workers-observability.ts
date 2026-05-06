@@ -53,29 +53,27 @@ const telemetryTimeframeSchema = z
   })
   .strict();
 
-const cloudflareTelemetryRequestSchema = z
-  .object({
-    timeoutMs: z
-      .number()
-      .int()
-      .min(1)
-      .max(MAX_PROVIDER_REQUEST_TIMEOUT_MS)
-      .optional(),
-  })
-  .passthrough();
+const cloudflareTelemetryRequestSchema = z.looseObject({
+  timeoutMs: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_PROVIDER_REQUEST_TIMEOUT_MS)
+    .optional(),
+});
 
 const cloudflareRunQueryRequestSchema = cloudflareTelemetryRequestSchema
   .extend({
     queryId: z.string().trim().min(1),
     timeframe: telemetryTimeframeSchema,
   })
-  .passthrough();
+  .loose();
 
 const cloudflareListKeysRequestSchema = cloudflareTelemetryRequestSchema
   .extend({
     timeframe: telemetryTimeframeSchema.optional(),
   })
-  .passthrough();
+  .loose();
 
 const cloudflareListValuesRequestSchema = cloudflareTelemetryRequestSchema
   .extend({
@@ -83,7 +81,7 @@ const cloudflareListValuesRequestSchema = cloudflareTelemetryRequestSchema
     timeframe: telemetryTimeframeSchema,
     type: z.enum(["string", "boolean", "number"]),
   })
-  .passthrough();
+  .loose();
 
 type CloudflareTelemetryRequest = z.infer<
   typeof cloudflareTelemetryRequestSchema
