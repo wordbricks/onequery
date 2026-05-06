@@ -1458,7 +1458,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "onequery-async-utils"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "async-trait",
  "pretty_assertions",
@@ -1468,7 +1468,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-cli"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "anyhow",
  "base64",
@@ -1516,7 +1516,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-config"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "blake3",
  "pretty_assertions",
@@ -1529,7 +1529,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-connect-support"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "base64",
  "buffa",
@@ -1540,7 +1540,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-core"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "libc",
  "onequery-utils",
@@ -1558,7 +1558,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-core-test-support"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "anyhow",
  "onequery-utils-absolute-path",
@@ -1570,7 +1570,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-gateway"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "base64",
  "blake3",
@@ -1607,7 +1607,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-git-utils"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "pretty_assertions",
  "tempfile",
@@ -1615,7 +1615,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-install-context"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "onequery-core",
  "onequery-utils-home-dir",
@@ -1627,7 +1627,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-process-hardening"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "libc",
  "pretty_assertions",
@@ -1635,7 +1635,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-proto-cli"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "buffa",
  "buffa-types",
@@ -1646,7 +1646,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-proto-runtime"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "buffa",
  "buffa-types",
@@ -1659,14 +1659,14 @@ dependencies = [
 
 [[package]]
 name = "onequery-utils"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "pretty_assertions",
 ]
 
 [[package]]
 name = "onequery-utils-absolute-path"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "dirs",
  "dunce",
@@ -1680,7 +1680,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-utils-cargo-bin"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "assert_cmd",
  "thiserror",
@@ -1688,11 +1688,11 @@ dependencies = [
 
 [[package]]
 name = "onequery-utils-elapsed"
-version = "0.0.0"
+version = "0.1.55"
 
 [[package]]
 name = "onequery-utils-home-dir"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "dirs",
  "onequery-utils-absolute-path",
@@ -1702,7 +1702,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-utils-path"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "dunce",
  "onequery-utils-absolute-path",
@@ -1712,7 +1712,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-utils-readiness"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "assert_matches",
  "async-trait",
@@ -1723,7 +1723,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-utils-string"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "pretty_assertions",
  "regex-lite",
@@ -1731,7 +1731,7 @@ dependencies = [
 
 [[package]]
 name = "onequery-utils-template"
-version = "0.0.0"
+version = "0.1.55"
 dependencies = [
  "pretty_assertions",
 ]
