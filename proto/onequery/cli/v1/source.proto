@@ -221,6 +221,7 @@ message ConnectSourceCredentials {
     ConnectSourceSentryCredentials sentry = 12;
     ConnectSourceGitHubCredentials github = 13;
     ConnectSourceLinearCredentials linear = 14;
+    ConnectSourceCloudflareWorkersObservabilityCredentials cloudflare_workers_observability = 15;
   }
 }
 
@@ -558,6 +559,30 @@ message ConnectSourceGitHubCredentials {
   ];
 }
 
+message ConnectSourceCloudflareWorkersObservabilityCredentials {
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  string api_token = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 8192,
+    (buf.validate.field).string.pattern = "^\\S+$"
+  ];
+  string api_base_url = 3 [
+    (buf.validate.field).string.max_len = 2048,
+    (buf.validate.field).string.uri = true
+  ];
+  string script_name = 4 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+}
+
 message ConnectSourceLinearCredentials {
   oneof auth {
     option (buf.validate.oneof).required = true;
@@ -642,6 +667,7 @@ enum SourceProvider {
   SOURCE_PROVIDER_SENTRY = 12;
   SOURCE_PROVIDER_GITHUB = 13;
   SOURCE_PROVIDER_LINEAR = 14;
+  SOURCE_PROVIDER_CLOUDFLARE_WORKERS_OBSERVABILITY = 15;
 }
 
 enum SourceConnectSslMode {

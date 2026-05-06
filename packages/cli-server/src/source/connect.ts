@@ -283,6 +283,26 @@ const SOURCE_CONNECT_PROVIDERS: SourceConnectProviderGuide[] = [
       },
     },
   },
+  {
+    provider: "cloudflare_workers_observability",
+    summary:
+      "Connect Cloudflare Workers Observability with an account-scoped API token and account ID.",
+    steps: [
+      "Enable Workers Logs in the target Worker's Wrangler configuration and redeploy so Cloudflare stores telemetry for the account.",
+      "Create a Cloudflare API token with the Workers Observability permission required by the telemetry API.",
+      "Copy the Cloudflare Account ID from the dashboard and pass it as `credentials.accountId`.",
+      "Optionally include `scriptName` to document the default Worker service this source usually queries. OneQuery still allows account-level telemetry queries.",
+      "Leave `apiBaseUrl` unset unless you are testing against a non-default Cloudflare API host.",
+    ],
+    exampleInput: {
+      sourceKey: "cloudflare_workers",
+      credentials: {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cloudflare_api_token",
+        scriptName: "api-production",
+      },
+    },
+  },
 ];
 
 function sourceConnectProviderGuide(provider: ProviderType) {

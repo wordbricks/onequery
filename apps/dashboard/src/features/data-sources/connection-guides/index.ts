@@ -2,6 +2,7 @@ import type { ProviderType } from "../data-source-provider-metadata";
 import { amplitudeGuideContent } from "./amplitude";
 import { awsAthenaConnectorGuideContent } from "./aws-athena-connector";
 import { bigqueryGuideContent } from "./bigquery";
+import { cloudflareWorkersObservabilityGuideContent } from "./cloudflare-workers-observability";
 import { gaGuideContent } from "./ga";
 import { githubGuideContent } from "./github";
 import { laminarGuideContent } from "./laminar";
@@ -22,6 +23,7 @@ export const GUIDE_CONTENT: Record<ProviderType, GuideContent> = {
   amplitude: amplitudeGuideContent,
   aws_athena_connector: awsAthenaConnectorGuideContent,
   bigquery: bigqueryGuideContent,
+  cloudflare_workers_observability: cloudflareWorkersObservabilityGuideContent,
   ga: gaGuideContent,
   github: githubGuideContent,
   laminar: laminarGuideContent,

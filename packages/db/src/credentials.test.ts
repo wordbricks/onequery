@@ -7,6 +7,7 @@ import {
   credentialSchemaMap,
   GitHubCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
+  CloudflareWorkersObservabilityCredentialsSchema,
   isAnalyticsCredentials,
   isDatabaseCredentials,
   isGitHubCredentials,
@@ -1298,6 +1299,12 @@ describe("credentials schemas", () => {
 
     it("should map github to GitHubCredentialsSchema", () => {
       expect(credentialSchemaMap.github).toBe(GitHubCredentialsSchema);
+    });
+
+    it("should map cloudflare workers observability to CloudflareWorkersObservabilityCredentialsSchema", () => {
+      expect(credentialSchemaMap.cloudflare_workers_observability).toBe(
+        CloudflareWorkersObservabilityCredentialsSchema
+      );
     });
 
     it("should map linear to LinearCredentialsSchema", () => {

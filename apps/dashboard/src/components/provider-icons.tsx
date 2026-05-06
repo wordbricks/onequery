@@ -154,6 +154,21 @@ function LaminarIcon({ size = 24, ...props }: ProviderIconProps) {
   );
 }
 
+function CloudflareIcon({ size = 24, ...props }: ProviderIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      width={size}
+      height={size}
+      {...props}
+    >
+      <title>Cloudflare Workers Observability</title>
+      <path d="M14.9 6.4c1.95 0 3.68 1.17 4.39 2.97A4.24 4.24 0 0 1 23 13.58C23 16.02 21.01 18 18.57 18H6.03A5.03 5.03 0 0 1 1 12.97a5.03 5.03 0 0 1 6.66-4.76A5.66 5.66 0 0 1 14.9 6.4Zm-1.13 3.26-4.9 5.46c-.35.39-.08 1.01.44 1.01h2.45l-1.02 2.95c-.23.66.58 1.18 1.08.69l5.27-5.17c.39-.38.12-1.05-.42-1.05h-2.55l.75-3.4c.14-.63-.67-.97-1.1-.49Z" />
+    </svg>
+  );
+}
+
 function ConnectorIcon({ size = 24, ...props }: ProviderIconProps) {
   return (
     <svg
@@ -450,6 +465,7 @@ export const ProviderIcons = {
   amplitude: AmplitudeIcon,
   aws_athena_connector: ConnectorIcon,
   bigquery: BigQueryIcon,
+  cloudflare_workers_observability: CloudflareIcon,
   ga: GoogleAnalyticsIcon,
   github: GitHubIcon,
   google_docs: GoogleDocsIcon,

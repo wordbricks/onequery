@@ -22,8 +22,12 @@ describe("data-source-provider-metadata", () => {
 
   it("distinguishes connectable and testable providers", () => {
     expect(isProviderType("github")).toBe(true);
+    expect(isProviderType("cloudflare_workers_observability")).toBe(true);
     expect(isProviderType("linear")).toBe(false);
     expect(isTestableDataSourceProvider("posthog")).toBe(true);
+    expect(
+      isTestableDataSourceProvider("cloudflare_workers_observability")
+    ).toBe(false);
     expect(isTestableDataSourceProvider("github")).toBe(false);
   });
 });

@@ -19,6 +19,7 @@ export const PROVIDER_TYPES = [
   "sentry",
   "github",
   "linear",
+  "cloudflare_workers_observability",
 ] as const;
 
 export type ProviderType = (typeof PROVIDER_TYPES)[number];
@@ -39,6 +40,7 @@ export const ANALYSIS_SOURCE_PROVIDER_TYPES = [
   "sentry",
   "github",
   "linear",
+  "cloudflare_workers_observability",
 ] as const satisfies readonly ProviderType[];
 
 export type AnalysisSourceProviderType =

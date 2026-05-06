@@ -182,6 +182,21 @@ export function parseConnectSourceCredentials(
         provider: "linear",
         credentials: parsed,
       }));
+    case "cloudflareWorkersObservability":
+      return Result.ok({
+        provider: "cloudflare_workers_observability",
+        credentials: {
+          type: "cloudflare_workers_observability",
+          accountId: kind.value.accountId,
+          apiToken: kind.value.apiToken,
+          ...(kind.value.apiBaseUrl
+            ? { apiBaseUrl: kind.value.apiBaseUrl }
+            : {}),
+          ...(kind.value.scriptName
+            ? { scriptName: kind.value.scriptName }
+            : {}),
+        },
+      });
     default:
       return cliServiceErr({
         detail: "source connect request must include typed credentials",

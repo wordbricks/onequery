@@ -1,6 +1,7 @@
 import type { ProviderType } from "@onequery/db/server";
 
 import { amplitudeSourceApiAdapter } from "./adapters/amplitude";
+import { cloudflareWorkersObservabilitySourceApiAdapter } from "./adapters/cloudflare-workers-observability";
 import { googleAnalyticsSourceApiAdapter } from "./adapters/ga";
 import { githubSourceApiAdapter } from "./adapters/github";
 import { mixpanelSourceApiAdapter } from "./adapters/mixpanel";
@@ -52,6 +53,7 @@ export function getSourceApiAdapter(
 
 export const sourceApiRegistry = createSourceApiRegistry([
   amplitudeSourceApiAdapter,
+  cloudflareWorkersObservabilitySourceApiAdapter,
   googleAnalyticsSourceApiAdapter,
   githubSourceApiAdapter,
   mixpanelSourceApiAdapter,
