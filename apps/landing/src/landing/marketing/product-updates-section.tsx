@@ -153,8 +153,7 @@ export function ProductUpdatesSection() {
     <section className="section marketing-updates">
       <div className="marketing-updates-copy">
         <p className="eyebrow">Stay in the loop</p>
-        <h2>Get product updates from OneQuery.</h2>
-        <p>Join the list for release notes and new integrations.</p>
+        <h2>Get OneQuery updates.</h2>
       </div>
 
       <form className="marketing-updates-form" onSubmit={handleSubmit}>

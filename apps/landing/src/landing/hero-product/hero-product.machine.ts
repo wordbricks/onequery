@@ -46,43 +46,43 @@ type HeroProductIntegrationRow = {
 };
 
 export const heroProductTabs = [
-  { id: "integrations", label: "Integrations" },
-  { id: "query", label: "Safe query" },
+  { id: "integrations", label: "Grant" },
+  { id: "query", label: "Policy check" },
   { id: "audit", label: "Audit log" },
 ] satisfies ReadonlyArray<{ id: HeroProductTab; label: string }>;
 
 export const heroProductTabMeta = {
   audit: { tag: "latest", title: "Audit log" },
-  integrations: { tag: "multi-source", title: "Multiple integrations" },
-  query: { tag: "read-only", title: "Safe querying" },
+  integrations: { tag: "prod-debug-readonly", title: "Capability grant" },
+  query: { tag: "enforced", title: "Policy check" },
 } satisfies Record<HeroProductTab, { tag: string; title: string }>;
 
 export const heroProductIntegrationRows = [
-  { provider: "postgres", source: "warehouse", status: "ready" },
-  { provider: "github", source: "product-gh", status: "ready" },
-  { provider: "bigquery", source: "spend", status: "pending" },
-  { provider: "mongodb", source: "events", status: "ready" },
+  { provider: "read", source: "sentry.errors", status: "granted" },
+  { provider: "read-only", source: "orders-postgres-db", status: "limited" },
+  { provider: "read/write", source: "github.repo/pr", status: "granted" },
+  { provider: "write", source: "linear.issue", status: "granted" },
 ] satisfies ReadonlyArray<HeroProductIntegrationRow>;
 
 export const heroProductAuditEntries = [
   {
-    detail: "842 ms · succeeded",
-    text: "owner@acme.dev executed query on warehouse",
+    detail: "ok",
+    text: "read sentry ISSUE-7421",
   },
   {
-    detail: "pending provider refresh",
-    text: "ops@acme.dev reviewed bigquery budget window",
+    detail: "31 rows | 10s",
+    text: "query postgres orders",
   },
   {
-    detail: "retry available",
-    text: "agent@acme.dev retry queued for athena-prod",
+    detail: "allowed",
+    text: "open PR + issue",
   },
 ] satisfies ReadonlyArray<HeroProductAuditEntry>;
 
 export const heroSafeQueryChecks = [
-  { id: "nonDestructive", label: "Non-destructive" },
-  { id: "budgetLimit", label: "budget limit" },
-  { id: "accessPermission", label: "access permission" },
+  { id: "nonDestructive", label: "no prod writes" },
+  { id: "budgetLimit", label: "row/time limits" },
+  { id: "accessPermission", label: "grant scope" },
 ] satisfies ReadonlyArray<{ id: SafeQueryCheckId; label: string }>;
 
 const heroSafeQueryScenarios = [
