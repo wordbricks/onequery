@@ -6,7 +6,7 @@ export function RoadmapSection() {
     <section className="section roadmap-section" id={SECTION_IDS.roadmap}>
       <div className="section-intro">
         <p className="eyebrow">Roadmap</p>
-        <h2>Win production debugging first.</h2>
+        <h2>Start with debugging. Build toward governed access.</h2>
       </div>
 
       <ol className="roadmap-lanes">
