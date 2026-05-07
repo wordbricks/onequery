@@ -22,7 +22,6 @@ type RoadmapStatus = "shipped" | "next" | "later";
 type RoadmapItem = {
   key: string;
   title: string;
-  description: string;
 };
 
 type RoadmapLane = {
@@ -32,14 +31,10 @@ type RoadmapLane = {
   title: string;
 };
 
-const querySnippet = `onequery query exec \\
-  --source warehouse \\
-  --sql "select date_trunc('day', occurred_at) as day, \\
-                sum(total_usd) as spend \\
-         from agent_runs \\
-         group by 1 \\
-         order by 1 desc \\
-         limit 7"`;
+const querySnippet = `onequery agent debug \\
+  --grant prod-debug-readonly \\
+  --sentry ISSUE-7421 \\
+  --sources sentry,postgres,github,linear`;
 
 export const FOOTER_LINKS = [
   {
@@ -60,19 +55,20 @@ export const FOOTER_LINKS = [
 ] satisfies ReadonlyArray<FooterLink>;
 
 export const HERO_SIGNALS = [
-  "Self-host the gateway with `onequery gateway start`.",
-  "Keep the CLI and browser pointed at the same runtime state.",
-  "Centralize budgets, policies, and source access in one control plane.",
+  "No prod keys",
+  "No prod writes",
+  "Full audit",
 ] as const;
 
 export const INSTALL_STEPS = [
-  "Install the CLI with the script, Homebrew, npm, or Bun.",
-  "Start the self-hosted gateway with `onequery gateway start`.",
-  "Open the local UI to bootstrap the first user, then run `onequery auth login`.",
-  "Connect a source and execute queries from the CLI or the browser against the same gateway.",
+  "Start gateway.",
+  "Apply grant.",
+  "Connect sources.",
 ] as const;
 
 export const NAVIGATION_ITEMS = [
+  { href: "#demo", label: "Demo" },
+  { href: "#install", label: "Install" },
   { href: "/blog", label: "Blog" },
 ] satisfies ReadonlyArray<NavigationItem>;
 
@@ -83,97 +79,77 @@ export const ROADMAP_LANES = [
     title: "In production today",
     items: [
       {
-        key: "read-only-validation",
+        key: "read-only-query-validation",
         title: "Read-only query validation",
-        description:
-          "Every statement is parsed and screened for writes and side effects before it reaches a connected source. Unsafe SQL is rejected, not guessed at.",
       },
       {
-        key: "audit-log",
+        key: "audit-log-for-every-query",
         title: "Audit log for every query",
-        description:
-          "Operator and agent queries are captured with identity, statement text, duration, row count, and policy outcome. Anything that touched a source is reviewable.",
       },
       {
         key: "organization-membership",
         title: "Organization & membership",
-        description:
-          "Invite engineers, analysts, and agents into a single org. Roles scope who can connect a source, run a query, or read the audit log.",
+      },
+      {
+        key: "agent-entrypoints",
+        title: "Claude Code, OpenClaw, Hermes",
       },
     ],
   },
   {
     eyebrow: "Next up",
     status: "next",
-    title: "Actively being built",
+    title: "Production guardrails",
     items: [
       {
         key: "agent-profiles",
         title: "Agent profiles",
-        description:
-          "Each agent gets its own permission set and source list. Two agents on the same gateway can be pointed at two completely different surfaces.",
       },
       {
-        key: "hermes-plugin",
-        title: "Hermes Agent plugin",
-        description:
-          "A first-party plugin so Hermes agents call OneQuery through the same safe gateway as every other operator — same audit, same budget, same policy.",
+        key: "policy-templates",
+        title: "Policy templates",
       },
       {
         key: "custom-connectors",
         title: "Custom connectors",
-        description:
-          "A connector manifest and SDK for the systems that aren't in the built-in catalog. Ship your own and keep everything else on the OneQuery rails.",
       },
     ],
   },
   {
     eyebrow: "Planned",
     status: "later",
-    title: "Coming after that",
+    title: "Security operations",
     items: [
       {
         key: "1password",
-        title: "1Password integration",
-        description:
-          "Resolve source credentials and connection secrets from a shared 1Password vault so they never live on operator laptops or in env files.",
+        title: "1Password",
       },
       {
         key: "sso-saml",
         title: "SSO & SAML",
-        description:
-          "Sign in with Okta, Azure AD, or any SAML/OIDC provider. Required once OneQuery becomes shared infra inside a larger org.",
-      },
-      {
-        key: "scheduled-queries",
-        title: "Scheduled read-only queries",
-        description:
-          "Run a query on a cron and forward the result to Slack, email, or a webhook. The same policy and audit log still apply.",
       },
       {
         key: "approval-workflow",
-        title: "Query approval workflows",
-        description:
-          "Escalate sensitive or over-budget queries to a reviewer inline. Operators ship the riskier ones without turning off the safety net.",
+        title: "Approvals",
       },
     ],
   },
 ] satisfies ReadonlyArray<RoadmapLane>;
 
-export const QUERY_DETAILS_SNIPPET = `source       warehouse
-policy       read-only passed
-statement    single statement
-duration     842 ms
-rows         7 returned
-budget       $4.2k remaining`;
+export const QUERY_DETAILS_SNIPPET = `source     orders-postgres-db
+policy     writes blocked
+statement  single statement
+duration   82 ms
+rows       31 returned
+budget     $59.20 remaining`;
 
 export const QUICKSTART_TERMINAL_LINES = [
   { kind: "prompt", text: DOWNLOAD_COMMAND },
   { kind: "output", text: "installed onequery under ~/.onequery" },
   { kind: "prompt", text: "onequery gateway start" },
   { kind: "output", text: "gateway listening on http://localhost:5656" },
-  { kind: "prompt", text: "onequery auth login" },
-  { kind: "output", text: "signed in as owner@acme.dev · org acme-org" },
+  { kind: "prompt", text: "onequery grant apply prod-debug-readonly.yaml" },
+  { kind: "output", text: "grant ready | credentials hidden" },
 ] satisfies ReadonlyArray<TerminalLine>;
 
 export const QUERY_TERMINAL_LINES = [
@@ -183,6 +159,7 @@ export const QUERY_TERMINAL_LINES = [
       text: line,
     })
   ),
-  { kind: "output", text: "7 rows returned from warehouse · 842 ms" },
-  { kind: "output", text: "latest day: 2026-04-13 · spend: $12,481.32" },
+  { kind: "output", text: "grant loaded | credentials hidden" },
+  { kind: "output", text: "read sentry + postgres limit 100" },
+  { kind: "output", text: "opened PR + Linear issue | audited" },
 ] satisfies ReadonlyArray<TerminalLine>;

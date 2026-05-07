@@ -110,5 +110,5 @@ export const debugProductionAgentRunsWithOneQueryPost: BlogPost = {
   ],
   slug: "debug-production-agent-runs-with-onequery",
   thumbnail: "blog-thumbnail-teal",
-  title: "Debuggin production deployed on cloudflare with Codex.",
+  title: "Debugging production on Cloudflare with Codex.",
 };

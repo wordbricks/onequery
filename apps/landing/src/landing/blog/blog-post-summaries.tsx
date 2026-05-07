@@ -17,7 +17,7 @@ export const blogPostSummaries: BlogPostSummary[] = [
     readTime: "7 min read",
     slug: "debug-production-agent-runs-with-onequery",
     thumbnail: "blog-thumbnail-teal",
-    title: "Debuggin production deployed on cloudflare with Codex.",
+    title: "Debugging production on Cloudflare with Codex.",
   },
   {
     category: "Engineering",

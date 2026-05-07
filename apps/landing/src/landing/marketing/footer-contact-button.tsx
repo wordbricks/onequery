@@ -221,8 +221,8 @@ function ContactModal({ controller }: { controller: ContactModalController }) {
           <p className="eyebrow">Start a conversation</p>
           <h2 id="contact-modal-title">Contact OneQuery</h2>
           <p className="contact-modal-copy">
-            Tell us what you are trying to ship. We can help with self-hosting,
-            integrations, and rollout questions.
+            Tell us how you want agents to debug production. We can help with
+            self-hosting, capability grants, and rollout questions.
           </p>
         </div>
 
@@ -260,7 +260,7 @@ function ContactModal({ controller }: { controller: ContactModalController }) {
           <label className="contact-modal-field">
             <span className="contact-modal-label">Message</span>
             <textarea
-              placeholder="Share your use case, timeline, or the integration you need."
+              placeholder="Share your agent workflow, production systems, or timeline."
               className="contact-modal-textarea"
               disabled={controller.isSubmitting}
               value={controller.form.message}

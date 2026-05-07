@@ -20,14 +20,14 @@ function SafeQueryPanel({
     <div
       className="hero-safe-query"
       data-result={result}
-      aria-label="Safe querying checks"
+      aria-label="Capability grant policy checks"
     >
       <div className="hero-safe-query-preview">
         <span className="hero-safe-query-preview-line hero-safe-query-preview-line-primary">
-          query
+          read sentry
         </span>
-        <span className="hero-safe-query-preview-line">content</span>
-        <span className="hero-safe-query-preview-line">content</span>
+        <span className="hero-safe-query-preview-line">select orders</span>
+        <span className="hero-safe-query-preview-line">write PR</span>
       </div>
 
       <div className="hero-safe-query-sidebar">
@@ -153,21 +153,18 @@ export function HeroProductSurface() {
           ))}
         </div>
 
-        <div className="hero-product-sidebar-footer">gateway running</div>
+        <div className="hero-product-sidebar-footer">audited</div>
       </aside>
 
       <div className="hero-product-main">
         <div className="hero-product-header">
           <div>
-            <h3>Welcome to OneQuery</h3>
-            <p>
-              Connect sources, run safe queries, and review organization
-              history.
-            </p>
+            <h3>prod-debug-readonly</h3>
+            <p>Context without secrets.</p>
           </div>
           <div className="hero-product-header-meta">
-            <span>12 sources</span>
-            <span>budget healthy</span>
+            <span>4 sources</span>
+            <span>keys hidden</span>
           </div>
         </div>
 

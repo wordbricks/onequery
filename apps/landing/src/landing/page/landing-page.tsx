@@ -45,24 +45,22 @@ type LandingCtaLink = {
 const OPENCLAW_DEMO_ROOT_MARGIN = "700px 0px";
 const PRODUCT_UPDATES_ROOT_MARGIN = "600px 0px";
 
-const heroActions = [
+const heroActions: ReadonlyArray<LandingCtaLink> = [
   {
     className: "button button-primary",
     href: `#${SECTION_IDS.install}`,
-    label: "Get started",
+    label: "Install CLI",
     trackingName: "hero_get_started",
     trackingSection: "hero",
   },
   {
     className: "button button-secondary",
-    href: REPOSITORY_URL,
-    label: "Browse repository",
-    rel: "noreferrer",
-    target: "_blank",
-    trackingName: "hero_browse_repository",
+    href: "#demo",
+    label: "Watch demo",
+    trackingName: "hero_watch_demo",
     trackingSection: "hero",
   },
-] satisfies ReadonlyArray<LandingCtaLink>;
+];
 
 const finalCtaActions = [
   {
@@ -102,6 +100,37 @@ const LazyProductUpdatesSection = lazy(() =>
     default: module.ProductUpdatesSection,
   }))
 );
+
+function OpenClawDemoFallback() {
+  return (
+    <div className="openclaw-demo-loading" aria-hidden="true">
+      <div className="openclaw-demo-poster">
+        <aside className="openclaw-demo-poster-sidebar">
+          <span className="openclaw-demo-poster-avatar">OC</span>
+          <span className="openclaw-demo-poster-channel"># prod-debug</span>
+          <span className="openclaw-demo-poster-channel"># github-prs</span>
+          <span className="openclaw-demo-poster-channel"># incidents</span>
+        </aside>
+
+        <div className="openclaw-demo-poster-main">
+          <div className="openclaw-demo-poster-message">
+            <span className="openclaw-demo-poster-dot" />
+            <p>Sentry error ISSUE-7421</p>
+          </div>
+          <div className="openclaw-demo-poster-message">
+            <span className="openclaw-demo-poster-dot" />
+            <p>Postgres read limited to 100 rows</p>
+          </div>
+          <div className="openclaw-demo-poster-message">
+            <span className="openclaw-demo-poster-dot" />
+            <p>GitHub PR opened, Linear issue linked</p>
+          </div>
+          <div className="openclaw-demo-poster-audit">audit trail recorded</div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function TrackedLink({
   children,
@@ -183,10 +212,11 @@ function HeroSection() {
   return (
     <section className="hero-section">
       <div className="hero-copy">
-        <p className="eyebrow">Open source, self-hostable</p>
-        <h1>Data ready for AI agents.</h1>
+        <p className="eyebrow">Agent access control plane</p>
+        <h1>Give AI agents production context, not production keys.</h1>
         <p className="hero-body">
-          One safe gateway connecting all data sources.
+          OneQuery gives agents a governed path to approved sources while
+          credentials stay centralized and every query leaves an audit trail.
         </p>
 
         <DownloadCommand />
@@ -206,17 +236,17 @@ function HeroSection() {
             </TrackedLink>
           ))}
         </div>
-
-        <ul className="hero-signals">
-          {HERO_SIGNALS.map((signal) => (
-            <li key={signal}>{signal}</li>
-          ))}
-        </ul>
       </div>
 
       <div className="hero-visual">
         <HeroProductSurface />
       </div>
+
+      <ul className="hero-signals">
+        {HERO_SIGNALS.map((signal) => (
+          <li key={signal}>{signal}</li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -229,26 +259,17 @@ function OpenClawSection() {
   return (
     <section className="section openclaw-demo-section" id="demo">
       <div className="section-intro">
-        <p className="eyebrow">See it in action</p>
-        <h2>OpenClaw runs the OneQuery CLI inside a Discord thread.</h2>
-        <p>
-          The OpenClaw agent invokes OneQuery commands from chat, executes safe
-          queries through the gateway, and posts the report back inline — no
-          context switch, no copy-paste.
-        </p>
+        <p className="eyebrow">Agent-native access</p>
+        <h2>One grant. Any agent.</h2>
       </div>
 
       <div ref={targetRef} className="openclaw-demo-frame">
         {isNearViewport ? (
-          <Suspense
-            fallback={
-              <div className="openclaw-demo-loading" aria-hidden="true" />
-            }
-          >
+          <Suspense fallback={<OpenClawDemoFallback />}>
             <LazyOpenClawDemoPlayer />
           </Suspense>
         ) : (
-          <div className="openclaw-demo-loading" aria-hidden="true" />
+          <OpenClawDemoFallback />
         )}
       </div>
     </section>
@@ -260,14 +281,7 @@ function SummarySection() {
     <section className="section section-summary" id={SECTION_IDS.surface}>
       <div className="section-intro">
         <p className="eyebrow">What OneQuery does</p>
-        <h2>
-          A single query workspace across your internal data and external tools.
-        </h2>
-        <p>
-          OneQuery sits between the tools asking for access and the systems
-          holding the data, so teams can apply policy, budget, audit, and
-          permission controls in one place.
-        </p>
+        <h2>Policy between agents and prod.</h2>
       </div>
 
       <ControlPlaneDiagram />
@@ -279,8 +293,8 @@ function InstallSection() {
   return (
     <section className="section utility-grid" id={SECTION_IDS.install}>
       <article className="utility-panel">
-        <p className="eyebrow">Install</p>
-        <h2>Up and running in a few commands.</h2>
+        <p className="eyebrow">First workflow</p>
+        <h2>Debug production without sharing credentials.</h2>
         <ol className="step-list">
           {INSTALL_STEPS.map((step) => (
             <li key={step}>{step}</li>
@@ -289,11 +303,11 @@ function InstallSection() {
       </article>
 
       <article className="utility-panel utility-panel-code">
-        <p className="eyebrow">Quickstart</p>
+        <p className="eyebrow">Grant setup</p>
         <TerminalSurface
           title="Terminal session"
           lines={QUICKSTART_TERMINAL_LINES}
-          footer="ready to connect the first source"
+          footer="ready to debug production without sharing credentials"
         />
       </article>
     </section>
@@ -307,23 +321,18 @@ function WorkflowSection() {
       id={SECTION_IDS.workflow}
     >
       <article className="utility-panel utility-panel-code workflow-panel-example">
-        <p className="eyebrow">Query example</p>
+        <p className="eyebrow">Incident loop</p>
         <TerminalSurface
-          title="Query execution"
+          title="Agent run"
           lines={QUERY_TERMINAL_LINES}
-          footer="shared runtime state visible in CLI and browser"
+          footer="inspect evidence, open PRs and issues, audit everything"
         />
       </article>
 
       <article className="utility-panel workflow-panel-details">
         <p className="eyebrow">Query details</p>
-        <h2>Review the result, guardrails, and cost context together.</h2>
-        <p>
-          The query surface is not only about SQL text. OneQuery keeps the
-          source, read-only safeguards, execution time, row count, and budget
-          context visible so operators can understand what just ran before
-          sharing or retrying the request.
-        </p>
+        <h2>Review the result and guardrails together.</h2>
+        <p>Source, policy, row count, latency, and budget stay visible.</p>
         <pre className="workflow-block">{QUERY_DETAILS_SNIPPET}</pre>
       </article>
     </section>
@@ -334,17 +343,11 @@ function FinalCtaSection() {
   return (
     <section className="section final-cta">
       <div className="final-cta-copy">
-        <p className="eyebrow">Self-host or connect to an existing server</p>
-        <h2>
-          Deploy OneQuery in your environment for secure, controllable, and
-          fully visible data operations.
-        </h2>
+        <p className="eyebrow">Built for real incidents</p>
+        <h2>Give agents the clues, not the keys.</h2>
         <p>
-          OneQuery is an open-source platform for unified data querying.
-          Self-host the full product with <code>onequery gateway start</code>,
-          connect databases, analytics tools, and APIs from one place, and give
-          operators and AI agents a shared surface for access, execution, and
-          recovery.
+          Agents can inspect errors, logs, and database state without raw
+          credentials or permission to change production.
         </p>
       </div>
 
