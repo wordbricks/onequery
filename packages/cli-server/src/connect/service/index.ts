@@ -1,4 +1,5 @@
 export {
+  createDeviceAuthorizationHandlers,
   handleGetSession,
   handlePollDeviceAuthorization,
   handleRefreshSession,
