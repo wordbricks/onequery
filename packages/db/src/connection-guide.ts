@@ -51,7 +51,8 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
   },
   {
     provider: "mysql",
-    summary: "Connect a MySQL database with host, schema, and login credentials.",
+    summary:
+      "Connect a MySQL database with host, schema, and login credentials.",
     steps: [
       "Retrieve the MySQL host, database name, username, and password from the deployment or secret manager.",
       "Confirm the port and SSL requirement before building the payload.",
@@ -70,7 +71,8 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
   },
   {
     provider: "mongodb",
-    summary: "Connect MongoDB with one connection string plus database selection.",
+    summary:
+      "Connect MongoDB with one connection string plus database selection.",
     steps: [
       "Retrieve a MongoDB connection string with the required read access.",
       "If the deployment spans multiple databases, include `databases`; otherwise provide one `database`.",
@@ -109,7 +111,8 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
   },
   {
     provider: "laminar",
-    summary: "Connect Laminar with an API key and optional non-default base URL.",
+    summary:
+      "Connect Laminar with an API key and optional non-default base URL.",
     steps: [
       "Retrieve a Laminar API key with access to the target workspace.",
       "Only include `apiBaseUrl` when the account uses a non-default Laminar API host.",
@@ -164,7 +167,8 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
   },
   {
     provider: "amplitude",
-    summary: "Connect Amplitude with a project API key, secret key, and region.",
+    summary:
+      "Connect Amplitude with a project API key, secret key, and region.",
     steps: [
       "In Amplitude Settings, open `Projects`, choose the target project, and go to its `General` page.",
       "In the `Project Details` card, click `Show` next to `Secret Key` and copy that value into `credentials.secretKey`.",
@@ -261,7 +265,8 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
   },
   {
     provider: "linear",
-    summary: "Connect Linear with either an API key or a full OAuth token bundle.",
+    summary:
+      "Connect Linear with either an API key or a full OAuth token bundle.",
     steps: [
       "Choose either the API key shape (`apiKey`) or the OAuth shape (`accessToken` plus `linearOrganizationId`).",
       "If you use OAuth, keep the refresh metadata so the server can keep the connection valid over time.",

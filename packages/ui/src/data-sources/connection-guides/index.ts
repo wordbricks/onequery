@@ -22,7 +22,10 @@ export type {
   GuideStep,
 } from "./types";
 
-export const GUIDE_CONTENT: Record<DataSourceConnectionGuideProvider, GuideContent> = {
+export const GUIDE_CONTENT: Record<
+  DataSourceConnectionGuideProvider,
+  GuideContent
+> = {
   amplitude: amplitudeGuideContent,
   aws_athena_connector: awsAthenaConnectorGuideContent,
   bigquery: bigqueryGuideContent,

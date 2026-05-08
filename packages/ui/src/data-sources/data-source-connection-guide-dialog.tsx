@@ -8,8 +8,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 import { CONNECTOR_BASE_URL_TOKEN, GUIDE_CONTENT } from "./connection-guides";
 import type {
   DataSourceConnectionGuideProvider,
