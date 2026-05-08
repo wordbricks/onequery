@@ -54,6 +54,10 @@ type CliAuthUserInit = {
   displayName?: string;
 };
 
+type CliDeviceAuthorizationHandlerOptions = {
+  clientId?: string;
+};
+
 function timestampFromIsoString(value: string) {
   const parsed = isoDatetimeToDate.safeDecode(value);
   if (!parsed.success) {
@@ -98,152 +102,41 @@ const handleRefreshSessionImpl: CliResultServiceMethod<
     return Result.ok(buildCliRefreshSession(session));
   });
 
-const handleStartDeviceAuthorizationImpl: CliResultServiceMethod<
-  "startDeviceAuthorization"
-> = async (_request, context) => {
-  const c = requireCliConnectRequestContext(context).honoContext;
-  const response = await c.var.storage.auth.handler(
-    createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_CODE_PATH, {
-      client_id: CLI_DEVICE_AUTH_CLIENT_ID,
-    })
-  );
+function createHandleStartDeviceAuthorizationImpl(
+  options: CliDeviceAuthorizationHandlerOptions = {}
+): CliResultServiceMethod<"startDeviceAuthorization"> {
+  const clientId = options.clientId ?? CLI_DEVICE_AUTH_CLIENT_ID;
 
-  if (response.status === 200) {
-    const payload = await readBetterAuthDeviceCodeResponse(response);
-    const expiresInSec = payload.expires_in ?? CLI_DEFAULT_LOGIN_TIMEOUT_SEC;
-
-    return Result.ok({
-      deviceCode: payload.device_code,
-      userCode: payload.user_code,
-      ...buildDeviceVerificationUrls(
-        c.var.runtime.auth.baseURL,
-        payload.user_code
-      ),
-      pollAfter: durationFromMs(
-        deviceAuthorizationPollAfterMs(payload.interval)
-      ),
-      expiresAt: timestampFromDate(new Date(Date.now() + expiresInSec * 1000)),
-    });
-  }
-
-  if (response.status === 400) {
-    const payload = await readBetterAuthDeviceTokenErrorResponse(response);
-    return cliServiceErr({
-      detail: toCliDeviceAuthProblemDetail(payload),
-      key: "AUTH_REQUEST_INVALID",
-    });
-  }
-
-  if (response.status === 429) {
-    return cliServiceErr({
-      detail: "device authorization start was rate-limited",
-      key: "LOGIN_RATE_LIMITED",
-      retryAfterMs: parseRetryAfterMs(response),
-    });
-  }
-
-  throw new Error(
-    `unexpected Better Auth response for ${CLI_DEVICE_AUTH_CODE_PATH}: ${response.status}`
-  );
-};
-
-const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
-  "pollDeviceAuthorization"
-> = async (request, context) =>
-  Result.gen(async function* handlePollDeviceAuthorizationFlow() {
+  return async (_request, context) => {
     const c = requireCliConnectRequestContext(context).honoContext;
     const response = await c.var.storage.auth.handler(
-      createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_TOKEN_PATH, {
-        client_id: CLI_DEVICE_AUTH_CLIENT_ID,
-        device_code: request.deviceCode,
-        grant_type: CLI_DEVICE_AUTH_GRANT_TYPE,
+      createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_CODE_PATH, {
+        client_id: clientId,
       })
     );
 
     if (response.status === 200) {
-      const payload = await readBetterAuthDeviceTokenSuccessResponse(response);
-      const session = yield* resolveCliSessionIdentityResult(
-        await resolveCliSessionIdentity(
-          c.var.storage,
-          createBearerHeaders(c.req.raw, payload.access_token)
-        )
-      );
+      const payload = await readBetterAuthDeviceCodeResponse(response);
+      const expiresInSec = payload.expires_in ?? CLI_DEFAULT_LOGIN_TIMEOUT_SEC;
 
       return Result.ok({
-        outcome: {
-          case: "authorized",
-          value: buildAuthorizedDeviceAuthorizationResponse({
-            accessToken: payload.access_token,
-            session,
-          }),
-        },
-      } satisfies MessageInitShape<
-        typeof PollDeviceAuthorizationResponseSchema
-      >);
+        deviceCode: payload.device_code,
+        userCode: payload.user_code,
+        ...buildDeviceVerificationUrls(
+          c.var.runtime.auth.baseURL,
+          payload.user_code
+        ),
+        pollAfter: durationFromMs(
+          deviceAuthorizationPollAfterMs(payload.interval)
+        ),
+        expiresAt: timestampFromDate(
+          new Date(Date.now() + expiresInSec * 1000)
+        ),
+      });
     }
 
     if (response.status === 400) {
       const payload = await readBetterAuthDeviceTokenErrorResponse(response);
-
-      if (payload.error === "authorization_pending") {
-        return Result.ok({
-          outcome: {
-            case: "pending",
-            value: {
-              pollAfter: durationFromMs(CLI_DEFAULT_POLL_AFTER_MS),
-            },
-          },
-        } satisfies MessageInitShape<
-          typeof PollDeviceAuthorizationResponseSchema
-        >);
-      }
-
-      if (payload.error === "slow_down") {
-        return Result.ok({
-          outcome: {
-            case: "rateLimited",
-            value: {
-              reason: toCliDeviceAuthProblemDetail(payload),
-              pollAfter: durationFromMs(slowedDeviceAuthorizationPollAfterMs()),
-            },
-          },
-        } satisfies MessageInitShape<
-          typeof PollDeviceAuthorizationResponseSchema
-        >);
-      }
-
-      if (payload.error === "access_denied") {
-        return Result.ok({
-          outcome: {
-            case: "denied",
-            value: {
-              reason:
-                payload.error_description === undefined
-                  ? "device authorization was denied"
-                  : toCliDeviceAuthProblemDetail(payload),
-            },
-          },
-        } satisfies MessageInitShape<
-          typeof PollDeviceAuthorizationResponseSchema
-        >);
-      }
-
-      if (payload.error === "expired_token") {
-        return Result.ok({
-          outcome: {
-            case: "expired",
-            value: {
-              reason:
-                payload.error_description === undefined
-                  ? "device authorization session expired"
-                  : toCliDeviceAuthProblemDetail(payload),
-            },
-          },
-        } satisfies MessageInitShape<
-          typeof PollDeviceAuthorizationResponseSchema
-        >);
-      }
-
       return cliServiceErr({
         detail: toCliDeviceAuthProblemDetail(payload),
         key: "AUTH_REQUEST_INVALID",
@@ -251,26 +144,151 @@ const handlePollDeviceAuthorizationImpl: CliResultServiceMethod<
     }
 
     if (response.status === 429) {
-      return Result.ok({
-        outcome: {
-          case: "rateLimited",
-          value: {
-            reason: "device authorization polling was rate-limited",
-            pollAfter: durationFromMs(
-              parseRetryAfterMs(response) ??
-                slowedDeviceAuthorizationPollAfterMs()
-            ),
-          },
-        },
-      } satisfies MessageInitShape<
-        typeof PollDeviceAuthorizationResponseSchema
-      >);
+      return cliServiceErr({
+        detail: "device authorization start was rate-limited",
+        key: "LOGIN_RATE_LIMITED",
+        retryAfterMs: parseRetryAfterMs(response),
+      });
     }
 
     throw new Error(
-      `unexpected Better Auth response for ${CLI_DEVICE_AUTH_TOKEN_PATH}: ${response.status}`
+      `unexpected Better Auth response for ${CLI_DEVICE_AUTH_CODE_PATH}: ${response.status}`
     );
-  });
+  };
+}
+
+function createHandlePollDeviceAuthorizationImpl(
+  options: CliDeviceAuthorizationHandlerOptions = {}
+): CliResultServiceMethod<"pollDeviceAuthorization"> {
+  const clientId = options.clientId ?? CLI_DEVICE_AUTH_CLIENT_ID;
+
+  return async (request, context) => {
+    return Result.gen(async function* handlePollDeviceAuthorizationFlow() {
+      const c = requireCliConnectRequestContext(context).honoContext;
+      const response = await c.var.storage.auth.handler(
+        createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_TOKEN_PATH, {
+          client_id: clientId,
+          device_code: request.deviceCode,
+          grant_type: CLI_DEVICE_AUTH_GRANT_TYPE,
+        })
+      );
+
+      if (response.status === 200) {
+        const payload =
+          await readBetterAuthDeviceTokenSuccessResponse(response);
+        const session = yield* resolveCliSessionIdentityResult(
+          await resolveCliSessionIdentity(
+            c.var.storage,
+            createBearerHeaders(c.req.raw, payload.access_token)
+          )
+        );
+
+        return Result.ok({
+          outcome: {
+            case: "authorized",
+            value: buildAuthorizedDeviceAuthorizationResponse({
+              accessToken: payload.access_token,
+              session,
+            }),
+          },
+        } satisfies MessageInitShape<
+          typeof PollDeviceAuthorizationResponseSchema
+        >);
+      }
+
+      if (response.status === 400) {
+        const payload = await readBetterAuthDeviceTokenErrorResponse(response);
+
+        if (payload.error === "authorization_pending") {
+          return Result.ok({
+            outcome: {
+              case: "pending",
+              value: {
+                pollAfter: durationFromMs(CLI_DEFAULT_POLL_AFTER_MS),
+              },
+            },
+          } satisfies MessageInitShape<
+            typeof PollDeviceAuthorizationResponseSchema
+          >);
+        }
+
+        if (payload.error === "slow_down") {
+          return Result.ok({
+            outcome: {
+              case: "rateLimited",
+              value: {
+                reason: toCliDeviceAuthProblemDetail(payload),
+                pollAfter: durationFromMs(
+                  slowedDeviceAuthorizationPollAfterMs()
+                ),
+              },
+            },
+          } satisfies MessageInitShape<
+            typeof PollDeviceAuthorizationResponseSchema
+          >);
+        }
+
+        if (payload.error === "access_denied") {
+          return Result.ok({
+            outcome: {
+              case: "denied",
+              value: {
+                reason:
+                  payload.error_description === undefined
+                    ? "device authorization was denied"
+                    : toCliDeviceAuthProblemDetail(payload),
+              },
+            },
+          } satisfies MessageInitShape<
+            typeof PollDeviceAuthorizationResponseSchema
+          >);
+        }
+
+        if (payload.error === "expired_token") {
+          return Result.ok({
+            outcome: {
+              case: "expired",
+              value: {
+                reason:
+                  payload.error_description === undefined
+                    ? "device authorization session expired"
+                    : toCliDeviceAuthProblemDetail(payload),
+              },
+            },
+          } satisfies MessageInitShape<
+            typeof PollDeviceAuthorizationResponseSchema
+          >);
+        }
+
+        return cliServiceErr({
+          detail: toCliDeviceAuthProblemDetail(payload),
+          key: "AUTH_REQUEST_INVALID",
+        });
+      }
+
+      if (response.status === 429) {
+        return Result.ok({
+          outcome: {
+            case: "rateLimited",
+            value: {
+              reason: "device authorization polling was rate-limited",
+              pollAfter: durationFromMs(
+                parseRetryAfterMs(response) ??
+                  slowedDeviceAuthorizationPollAfterMs()
+              ),
+            },
+          },
+        } satisfies MessageInitShape<
+          typeof PollDeviceAuthorizationResponseSchema
+        >);
+      }
+
+      throw new Error(
+        `unexpected Better Auth response for ${CLI_DEVICE_AUTH_TOKEN_PATH}: ${response.status}`
+      );
+    });
+  };
+}
 
 export const handleGetSession = liftCliServiceMethod(handleGetSessionImpl);
 
@@ -278,13 +296,23 @@ export const handleRefreshSession = liftCliServiceMethod(
   handleRefreshSessionImpl
 );
 
-export const handleStartDeviceAuthorization = liftCliServiceMethod(
-  handleStartDeviceAuthorizationImpl
-);
+export function createDeviceAuthorizationHandlers(
+  options: CliDeviceAuthorizationHandlerOptions
+) {
+  return {
+    handlePollDeviceAuthorization: liftCliServiceMethod(
+      createHandlePollDeviceAuthorizationImpl(options)
+    ),
+    handleStartDeviceAuthorization: liftCliServiceMethod(
+      createHandleStartDeviceAuthorizationImpl(options)
+    ),
+  };
+}
 
-export const handlePollDeviceAuthorization = liftCliServiceMethod(
-  handlePollDeviceAuthorizationImpl
-);
+export const { handlePollDeviceAuthorization, handleStartDeviceAuthorization } =
+  createDeviceAuthorizationHandlers({
+    clientId: CLI_DEVICE_AUTH_CLIENT_ID,
+  });
 
 function buildCliAuthUser(user: CliSessionIdentity["user"]): CliAuthUserInit {
   return {
