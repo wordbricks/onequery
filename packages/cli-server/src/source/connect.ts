@@ -1,5 +1,5 @@
-import { sourceConnectProviderGuide } from '@onequery/db/connection-guide';
-import type { SourceConnectProviderGuide } from '@onequery/db/connection-guide';
+import { sourceConnectProviderGuide } from "@onequery/db/connection-guide";
+import type { SourceConnectProviderGuide } from "@onequery/db/connection-guide";
 import type { ProviderType } from "@onequery/db/server";
 
 import {
