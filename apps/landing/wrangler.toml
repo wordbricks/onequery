@@ -6,6 +6,7 @@ name = "onequery-landing"
 main = "./src/index.ts"
 compatibility_date = "2026-04-14"
 logpush = true
+preview_urls = true
 routes = [{ pattern = "onequery.dev", custom_domain = true }]
 
 [assets]
