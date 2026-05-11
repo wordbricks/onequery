@@ -129,7 +129,9 @@ function BudgetUsageChart({
     const y = 100 - (row.usagePercent / yAxisMax) * 100;
 
     return {
+      cumulativeSpendUsd: row.cumulativeSpendUsd,
       date: row.date,
+      usagePercent: row.usagePercent,
       x,
       y,
     };
@@ -159,7 +161,7 @@ function BudgetUsageChart({
           <span>100% target</span>
           <span>{Math.round(yAxisMax)}% scale</span>
         </div>
-        <div className="h-64 w-full">
+        <div className="relative h-64 w-full">
           <svg
             viewBox="0 0 100 100"
             className="h-full w-full overflow-visible"
@@ -203,16 +205,42 @@ function BudgetUsageChart({
                 vectorEffect="non-scaling-stroke"
               />
             ) : null}
-            {points.map((point) => (
-              <circle
-                key={point.date}
-                cx={point.x}
-                cy={point.y}
-                r="1.6"
-                fill="var(--color-chart-2)"
-              />
-            ))}
           </svg>
+          {points.map((point) => {
+            const tooltipPosition =
+              point.x < 12
+                ? "left-0 translate-x-0"
+                : point.x > 88
+                  ? "right-0 translate-x-0"
+                  : "left-1/2 -translate-x-1/2";
+
+            return (
+              <button
+                key={point.date}
+                type="button"
+                className="group absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--color-chart-2)] outline-none ring-background transition-transform after:absolute after:-inset-2 after:content-[''] hover:scale-125 focus-visible:scale-125 focus-visible:ring-2"
+                style={{
+                  left: `${point.x}%`,
+                  top: `${point.y}%`,
+                }}
+                aria-label={`${formatDateLabel(point.date)} budget usage ${formatSharePercent(point.usagePercent)} (${formatCurrency(point.cumulativeSpendUsd)})`}
+              >
+                <span
+                  className={`pointer-events-none absolute bottom-full z-10 mb-2 hidden min-w-max rounded-md border bg-popover px-2.5 py-1.5 text-left text-xs text-popover-foreground shadow-md group-hover:block group-focus-visible:block ${tooltipPosition}`}
+                >
+                  <span className="block font-medium">
+                    {formatDateLabel(point.date)}
+                  </span>
+                  <span className="block tabular-nums">
+                    {formatSharePercent(point.usagePercent)} of budget
+                  </span>
+                  <span className="block tabular-nums text-muted-foreground">
+                    {formatCurrency(point.cumulativeSpendUsd)}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
         <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
           {axisLabelRows.map((row) => (
