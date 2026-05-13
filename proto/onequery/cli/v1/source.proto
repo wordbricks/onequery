@@ -5,6 +5,7 @@ package onequery.cli.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "onequery/cli/v1/common.proto";
 
@@ -21,6 +22,49 @@ message ListSourcesRequest {
 message ListSourcesResponse {
   repeated CliSource sources = 1 [(buf.validate.field).repeated.max_items = 100];
   CliPage page = 2 [(buf.validate.field).required = true];
+}
+
+message ListSourceProvidersRequest {
+  string org_slug = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+}
+
+message ListSourceProvidersResponse {
+  repeated CliSourceProvider providers = 1 [(buf.validate.field).repeated.max_items = 100];
+}
+
+message CliSourceProvider {
+  string provider = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  string label = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "\\S"
+  ];
+  bool connectable = 3;
+  bool testable = 4;
+  repeated SourceInterface interfaces = 5 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.max_items = 2,
+    (buf.validate.field).repeated.items.enum.not_in = 0,
+    (buf.validate.field).repeated.items.enum.defined_only = true
+  ];
+  string credential_type = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  google.protobuf.Struct credential_example = 7 [(buf.validate.field).ignore = IGNORE_ALWAYS];
 }
 
 message GetSourceRequest {
@@ -50,10 +94,11 @@ message CliSource {
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "\\S"
   ];
-  SourceProvider provider = 3 [
+  string provider = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
   repeated SourceInterface interfaces = 4 [
     (buf.validate.field).repeated.unique = true,
@@ -152,10 +197,11 @@ message GetSourceConnectGuideRequest {
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  SourceProvider provider = 2 [
+  string provider = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
 }
 
@@ -200,29 +246,16 @@ message ConnectSourceRequest {
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  ConnectSourceCredentials credentials = 3 [(buf.validate.field).required = true];
-}
-
-message ConnectSourceCredentials {
-  oneof kind {
-    option (buf.validate.oneof).required = true;
-
-    ConnectSourcePostgresCredentials postgres = 1;
-    ConnectSourcePostgresCredentials supabase = 2;
-    ConnectSourceMySqlCredentials mysql = 3;
-    ConnectSourceMongoDbCredentials mongodb = 4;
-    ConnectSourceBigQueryCredentials bigquery = 5;
-    ConnectSourceLaminarCredentials laminar = 6;
-    ConnectSourceAwsAthenaConnectorCredentials aws_athena_connector = 7;
-    ConnectSourceGoogleAnalyticsCredentials google_analytics = 8;
-    ConnectSourceAmplitudeCredentials amplitude = 9;
-    ConnectSourceMixpanelCredentials mixpanel = 10;
-    ConnectSourcePostHogCredentials posthog = 11;
-    ConnectSourceSentryCredentials sentry = 12;
-    ConnectSourceGitHubCredentials github = 13;
-    ConnectSourceLinearCredentials linear = 14;
-    ConnectSourceCloudflareWorkersObservabilityCredentials cloudflare_workers_observability = 15;
-  }
+  string provider = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+  google.protobuf.Struct credentials = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).ignore = IGNORE_ALWAYS
+  ];
 }
 
 message ConnectSourcePostgresCredentials {
@@ -649,25 +682,6 @@ message ConnectSourceResponse {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 8192
   ];
-}
-
-enum SourceProvider {
-  SOURCE_PROVIDER_UNSPECIFIED = 0;
-  SOURCE_PROVIDER_POSTGRES = 1;
-  SOURCE_PROVIDER_SUPABASE = 2;
-  SOURCE_PROVIDER_MYSQL = 3;
-  SOURCE_PROVIDER_MONGODB = 4;
-  SOURCE_PROVIDER_BIGQUERY = 5;
-  SOURCE_PROVIDER_LAMINAR = 6;
-  SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR = 7;
-  SOURCE_PROVIDER_GOOGLE_ANALYTICS = 8;
-  SOURCE_PROVIDER_AMPLITUDE = 9;
-  SOURCE_PROVIDER_MIXPANEL = 10;
-  SOURCE_PROVIDER_POSTHOG = 11;
-  SOURCE_PROVIDER_SENTRY = 12;
-  SOURCE_PROVIDER_GITHUB = 13;
-  SOURCE_PROVIDER_LINEAR = 14;
-  SOURCE_PROVIDER_CLOUDFLARE_WORKERS_OBSERVABILITY = 15;
 }
 
 enum SourceConnectSslMode {

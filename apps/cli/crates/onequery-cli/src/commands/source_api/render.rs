@@ -1,6 +1,5 @@
 use crate::output::CommandOutput;
 use crate::output::pretty_json_lines;
-use crate::transport::labels::source_provider_to_str;
 use crate::transport::source_api::ProtoJsonValue;
 use crate::transport::source_api::SourceApiDescriptor;
 use crate::transport::source_api::SourceApiFieldEncoding;
@@ -52,8 +51,8 @@ pub(super) fn render_descriptor_output(
         .and_then(|value| value.source_key.as_deref())
         .unwrap_or_default();
     let source_provider = source
-        .and_then(|value| value.provider)
-        .map(source_provider_to_str)
+        .and_then(|value| value.provider.as_deref())
+        .map(str::to_owned)
         .unwrap_or_else(|| "unspecified".to_owned());
 
     let mut lines = vec![format!("Source: {} ({})", source_key, source_provider)];
@@ -723,10 +722,10 @@ fn source_json(source: &crate::transport::source_api::SourceApiSource) -> serde_
             serde_json::Value::String(source_key.clone()),
         );
     }
-    if let Some(provider) = source.provider {
+    if let Some(provider) = source.provider.as_ref() {
         object.insert(
             "provider".to_owned(),
-            serde_json::Value::String(source_provider_to_str(provider)),
+            serde_json::Value::String(provider.clone()),
         );
     }
     if let Some(display_name) = source.display_name.as_ref() {
@@ -1642,9 +1641,7 @@ mod tests {
         SourceApiExecutionPage {
             source: SourceApiSource {
                 source_key: Some("github-prod".to_owned()),
-                provider: Some(
-                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB.into(),
-                ),
+                provider: Some("github".to_owned()),
                 display_name: None,
                 ..Default::default()
             },
@@ -1662,9 +1659,7 @@ mod tests {
         SourceApiPreview {
             source: MessageField::some(SourceApiSource {
                 source_key: Some("github-prod".to_owned()),
-                provider: Some(
-                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB.into(),
-                ),
+                provider: Some("github".to_owned()),
                 display_name: Some("GitHub Prod".to_owned()),
                 ..Default::default()
             }),

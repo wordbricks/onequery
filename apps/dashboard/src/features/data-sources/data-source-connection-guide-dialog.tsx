@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { APP_API_PATH } from "@/lib/api-paths";
 import { getBrowserOrigin } from "@/lib/browser-origin";
+import type { SourceProviderCatalogProvider } from "@/queries/data-sources-queries";
 import { Button } from "@/ui/button";
 import {
   Dialog,
@@ -14,7 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/ui/tabs";
 
 import { CONNECTOR_BASE_URL_TOKEN, GUIDE_CONTENT } from "./connection-guides";
 import type { GuideLocaleContent, GuideStep } from "./connection-guides";
-import type { ProviderType } from "./data-source-provider-metadata";
 
 interface GuideSectionProps {
   step: GuideStep;
@@ -78,14 +78,38 @@ function GuideSection(props: GuideSectionProps) {
 
 function GuideLocaleView(props: {
   content?: GuideLocaleContent;
+  credentialExample: Record<string, unknown>;
+  guideSteps: readonly string[];
+  guideSummary: string;
   providerLabel: string;
 }) {
   if (!props.content) {
     return (
-      <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-        <p>
-          {props.providerLabel} 가이드는 아직 wb-landing 원문 페이지가 없습니다.
-        </p>
+      <div className="space-y-4">
+        <section className="rounded-xl border p-4">
+          <h2 className="text-lg font-semibold">
+            {props.providerLabel} Connection Guide
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {props.guideSummary}
+          </p>
+        </section>
+
+        {props.guideSteps.map((step, index) => (
+          <section key={step} className="rounded-xl border p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Step {index + 1}
+            </p>
+            <p className="text-sm text-muted-foreground">{step}</p>
+          </section>
+        ))}
+
+        <section className="rounded-xl border p-4">
+          <h3 className="text-base font-semibold">Credentials JSON</h3>
+          <pre className="mt-3 overflow-x-auto rounded-md border bg-muted p-3 text-xs leading-relaxed">
+            {JSON.stringify(props.credentialExample, null, 2)}
+          </pre>
+        </section>
       </div>
     );
   }
@@ -125,14 +149,15 @@ function GuideLocaleView(props: {
 }
 
 interface DataSourceConnectionGuideDialogProps {
-  provider: ProviderType;
+  provider: SourceProviderCatalogProvider;
 }
 
 export function DataSourceConnectionGuideDialog(
   props: DataSourceConnectionGuideDialogProps
 ) {
   const [open, setOpen] = useState(false);
-  const guide = GUIDE_CONTENT[props.provider];
+  const guide = GUIDE_CONTENT[props.provider.id];
+  const providerLabel = guide?.providerLabel ?? props.provider.label;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -148,7 +173,7 @@ export function DataSourceConnectionGuideDialog(
         className="h-[94vh] max-h-[94vh] w-[96vw] max-w-[96vw] overflow-hidden gap-0 p-0 sm:max-w-[96vw]"
       >
         <DialogHeader className="border-b px-5 py-4">
-          <DialogTitle>{guide.providerLabel} Connection Guide</DialogTitle>
+          <DialogTitle>{providerLabel} Connection Guide</DialogTitle>
         </DialogHeader>
 
         <Tabs
@@ -169,8 +194,11 @@ export function DataSourceConnectionGuideDialog(
             className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1"
           >
             <GuideLocaleView
-              content={guide.en}
-              providerLabel={guide.providerLabel}
+              content={guide?.en}
+              credentialExample={props.provider.credentialExample}
+              guideSteps={props.provider.guideSteps}
+              guideSummary={props.provider.guideSummary}
+              providerLabel={providerLabel}
             />
           </TabsContent>
 
@@ -179,8 +207,11 @@ export function DataSourceConnectionGuideDialog(
             className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1"
           >
             <GuideLocaleView
-              content={guide.ko}
-              providerLabel={guide.providerLabel}
+              content={guide?.ko}
+              credentialExample={props.provider.credentialExample}
+              guideSteps={props.provider.guideSteps}
+              guideSummary={props.provider.guideSummary}
+              providerLabel={providerLabel}
             />
           </TabsContent>
         </Tabs>

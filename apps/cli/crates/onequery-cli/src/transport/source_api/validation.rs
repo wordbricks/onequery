@@ -15,7 +15,6 @@ use super::SourceApiPaginationPolicy;
 use super::SourceApiPatchMode;
 use super::SourceApiPathCapability;
 use super::SourceApiPreview;
-use super::SourceApiProvider;
 use super::SourceApiSelectorKind;
 use super::SourceApiSource;
 use crate::transport::api_failure::ApiFailure;
@@ -206,13 +205,14 @@ fn validate_source_api_source(
     stage: ErrorStage,
     request_id: Option<String>,
 ) -> Result<(), ApiFailure> {
-    validate_required_source_api_enum(
-        value.provider,
-        SourceApiProvider::SOURCE_PROVIDER_UNSPECIFIED,
-        stage,
-        "source API source metadata has invalid provider",
-        request_id,
-    )
+    match value.provider.as_deref() {
+        Some(provider) if !provider.trim().is_empty() => Ok(()),
+        _ => Err(decode_failure(
+            stage,
+            "source API source metadata has invalid provider",
+            request_id,
+        )),
+    }
 }
 
 fn validate_required_source_api_enum<E>(
@@ -377,7 +377,7 @@ mod tests {
     fn valid_source_api_source() -> types::CliSourceApiSource {
         types::CliSourceApiSource {
             source_key: Some("github-prod".to_owned()),
-            provider: Some(types::SourceProvider::SOURCE_PROVIDER_GITHUB.into()),
+            provider: Some("github".to_owned()),
             ..Default::default()
         }
     }

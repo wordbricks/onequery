@@ -1,33 +1,88 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  CONNECTABLE_DATA_SOURCE_PROVIDERS,
   DEFAULT_CONNECTABLE_PROVIDER,
+  getConnectableDataSourceOptions,
   getDataSourceProviderLabel,
   isProviderType,
   isTestableDataSourceProvider,
 } from "@/features/data-sources/data-source-provider-metadata";
+import type { SourceProviderCatalogProvider } from "@/queries/data-sources-queries";
+
+const providers = [
+  {
+    id: "postgres",
+    label: "PostgreSQL",
+    connectable: true,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "database",
+    testable: true,
+    interfaces: ["query"],
+    credentialType: "postgres",
+    credentialExample: {},
+    guideSummary: "Connect PostgreSQL.",
+    guideSteps: ["Collect database credentials."],
+  },
+  {
+    id: "linear",
+    label: "Linear",
+    connectable: true,
+    dashboardConnectable: false,
+    dashboardCredentialForm: "json",
+    testable: false,
+    interfaces: [],
+    credentialType: "linear",
+    credentialExample: {},
+    guideSummary: "Connect Linear.",
+    guideSteps: ["Collect an API key."],
+  },
+  {
+    id: "cloudflare_workers_observability",
+    label: "Cloudflare Workers Observability",
+    connectable: true,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "cloudflare_workers_observability",
+    testable: false,
+    interfaces: ["api"],
+    credentialType: "cloudflare_workers_observability",
+    credentialExample: {},
+    guideSummary: "Connect Cloudflare Workers Observability.",
+    guideSteps: ["Collect account credentials."],
+  },
+] satisfies SourceProviderCatalogProvider[];
 
 describe("data-source-provider-metadata", () => {
-  it("keeps the connectable provider order stable for picker defaults", () => {
+  it("keeps the fallback picker default stable", () => {
     expect(DEFAULT_CONNECTABLE_PROVIDER).toBe("postgres");
-    expect(CONNECTABLE_DATA_SOURCE_PROVIDERS.at(0)).toBe("postgres");
-    expect(CONNECTABLE_DATA_SOURCE_PROVIDERS.at(-1)).toBe("github");
   });
 
-  it("reuses the same provider labels across connected and available cards", () => {
-    expect(getDataSourceProviderLabel("postgres")).toBe("PostgreSQL");
-    expect(getDataSourceProviderLabel("linear")).toBe("Linear");
+  it("builds picker options from the server catalog", () => {
+    const options = getConnectableDataSourceOptions(providers);
+
+    expect(options.map((provider) => provider.value)).toEqual([
+      "postgres",
+      "cloudflare_workers_observability",
+    ]);
   });
 
-  it("distinguishes connectable and testable providers", () => {
-    expect(isProviderType("github")).toBe(true);
-    expect(isProviderType("cloudflare_workers_observability")).toBe(true);
-    expect(isProviderType("linear")).toBe(false);
-    expect(isTestableDataSourceProvider("posthog")).toBe(true);
+  it("reuses server provider labels across connected and available cards", () => {
+    expect(getDataSourceProviderLabel("postgres", providers)).toBe(
+      "PostgreSQL"
+    );
+    expect(getDataSourceProviderLabel("linear", providers)).toBe("Linear");
+  });
+
+  it("distinguishes connectable and testable providers from server metadata", () => {
+    expect(isProviderType("cloudflare_workers_observability", providers)).toBe(
+      true
+    );
+    expect(isProviderType("linear", providers)).toBe(false);
+    expect(isTestableDataSourceProvider("postgres", providers)).toBe(true);
     expect(
-      isTestableDataSourceProvider("cloudflare_workers_observability")
+      isTestableDataSourceProvider(
+        "cloudflare_workers_observability",
+        providers
+      )
     ).toBe(false);
-    expect(isTestableDataSourceProvider("github")).toBe(false);
   });
 });

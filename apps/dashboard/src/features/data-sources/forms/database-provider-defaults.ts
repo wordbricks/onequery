@@ -1,5 +1,3 @@
-import type { ProviderType } from "@/features/data-sources/data-source-provider-metadata";
-
 const LOCALHOST_DATABASE_HOST = "localhost";
 const POSTGRES_CONNECTION_FORMAT =
   "postgres://user:password@host:port/database";
@@ -7,10 +5,7 @@ const SUPABASE_CONNECTION_PLACEHOLDER =
   "postgresql://postgres.[project-ref]:password@aws-0-[region].pooler.supabase.com:5432/postgres";
 const MYSQL_CONNECTION_FORMAT = "mysql://user:password@host:port/database";
 
-export type DatabaseProviderType = Extract<
-  ProviderType,
-  "postgres" | "supabase" | "mysql"
->;
+export type DatabaseProviderType = "postgres" | "supabase" | "mysql";
 
 type DatabaseProviderDefaults = {
   connectionStringFormat: string;
@@ -77,7 +72,7 @@ const DATABASE_PROVIDER_DEFAULTS = {
 } as const satisfies Record<DatabaseProviderType, DatabaseProviderDefaults>;
 
 export function isDatabaseProvider(
-  provider: ProviderType
+  provider: string
 ): provider is DatabaseProviderType {
   return (
     provider === "postgres" || provider === "supabase" || provider === "mysql"

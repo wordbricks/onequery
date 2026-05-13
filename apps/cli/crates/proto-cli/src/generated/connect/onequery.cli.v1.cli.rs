@@ -986,6 +986,22 @@ pub const CLI_SOURCE_SERVICE_SERVICE_NAME: &str = "onequery.cli.v1.CliSourceServ
 /// for zero-copy access patterns and when `to_owned_message()` is needed.
 #[allow(clippy::type_complexity)]
 pub trait CliSourceService: Send + Sync + 'static {
+    /// Handle the ListSourceProviders RPC.
+    fn list_source_providers(
+        &self,
+        ctx: ::connectrpc::Context,
+        request: ::buffa::view::OwnedView<
+            crate::proto::onequery::cli::v1::ListSourceProvidersRequestView<'static>,
+        >,
+    ) -> impl ::std::future::Future<
+        Output = Result<
+            (
+                crate::proto::onequery::cli::v1::ListSourceProvidersResponse,
+                ::connectrpc::Context,
+            ),
+            ::connectrpc::ConnectError,
+        >,
+    > + Send;
     /// Handle the ListSources RPC.
     fn list_sources(
         &self,
@@ -1091,6 +1107,17 @@ impl<S: CliSourceService> CliSourceServiceExt for S {
         router
             .route_view_idempotent(
                 CLI_SOURCE_SERVICE_SERVICE_NAME,
+                "ListSourceProviders",
+                {
+                    let svc = ::std::sync::Arc::clone(&self);
+                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                        let svc = ::std::sync::Arc::clone(&svc);
+                        async move { svc.list_source_providers(ctx, req).await }
+                    })
+                },
+            )
+            .route_view_idempotent(
+                CLI_SOURCE_SERVICE_SERVICE_NAME,
                 "ListSources",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
@@ -1189,6 +1216,9 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
     ) -> Option<::connectrpc::dispatcher::codegen::MethodDescriptor> {
         let method = path.strip_prefix("onequery.cli.v1.CliSourceService/")?;
         match method {
+            "ListSourceProviders" => {
+                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true))
+            }
             "ListSources" => {
                 Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true))
             }
@@ -1219,6 +1249,20 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
         };
         let _ = (&ctx, &request, &format);
         match method {
+            "ListSourceProviders" => {
+                let svc = ::std::sync::Arc::clone(&self.inner);
+                Box::pin(async move {
+                    let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
+                        crate::proto::onequery::cli::v1::ListSourceProvidersRequestView,
+                    >(request, format)?;
+                    let (res, ctx) = svc.list_source_providers(ctx, req).await?;
+                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
+                        &res,
+                        format,
+                    )?;
+                    Ok((bytes, ctx))
+                })
+            }
             "ListSources" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
@@ -1356,7 +1400,7 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
 /// let config = ClientConfig::new(uri).protocol(Protocol::Grpc);
 ///
 /// let client = CliSourceServiceClient::new(conn, config);
-/// let response = client.list_sources(request).await?;
+/// let response = client.list_source_providers(request).await?;
 /// ```
 ///
 /// # Example (Connect / HTTP/1.1 or ALPN)
@@ -1368,7 +1412,7 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
 /// let config = ClientConfig::new("http://localhost:8080".parse()?);
 ///
 /// let client = CliSourceServiceClient::new(http, config);
-/// let response = client.list_sources(request).await?;
+/// let response = client.list_source_providers(request).await?;
 /// ```
 ///
 /// # Working with the response
@@ -1377,7 +1421,7 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
 /// The `OwnedView` derefs to the view, so field access is zero-copy:
 ///
 /// ```rust,ignore
-/// let resp = client.list_sources(request).await?.into_view();
+/// let resp = client.list_source_providers(request).await?.into_view();
 /// let name: &str = resp.name;  // borrow into the response buffer
 /// ```
 ///
@@ -1385,7 +1429,7 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
 /// [`into_owned()`](::connectrpc::client::UnaryResponse::into_owned):
 ///
 /// ```rust,ignore
-/// let owned = client.list_sources(request).await?.into_owned();
+/// let owned = client.list_source_providers(request).await?.into_owned();
 /// ```
 #[derive(Clone)]
 pub struct CliSourceServiceClient<T> {
@@ -1408,6 +1452,47 @@ where
     /// Get a mutable reference to the client configuration.
     pub fn config_mut(&mut self) -> &mut ::connectrpc::client::ClientConfig {
         &mut self.config
+    }
+    /// Call the ListSourceProviders RPC. Sends a request to /onequery.cli.v1.CliSourceService/ListSourceProviders.
+    pub async fn list_source_providers(
+        &self,
+        request: crate::proto::onequery::cli::v1::ListSourceProvidersRequest,
+    ) -> Result<
+        ::connectrpc::client::UnaryResponse<
+            ::buffa::view::OwnedView<
+                crate::proto::onequery::cli::v1::ListSourceProvidersResponseView<'static>,
+            >,
+        >,
+        ::connectrpc::ConnectError,
+    > {
+        self.list_source_providers_with_options(
+                request,
+                ::connectrpc::client::CallOptions::default(),
+            )
+            .await
+    }
+    /// Call the ListSourceProviders RPC with explicit per-call options. Options override [`ClientConfig`](::connectrpc::client::ClientConfig) defaults.
+    pub async fn list_source_providers_with_options(
+        &self,
+        request: crate::proto::onequery::cli::v1::ListSourceProvidersRequest,
+        options: ::connectrpc::client::CallOptions,
+    ) -> Result<
+        ::connectrpc::client::UnaryResponse<
+            ::buffa::view::OwnedView<
+                crate::proto::onequery::cli::v1::ListSourceProvidersResponseView<'static>,
+            >,
+        >,
+        ::connectrpc::ConnectError,
+    > {
+        ::connectrpc::client::call_unary(
+                &self.transport,
+                &self.config,
+                CLI_SOURCE_SERVICE_SERVICE_NAME,
+                "ListSourceProviders",
+                request,
+                options,
+            )
+            .await
     }
     /// Call the ListSources RPC. Sends a request to /onequery.cli.v1.CliSourceService/ListSources.
     pub async fn list_sources(

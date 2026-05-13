@@ -50,7 +50,7 @@ export function buildCliSource(source: BuildCliSourceInput): CliSourceInit {
   return response;
 }
 
-function toCliSourceInterface(value: "query" | "api") {
+export function toCliSourceInterface(value: "query" | "api") {
   switch (value) {
     case "query":
       return SourceInterface.QUERY;

@@ -964,9 +964,7 @@ mod tests {
         SourceApiDescriptor {
             source: MessageField::some(crate::transport::source_api::SourceApiSource {
                 source_key: Some("github-prod".to_owned()),
-                provider: Some(
-                    crate::transport::source_api::SourceApiProvider::SOURCE_PROVIDER_GITHUB.into(),
-                ),
+                provider: Some("github".to_owned()),
                 display_name: Some("GitHub".to_owned()),
                 ..Default::default()
             }),

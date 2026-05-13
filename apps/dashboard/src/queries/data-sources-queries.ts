@@ -1,4 +1,4 @@
-import type { DataSourceStatus, ProviderType } from "@onequery/db";
+import type { DataSourceStatus, PublicSourceProvider } from "@onequery/db";
 import { queryOptions } from "@tanstack/react-query";
 import type { InferRequestType } from "hono/client";
 
@@ -11,7 +11,7 @@ import {
 
 export interface DataSource {
   id: string;
-  provider: ProviderType;
+  provider: string;
   name: string;
   status: DataSourceStatus;
   useAsDataSource: boolean;
@@ -42,6 +42,12 @@ type CreateDataSourceRequest = NonNullable<
   InferRequestType<(typeof client.api)["data-sources"]["$post"]>["json"]
 >;
 
+export type SourceProviderCatalogProvider = PublicSourceProvider;
+
+export interface SourceProviderCatalog {
+  providers: SourceProviderCatalogProvider[];
+}
+
 async function fetchDataSources(organizationId: string): Promise<DataSource[]> {
   const response = await client.api["data-sources"].$get({
     query: { organizationId },
@@ -60,6 +66,27 @@ export function dataSourcesQueryOptions(organizationId: string) {
   return queryOptions({
     queryFn: async () => fetchDataSources(organizationId),
     queryKey: ["data-sources", organizationId] as const,
+  });
+}
+
+async function fetchSourceProviders(): Promise<SourceProviderCatalog> {
+  const response = await client.api["data-sources"].providers.$get();
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(
+      getApiErrorMessage(error, "Failed to fetch source providers")
+    );
+  }
+
+  return response.json();
+}
+
+export function sourceProvidersQueryOptions() {
+  return queryOptions({
+    queryFn: fetchSourceProviders,
+    queryKey: ["source-providers"] as const,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

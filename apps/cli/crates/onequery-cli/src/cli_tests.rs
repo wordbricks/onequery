@@ -915,7 +915,7 @@ fn parse_invocation_accepts_source_connect_input() {
         Command::Source(super::SourceSubcommand::Connect(super::SourceConnectArgs {
             source,
             input: Some(input),
-        })) if source == SourceConnectProvider::Postgres
+        })) if source == SourceConnectProvider::new_for_test("postgres")
             && input == "{\"name\":\"warehouse\"}"
     ));
 }

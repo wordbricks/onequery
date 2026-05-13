@@ -17,7 +17,6 @@ use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
 use crate::transport::response_decode::require_non_empty_text;
-use crate::transport::source_connect_provider::SourceConnectProvider;
 use crate::transport::well_known::required_duration_ms;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
@@ -341,29 +340,11 @@ pub(crate) fn source_summary_from_generated(
 }
 
 fn source_provider_from_generated(
-    value: Option<EnumValue<types::SourceProvider>>,
+    value: Option<String>,
     stage: ErrorStage,
     request_id: Option<String>,
 ) -> Result<String, ApiFailure> {
-    match value {
-        Some(value) => {
-            match value.as_known() {
-                Some(types::SourceProvider::SOURCE_PROVIDER_UNSPECIFIED) | None => Err(
-                    decode_failure(stage, "source response has invalid provider", request_id),
-                ),
-                Some(provider) => SourceConnectProvider::try_from(provider)
-                    .map(|provider| provider.to_string())
-                    .map_err(|()| {
-                        decode_failure(stage, "source response has invalid provider", request_id)
-                    }),
-            }
-        }
-        None => Err(decode_failure(
-            stage,
-            "source response missing provider",
-            request_id,
-        )),
-    }
+    require_non_empty_text(value, stage, "source response missing provider", request_id)
 }
 
 fn source_status_from_generated(
@@ -532,7 +513,7 @@ mod tests {
         let error = source_summary_from_generated(
             types::CliSource {
                 source_key: Some("warehouse".to_owned()),
-                provider: Some(types::SourceProvider::SOURCE_PROVIDER_UNSPECIFIED.into()),
+                provider: Some(String::new()),
                 status: Some(types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                 interfaces: vec![types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                 ..Default::default()

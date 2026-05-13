@@ -7771,12 +7771,8 @@ pub struct CliSourceApiSource {
     )]
     pub source_key: Option<::buffa::alloc::string::String>,
     /// Field 2: `provider`
-    #[serde(
-        rename = "provider",
-        with = "::buffa::json_helpers::opt_enum",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub provider: Option<::buffa::EnumValue<SourceProvider>>,
+    #[serde(rename = "provider", skip_serializing_if = "Option::is_none")]
+    pub provider: Option<::buffa::alloc::string::String>,
     /// Field 3: `display_name`
     #[serde(
         rename = "displayName",
@@ -7827,7 +7823,7 @@ impl ::buffa::Message for CliSourceApiSource {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
         if let Some(ref v) = self.provider {
-            size += 1u32 + ::buffa::types::int32_encoded_len(v.to_i32()) as u32;
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
         if let Some(ref v) = self.display_name {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
@@ -7848,9 +7844,12 @@ impl ::buffa::Message for CliSourceApiSource {
             ::buffa::types::encode_string(v, buf);
         }
         if let Some(ref v) = self.provider {
-            ::buffa::encoding::Tag::new(2u32, ::buffa::encoding::WireType::Varint)
+            ::buffa::encoding::Tag::new(
+                    2u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
                 .encode(buf);
-            ::buffa::types::encode_int32(v.to_i32(), buf);
+            ::buffa::types::encode_string(v, buf);
         }
         if let Some(ref v) = self.display_name {
             ::buffa::encoding::Tag::new(
@@ -7889,16 +7888,19 @@ impl ::buffa::Message for CliSourceApiSource {
                 )?;
             }
             2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
                     return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
                         field_number: 2u32,
-                        expected: 0u8,
+                        expected: 2u8,
                         actual: tag.wire_type() as u8,
                     });
                 }
-                self.provider = ::core::option::Option::Some(
-                    ::buffa::EnumValue::from(::buffa::types::decode_int32(buf)?),
-                );
+                ::buffa::types::merge_string(
+                    self
+                        .provider
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
             }
             3u32 => {
                 if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
@@ -7967,7 +7969,7 @@ pub struct CliSourceApiSourceView<'a> {
     /// Field 1: `source_key`
     pub source_key: ::core::option::Option<&'a str>,
     /// Field 2: `provider`
-    pub provider: ::core::option::Option<::buffa::EnumValue<SourceProvider>>,
+    pub provider: ::core::option::Option<&'a str>,
     /// Field 3: `display_name`
     pub display_name: ::core::option::Option<&'a str>,
     pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
@@ -8021,16 +8023,14 @@ impl<'a> CliSourceApiSourceView<'a> {
                     view.source_key = Some(::buffa::types::borrow_str(&mut cur)?);
                 }
                 2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
                         return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
                             field_number: 2u32,
-                            expected: 0u8,
+                            expected: 2u8,
                             actual: tag.wire_type() as u8,
                         });
                     }
-                    view.provider = Some(
-                        ::buffa::EnumValue::from(::buffa::types::decode_int32(&mut cur)?),
-                    );
+                    view.provider = Some(::buffa::types::borrow_str(&mut cur)?);
                 }
                 3u32 => {
                     if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
@@ -8070,7 +8070,7 @@ impl<'a> ::buffa::MessageView<'a> for CliSourceApiSourceView<'a> {
         use ::buffa::alloc::string::ToString as _;
         CliSourceApiSource {
             source_key: self.source_key.map(|s| s.to_string()),
-            provider: self.provider,
+            provider: self.provider.map(|s| s.to_string()),
             display_name: self.display_name.map(|s| s.to_string()),
             __buffa_unknown_fields: self
                 .__buffa_unknown_fields

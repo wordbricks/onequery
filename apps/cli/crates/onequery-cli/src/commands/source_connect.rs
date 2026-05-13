@@ -108,7 +108,7 @@ pub(super) async fn execute<B, T>(
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
-    let source = args.source;
+    let source = args.source.clone();
 
     let mode = match args.input.as_deref() {
         Some(raw_input) => SourceConnectMode::Connect {
@@ -334,7 +334,7 @@ async fn execute_effect<B, T>(
                 }
             };
 
-            match source_connect::connect_source(&client, org.as_str(), source, input).await {
+            match source_connect::connect_source(&client, org.as_str(), &source, input).await {
                 Ok(response) => SourceConnectEvent::SourceConnected {
                     result: response.payload,
                     request_id: response.request_id,
@@ -603,7 +603,7 @@ mod tests {
         let transition = reduce(
             SourceConnectState::Idle {
                 mode: SourceConnectMode::Guide {
-                    source: SourceConnectProvider::Postgres,
+                    source: SourceConnectProvider::new_for_test("postgres"),
                 },
             },
             SourceConnectEvent::Start,
@@ -616,7 +616,8 @@ mod tests {
                 effect: SourceConnectEffect::EnsureAuthenticatedOrg,
             } => assert!(matches!(
                 mode,
-                SourceConnectMode::Guide { source } if source == SourceConnectProvider::Postgres
+                SourceConnectMode::Guide { source }
+                    if source == SourceConnectProvider::new_for_test("postgres")
             )),
             other => panic!("expected guide-mode transition, got {other:?}"),
         }

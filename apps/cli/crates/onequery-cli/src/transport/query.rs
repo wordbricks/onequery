@@ -729,7 +729,7 @@ mod tests {
             super::types::ExecuteQueryResponse {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
-                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
+                    provider: Some("postgres".to_owned()),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
@@ -801,7 +801,7 @@ mod tests {
             super::types::ExecuteQueryResponse {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
-                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
+                    provider: Some("postgres".to_owned()),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
@@ -857,7 +857,7 @@ mod tests {
                 ),
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
-                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
+                    provider: Some("postgres".to_owned()),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
@@ -936,7 +936,7 @@ mod tests {
             super::types::ExecuteQueryResponse {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
-                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
+                    provider: Some("postgres".to_owned()),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
@@ -964,7 +964,7 @@ mod tests {
             super::types::ExecuteQueryResponse {
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
-                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
+                    provider: Some("postgres".to_owned()),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()
@@ -1040,7 +1040,7 @@ mod tests {
                 ),
                 source: buffa::MessageField::some(super::types::CliSource {
                     source_key: Some("warehouse".to_owned()),
-                    provider: Some(super::types::SourceProvider::SOURCE_PROVIDER_POSTGRES.into()),
+                    provider: Some("postgres".to_owned()),
                     status: Some(super::types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                     interfaces: vec![super::types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                     ..Default::default()

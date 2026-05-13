@@ -30,7 +30,6 @@ import { Result } from "better-result";
 
 import { cliServiceErr } from "../result";
 import type { CliServiceResult } from "../result";
-import { toCliSourceProvider } from "../source-provider";
 import type {
   CliExecuteSourceApiRequest,
   CliPreviewSourceApiRequest,
@@ -390,7 +389,7 @@ function buildCliSourceApiSource(value: SourceApiSource) {
   return {
     displayName: value.displayName ?? undefined,
     sourceKey: value.sourceKey,
-    provider: toCliSourceProvider(value.provider),
+    provider: value.provider,
   };
 }
 

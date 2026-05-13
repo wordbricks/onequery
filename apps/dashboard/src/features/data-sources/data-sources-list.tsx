@@ -34,19 +34,22 @@ import { GitHubIcon, getProviderIcon } from "@/components/provider-icons";
 import { AddDataSourceDialog } from "@/features/data-sources/add-data-source-dialog";
 import { showDataSourceErrorToast } from "@/features/data-sources/data-source-error-toast";
 import {
-  CONNECTABLE_DATA_SOURCE_PROVIDERS,
   getDataSourceProviderLabel,
+  getConnectableDataSourceOptions,
   isTestableDataSourceProvider,
 } from "@/features/data-sources/data-source-provider-metadata";
-import type { ProviderType } from "@/features/data-sources/data-source-provider-metadata";
 import { GitHubRepositoriesDialog } from "@/features/data-sources/github-repositories-dialog";
 import { useOptimisticDelete } from "@/lib/use-optimistic-mutation";
 import {
   dataSourcesQueryOptions,
   deleteDataSource,
+  sourceProvidersQueryOptions,
   testDataSource,
 } from "@/queries/data-sources-queries";
-import type { DataSource } from "@/queries/data-sources-queries";
+import type {
+  DataSource,
+  SourceProviderCatalogProvider,
+} from "@/queries/data-sources-queries";
 
 function getStatusVariant(
   status: DataSource["status"]
@@ -90,10 +93,12 @@ function DataSourceCard({
   dataSource,
   organizationId,
   openGitHubRepositories,
+  providers,
 }: {
   dataSource: DataSource;
   organizationId: string;
   openGitHubRepositories?: boolean;
+  providers: readonly SourceProviderCatalogProvider[];
 }) {
   const queryKey = dataSourcesQueryOptions(organizationId).queryKey;
   const [repoDialogOpen, setRepoDialogOpen] = useState(false);
@@ -148,7 +153,10 @@ function DataSourceCard({
   });
 
   const Icon = getProviderIcon(dataSource.provider);
-  const isTestable = isTestableDataSourceProvider(dataSource.provider);
+  const isTestable = isTestableDataSourceProvider(
+    dataSource.provider,
+    providers
+  );
   const testLabel = isTestable
     ? "Test Connection"
     : "Test Connection (Unsupported)";
@@ -160,7 +168,7 @@ function DataSourceCard({
           <CardTitle className="text-lg">{dataSource.name}</CardTitle>
           <CardDescription className="flex items-center gap-1.5 mt-0.5">
             <Icon className="h-4.5 w-4.5" />
-            {getDataSourceProviderLabel(dataSource.provider)}
+            {getDataSourceProviderLabel(dataSource.provider, providers)}
           </CardDescription>
         </div>
         <DropdownMenu>
@@ -231,10 +239,10 @@ function getVisibleConnectedDataSources(
 }
 
 function NotConnectedDataSourceCard(props: {
-  provider: ProviderType;
+  provider: SourceProviderCatalogProvider;
   organizationId: string;
 }) {
-  const Icon = getProviderIcon(props.provider);
+  const Icon = getProviderIcon(props.provider.id);
 
   return (
     <Card className="border-dashed">
@@ -242,13 +250,11 @@ function NotConnectedDataSourceCard(props: {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
-            <p className="font-medium truncate">
-              {getDataSourceProviderLabel(props.provider)}
-            </p>
+            <p className="font-medium truncate">{props.provider.label}</p>
           </div>
           <AddDataSourceDialog
             organizationId={props.organizationId}
-            initialProvider={props.provider}
+            initialProvider={props.provider.id}
           >
             <Button variant="secondary" size="sm">
               Connect
@@ -267,14 +273,18 @@ export function DataSourcesList({
   const { data: dataSources } = useSuspenseQuery(
     dataSourcesQueryOptions(organizationId)
   );
+  const { data: providerCatalog } = useSuspenseQuery(
+    sourceProvidersQueryOptions()
+  );
+  const providers = providerCatalog.providers;
 
   const visibleDataSources = getVisibleConnectedDataSources(dataSources);
   const connectedProviders = new Set(
     visibleDataSources.map((dataSource) => dataSource.provider)
   );
-  const notConnectedProviders = CONNECTABLE_DATA_SOURCE_PROVIDERS.filter(
-    (provider) => !connectedProviders.has(provider)
-  );
+  const notConnectedProviders = getConnectableDataSourceOptions(
+    providers
+  ).filter((provider) => !connectedProviders.has(provider.id));
   const hasConnectedDataSources = visibleDataSources.length > 0;
 
   return (
@@ -313,6 +323,7 @@ export function DataSourcesList({
               dataSource={dataSource}
               organizationId={organizationId}
               openGitHubRepositories={openGitHubDataSourceId === dataSource.id}
+              providers={providers}
             />
           ))}
         </div>
@@ -328,7 +339,7 @@ export function DataSourcesList({
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {notConnectedProviders.map((provider) => (
             <NotConnectedDataSourceCard
-              key={provider}
+              key={provider.id}
               provider={provider}
               organizationId={organizationId}
             />

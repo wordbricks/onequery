@@ -175,7 +175,7 @@ pub(crate) enum SourceSubcommand {
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct SourceConnectArgs {
     /// Select the provider to connect.
-    #[arg(long, value_name = "PROVIDER", value_enum)]
+    #[arg(long, value_name = "PROVIDER")]
     pub source: SourceConnectProvider,
     /// Create one source from an inline JSON payload.
     #[arg(long, value_parser = parse_trimmed_non_empty, value_name = "JSON")]

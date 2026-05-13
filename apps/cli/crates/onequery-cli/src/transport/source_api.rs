@@ -26,7 +26,6 @@ pub(crate) type SourceApiPaginationPolicy = types::SourceApiPaginationPolicy;
 pub(crate) type SourceApiPatchMode = types::SourceApiPatchMode;
 pub(crate) type SourceApiPathCapability = types::SourceApiPathCapability;
 pub(crate) type SourceApiBodyKind = types::SourceApiBodyKind;
-pub(crate) type SourceApiProvider = types::SourceProvider;
 pub(crate) type SourceApiSource = types::CliSourceApiSource;
 pub(crate) type SourceApiHeader = types::CliSourceApiHeader;
 pub(crate) type SourceApiExample = types::CliSourceApiExample;
@@ -575,7 +574,7 @@ mod tests {
                         preview: buffa::MessageField::some(types::SourceApiPreview {
                             source: buffa::MessageField::some(types::CliSourceApiSource {
                                 source_key: Some("github-prod".to_owned()),
-                                provider: Some(types::SourceProvider::SOURCE_PROVIDER_GITHUB.into()),
+                                provider: Some("github".to_owned()),
                                 ..Default::default()
                             }),
                             operation_name: Some("fetch".to_owned()),
