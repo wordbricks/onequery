@@ -80,6 +80,60 @@ describe("parseConnectSourceCredentials", () => {
     });
   });
 
+  it("infers BigQuery service-account auth mode from guide-shaped credentials", () => {
+    const result = parseConnectSourceCredentials("bigquery", {
+      projectId: "analytics-project",
+      serviceAccount: {
+        projectId: "analytics-project",
+        clientEmail: "onequery@analytics-project.iam.gserviceaccount.com",
+        privateKey:
+          "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----\n",
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value.credentials).toMatchObject({
+      type: "bigquery",
+      authType: "service_account",
+      projectId: "analytics-project",
+      serviceAccount: {
+        projectId: "analytics-project",
+        clientEmail: "onequery@analytics-project.iam.gserviceaccount.com",
+      },
+    });
+  });
+
+  it("infers Google Analytics service-account auth mode from guide-shaped credentials", () => {
+    const result = parseConnectSourceCredentials("ga", {
+      propertyId: "123456789",
+      serviceAccount: {
+        projectId: "analytics-project",
+        clientEmail: "onequery@analytics-project.iam.gserviceaccount.com",
+        privateKey:
+          "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----\n",
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value.credentials).toMatchObject({
+      type: "ga",
+      authType: "service_account",
+      propertyId: "123456789",
+      serviceAccount: {
+        projectId: "analytics-project",
+        clientEmail: "onequery@analytics-project.iam.gserviceaccount.com",
+      },
+    });
+  });
+
   it("rejects unknown provider strings before credential validation", () => {
     const result = parseConnectSourceCredentials("unknown_provider", {});
 

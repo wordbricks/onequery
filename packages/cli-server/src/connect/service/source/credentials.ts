@@ -56,8 +56,19 @@ export function parseConnectSourceCredentials(
     });
   }
 
+  const credentialsForValidation =
+    (definition.credentialType === "bigquery" ||
+      definition.credentialType === "ga") &&
+    "serviceAccount" in credentials &&
+    !("authType" in credentials)
+      ? {
+          ...credentials,
+          authType: "service_account",
+        }
+      : credentials;
+
   const parsed = definition.credentialSchema.safeParse({
-    ...credentials,
+    ...credentialsForValidation,
     type: definition.credentialType,
   });
   if (!parsed.success) {
