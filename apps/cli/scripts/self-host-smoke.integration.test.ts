@@ -724,30 +724,28 @@ async function stopGatewayProcess(input: {
 
   const stopOutput =
     `${stopResult.stdout ?? ""}${stopResult.stderr ?? ""}`.trim();
-  const statusPath = join(input.homeDir, "run", "runtime.status.json");
   const leasePath = join(input.homeDir, "run", "runtime.lease.json");
 
   try {
     const exit = await waitForExit(input.child, SHUTDOWN_TIMEOUT_MS);
-    const cleanedUp = !existsSync(statusPath) && !existsSync(leasePath);
+    const leaseReleased = !existsSync(leasePath);
 
     if (
-      cleanedUp &&
+      leaseReleased &&
       (stopResult.status === 0 || exit.code === 0 || exit.code === 10)
     ) {
       return;
     }
 
-    // Comment: the packaged self-host runtime can finish a managed SIGTERM shutdown
-    // and clear durable lifecycle records before the foreground `onequery gateway` process
-    // reports a nonzero exit. Smoke cleanup only needs to prove the runtime is
-    // no longer live for the temp home directory.
-    if (cleanedUp) {
+    // Comment: managed runtime shutdown intentionally keeps the last
+    // runtime.status.json snapshot for diagnostics. Smoke cleanup only needs to
+    // prove the runtime lease is gone and the foreground gateway exited.
+    if (leaseReleased) {
       return;
     }
 
     throw new Error(
-      `gateway stop exited with status ${stopResult.status} and runtime markers remained`
+      `gateway stop exited with status ${stopResult.status} and runtime lease remained`
     );
   } catch (error) {
     input.child.kill("SIGKILL");
@@ -781,8 +779,9 @@ describe("CLI self-host smoke", () => {
           kind: "gateway-start",
           processStarted: true,
           runtimeState: {
-            running: true,
-            status: "running",
+            runtimeLeasePresent: true,
+            runtimeStatusSnapshotPresent: true,
+            status: "stale_durable_records",
           },
         },
       });
@@ -799,8 +798,9 @@ describe("CLI self-host smoke", () => {
         data: {
           kind: "gateway-status",
           runtimeState: {
-            running: true,
-            status: "running",
+            runtimeLeasePresent: true,
+            runtimeStatusSnapshotPresent: true,
+            status: "ready",
           },
         },
       });
@@ -816,14 +816,15 @@ describe("CLI self-host smoke", () => {
           kind: "gateway-stop",
           stopIssued: true,
           runtimeState: {
-            running: false,
-            status: "not_running",
+            runtimeLeasePresent: false,
+            runtimeStatusSnapshotPresent: true,
+            status: "stale_durable_records",
           },
         },
       });
 
       await waitForGatewayShutdown(baseUrl);
-      expect(existsSync(statusPath)).toBe(false);
+      expect(existsSync(statusPath)).toBe(true);
       expect(existsSync(leasePath)).toBe(false);
 
       const statusAfterStop = runPackagedCliJsonCommand({
@@ -836,8 +837,9 @@ describe("CLI self-host smoke", () => {
         data: {
           kind: "gateway-status",
           runtimeState: {
-            running: false,
-            status: "not_running",
+            runtimeLeasePresent: false,
+            runtimeStatusSnapshotPresent: true,
+            status: "stale_durable_records",
           },
         },
       });
@@ -888,8 +890,9 @@ describe("CLI self-host smoke", () => {
         data: {
           kind: "gateway-status",
           runtimeState: {
-            running: true,
-            status: "running",
+            runtimeLeasePresent: true,
+            runtimeStatusSnapshotPresent: true,
+            status: "ready",
           },
         },
       });
@@ -906,14 +909,15 @@ describe("CLI self-host smoke", () => {
           stopIssued: true,
           stoppedPid: expect.any(Number),
           runtimeState: {
-            running: false,
-            status: "not_running",
+            runtimeLeasePresent: false,
+            runtimeStatusSnapshotPresent: true,
+            status: "stale_durable_records",
           },
         },
       });
 
       await waitForGatewayShutdown(baseUrl);
-      expect(existsSync(statusPath)).toBe(false);
+      expect(existsSync(statusPath)).toBe(true);
       expect(existsSync(leasePath)).toBe(false);
     } finally {
       runPackagedCliCommand({
@@ -958,11 +962,11 @@ describe("CLI self-host smoke", () => {
       expect(parsedOutput).toMatchObject({
         command: "gateway start",
         error: {
-          title: "self-host server exited during background start",
+          title: "gateway supervisor exited during background start",
         },
         ok: false,
       });
-      expect(existsSync(statusPath)).toBe(false);
+      expect(existsSync(statusPath)).toBe(true);
       expect(existsSync(leasePath)).toBe(false);
       expect(readFileSync(logPath, "utf8")).toContain("EADDRINUSE");
     } finally {
