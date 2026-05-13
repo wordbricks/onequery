@@ -509,7 +509,7 @@ mod tests {
     }
 
     #[test]
-    fn source_summary_from_generated_rejects_invalid_provider() {
+    fn source_summary_from_generated_rejects_missing_provider() {
         let error = source_summary_from_generated(
             types::CliSource {
                 source_key: Some("warehouse".to_owned()),
@@ -521,13 +521,13 @@ mod tests {
             ErrorStage::Http,
             Some("req_source_provider".to_owned()),
         )
-        .expect_err("expected invalid provider to fail");
+        .expect_err("expected missing provider to fail");
 
         assert_eq!(
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::Http,
-                message: "source response has invalid provider".to_owned(),
+                message: "source response missing provider".to_owned(),
                 request_id: Some("req_source_provider".to_owned()),
             })
         );

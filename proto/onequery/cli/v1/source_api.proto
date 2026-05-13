@@ -5,7 +5,6 @@ package onequery.cli.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
-import "onequery/cli/v1/source.proto";
 
 message DescribeSourceApiRequest {
   string org_slug = 1 [

@@ -31,9 +31,7 @@ import {
   OrganizationRole,
 } from "@onequery/proto-cli/cli/v1/org_pb";
 import {
-  SourceConnectSslMode,
   SourceInterface,
-  SourceProvider,
   SourceStatus,
 } from "@onequery/proto-cli/cli/v1/source_pb";
 import { afterAll, describe, expect, it } from "vitest";
@@ -289,7 +287,7 @@ function summarizeCliPage(value: {
 function summarizeCliSource(value: {
   displayName?: string;
   interfaces: SourceInterface[];
-  provider: SourceProvider;
+  provider: string;
   sourceKey: string;
   status: SourceStatus;
 }): JsonObject {
@@ -298,7 +296,7 @@ function summarizeCliSource(value: {
     interfaces: value.interfaces.map((sourceInterface) =>
       SourceInterface[sourceInterface].toLowerCase()
     ),
-    provider: SourceProvider[value.provider],
+    provider: value.provider,
     sourceKey: value.sourceKey,
     status: SourceStatus[value.status],
   };
@@ -1105,7 +1103,7 @@ describe("CLI self-host smoke", () => {
           cliConnectClient.source.getSourceConnectGuide(
             {
               orgSlug: "owner-org",
-              provider: SourceProvider.POSTGRES,
+              provider: "postgres",
             },
             options
           ),
@@ -1125,19 +1123,15 @@ describe("CLI self-host smoke", () => {
           cliConnectClient.source.connectSource(
             {
               credentials: {
-                kind: {
-                  case: "postgres",
-                  value: {
-                    database: "analytics",
-                    host: "localhost",
-                    password: "password",
-                    port: 5432,
-                    sslMode: SourceConnectSslMode.PREFER,
-                    username: "postgres",
-                  },
-                },
+                database: "analytics",
+                host: "localhost",
+                password: "password",
+                port: 5432,
+                sslMode: "prefer",
+                username: "postgres",
               },
               orgSlug: "owner-org",
+              provider: "postgres",
               sourceKey: "Warehouse",
             },
             options
@@ -1148,7 +1142,7 @@ describe("CLI self-host smoke", () => {
         nextCommand: "onequery source show Warehouse",
         source: {
           sourceKey: "Warehouse",
-          provider: SourceProvider.POSTGRES,
+          provider: "postgres",
           interfaces: [SourceInterface.QUERY],
           status: SourceStatus.ACTIVE,
         },

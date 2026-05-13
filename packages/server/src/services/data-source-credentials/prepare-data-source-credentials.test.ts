@@ -52,27 +52,24 @@ describe("prepare data source credentials", () => {
       masterKey
     );
 
-    await expect(
-      prepareDataSourceCredentials({
-        dataSource: createRecord({
-          credentialsEncrypted: encrypted.ciphertext,
-          credentialsIv: encrypted.iv,
-        }),
-        masterEncryptionKey: masterKey,
-      })
-    ).resolves.toSatisfy((result) => {
-      expect(result.isOk()).toBe(true);
-      if (result.isErr()) {
-        return false;
-      }
+    const result = await prepareDataSourceCredentials({
+      dataSource: createRecord({
+        credentialsEncrypted: encrypted.ciphertext,
+        credentialsIv: encrypted.iv,
+      }),
+      masterEncryptionKey: masterKey,
+    });
 
-      expect(result.value).toMatchObject({
-        credentials: {
-          type: "postgres",
-        },
-        refreshed: false,
-      });
-      return true;
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw new Error("expected credential preparation to succeed");
+    }
+
+    expect(result.value).toMatchObject({
+      credentials: {
+        type: "postgres",
+      },
+      refreshed: false,
     });
   });
 

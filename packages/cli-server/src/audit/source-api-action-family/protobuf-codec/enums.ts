@@ -1,5 +1,5 @@
+import { isSourceProviderId } from "@onequery/db/server";
 import type { ProviderType } from "@onequery/db/server";
-import * as commonPb from "@onequery/proto-workflow/workflow/v1/common_pb";
 import * as sourceApiPb from "@onequery/proto-workflow/workflow/v1/source_api_action_pb";
 import type {
   SourceApiFieldPolicy,
@@ -16,81 +16,14 @@ import type {
 import type { SourceApiActionFailureCode } from "../state";
 
 export function toWorkflowSourceProvider(provider: ProviderType) {
-  switch (provider) {
-    case "postgres":
-      return commonPb.WorkflowSourceProvider.POSTGRES;
-    case "supabase":
-      return commonPb.WorkflowSourceProvider.SUPABASE;
-    case "mysql":
-      return commonPb.WorkflowSourceProvider.MYSQL;
-    case "mongodb":
-      return commonPb.WorkflowSourceProvider.MONGODB;
-    case "bigquery":
-      return commonPb.WorkflowSourceProvider.BIGQUERY;
-    case "laminar":
-      return commonPb.WorkflowSourceProvider.LAMINAR;
-    case "aws_athena_connector":
-      return commonPb.WorkflowSourceProvider.AWS_ATHENA_CONNECTOR;
-    case "ga":
-      return commonPb.WorkflowSourceProvider.GOOGLE_ANALYTICS;
-    case "amplitude":
-      return commonPb.WorkflowSourceProvider.AMPLITUDE;
-    case "mixpanel":
-      return commonPb.WorkflowSourceProvider.MIXPANEL;
-    case "posthog":
-      return commonPb.WorkflowSourceProvider.POSTHOG;
-    case "sentry":
-      return commonPb.WorkflowSourceProvider.SENTRY;
-    case "github":
-      return commonPb.WorkflowSourceProvider.GITHUB;
-    case "linear":
-      return commonPb.WorkflowSourceProvider.LINEAR;
-    case "cloudflare_workers_observability":
-      return commonPb.WorkflowSourceProvider.CLOUDFLARE_WORKERS_OBSERVABILITY;
-    default:
-      return assertNever(provider);
-  }
+  return provider;
 }
 
-export function fromWorkflowSourceProvider(
-  provider: commonPb.WorkflowSourceProvider
-): ProviderType {
-  switch (provider) {
-    case commonPb.WorkflowSourceProvider.POSTGRES:
-      return "postgres";
-    case commonPb.WorkflowSourceProvider.SUPABASE:
-      return "supabase";
-    case commonPb.WorkflowSourceProvider.MYSQL:
-      return "mysql";
-    case commonPb.WorkflowSourceProvider.MONGODB:
-      return "mongodb";
-    case commonPb.WorkflowSourceProvider.BIGQUERY:
-      return "bigquery";
-    case commonPb.WorkflowSourceProvider.LAMINAR:
-      return "laminar";
-    case commonPb.WorkflowSourceProvider.AWS_ATHENA_CONNECTOR:
-      return "aws_athena_connector";
-    case commonPb.WorkflowSourceProvider.GOOGLE_ANALYTICS:
-      return "ga";
-    case commonPb.WorkflowSourceProvider.AMPLITUDE:
-      return "amplitude";
-    case commonPb.WorkflowSourceProvider.MIXPANEL:
-      return "mixpanel";
-    case commonPb.WorkflowSourceProvider.POSTHOG:
-      return "posthog";
-    case commonPb.WorkflowSourceProvider.SENTRY:
-      return "sentry";
-    case commonPb.WorkflowSourceProvider.GITHUB:
-      return "github";
-    case commonPb.WorkflowSourceProvider.LINEAR:
-      return "linear";
-    case commonPb.WorkflowSourceProvider.CLOUDFLARE_WORKERS_OBSERVABILITY:
-      return "cloudflare_workers_observability";
-    case commonPb.WorkflowSourceProvider.UNSPECIFIED:
-      throw new Error("workflow source provider is unspecified");
-    default:
-      throw new Error(`unsupported workflow source provider: ${provider}`);
+export function fromWorkflowSourceProvider(provider: string): ProviderType {
+  if (isSourceProviderId(provider)) {
+    return provider;
   }
+  throw new Error(`unsupported workflow source provider: ${provider}`);
 }
 
 export function toSourceApiRequestKind(kind: SourceApiActionRequestKind) {

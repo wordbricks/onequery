@@ -13,10 +13,7 @@ import {
   sourceApiActions,
   workflowJournal,
 } from "@onequery/db/server";
-import {
-  WorkflowDataSourceStatus,
-  WorkflowSourceProvider,
-} from "@onequery/proto-workflow/workflow/v1/common_pb";
+import { WorkflowDataSourceStatus } from "@onequery/proto-workflow/workflow/v1/common_pb";
 import {
   QueryActionCommandPayloadSchema,
   QueryActionCredentialsLoadedEventSchema,
@@ -116,15 +113,8 @@ const requestDescriptor = {
   selector: "/customers",
 } as const;
 
-function toWorkflowProvider(provider: string): WorkflowSourceProvider {
-  switch (provider) {
-    case "postgres":
-      return WorkflowSourceProvider.POSTGRES;
-    case "github":
-      return WorkflowSourceProvider.GITHUB;
-    default:
-      throw new Error(`unsupported test provider: ${provider}`);
-  }
+function toWorkflowProvider(provider: string): string {
+  return provider;
 }
 
 function toWorkflowStatus(status: string): WorkflowDataSourceStatus {
