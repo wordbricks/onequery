@@ -97,6 +97,7 @@ Current provider identifiers:
 - `sentry` for Sentry
 - `github` for GitHub
 - `linear` for Linear
+- `cloudflare_workers_observability` for Cloudflare Workers Observability
 
 For provider-specific setup steps and example JSON, run `onequery source connect --source <provider>` without `--input`.
 

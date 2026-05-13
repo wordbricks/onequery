@@ -161,6 +161,10 @@ source_connect_providers! {
         label: "linear",
         generated: SOURCE_PROVIDER_LINEAR,
     },
+    CloudflareWorkersObservability => {
+        label: "cloudflare_workers_observability",
+        generated: SOURCE_PROVIDER_CLOUDFLARE_WORKERS_OBSERVABILITY,
+    },
 }
 
 #[cfg(test)]

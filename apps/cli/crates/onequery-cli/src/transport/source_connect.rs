@@ -165,6 +165,15 @@ struct GitHubSourceConnectCredentialsInput {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct CloudflareWorkersObservabilitySourceConnectCredentialsInput {
+    account_id: String,
+    api_base_url: Option<String>,
+    api_token: String,
+    script_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct LinearSourceConnectCredentialsInput {
     access_token: Option<String>,
     api_key: Option<String>,
@@ -454,6 +463,27 @@ fn connect_source_credentials_from_json(
                         ..Default::default()
                     },
                 ))),
+                ..Default::default()
+            })
+        }
+        SourceConnectProvider::CloudflareWorkersObservability => {
+            let input: CloudflareWorkersObservabilitySourceConnectCredentialsInput =
+                parse_source_connect_credentials(value)?;
+
+            Ok(types::ConnectSourceCredentials {
+                kind: Some(
+                    types::connect_source_credentials::Kind::CloudflareWorkersObservability(
+                        Box::new(
+                            types::ConnectSourceCloudflareWorkersObservabilityCredentials {
+                                account_id: Some(input.account_id),
+                                api_base_url: input.api_base_url,
+                                api_token: Some(input.api_token),
+                                script_name: input.script_name,
+                                ..Default::default()
+                            },
+                        ),
+                    ),
+                ),
                 ..Default::default()
             })
         }
@@ -1086,5 +1116,40 @@ mod tests {
             postgres.ssl_mode,
             Some(types::SourceConnectSslMode::SOURCE_CONNECT_SSL_MODE_REQUIRE.into())
         );
+    }
+
+    #[test]
+    fn cloudflare_workers_observability_credentials_build_oneof_variant() {
+        let credentials = connect_source_credentials_from_json(
+            SourceConnectProvider::CloudflareWorkersObservability,
+            json!({
+                "accountId": "023e105f4ecef8ad9ca31a8372d0c353",
+                "apiToken": "cloudflare-api-token",
+                "apiBaseUrl": "https://api.cloudflare.com/client/v4",
+                "scriptName": "api-production",
+            }),
+        )
+        .expect("cloudflare workers observability input should parse");
+
+        let Some(types::connect_source_credentials::Kind::CloudflareWorkersObservability(
+            credentials,
+        )) = credentials.kind
+        else {
+            panic!("expected cloudflare workers observability credentials kind");
+        };
+
+        assert_eq!(
+            credentials.account_id,
+            Some("023e105f4ecef8ad9ca31a8372d0c353".to_owned())
+        );
+        assert_eq!(
+            credentials.api_token,
+            Some("cloudflare-api-token".to_owned())
+        );
+        assert_eq!(
+            credentials.api_base_url,
+            Some("https://api.cloudflare.com/client/v4".to_owned())
+        );
+        assert_eq!(credentials.script_name, Some("api-production".to_owned()));
     }
 }

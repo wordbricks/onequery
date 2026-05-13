@@ -79,7 +79,7 @@ onequery query execute --source <source-key> --sql "select 1"
 
 ## Supported Sources
 
-PostgreSQL · Supabase · MySQL · MongoDB · BigQuery · AWS Athena · Google Analytics · Amplitude · Mixpanel · PostHog · Sentry · GitHub · Linear · Laminar
+PostgreSQL · Supabase · MySQL · MongoDB · BigQuery · AWS Athena · Google Analytics · Amplitude · Mixpanel · PostHog · Sentry · GitHub · Linear · Laminar · Cloudflare Workers Observability
 
 Run `onequery source connect --help` for provider-specific setup.
 

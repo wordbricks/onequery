@@ -19,6 +19,7 @@ pub enum SourceProvider {
     SOURCE_PROVIDER_SENTRY = 12i32,
     SOURCE_PROVIDER_GITHUB = 13i32,
     SOURCE_PROVIDER_LINEAR = 14i32,
+    SOURCE_PROVIDER_CLOUDFLARE_WORKERS_OBSERVABILITY = 15i32,
 }
 impl ::core::default::Default for SourceProvider {
     fn default() -> Self {
@@ -133,6 +134,11 @@ impl ::buffa::Enumeration for SourceProvider {
             12i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_SENTRY),
             13i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_GITHUB),
             14i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_LINEAR),
+            15i32 => {
+                ::core::option::Option::Some(
+                    Self::SOURCE_PROVIDER_CLOUDFLARE_WORKERS_OBSERVABILITY,
+                )
+            }
             _ => ::core::option::Option::None,
         }
     }
@@ -158,6 +164,9 @@ impl ::buffa::Enumeration for SourceProvider {
             Self::SOURCE_PROVIDER_SENTRY => "SOURCE_PROVIDER_SENTRY",
             Self::SOURCE_PROVIDER_GITHUB => "SOURCE_PROVIDER_GITHUB",
             Self::SOURCE_PROVIDER_LINEAR => "SOURCE_PROVIDER_LINEAR",
+            Self::SOURCE_PROVIDER_CLOUDFLARE_WORKERS_OBSERVABILITY => {
+                "SOURCE_PROVIDER_CLOUDFLARE_WORKERS_OBSERVABILITY"
+            }
         }
     }
     fn from_proto_name(name: &str) -> ::core::option::Option<Self> {
@@ -206,6 +215,11 @@ impl ::buffa::Enumeration for SourceProvider {
             }
             "SOURCE_PROVIDER_LINEAR" => {
                 ::core::option::Option::Some(Self::SOURCE_PROVIDER_LINEAR)
+            }
+            "SOURCE_PROVIDER_CLOUDFLARE_WORKERS_OBSERVABILITY" => {
+                ::core::option::Option::Some(
+                    Self::SOURCE_PROVIDER_CLOUDFLARE_WORKERS_OBSERVABILITY,
+                )
             }
             _ => ::core::option::Option::None,
         }
@@ -6125,6 +6139,12 @@ impl ::buffa::Message for ConnectSourceCredentials {
                         += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
                             + inner;
                 }
+                connect_source_credentials::Kind::CloudflareWorkersObservability(x) => {
+                    let inner = x.compute_size();
+                    size
+                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
+                            + inner;
+                }
             }
         }
         size += self.__buffa_unknown_fields.encoded_len() as u32;
@@ -6256,6 +6276,15 @@ impl ::buffa::Message for ConnectSourceCredentials {
                 connect_source_credentials::Kind::Linear(x) => {
                     ::buffa::encoding::Tag::new(
                             14u32,
+                            ::buffa::encoding::WireType::LengthDelimited,
+                        )
+                        .encode(buf);
+                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
+                    x.write_to(buf);
+                }
+                connect_source_credentials::Kind::CloudflareWorkersObservability(x) => {
+                    ::buffa::encoding::Tag::new(
+                            15u32,
                             ::buffa::encoding::WireType::LengthDelimited,
                         )
                         .encode(buf);
@@ -6657,6 +6686,35 @@ impl ::buffa::Message for ConnectSourceCredentials {
                     );
                 }
             }
+            15u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 15u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                if let ::core::option::Option::Some(
+                    connect_source_credentials::Kind::CloudflareWorkersObservability(
+                        ref mut existing,
+                    ),
+                ) = self.kind
+                {
+                    ::buffa::Message::merge_length_delimited(
+                        &mut **existing,
+                        buf,
+                        depth,
+                    )?;
+                } else {
+                    let mut val = ::core::default::Default::default();
+                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
+                    self.kind = ::core::option::Option::Some(
+                        connect_source_credentials::Kind::CloudflareWorkersObservability(
+                            ::buffa::alloc::boxed::Box::new(val),
+                        ),
+                    );
+                }
+            }
             _ => {
                 self.__buffa_unknown_fields
                     .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
@@ -7029,6 +7087,33 @@ impl<'de> serde::Deserialize<'de> for ConnectSourceCredentials {
                                 }
                                 __oneof_kind = Some(
                                     connect_source_credentials::Kind::Linear(
+                                        ::buffa::alloc::boxed::Box::new(v),
+                                    ),
+                                );
+                            }
+                        }
+                        "cloudflareWorkersObservability"
+                        | "cloudflare_workers_observability" => {
+                            let v: Option<
+                                ConnectSourceCloudflareWorkersObservabilityCredentials,
+                            > = map
+                                .next_value_seed(
+                                    ::buffa::json_helpers::NullableDeserializeSeed(
+                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
+                                            ConnectSourceCloudflareWorkersObservabilityCredentials,
+                                        >::new(),
+                                    ),
+                                )?;
+                            if let Some(v) = v {
+                                if __oneof_kind.is_some() {
+                                    return Err(
+                                        serde::de::Error::custom(
+                                            "multiple oneof fields set for 'kind'",
+                                        ),
+                                    );
+                                }
+                                __oneof_kind = Some(
+                                    connect_source_credentials::Kind::CloudflareWorkersObservability(
                                         ::buffa::alloc::boxed::Box::new(v),
                                     ),
                                 );
@@ -7534,6 +7619,38 @@ impl<'a> ConnectSourceCredentialsView<'a> {
                         );
                     }
                 }
+                15u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 15u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    if depth == 0 {
+                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
+                    }
+                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
+                    if let Some(
+                        connect_source_credentials::KindView::CloudflareWorkersObservability(
+                            ref mut existing,
+                        ),
+                    ) = view.kind
+                    {
+                        existing._merge_into_view(sub, depth - 1)?;
+                    } else {
+                        view.kind = Some(
+                            connect_source_credentials::KindView::CloudflareWorkersObservability(
+                                ::buffa::alloc::boxed::Box::new(
+                                    ConnectSourceCloudflareWorkersObservabilityCredentialsView::_decode_depth(
+                                        sub,
+                                        depth - 1,
+                                    )?,
+                                ),
+                            ),
+                        );
+                    }
+                }
                 _ => {
                     ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
                     let span_len = before_tag.len() - cur.len();
@@ -7635,6 +7752,13 @@ impl<'a> ::buffa::MessageView<'a> for ConnectSourceCredentialsView<'a> {
                             ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
                         )
                     }
+                    connect_source_credentials::KindView::CloudflareWorkersObservability(
+                        v,
+                    ) => {
+                        connect_source_credentials::Kind::CloudflareWorkersObservability(
+                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
+                        )
+                    }
                 }),
             __buffa_unknown_fields: self
                 .__buffa_unknown_fields
@@ -7679,6 +7803,11 @@ pub mod connect_source_credentials {
         Sentry(::buffa::alloc::boxed::Box<super::ConnectSourceSentryCredentials>),
         Github(::buffa::alloc::boxed::Box<super::ConnectSourceGitHubCredentials>),
         Linear(::buffa::alloc::boxed::Box<super::ConnectSourceLinearCredentials>),
+        CloudflareWorkersObservability(
+            ::buffa::alloc::boxed::Box<
+                super::ConnectSourceCloudflareWorkersObservabilityCredentials,
+            >,
+        ),
     }
     impl ::buffa::Oneof for Kind {}
     impl From<super::ConnectSourceMySqlCredentials> for Kind {
@@ -7804,6 +7933,21 @@ pub mod connect_source_credentials {
             Self::Some(Kind::from(v))
         }
     }
+    impl From<super::ConnectSourceCloudflareWorkersObservabilityCredentials> for Kind {
+        fn from(
+            v: super::ConnectSourceCloudflareWorkersObservabilityCredentials,
+        ) -> Self {
+            Self::CloudflareWorkersObservability(::buffa::alloc::boxed::Box::new(v))
+        }
+    }
+    impl From<super::ConnectSourceCloudflareWorkersObservabilityCredentials>
+    for ::core::option::Option<Kind> {
+        fn from(
+            v: super::ConnectSourceCloudflareWorkersObservabilityCredentials,
+        ) -> Self {
+            Self::Some(Kind::from(v))
+        }
+    }
     impl serde::Serialize for Kind {
         fn serialize<S: serde::Serializer>(
             &self,
@@ -7854,6 +7998,9 @@ pub mod connect_source_credentials {
                 Kind::Linear(v) => {
                     map.serialize_entry("linear", v)?;
                 }
+                Kind::CloudflareWorkersObservability(v) => {
+                    map.serialize_entry("cloudflareWorkersObservability", v)?;
+                }
             }
             map.end()
         }
@@ -7903,6 +8050,11 @@ pub mod connect_source_credentials {
         ),
         Linear(
             ::buffa::alloc::boxed::Box<super::ConnectSourceLinearCredentialsView<'a>>,
+        ),
+        CloudflareWorkersObservability(
+            ::buffa::alloc::boxed::Box<
+                super::ConnectSourceCloudflareWorkersObservabilityCredentialsView<'a>,
+            >,
         ),
     }
 }
@@ -14833,6 +14985,404 @@ for ConnectSourceGitHubCredentialsView<'static> {
 unsafe impl<'a> ::buffa::HasDefaultViewInstance
 for ConnectSourceGitHubCredentialsView<'a> {
     type Static = ConnectSourceGitHubCredentialsView<'static>;
+}
+#[derive(Clone, PartialEq, Default)]
+#[derive(::serde::Serialize, ::serde::Deserialize)]
+#[serde(default)]
+pub struct ConnectSourceCloudflareWorkersObservabilityCredentials {
+    /// Field 1: `account_id`
+    #[serde(
+        rename = "accountId",
+        alias = "account_id",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub account_id: Option<::buffa::alloc::string::String>,
+    /// Field 2: `api_token`
+    #[serde(
+        rename = "apiToken",
+        alias = "api_token",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub api_token: Option<::buffa::alloc::string::String>,
+    /// Field 3: `api_base_url`
+    #[serde(
+        rename = "apiBaseUrl",
+        alias = "api_base_url",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub api_base_url: Option<::buffa::alloc::string::String>,
+    /// Field 4: `script_name`
+    #[serde(
+        rename = "scriptName",
+        alias = "script_name",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub script_name: Option<::buffa::alloc::string::String>,
+    #[serde(skip)]
+    #[doc(hidden)]
+    pub __buffa_unknown_fields: ::buffa::UnknownFields,
+    #[doc(hidden)]
+    #[serde(skip)]
+    pub __buffa_cached_size: ::buffa::__private::CachedSize,
+}
+impl ::core::fmt::Debug for ConnectSourceCloudflareWorkersObservabilityCredentials {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        f.debug_struct("ConnectSourceCloudflareWorkersObservabilityCredentials")
+            .field("account_id", &self.account_id)
+            .field("api_token", &self.api_token)
+            .field("api_base_url", &self.api_base_url)
+            .field("script_name", &self.script_name)
+            .finish()
+    }
+}
+impl ConnectSourceCloudflareWorkersObservabilityCredentials {
+    /// Protobuf type URL for this message, for use with `Any::pack` and
+    /// `Any::unpack_if`.
+    ///
+    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
+    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceCloudflareWorkersObservabilityCredentials";
+}
+unsafe impl ::buffa::DefaultInstance
+for ConnectSourceCloudflareWorkersObservabilityCredentials {
+    fn default_instance() -> &'static Self {
+        static VALUE: ::buffa::__private::OnceBox<
+            ConnectSourceCloudflareWorkersObservabilityCredentials,
+        > = ::buffa::__private::OnceBox::new();
+        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
+    }
+}
+impl ::buffa::Message for ConnectSourceCloudflareWorkersObservabilityCredentials {
+    /// Returns the total encoded size in bytes.
+    ///
+    /// The result is a `u32`; the protobuf specification requires all
+    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
+    /// compliant message will never overflow this type.
+    fn compute_size(&self) -> u32 {
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        let mut size = 0u32;
+        if let Some(ref v) = self.account_id {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
+        if let Some(ref v) = self.api_token {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
+        if let Some(ref v) = self.api_base_url {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
+        if let Some(ref v) = self.script_name {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
+        size += self.__buffa_unknown_fields.encoded_len() as u32;
+        self.__buffa_cached_size.set(size);
+        size
+    }
+    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        if let Some(ref v) = self.account_id {
+            ::buffa::encoding::Tag::new(
+                    1u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        if let Some(ref v) = self.api_token {
+            ::buffa::encoding::Tag::new(
+                    2u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        if let Some(ref v) = self.api_base_url {
+            ::buffa::encoding::Tag::new(
+                    3u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        if let Some(ref v) = self.script_name {
+            ::buffa::encoding::Tag::new(
+                    4u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        self.__buffa_unknown_fields.write_to(buf);
+    }
+    fn merge_field(
+        &mut self,
+        tag: ::buffa::encoding::Tag,
+        buf: &mut impl ::buffa::bytes::Buf,
+        depth: u32,
+    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
+        #[allow(unused_imports)]
+        use ::buffa::bytes::Buf as _;
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        match tag.field_number() {
+            1u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 1u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::types::merge_string(
+                    self
+                        .account_id
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            2u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 2u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::types::merge_string(
+                    self
+                        .api_token
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            3u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 3u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::types::merge_string(
+                    self
+                        .api_base_url
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            4u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 4u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::types::merge_string(
+                    self
+                        .script_name
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            _ => {
+                self.__buffa_unknown_fields
+                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+    fn cached_size(&self) -> u32 {
+        self.__buffa_cached_size.get()
+    }
+    fn clear(&mut self) {
+        self.account_id = ::core::option::Option::None;
+        self.api_token = ::core::option::Option::None;
+        self.api_base_url = ::core::option::Option::None;
+        self.script_name = ::core::option::Option::None;
+        self.__buffa_unknown_fields.clear();
+        self.__buffa_cached_size.set(0);
+    }
+}
+impl ::buffa::ExtensionSet for ConnectSourceCloudflareWorkersObservabilityCredentials {
+    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceCloudflareWorkersObservabilityCredentials";
+    fn unknown_fields(&self) -> &::buffa::UnknownFields {
+        &self.__buffa_unknown_fields
+    }
+    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
+        &mut self.__buffa_unknown_fields
+    }
+}
+impl ::buffa::json_helpers::ProtoElemJson
+for ConnectSourceCloudflareWorkersObservabilityCredentials {
+    fn serialize_proto_json<S: ::serde::Serializer>(
+        v: &Self,
+        s: S,
+    ) -> ::core::result::Result<S::Ok, S::Error> {
+        ::serde::Serialize::serialize(v, s)
+    }
+    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
+        d: D,
+    ) -> ::core::result::Result<Self, D::Error> {
+        <Self as ::serde::Deserialize>::deserialize(d)
+    }
+}
+#[doc(hidden)]
+pub const __CONNECT_SOURCE_CLOUDFLARE_WORKERS_OBSERVABILITY_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
+    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceCloudflareWorkersObservabilityCredentials",
+    to_json: ::buffa::type_registry::any_to_json::<
+        ConnectSourceCloudflareWorkersObservabilityCredentials,
+    >,
+    from_json: ::buffa::type_registry::any_from_json::<
+        ConnectSourceCloudflareWorkersObservabilityCredentials,
+    >,
+    is_wkt: false,
+};
+#[derive(Clone, Debug, Default)]
+pub struct ConnectSourceCloudflareWorkersObservabilityCredentialsView<'a> {
+    /// Field 1: `account_id`
+    pub account_id: ::core::option::Option<&'a str>,
+    /// Field 2: `api_token`
+    pub api_token: ::core::option::Option<&'a str>,
+    /// Field 3: `api_base_url`
+    pub api_base_url: ::core::option::Option<&'a str>,
+    /// Field 4: `script_name`
+    pub script_name: ::core::option::Option<&'a str>,
+    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
+}
+impl<'a> ConnectSourceCloudflareWorkersObservabilityCredentialsView<'a> {
+    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
+    ///
+    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
+    /// and by generated sub-message decode arms with `depth - 1`.
+    ///
+    /// **Not part of the public API.** Named with a leading underscore to
+    /// signal that it is for generated-code use only.
+    #[doc(hidden)]
+    pub fn _decode_depth(
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        let mut view = Self::default();
+        view._merge_into_view(buf, depth)?;
+        ::core::result::Result::Ok(view)
+    }
+    /// Merge fields from `buf` into this view (proto merge semantics).
+    ///
+    /// Repeated fields append; singular fields last-wins; singular
+    /// MESSAGE fields merge recursively. Used by sub-message decode
+    /// arms when the same field appears multiple times on the wire.
+    ///
+    /// **Not part of the public API.**
+    #[doc(hidden)]
+    pub fn _merge_into_view(
+        &mut self,
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
+        let _ = depth;
+        #[allow(unused_variables)]
+        let view = self;
+        let mut cur: &'a [u8] = buf;
+        while !cur.is_empty() {
+            let before_tag = cur;
+            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
+            match tag.field_number() {
+                1u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 1u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.account_id = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                2u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 2u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.api_token = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                3u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 3u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.api_base_url = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                4u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 4u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.script_name = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                _ => {
+                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
+                    let span_len = before_tag.len() - cur.len();
+                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
+                }
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+}
+impl<'a> ::buffa::MessageView<'a>
+for ConnectSourceCloudflareWorkersObservabilityCredentialsView<'a> {
+    type Owned = ConnectSourceCloudflareWorkersObservabilityCredentials;
+    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
+    }
+    fn decode_view_with_limit(
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        Self::_decode_depth(buf, depth)
+    }
+    /// Convert this view to the owned message type.
+    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
+    fn to_owned_message(
+        &self,
+    ) -> ConnectSourceCloudflareWorkersObservabilityCredentials {
+        #[allow(unused_imports)]
+        use ::buffa::alloc::string::ToString as _;
+        ConnectSourceCloudflareWorkersObservabilityCredentials {
+            account_id: self.account_id.map(|s| s.to_string()),
+            api_token: self.api_token.map(|s| s.to_string()),
+            api_base_url: self.api_base_url.map(|s| s.to_string()),
+            script_name: self.script_name.map(|s| s.to_string()),
+            __buffa_unknown_fields: self
+                .__buffa_unknown_fields
+                .to_owned()
+                .unwrap_or_default()
+                .into(),
+            ..::core::default::Default::default()
+        }
+    }
+}
+unsafe impl ::buffa::DefaultViewInstance
+for ConnectSourceCloudflareWorkersObservabilityCredentialsView<'static> {
+    fn default_view_instance() -> &'static Self {
+        static VALUE: ::buffa::__private::OnceBox<
+            ConnectSourceCloudflareWorkersObservabilityCredentialsView<'static>,
+        > = ::buffa::__private::OnceBox::new();
+        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
+    }
+}
+unsafe impl<'a> ::buffa::HasDefaultViewInstance
+for ConnectSourceCloudflareWorkersObservabilityCredentialsView<'a> {
+    type Static = ConnectSourceCloudflareWorkersObservabilityCredentialsView<'static>;
 }
 #[derive(Clone, PartialEq, Default)]
 #[derive(::serde::Serialize)]

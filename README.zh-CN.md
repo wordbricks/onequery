@@ -79,7 +79,7 @@ onequery query execute --source <source-key> --sql "select 1"
 
 ## 支持的数据源
 
-PostgreSQL · Supabase · MySQL · MongoDB · BigQuery · AWS Athena · Google Analytics · Amplitude · Mixpanel · PostHog · Sentry · GitHub · Linear · Laminar
+PostgreSQL · Supabase · MySQL · MongoDB · BigQuery · AWS Athena · Google Analytics · Amplitude · Mixpanel · PostHog · Sentry · GitHub · Linear · Laminar · Cloudflare Workers Observability
 
 各数据源的接入参数可以跑 `onequery source connect --help` 查看。
 

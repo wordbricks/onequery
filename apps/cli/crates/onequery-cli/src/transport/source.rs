@@ -551,4 +551,33 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn source_summary_from_generated_accepts_cloudflare_workers_observability_provider() {
+        let summary = source_summary_from_generated(
+            types::CliSource {
+                source_key: Some("cloudflare_workers".to_owned()),
+                provider: Some(
+                    types::SourceProvider::SOURCE_PROVIDER_CLOUDFLARE_WORKERS_OBSERVABILITY.into(),
+                ),
+                status: Some(types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
+                interfaces: vec![types::SourceInterface::SOURCE_INTERFACE_API.into()],
+                ..Default::default()
+            },
+            ErrorStage::Http,
+            Some("req_source_provider".to_owned()),
+        )
+        .expect("cloudflare workers observability provider should decode");
+
+        assert_eq!(
+            summary,
+            SourceSummary {
+                source_key: "cloudflare_workers".to_owned(),
+                display_name: None,
+                provider: "cloudflare_workers_observability".to_owned(),
+                status: "active".to_owned(),
+                interfaces: vec!["api".to_owned()],
+            }
+        );
+    }
 }
