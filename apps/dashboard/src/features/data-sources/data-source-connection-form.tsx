@@ -7,7 +7,10 @@ import {
   getConnectableDataSourceOptions,
   isProviderType,
 } from "@/features/data-sources/data-source-provider-metadata";
-import type { ProviderType } from "@/features/data-sources/data-source-provider-metadata";
+import type {
+  ConnectableDataSourceOption,
+  ProviderType,
+} from "@/features/data-sources/data-source-provider-metadata";
 import { AmplitudeDataSourceForm } from "@/features/data-sources/forms/amplitude-data-source-form";
 import { CloudflareWorkersObservabilityDataSourceForm } from "@/features/data-sources/forms/cloudflare-workers-observability-data-source-form";
 import { ConnectorDataSourceForm } from "@/features/data-sources/forms/connector-data-source-form";
@@ -64,6 +67,84 @@ function resolveSelectedProvider(input: {
   }
 
   return input.providerIds[0] ?? "";
+}
+
+type GoogleServiceAccountProvider = "ga" | "bigquery";
+
+function isGoogleServiceAccountProvider(
+  provider: string
+): provider is GoogleServiceAccountProvider {
+  return provider === "ga" || provider === "bigquery";
+}
+
+function renderConnectionForm(input: {
+  organizationId: string;
+  onSuccess: (dataSourceId: string) => void;
+  provider: ConnectableDataSourceOption;
+}) {
+  const { organizationId, onSuccess, provider } = input;
+  const providerId = provider.id;
+  const commonProps = {
+    organizationId,
+    onSuccess,
+  };
+
+  switch (provider.dashboardCredentialForm) {
+    case "database":
+      if (isDatabaseProvider(providerId)) {
+        return (
+          <DatabaseDataSourceForm
+            key={providerId}
+            {...commonProps}
+            provider={providerId}
+          />
+        );
+      }
+      break;
+    case "mongodb":
+      return <MongoDBDataSourceForm key={providerId} {...commonProps} />;
+    case "google_service_account":
+      if (isGoogleServiceAccountProvider(providerId)) {
+        return (
+          <CredentialDataSourceForm
+            key={providerId}
+            {...commonProps}
+            provider={providerId}
+          />
+        );
+      }
+      break;
+    case "amplitude":
+      return <AmplitudeDataSourceForm key={providerId} {...commonProps} />;
+    case "laminar":
+      return <LaminarDataSourceForm key={providerId} {...commonProps} />;
+    case "cloudflare_workers_observability":
+      return (
+        <CloudflareWorkersObservabilityDataSourceForm
+          key={providerId}
+          {...commonProps}
+        />
+      );
+    case "aws_athena_connector":
+      return <ConnectorDataSourceForm key={providerId} {...commonProps} />;
+    case "mixpanel":
+      return <MixpanelDataSourceForm key={providerId} {...commonProps} />;
+    case "sentry":
+      return <SentryDataSourceForm key={providerId} {...commonProps} />;
+    case "posthog":
+      return <PostHogDataSourceForm key={providerId} {...commonProps} />;
+    case "github":
+      return <GitHubDataSourceForm key={providerId} {...commonProps} />;
+  }
+
+  return (
+    <JsonDataSourceForm
+      key={providerId}
+      provider={provider}
+      organizationId={organizationId}
+      onSuccess={onSuccess}
+    />
+  );
 }
 
 export function DataSourceConnectionForm(props: DataSourceConnectionFormProps) {
@@ -151,106 +232,11 @@ export function DataSourceConnectionForm(props: DataSourceConnectionFormProps) {
       </div>
       <DataSourceConnectionGuideDialog provider={selectedProviderDefinition} />
 
-      {isDatabaseProvider(selectedProvider) && (
-        <DatabaseDataSourceForm
-          provider={selectedProvider}
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {selectedProvider === "mongodb" && (
-        <MongoDBDataSourceForm
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {(selectedProvider === "ga" || selectedProvider === "bigquery") && (
-        <CredentialDataSourceForm
-          provider={selectedProvider}
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {selectedProvider === "amplitude" && (
-        <AmplitudeDataSourceForm
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {selectedProvider === "laminar" && (
-        <LaminarDataSourceForm
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {selectedProvider === "cloudflare_workers_observability" && (
-        <CloudflareWorkersObservabilityDataSourceForm
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {selectedProvider === "aws_athena_connector" && (
-        <ConnectorDataSourceForm
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {selectedProvider === "mixpanel" && (
-        <MixpanelDataSourceForm
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {selectedProvider === "sentry" && (
-        <SentryDataSourceForm
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {selectedProvider === "posthog" && (
-        <PostHogDataSourceForm
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {selectedProvider === "github" && (
-        <GitHubDataSourceForm
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
-
-      {!(
-        isDatabaseProvider(selectedProvider) ||
-        selectedProvider === "mongodb" ||
-        selectedProvider === "ga" ||
-        selectedProvider === "bigquery" ||
-        selectedProvider === "amplitude" ||
-        selectedProvider === "laminar" ||
-        selectedProvider === "cloudflare_workers_observability" ||
-        selectedProvider === "aws_athena_connector" ||
-        selectedProvider === "mixpanel" ||
-        selectedProvider === "sentry" ||
-        selectedProvider === "posthog" ||
-        selectedProvider === "github"
-      ) && (
-        <JsonDataSourceForm
-          key={selectedProviderDefinition.id}
-          provider={selectedProviderDefinition}
-          organizationId={props.organizationId}
-          onSuccess={props.onSuccess}
-        />
-      )}
+      {renderConnectionForm({
+        provider: selectedProviderDefinition,
+        organizationId: props.organizationId,
+        onSuccess: props.onSuccess,
+      })}
     </div>
   );
 }
