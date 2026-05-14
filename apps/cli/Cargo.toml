@@ -25,7 +25,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.0.0"
+version = "0.1.56"
 # COMMENT: Keep the checked-in Rust workspace version at 0.0.0 on origin/main
 # and normal development branches. Only temporary release/* branches should
 # carry the real release version so Cargo embeds it and the release workflow
