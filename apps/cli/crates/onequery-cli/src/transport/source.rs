@@ -39,6 +39,24 @@ pub(crate) struct SourceListPayload {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct SourceProviderListPayload {
+    #[serde(default)]
+    pub(crate) providers: Vec<SourceProviderSummary>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct SourceProviderSummary {
+    pub(crate) provider: String,
+    pub(crate) label: String,
+    pub(crate) connectable: bool,
+    pub(crate) testable: bool,
+    pub(crate) interfaces: Vec<String>,
+    pub(crate) credential_type: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct SourceTestPayload {
     pub(crate) source: SourceSummary,
@@ -139,6 +157,46 @@ async fn fetch_source_page(
                 })
                 .collect::<Result<Vec<_>, ApiFailure>>()?,
             page: page_info_from_generated(page),
+        },
+        request_id,
+    })
+}
+
+pub(crate) async fn list_source_providers(
+    client: &AuthenticatedApiClient,
+    org: &str,
+) -> Result<ApiSuccess<SourceProviderListPayload>, ApiFailure> {
+    let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
+    let response = match client
+        .source()
+        .list_source_providers(types::ListSourceProvidersRequest {
+            org_slug: Some(org_slug),
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => {
+            return Err(failure_from_connect(error, ErrorStage::ResolveSource));
+        }
+    };
+
+    let request_id = success_response_request_id(&response);
+    let payload = response.into_owned();
+
+    Ok(ApiSuccess {
+        payload: SourceProviderListPayload {
+            providers: payload
+                .providers
+                .into_iter()
+                .map(|provider| {
+                    source_provider_summary_from_generated(
+                        provider,
+                        ErrorStage::ResolveSource,
+                        request_id.clone(),
+                    )
+                })
+                .collect::<Result<Vec<_>, ApiFailure>>()?,
         },
         request_id,
     })
@@ -345,6 +403,46 @@ fn source_provider_from_generated(
     request_id: Option<String>,
 ) -> Result<String, ApiFailure> {
     require_non_empty_text(value, stage, "source response missing provider", request_id)
+}
+
+fn source_provider_summary_from_generated(
+    provider: types::CliSourceProvider,
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<SourceProviderSummary, ApiFailure> {
+    let types::CliSourceProvider {
+        provider,
+        label,
+        connectable,
+        testable,
+        interfaces,
+        credential_type,
+        ..
+    } = provider;
+
+    Ok(SourceProviderSummary {
+        provider: require_non_empty_text(
+            provider,
+            stage,
+            "source provider response missing provider",
+            request_id.clone(),
+        )?,
+        label: require_non_empty_text(
+            label,
+            stage,
+            "source provider response missing label",
+            request_id.clone(),
+        )?,
+        connectable: connectable.unwrap_or(false),
+        testable: testable.unwrap_or(false),
+        interfaces: source_interfaces_from_generated(interfaces, stage, request_id.clone())?,
+        credential_type: require_non_empty_text(
+            credential_type,
+            stage,
+            "source provider response missing credential type",
+            request_id,
+        )?,
+    })
 }
 
 fn source_status_from_generated(

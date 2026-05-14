@@ -154,6 +154,8 @@ pub(crate) enum SourceSubcommand {
         #[command(flatten)]
         read: ListReadArgs,
     },
+    /// List source providers available to the active org.
+    Providers,
     /// Show one source by key.
     Show {
         /// Look up this source key.
@@ -174,7 +176,7 @@ pub(crate) enum SourceSubcommand {
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct SourceConnectArgs {
-    /// Select the provider to connect.
+    /// Select the provider to connect. Run `onequery source providers` to discover provider IDs.
     #[arg(long, value_name = "PROVIDER")]
     pub source: SourceConnectProvider,
     /// Create one source from an inline JSON payload.

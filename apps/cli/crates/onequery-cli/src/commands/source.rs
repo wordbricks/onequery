@@ -131,6 +131,10 @@ pub(super) async fn execute<B, T>(
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
+    if let SourceSubcommand::Providers = command {
+        return super::source_providers::execute(context, runtime).await;
+    }
+
     if let SourceSubcommand::Connect(args) = command {
         return super::source_connect::execute(args, context, runtime).await;
     }
@@ -144,6 +148,7 @@ pub(super) async fn execute<B, T>(
         SourceSubcommand::Test { source_key } => SourceMode::Test {
             source_key: source_key.clone(),
         },
+        SourceSubcommand::Providers => unreachable!("source providers is delegated"),
         SourceSubcommand::Connect(_) => unreachable!("source connect is delegated"),
     };
 

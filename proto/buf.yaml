@@ -8,5 +8,7 @@ lint:
   use:
     - STANDARD
 breaking:
+  # TODO: Wire `buf breaking` into proto:check/CI after the internal-only
+  # provider catalog wire change settles.
   use:
     - FILE

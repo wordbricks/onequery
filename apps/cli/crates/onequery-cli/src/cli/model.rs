@@ -260,6 +260,7 @@ impl Command {
             Self::Org(OrgSubcommand::Current) => "org current",
             Self::Org(OrgSubcommand::Use { .. }) => "org use",
             Self::Source(SourceSubcommand::List { .. }) => "source list",
+            Self::Source(SourceSubcommand::Providers) => "source providers",
             Self::Source(SourceSubcommand::Show { .. }) => "source show",
             Self::Source(SourceSubcommand::Test { .. }) => "source test",
             Self::Source(SourceSubcommand::Connect(_)) => "source connect",

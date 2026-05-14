@@ -12,6 +12,7 @@ mod restore;
 mod source;
 mod source_api;
 mod source_connect;
+mod source_providers;
 #[cfg(test)]
 pub(crate) mod test_support;
 mod upgrade;
