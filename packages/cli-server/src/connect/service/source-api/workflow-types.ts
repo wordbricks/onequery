@@ -1,3 +1,4 @@
+import type { Database } from "@onequery/db/server";
 import type {
   PreparedSourceConnection,
   SourceApiActorContext,
@@ -16,6 +17,7 @@ import type {
   StoredWorkflowDecision,
   WorkflowActorSnapshot,
   WorkflowJournalEffectToken,
+  WorkflowSurface,
 } from "../../../audit";
 import type { CliHonoContext } from "../types";
 import type { SourceApiServiceDependencies } from "./dependencies";
@@ -29,6 +31,7 @@ export type SourceApiWorkflowContext = {
   orgSlug: string;
   requestId: string;
   resourceCache: SourceApiWorkflowResourceCache;
+  surface?: WorkflowSurface;
 };
 
 export type DescribeSourceApiWorkflowInput = SourceApiWorkflowContext & {
@@ -172,4 +175,11 @@ export type PreparedSourceApiWorkflowInput = SourceApiWorkflowContext & {
     SourceApiActionCommandPayload,
     { type: "start_describe" | "start_invoke" }
   >;
+};
+
+export type SourceApiWorkflowDispatchContext = {
+  actorSnapshot: WorkflowActorSnapshot;
+  db: Database;
+  organizationId: string;
+  requestId: string;
 };

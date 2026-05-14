@@ -4,6 +4,7 @@ import { createStableValueFingerprint } from "@onequery/server/lib/stable-finger
 import type {
   QueryActionCommand,
   QueryActionSourceDescriptor,
+  WorkflowSurface,
 } from "../../../audit";
 import type { AccessibleCliOrg } from "../../../domain/workflows";
 import { createEmptyQueryWorkflowResourceCache } from "./resource-cache";
@@ -56,6 +57,7 @@ type RunPreparedCliQueryWorkflowInput = {
   resourceCache?: QueryWorkflowResourceCache;
   sourceName: string;
   sql: string;
+  surface?: WorkflowSurface;
   timeoutMs: number;
 } & (
   | {
@@ -94,7 +96,7 @@ export async function runPreparedCliQueryWorkflow(
     db: input.db,
     organizationId: input.org.id,
     requestId: input.requestId,
-    surface: "cli",
+    surface: input.surface ?? "cli",
   });
 
   const preparation =
