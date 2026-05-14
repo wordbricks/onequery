@@ -79,6 +79,8 @@ type WorkflowActorSnapshot = {
   userId: string | null;
 };
 
+const auditQuery = (query: Record<string, string>) => query as never;
+
 const journalStreamPositions = new Map<string, number>();
 
 function nextJournalStreamPosition(actionId: string) {
@@ -1428,9 +1430,9 @@ describe("organizations audit route", () => {
           param: {
             slug: organization.slug as string,
           },
-          query: {
+          query: auditQuery({
             limit: "1",
-          },
+          }),
         },
         {
           headers: { cookie: ownerCookie },
@@ -1492,10 +1494,10 @@ describe("organizations audit route", () => {
           param: {
             slug: organization.slug as string,
           },
-          query: {
+          query: auditQuery({
             cursor: firstPage.nextCursor ?? "",
             limit: "1",
-          },
+          }),
         },
         {
           headers: { cookie: ownerCookie },
@@ -1544,12 +1546,12 @@ describe("organizations audit route", () => {
           param: {
             slug: organization.slug as string,
           },
-          query: {
+          query: auditQuery({
             family: "source_api_action",
             outcome: "pending",
             q: "customers",
             sourceKey: "billing-api",
-          },
+          }),
         },
         {
           headers: { cookie: ownerCookie },
@@ -1580,10 +1582,10 @@ describe("organizations audit route", () => {
           param: {
             slug: organization.slug as string,
           },
-          query: {
+          query: auditQuery({
             actionName: "execute",
             family: "source_api_action",
-          },
+          }),
         },
         {
           headers: { cookie: ownerCookie },
@@ -1599,9 +1601,9 @@ describe("organizations audit route", () => {
           param: {
             slug: organization.slug as string,
           },
-          query: {
+          query: auditQuery({
             q: "add a table name",
-          },
+          }),
         },
         {
           headers: { cookie: ownerCookie },
@@ -1626,9 +1628,9 @@ describe("organizations audit route", () => {
           param: {
             slug: organization.slug as string,
           },
-          query: {
+          query: auditQuery({
             limit: "3",
-          },
+          }),
         },
         {
           headers: { cookie: ownerCookie },
@@ -1753,7 +1755,7 @@ describe("organizations audit route", () => {
         param: {
           slug: organization.slug as string,
         },
-        query: {},
+        query: auditQuery({}),
       });
       expect(unauthenticated.status).toBe(401);
 
@@ -1762,7 +1764,7 @@ describe("organizations audit route", () => {
           param: {
             slug: organization.slug as string,
           },
-          query: {},
+          query: auditQuery({}),
         },
         {
           headers: { cookie: outsiderCookie },
@@ -1782,7 +1784,7 @@ describe("organizations audit route", () => {
           param: {
             slug: "missing-org",
           },
-          query: {},
+          query: auditQuery({}),
         },
         {
           headers: { cookie: ownerCookie },
@@ -1854,9 +1856,9 @@ describe("organizations audit route", () => {
           param: {
             slug: organization.slug as string,
           },
-          query: {
+          query: auditQuery({
             limit: "1",
-          },
+          }),
         },
         {
           headers: { cookie: ownerCookie },
@@ -1879,9 +1881,9 @@ describe("organizations audit route", () => {
           param: {
             slug: organization.slug as string,
           },
-          query: {
+          query: auditQuery({
             limit: "1",
-          },
+          }),
         },
         {
           headers: { cookie: ownerCookie },
@@ -1987,9 +1989,9 @@ describe("organizations audit route", () => {
           param: {
             slug: visibleOrganization.slug as string,
           },
-          query: {
+          query: auditQuery({
             limit: "1",
-          },
+          }),
         },
         {
           headers: { cookie: ownerCookie },
