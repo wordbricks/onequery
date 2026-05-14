@@ -313,10 +313,8 @@ mod tests {
 
     #[test]
     fn source_connect_credentials_reject_non_object_json() {
-        let error = connect_source_credentials_from_json(
-            json!("not an object"),
-        )
-        .expect_err("non-object credentials should be rejected");
+        let error = connect_source_credentials_from_json(json!("not an object"))
+            .expect_err("non-object credentials should be rejected");
 
         let ApiFailure::Problem(problem) = error else {
             panic!("expected problem failure");
@@ -328,17 +326,15 @@ mod tests {
 
     #[test]
     fn source_connect_credentials_preserve_json_object_shape() {
-        let credentials = connect_source_credentials_from_json(
-            json!({
-                "host": "db.example.com",
-                "database": "app",
-                "username": "onequery",
-                "password": "secret",
-                "nested": {
-                    "enabled": true
-                },
-            }),
-        )
+        let credentials = connect_source_credentials_from_json(json!({
+            "host": "db.example.com",
+            "database": "app",
+            "username": "onequery",
+            "password": "secret",
+            "nested": {
+                "enabled": true
+            },
+        }))
         .expect("object credentials should parse");
 
         assert_eq!(
