@@ -213,7 +213,7 @@ export async function runResumeSourceApiExecuteWorkflowResult(
               observedAt: new Date(),
               organizationId: input.organizationId,
               requestId: input.requestId,
-              surface: "cli",
+              surface: input.surface ?? "cli",
             },
             db: input.c.var.storage.db,
           })

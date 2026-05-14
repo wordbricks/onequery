@@ -13,6 +13,7 @@ import type {
   QueryActionSourceDescriptor,
   StoredWorkflowDecision,
   WorkflowActorSnapshot,
+  WorkflowSurface,
   WorkflowJournalCursor,
   WorkflowJournalEffectToken,
 } from "../../../audit";
@@ -41,6 +42,7 @@ export type QueryWorkflowRuntimeBaseInput = {
   requestId: string;
   sourceName: string;
   sql: string;
+  surface?: WorkflowSurface;
   timeoutMs: number;
 };
 

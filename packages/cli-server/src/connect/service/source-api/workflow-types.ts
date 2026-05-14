@@ -15,6 +15,7 @@ import type {
   SourceApiActionEvent,
   SourceApiActionRequestDescriptor,
   StoredWorkflowDecision,
+  WorkflowSurface,
   WorkflowActorSnapshot,
   WorkflowJournalEffectToken,
 } from "../../../audit";
@@ -28,6 +29,7 @@ export type SourceApiWorkflowContext = {
   organizationId: string;
   orgSlug: string;
   requestId: string;
+  surface?: WorkflowSurface;
 };
 
 export type DescribeSourceApiWorkflowInput = SourceApiWorkflowContext & {
