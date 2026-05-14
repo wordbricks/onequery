@@ -167,7 +167,8 @@ function createHandlePollDeviceAuthorizationImpl(
 ): CliResultServiceMethod<"pollDeviceAuthorization"> {
   const clientId = options.clientId ?? CLI_DEVICE_AUTH_CLIENT_ID;
 
-  return async (request, context) => Result.gen(async function* handlePollDeviceAuthorizationFlow() {
+  return async (request, context) =>
+    Result.gen(async function* handlePollDeviceAuthorizationFlow() {
       const c = requireCliConnectRequestContext(context).honoContext;
       const response = await c.var.storage.auth.handler(
         createAuthProxyRequest(c.req.raw, CLI_DEVICE_AUTH_TOKEN_PATH, {
