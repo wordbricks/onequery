@@ -148,10 +148,11 @@ fn config_set_help_output_lists_writable_keys() {
 }
 
 #[test]
-fn source_connect_help_output_lists_supported_providers() {
-    assert_snapshot!(rendered_display(&[
-        "onequery", "source", "connect", "--help"
-    ]));
+fn source_connect_help_output_points_to_provider_discovery() {
+    let output = rendered_display(&["onequery", "source", "connect", "--help"]);
+
+    assert!(output.contains("--source <PROVIDER>"));
+    assert!(output.contains("onequery source providers"));
 }
 
 #[test]
@@ -899,6 +900,16 @@ fn parse_invocation_accepts_list_read_controls() {
 }
 
 #[test]
+fn parse_invocation_accepts_source_providers() {
+    let invocation = parse_invocation(&["onequery", "source", "providers"]);
+
+    assert!(matches!(
+        invocation.command,
+        Command::Source(super::SourceSubcommand::Providers)
+    ));
+}
+
+#[test]
 fn parse_invocation_accepts_source_connect_input() {
     let invocation = parse_invocation(&[
         "onequery",
@@ -915,7 +926,7 @@ fn parse_invocation_accepts_source_connect_input() {
         Command::Source(super::SourceSubcommand::Connect(super::SourceConnectArgs {
             source,
             input: Some(input),
-        })) if source == SourceConnectProvider::Postgres
+        })) if source == SourceConnectProvider::new_for_test("postgres")
             && input == "{\"name\":\"warehouse\"}"
     ));
 }

@@ -4,10 +4,13 @@ import {
   and,
   credentialSchemaMap,
   dataSources,
+  doesSourceProviderMatchCredentials,
   eq,
+  getSourceProviderDefinition,
+  isSourceProviderId,
   ne,
 } from "@onequery/db/server";
-import type { ProviderType } from "@onequery/db/server";
+import type { Credentials, ProviderType } from "@onequery/db/server";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 import { Hono } from "hono";
@@ -49,17 +52,22 @@ class LinearCredentialsDecryptError extends TaggedError(
   cause: unknown;
 }>() {}
 
-function doesProviderMatchCredentials(input: {
-  provider: ProviderType;
-  credentialsType: string;
-}): boolean {
-  if (input.provider === input.credentialsType) {
-    return true;
+function injectProviderCredentialType(input: {
+  credentials: unknown;
+  credentialType: string;
+}): unknown {
+  if (
+    typeof input.credentials !== "object" ||
+    input.credentials === null ||
+    Array.isArray(input.credentials)
+  ) {
+    return input.credentials;
   }
 
-  // Comment: Supabase is a product-facing alias that reuses the Postgres
-  // runtime and credential shape internally.
-  return input.provider === "supabase" && input.credentialsType === "postgres";
+  return {
+    ...input.credentials,
+    type: input.credentialType,
+  };
 }
 
 function isUnsupportedGoogleOAuthCredentials(input: {
@@ -80,6 +88,64 @@ function getLinearRevocationToken(
     return credentials.accessToken;
   }
   return credentials.apiKey;
+}
+
+function parseProviderCredentials(input: {
+  provider: string;
+  credentials: unknown;
+}): ResultType<
+  { provider: ProviderType; credentials: Credentials },
+  { status: 400; body: { error: string; details?: string } }
+> {
+  if (!isSourceProviderId(input.provider)) {
+    return Result.err({
+      status: 400,
+      body: { error: `Unsupported data source provider '${input.provider}'` },
+    });
+  }
+
+  const definition = getSourceProviderDefinition(input.provider);
+  if (!definition) {
+    return Result.err({
+      status: 400,
+      body: { error: `Unsupported data source provider '${input.provider}'` },
+    });
+  }
+  const parsed = definition.credentialSchema.safeParse(
+    injectProviderCredentialType({
+      credentials: input.credentials,
+      credentialType: definition.credentialType,
+    })
+  );
+  if (!parsed.success) {
+    return Result.err({
+      status: 400,
+      body: {
+        error: "Invalid data source credentials",
+        details: parsed.error.issues[0]?.message,
+      },
+    });
+  }
+
+  if (
+    !doesSourceProviderMatchCredentials({
+      credentialsType: parsed.data.type,
+      provider: input.provider,
+    })
+  ) {
+    return Result.err({
+      status: 400,
+      body: {
+        details: `Provider is '${input.provider}' but credentials type is '${parsed.data.type}'`,
+        error: "Provider does not match credentials type",
+      },
+    });
+  }
+
+  return Result.ok({
+    provider: input.provider,
+    credentials: parsed.data as Credentials,
+  });
 }
 
 async function revokeLinearToken(input: {
@@ -209,31 +275,28 @@ export const dataSourcesCrudRoute = new Hono<{
         );
       }
 
-      if (
-        !doesProviderMatchCredentials({
-          credentialsType: body.credentials.type,
-          provider: body.provider,
-        })
-      ) {
+      const parsedProviderCredentials = parseProviderCredentials({
+        credentials: body.credentials,
+        provider: body.provider,
+      });
+      if (parsedProviderCredentials.isErr()) {
         return c.json(
-          {
-            details: `Provider is '${body.provider}' but credentials type is '${body.credentials.type}'`,
-            error: "Provider does not match credentials type",
-          },
-          400
+          parsedProviderCredentials.error.body,
+          parsedProviderCredentials.error.status
         );
       }
+      const { credentials, provider } = parsedProviderCredentials.value;
 
-      if (isUnsupportedGoogleOAuthCredentials(body)) {
+      if (isUnsupportedGoogleOAuthCredentials({ credentials, provider })) {
         return c.json({ error: GOOGLE_OAUTH_DATA_SOURCE_ERROR }, 400);
       }
 
       if (
-        body.provider === "aws_athena_connector" &&
-        body.credentials.type === "aws_athena_connector"
+        provider === "aws_athena_connector" &&
+        credentials.type === "aws_athena_connector"
       ) {
         const organizationCheck = await ensureConnectorOrganization({
-          connectorId: body.credentials.connectorId,
+          connectorId: credentials.connectorId,
           db,
           organizationId: body.organizationId,
         });
@@ -251,10 +314,9 @@ export const dataSourcesCrudRoute = new Hono<{
       }
 
       const encrypted = encryptCredentialsObject(
-        body.credentials,
+        credentials,
         c.var.runtime.crypto.masterEncryptionKey
       );
-      const providerType: ProviderType = body.provider;
 
       const [inserted] = await db
         .insert(dataSources)
@@ -263,7 +325,7 @@ export const dataSourcesCrudRoute = new Hono<{
           credentialsIv: encrypted.iv,
           name,
           organizationId: body.organizationId,
-          provider: providerType,
+          provider,
           status: "active",
         })
         .onConflictDoNothing({
@@ -345,24 +407,22 @@ export const dataSourcesCrudRoute = new Hono<{
         updates.name = body.name;
       }
 
-      if (body.credentials) {
-        if (
-          !doesProviderMatchCredentials({
-            credentialsType: body.credentials.type,
-            provider: existing.provider,
-          })
-        ) {
+      if (body.credentials !== undefined) {
+        const parsedProviderCredentials = parseProviderCredentials({
+          credentials: body.credentials,
+          provider: existing.provider,
+        });
+        if (parsedProviderCredentials.isErr()) {
           return c.json(
-            {
-              error: "Credentials type does not match data source provider",
-            },
-            400
+            parsedProviderCredentials.error.body,
+            parsedProviderCredentials.error.status
           );
         }
+        const { credentials } = parsedProviderCredentials.value;
 
         if (
           isUnsupportedGoogleOAuthCredentials({
-            credentials: body.credentials,
+            credentials,
             provider: existing.provider,
           })
         ) {
@@ -371,10 +431,10 @@ export const dataSourcesCrudRoute = new Hono<{
 
         if (
           existing.provider === "aws_athena_connector" &&
-          body.credentials.type === "aws_athena_connector"
+          credentials.type === "aws_athena_connector"
         ) {
           const organizationCheck = await ensureConnectorOrganization({
-            connectorId: body.credentials.connectorId,
+            connectorId: credentials.connectorId,
             db,
             organizationId,
           });
@@ -387,7 +447,7 @@ export const dataSourcesCrudRoute = new Hono<{
         }
 
         const encrypted = encryptCredentialsObject(
-          body.credentials,
+          credentials,
           c.var.runtime.crypto.masterEncryptionKey
         );
         updates.credentialsEncrypted = encrypted.ciphertext;

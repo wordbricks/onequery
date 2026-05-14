@@ -1,5 +1,6 @@
 ---
 source: crates/onequery-cli/src/cli/../cli_tests.rs
+assertion_line: 152
 expression: "rendered_display(&[\"onequery\", \"source\", \"connect\", \"--help\"])"
 ---
 Show instructions or create a new source connection
@@ -7,7 +8,7 @@ Show instructions or create a new source connection
 Usage: onequery source connect [OPTIONS] --source <PROVIDER>
 
 Options:
-      --source <PROVIDER>  Select the provider to connect [possible values: postgres, supabase, mysql, mongodb, bigquery, laminar, aws_athena_connector, ga, amplitude, mixpanel, posthog, sentry, github, linear]
+      --source <PROVIDER>  Select the provider to connect
       --input <JSON>       Create one source from an inline JSON payload
   -h, --help               Print help
   -V, --version            Print version

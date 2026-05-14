@@ -27,6 +27,9 @@ service CliOrganizationService {
 }
 
 service CliSourceService {
+  rpc ListSourceProviders(ListSourceProvidersRequest) returns (ListSourceProvidersResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
   rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }

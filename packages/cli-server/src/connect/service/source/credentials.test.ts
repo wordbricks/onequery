@@ -1,34 +1,15 @@
-import { create, isFieldSet } from "@bufbuild/protobuf";
-import { durationFromMs } from "@bufbuild/protobuf/wkt";
-import {
-  ConnectSourceAwsAthenaConnectorCredentialsSchema,
-  ConnectSourceCredentialsSchema,
-  ConnectSourceMySqlCredentialsSchema,
-  ConnectSourcePostgresCredentialsSchema,
-} from "@onequery/proto-cli/cli/v1/source_pb";
 import { describe, expect, it } from "vitest";
 
 import { parseConnectSourceCredentials } from "./credentials";
 
 describe("parseConnectSourceCredentials", () => {
-  it("defaults the postgres port when edition field presence marks it absent", () => {
-    const postgres = create(ConnectSourcePostgresCredentialsSchema, {
+  it("injects the registry credential type and applies postgres defaults", () => {
+    const result = parseConnectSourceCredentials("postgres", {
       database: "app",
       host: "localhost",
       password: "secret",
       username: "user",
     });
-
-    expect(postgres.port).toBe(0);
-    expect(
-      isFieldSet(postgres, ConnectSourcePostgresCredentialsSchema.field.port)
-    ).toBe(false);
-
-    const result = parseConnectSourceCredentials(
-      create(ConnectSourceCredentialsSchema, {
-        kind: { case: "postgres", value: postgres },
-      })
-    );
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -49,113 +30,37 @@ describe("parseConnectSourceCredentials", () => {
     });
   });
 
-  it("defaults the mysql port when edition field presence marks it absent", () => {
-    const mysql = create(ConnectSourceMySqlCredentialsSchema, {
-      database: "app",
-      host: "localhost",
+  it("maps supabase to postgres credentials without requiring clients to send type", () => {
+    const result = parseConnectSourceCredentials("supabase", {
+      database: "postgres",
+      host: "aws-0-us-east-1.pooler.supabase.com",
       password: "secret",
-      username: "user",
+      username: "postgres.project-ref",
     });
-
-    expect(mysql.port).toBe(0);
-    expect(
-      isFieldSet(mysql, ConnectSourceMySqlCredentialsSchema.field.port)
-    ).toBe(false);
-
-    const result = parseConnectSourceCredentials(
-      create(ConnectSourceCredentialsSchema, {
-        kind: { case: "mysql", value: mysql },
-      })
-    );
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       throw result.error;
     }
 
-    expect(result.value).toEqual({
-      provider: "mysql",
+    expect(result.value).toMatchObject({
+      provider: "supabase",
       credentials: {
-        type: "mysql",
-        database: "app",
-        host: "localhost",
-        password: "secret",
-        port: 3306,
+        type: "postgres",
+        port: 5432,
         sslMode: "prefer",
-        username: "user",
       },
     });
   });
 
-  it("omits athena query overrides when edition field presence marks them absent", () => {
-    const athena = create(ConnectSourceAwsAthenaConnectorCredentialsSchema, {
-      connectorId: "athena-connector",
-      database: "analytics",
-    });
-
-    expect(athena.maxRows).toBe(0);
-    expect(athena.timeout).toBeUndefined();
-    expect(
-      isFieldSet(
-        athena,
-        ConnectSourceAwsAthenaConnectorCredentialsSchema.field.maxRows
-      )
-    ).toBe(false);
-    expect(
-      isFieldSet(
-        athena,
-        ConnectSourceAwsAthenaConnectorCredentialsSchema.field.timeout
-      )
-    ).toBe(false);
-
-    const result = parseConnectSourceCredentials(
-      create(ConnectSourceCredentialsSchema, {
-        kind: { case: "awsAthenaConnector", value: athena },
-      })
-    );
-
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
-
-    expect(result.value).toEqual({
-      provider: "aws_athena_connector",
-      credentials: {
-        type: "aws_athena_connector",
-        connectorId: "athena-connector",
-        database: "analytics",
-      },
-    });
-  });
-
-  it("preserves explicit athena query overrides", () => {
-    const athena = create(ConnectSourceAwsAthenaConnectorCredentialsSchema, {
+  it("preserves explicit athena query overrides from JSON credentials", () => {
+    const result = parseConnectSourceCredentials("aws_athena_connector", {
       connectorId: "athena-connector",
       database: "analytics",
       maxRows: 500,
-      timeout: durationFromMs(15_000),
+      timeoutMs: 15_000,
       workgroup: "primary",
     });
-
-    expect(
-      isFieldSet(
-        athena,
-        ConnectSourceAwsAthenaConnectorCredentialsSchema.field.maxRows
-      )
-    ).toBe(true);
-    expect(
-      isFieldSet(
-        athena,
-        ConnectSourceAwsAthenaConnectorCredentialsSchema.field.timeout
-      )
-    ).toBe(true);
-
-    const result = parseConnectSourceCredentials(
-      create(ConnectSourceCredentialsSchema, {
-        kind: { case: "awsAthenaConnector", value: athena },
-      })
-    );
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
@@ -173,5 +78,70 @@ describe("parseConnectSourceCredentials", () => {
         workgroup: "primary",
       },
     });
+  });
+
+  it("infers BigQuery service-account auth mode from guide-shaped credentials", () => {
+    const result = parseConnectSourceCredentials("bigquery", {
+      projectId: "analytics-project",
+      serviceAccount: {
+        projectId: "analytics-project",
+        clientEmail: "onequery@analytics-project.iam.gserviceaccount.com",
+        privateKey:
+          "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----\n",
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value.credentials).toMatchObject({
+      type: "bigquery",
+      authType: "service_account",
+      projectId: "analytics-project",
+      serviceAccount: {
+        projectId: "analytics-project",
+        clientEmail: "onequery@analytics-project.iam.gserviceaccount.com",
+      },
+    });
+  });
+
+  it("infers Google Analytics service-account auth mode from guide-shaped credentials", () => {
+    const result = parseConnectSourceCredentials("ga", {
+      propertyId: "123456789",
+      serviceAccount: {
+        projectId: "analytics-project",
+        clientEmail: "onequery@analytics-project.iam.gserviceaccount.com",
+        privateKey:
+          "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----\n",
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value.credentials).toMatchObject({
+      type: "ga",
+      authType: "service_account",
+      propertyId: "123456789",
+      serviceAccount: {
+        projectId: "analytics-project",
+        clientEmail: "onequery@analytics-project.iam.gserviceaccount.com",
+      },
+    });
+  });
+
+  it("rejects unknown provider strings before credential validation", () => {
+    const result = parseConnectSourceCredentials("unknown_provider", {});
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected parse failure");
+    }
+
+    expect(result.error.message).toBe("unsupported source provider");
   });
 });

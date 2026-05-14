@@ -6,10 +6,8 @@ import type {
   ProviderType,
   WorkflowFamily,
 } from "@onequery/db/server";
-import {
-  WorkflowDataSourceStatus,
-  WorkflowSourceProvider,
-} from "@onequery/proto-workflow/workflow/v1/common_pb";
+import { isSourceProviderId } from "@onequery/db/server";
+import { WorkflowDataSourceStatus } from "@onequery/proto-workflow/workflow/v1/common_pb";
 
 import { AuditFeedProjectionCorruptPayloadError } from "./errors";
 import type {
@@ -71,45 +69,11 @@ export function assertPayloadType(input: {
   }
 }
 
-export function fromWorkflowSourceProvider(
-  provider: WorkflowSourceProvider
-): ProviderType {
-  switch (provider) {
-    case WorkflowSourceProvider.POSTGRES:
-      return "postgres";
-    case WorkflowSourceProvider.SUPABASE:
-      return "supabase";
-    case WorkflowSourceProvider.MYSQL:
-      return "mysql";
-    case WorkflowSourceProvider.MONGODB:
-      return "mongodb";
-    case WorkflowSourceProvider.BIGQUERY:
-      return "bigquery";
-    case WorkflowSourceProvider.LAMINAR:
-      return "laminar";
-    case WorkflowSourceProvider.AWS_ATHENA_CONNECTOR:
-      return "aws_athena_connector";
-    case WorkflowSourceProvider.GOOGLE_ANALYTICS:
-      return "ga";
-    case WorkflowSourceProvider.AMPLITUDE:
-      return "amplitude";
-    case WorkflowSourceProvider.MIXPANEL:
-      return "mixpanel";
-    case WorkflowSourceProvider.POSTHOG:
-      return "posthog";
-    case WorkflowSourceProvider.SENTRY:
-      return "sentry";
-    case WorkflowSourceProvider.GITHUB:
-      return "github";
-    case WorkflowSourceProvider.LINEAR:
-      return "linear";
-    case WorkflowSourceProvider.CLOUDFLARE_WORKERS_OBSERVABILITY:
-      return "cloudflare_workers_observability";
-    case WorkflowSourceProvider.UNSPECIFIED:
-      throw new Error("workflow source provider is unspecified");
-    default:
-      throw new Error(`unsupported workflow source provider: ${provider}`);
+export function fromWorkflowSourceProvider(provider: string): ProviderType {
+  if (isSourceProviderId(provider)) {
+    return provider;
   }
+  throw new Error(`unsupported workflow source provider: ${provider}`);
 }
 
 export function fromWorkflowDataSourceStatus(

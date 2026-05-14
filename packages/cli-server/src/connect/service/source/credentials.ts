@@ -1,23 +1,9 @@
-import { isFieldSet } from "@bufbuild/protobuf";
-import { durationMs, timestampDate, timestampMs } from "@bufbuild/protobuf/wkt";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
-import type { Credentials } from "@onequery/db/server";
+import type { JsonObject } from "@bufbuild/protobuf";
 import {
-  ConnectSourceAwsAthenaConnectorCredentialsSchema,
-  ConnectSourceMySqlCredentialsSchema,
-  ConnectSourcePostgresCredentialsSchema,
-  SourceConnectAmplitudeRegion,
-  SourceConnectMixpanelRegion,
-  SourceConnectSslMode,
-} from "@onequery/proto-cli/cli/v1/source_pb";
-import type {
-  ConnectSourceAwsAthenaConnectorCredentials,
-  ConnectSourceCredentials,
-  ConnectSourceGoogleOauthCredentials,
-  ConnectSourceMySqlCredentials,
-  ConnectSourcePostgresCredentials,
-  ConnectSourceServiceAccountCredentials,
-} from "@onequery/proto-cli/cli/v1/source_pb";
+  getSourceProviderDefinition,
+  isSourceProviderId,
+} from "@onequery/db/server";
+import type { Credentials } from "@onequery/db/server";
 import { Result } from "better-result";
 
 import { cliServiceErr } from "../result";
@@ -45,550 +31,54 @@ export function createCliConnectSourceValidationError(input: {
 }
 
 export function parseConnectSourceCredentials(
-  credentials: ConnectSourceCredentials | undefined
+  provider: string,
+  credentials: JsonObject | undefined
 ): CliServiceResult<ParsedConnectSourceCredentials> {
-  const kind = credentials?.kind;
-
-  switch (kind?.case) {
-    case "postgres":
-      return Result.ok({
-        provider: "postgres",
-        credentials: {
-          type: "postgres",
-          ...postgresCredentialsFromMessage(kind.value),
-        },
-      });
-    case "supabase":
-      return Result.ok({
-        provider: "supabase",
-        credentials: {
-          type: "postgres",
-          ...postgresCredentialsFromMessage(kind.value),
-        },
-      });
-    case "mysql":
-      return Result.ok({
-        provider: "mysql",
-        credentials: {
-          type: "mysql",
-          ...mySqlCredentialsFromMessage(kind.value),
-        },
-      });
-    case "mongodb":
-      return Result.ok({
-        provider: "mongodb",
-        credentials: {
-          type: "mongodb",
-          connectionString: kind.value.connectionString,
-          ...(kind.value.database ? { database: kind.value.database } : {}),
-          ...(kind.value.databases.length > 0
-            ? { databases: [...kind.value.databases] }
-            : {}),
-        },
-      });
-    case "bigquery":
-      return bigQueryCredentialsFromMessage(kind.value).map((parsed) => ({
-        provider: "bigquery",
-        credentials: parsed,
-      }));
-    case "laminar":
-      return Result.ok({
-        provider: "laminar",
-        credentials: {
-          type: "laminar",
-          apiKey: kind.value.apiKey,
-          ...(kind.value.apiBaseUrl
-            ? { apiBaseUrl: kind.value.apiBaseUrl }
-            : {}),
-        },
-      });
-    case "awsAthenaConnector":
-      return Result.ok({
-        provider: "aws_athena_connector",
-        credentials: awsAthenaConnectorCredentialsFromMessage(kind.value),
-      });
-    case "googleAnalytics":
-      return googleAnalyticsCredentialsFromMessage(kind.value).map(
-        (parsed) => ({
-          provider: "ga",
-          credentials: parsed,
-        })
-      );
-    case "amplitude":
-      return Result.ok({
-        provider: "amplitude",
-        credentials: {
-          type: "amplitude",
-          apiKey: kind.value.apiKey,
-          region: amplitudeRegionFromMessage(kind.value.region) ?? "us",
-          secretKey: kind.value.secretKey,
-        },
-      });
-    case "mixpanel":
-      return Result.ok({
-        provider: "mixpanel",
-        credentials: {
-          type: "mixpanel",
-          projectId: kind.value.projectId,
-          region: mixpanelRegionFromMessage(kind.value.region) ?? "us",
-          secret: kind.value.secret,
-          username: kind.value.username,
-          ...(kind.value.workspaceId
-            ? { workspaceId: kind.value.workspaceId }
-            : {}),
-        },
-      });
-    case "posthog":
-      return Result.ok({
-        provider: "posthog",
-        credentials: {
-          type: "posthog",
-          hostUrl: kind.value.hostUrl,
-          personalApiKey: kind.value.personalApiKey,
-          projectId: kind.value.projectId,
-        },
-      });
-    case "sentry":
-      return Result.ok({
-        provider: "sentry",
-        credentials: {
-          type: "sentry",
-          authToken: kind.value.authToken,
-          organizationSlug: kind.value.organizationSlug,
-          ...(kind.value.apiBaseUrl
-            ? { apiBaseUrl: kind.value.apiBaseUrl }
-            : {}),
-          ...(kind.value.projectSlug
-            ? { projectSlug: kind.value.projectSlug }
-            : {}),
-        },
-      });
-    case "github":
-      return Result.ok({
-        provider: "github",
-        credentials: {
-          type: "github",
-          accessToken: kind.value.accessToken,
-          ...(kind.value.installationId
-            ? { installationId: kind.value.installationId }
-            : {}),
-          ...(kind.value.repositories.length > 0
-            ? { repositories: [...kind.value.repositories] }
-            : {}),
-        },
-      });
-    case "linear":
-      return linearCredentialsFromMessage(kind.value).map((parsed) => ({
-        provider: "linear",
-        credentials: parsed,
-      }));
-    case "cloudflareWorkersObservability":
-      return Result.ok({
-        provider: "cloudflare_workers_observability",
-        credentials: {
-          type: "cloudflare_workers_observability",
-          accountId: kind.value.accountId,
-          apiToken: kind.value.apiToken,
-          ...(kind.value.apiBaseUrl
-            ? { apiBaseUrl: kind.value.apiBaseUrl }
-            : {}),
-          ...(kind.value.scriptName
-            ? { scriptName: kind.value.scriptName }
-            : {}),
-        },
-      });
-    default:
-      return cliServiceErr({
-        detail: "source connect request must include typed credentials",
-        key: "SOURCE_REQUEST_INVALID",
-      });
-  }
-}
-
-function postgresCredentialsFromMessage(
-  input: ConnectSourcePostgresCredentials
-) {
-  // Comment: generated Connect request messages expose absent edition scalars as
-  // zero-valued properties, so use `isFieldSet()` anywhere "unset" should fall
-  // back to a transport default instead of meaning the numeric zero.
-  const port = isFieldSet(
-    input,
-    ConnectSourcePostgresCredentialsSchema.field.port
-  )
-    ? input.port
-    : undefined;
-  const sslMode = sslModeFromMessage(input.sslMode) ?? "prefer";
-
-  return {
-    database: input.database,
-    host: input.host,
-    password: input.password,
-    port: port ?? 5432,
-    sslMode,
-    username: input.username,
-  };
-}
-
-function mySqlCredentialsFromMessage(input: ConnectSourceMySqlCredentials) {
-  const port = isFieldSet(input, ConnectSourceMySqlCredentialsSchema.field.port)
-    ? input.port
-    : undefined;
-  const sslMode = sslModeFromMessage(input.sslMode) ?? "prefer";
-
-  return {
-    database: input.database,
-    host: input.host,
-    password: input.password,
-    port: port ?? 3306,
-    sslMode,
-    username: input.username,
-  };
-}
-
-function awsAthenaConnectorCredentialsFromMessage(
-  input: ConnectSourceAwsAthenaConnectorCredentials
-) {
-  const maxRows = isFieldSet(
-    input,
-    ConnectSourceAwsAthenaConnectorCredentialsSchema.field.maxRows
-  )
-    ? input.maxRows
-    : undefined;
-  const timeoutMs =
-    isFieldSet(
-      input,
-      ConnectSourceAwsAthenaConnectorCredentialsSchema.field.timeout
-    ) && input.timeout
-      ? durationMs(input.timeout)
-      : undefined;
-
-  return {
-    type: "aws_athena_connector",
-    connectorId: input.connectorId,
-    database: input.database,
-    ...(maxRows !== undefined ? { maxRows } : {}),
-    ...(timeoutMs !== undefined ? { timeoutMs } : {}),
-    ...(input.workgroup ? { workgroup: input.workgroup } : {}),
-  } satisfies Credentials;
-}
-
-function bigQueryCredentialsFromMessage(input: {
-  auth:
-    | {
-        case: "oauth";
-        value: {
-          projectId: string;
-          credentials?: ConnectSourceGoogleOauthCredentials;
-        };
-      }
-    | {
-        case: "serviceAccount";
-        value: {
-          projectId: string;
-          serviceAccount?: ConnectSourceServiceAccountCredentials;
-        };
-      }
-    | { case: undefined; value?: undefined };
-}): CliServiceResult<Credentials> {
-  switch (input.auth.case) {
-    case "oauth": {
-      const oauth = input.auth.value;
-      const credentials = requirePresent(
-        oauth.credentials,
-        "bigquery oauth credentials are required"
-      );
-      if (credentials.isErr()) {
-        return Result.err(credentials.error);
-      }
-
-      const expiresAt = timestampMillisFromMessage(
-        credentials.value.expiresAt,
-        "bigquery.expiresAt"
-      );
-      if (expiresAt.isErr()) {
-        return Result.err(expiresAt.error);
-      }
-
-      const parsed = {
-        type: "bigquery",
-        projectId: oauth.projectId,
-        accessToken: credentials.value.accessToken,
-        refreshToken: credentials.value.refreshToken,
-        expiresAt: expiresAt.value,
-      } satisfies Credentials;
-
-      return Result.ok(parsed);
-    }
-    case "serviceAccount": {
-      const serviceAccount = requirePresent(
-        input.auth.value.serviceAccount,
-        "bigquery service account credentials are required"
-      );
-      if (serviceAccount.isErr()) {
-        return Result.err(serviceAccount.error);
-      }
-
-      const parsed = {
-        type: "bigquery",
-        authType: "service_account",
-        projectId: input.auth.value.projectId,
-        serviceAccount: serviceAccountCredentialsFromMessage(
-          serviceAccount.value
-        ),
-      } satisfies Credentials;
-
-      return Result.ok(parsed);
-    }
-    default:
-      return cliServiceErr({
-        detail: "bigquery credentials must choose one auth mode",
-        key: "SOURCE_REQUEST_INVALID",
-      });
-  }
-}
-
-function googleAnalyticsCredentialsFromMessage(input: {
-  auth:
-    | {
-        case: "oauth";
-        value: {
-          propertyId: string;
-          credentials?: ConnectSourceGoogleOauthCredentials;
-        };
-      }
-    | {
-        case: "serviceAccount";
-        value: {
-          propertyId: string;
-          serviceAccount?: ConnectSourceServiceAccountCredentials;
-        };
-      }
-    | { case: undefined; value?: undefined };
-}): CliServiceResult<Credentials> {
-  switch (input.auth.case) {
-    case "oauth": {
-      const oauth = input.auth.value;
-      const credentials = requirePresent(
-        oauth.credentials,
-        "google analytics oauth credentials are required"
-      );
-      if (credentials.isErr()) {
-        return Result.err(credentials.error);
-      }
-
-      const expiresAt = timestampMillisFromMessage(
-        credentials.value.expiresAt,
-        "ga.expiresAt"
-      );
-      if (expiresAt.isErr()) {
-        return Result.err(expiresAt.error);
-      }
-
-      const parsed = {
-        type: "ga",
-        propertyId: oauth.propertyId,
-        accessToken: credentials.value.accessToken,
-        refreshToken: credentials.value.refreshToken,
-        expiresAt: expiresAt.value,
-      } satisfies Credentials;
-
-      return Result.ok(parsed);
-    }
-    case "serviceAccount": {
-      const serviceAccount = requirePresent(
-        input.auth.value.serviceAccount,
-        "google analytics service account credentials are required"
-      );
-      if (serviceAccount.isErr()) {
-        return Result.err(serviceAccount.error);
-      }
-
-      const parsed = {
-        type: "ga",
-        authType: "service_account",
-        propertyId: input.auth.value.propertyId,
-        serviceAccount: serviceAccountCredentialsFromMessage(
-          serviceAccount.value
-        ),
-      } satisfies Credentials;
-
-      return Result.ok(parsed);
-    }
-    default:
-      return cliServiceErr({
-        detail: "google analytics credentials must choose one auth mode",
-        key: "SOURCE_REQUEST_INVALID",
-      });
-  }
-}
-
-function linearCredentialsFromMessage(input: {
-  auth:
-    | { case: "apiKey"; value: { apiKey: string } }
-    | {
-        case: "oauth";
-        value: {
-          accessToken: string;
-          appUserId?: string;
-          expiresAt?: Timestamp;
-          linearOrganizationId: string;
-          linearOrganizationName?: string;
-          refreshToken?: string;
-          scope?: string;
-          tokenType?: string;
-        };
-      }
-    | { case: undefined; value?: undefined };
-}): CliServiceResult<Credentials> {
-  switch (input.auth.case) {
-    case "apiKey":
-      return Result.ok({
-        type: "linear",
-        apiKey: input.auth.value.apiKey,
-      });
-    case "oauth": {
-      const expiresAt = optionalTimestampIsoString(
-        input.auth.value.expiresAt,
-        "linear.expiresAt"
-      );
-      if (expiresAt.isErr()) {
-        return Result.err(expiresAt.error);
-      }
-
-      return Result.ok({
-        type: "linear",
-        accessToken: input.auth.value.accessToken,
-        linearOrganizationId: input.auth.value.linearOrganizationId,
-        ...(input.auth.value.appUserId
-          ? { appUserId: input.auth.value.appUserId }
-          : {}),
-        ...(expiresAt.value ? { expiresAt: expiresAt.value } : {}),
-        ...(input.auth.value.linearOrganizationName
-          ? { linearOrganizationName: input.auth.value.linearOrganizationName }
-          : {}),
-        ...(input.auth.value.refreshToken
-          ? { refreshToken: input.auth.value.refreshToken }
-          : {}),
-        ...(input.auth.value.scope ? { scope: input.auth.value.scope } : {}),
-        ...(input.auth.value.tokenType
-          ? { tokenType: input.auth.value.tokenType }
-          : {}),
-      });
-    }
-    default:
-      return cliServiceErr({
-        detail: "linear credentials must choose one auth mode",
-        key: "SOURCE_REQUEST_INVALID",
-      });
-  }
-}
-
-function serviceAccountCredentialsFromMessage(
-  input: ConnectSourceServiceAccountCredentials
-) {
-  return {
-    projectId: input.projectId,
-    clientEmail: input.clientEmail,
-    privateKey: input.privateKey,
-    ...(input.privateKeyId ? { privateKeyId: input.privateKeyId } : {}),
-  };
-}
-
-function requirePresent<T>(
-  value: T | undefined,
-  detail: string
-): CliServiceResult<T> {
-  if (value !== undefined) {
-    return Result.ok(value);
+  if (!isSourceProviderId(provider)) {
+    return cliServiceErr({
+      detail: "unsupported source provider",
+      key: "SOURCE_REQUEST_INVALID",
+    });
   }
 
-  return cliServiceErr({
-    detail,
-    key: "SOURCE_REQUEST_INVALID",
+  if (!credentials) {
+    return cliServiceErr({
+      detail: "source connect request must include credentials",
+      key: "SOURCE_REQUEST_INVALID",
+    });
+  }
+
+  const definition = getSourceProviderDefinition(provider);
+  if (!definition) {
+    return cliServiceErr({
+      detail: "unsupported source provider",
+      key: "SOURCE_REQUEST_INVALID",
+    });
+  }
+
+  const credentialsForValidation =
+    (definition.credentialType === "bigquery" ||
+      definition.credentialType === "ga") &&
+    "serviceAccount" in credentials &&
+    !("authType" in credentials)
+      ? {
+          ...credentials,
+          authType: "service_account",
+        }
+      : credentials;
+
+  const parsed = definition.credentialSchema.safeParse({
+    ...credentialsForValidation,
+    type: definition.credentialType,
   });
-}
-
-function timestampMillisFromMessage(
-  value: Timestamp | undefined,
-  field: string
-): CliServiceResult<number> {
-  const timestamp = requirePresent(value, `${field} is required`);
-  if (timestamp.isErr()) {
-    return Result.err(timestamp.error);
-  }
-
-  const valueMs = timestampMs(timestamp.value);
-  if (!Number.isSafeInteger(valueMs) || valueMs < 0) {
-    return cliServiceErr({
-      detail: `${field} exceeds the supported numeric range`,
-      key: "SOURCE_REQUEST_INVALID",
+  if (!parsed.success) {
+    return createCliConnectSourceValidationError({
+      issues: parsed.error.issues,
     });
   }
 
-  return Result.ok(valueMs);
-}
-
-function optionalTimestampIsoString(
-  value: Timestamp | undefined,
-  field: string
-): CliServiceResult<string | undefined> {
-  if (!value) {
-    return Result.ok(undefined);
-  }
-
-  const date = timestampDate(value);
-  if (!Number.isFinite(date.getTime())) {
-    return cliServiceErr({
-      detail: `${field} exceeds the supported date range`,
-      key: "SOURCE_REQUEST_INVALID",
-    });
-  }
-
-  return Result.ok(date.toISOString());
-}
-
-function sslModeFromMessage(
-  value: SourceConnectSslMode | undefined
-): "disable" | "prefer" | "require" | undefined {
-  switch (value) {
-    case undefined:
-    case SourceConnectSslMode.UNSPECIFIED:
-      return undefined;
-    case SourceConnectSslMode.DISABLE:
-      return "disable";
-    case SourceConnectSslMode.PREFER:
-      return "prefer";
-    case SourceConnectSslMode.REQUIRE:
-      return "require";
-  }
-}
-
-function amplitudeRegionFromMessage(
-  value: SourceConnectAmplitudeRegion | undefined
-): "us" | "eu" | undefined {
-  switch (value) {
-    case undefined:
-    case SourceConnectAmplitudeRegion.UNSPECIFIED:
-      return undefined;
-    case SourceConnectAmplitudeRegion.US:
-      return "us";
-    case SourceConnectAmplitudeRegion.EU:
-      return "eu";
-  }
-}
-
-function mixpanelRegionFromMessage(
-  value: SourceConnectMixpanelRegion | undefined
-): "us" | "eu" | "in" | undefined {
-  switch (value) {
-    case undefined:
-    case SourceConnectMixpanelRegion.UNSPECIFIED:
-      return undefined;
-    case SourceConnectMixpanelRegion.US:
-      return "us";
-    case SourceConnectMixpanelRegion.EU:
-      return "eu";
-    case SourceConnectMixpanelRegion.IN:
-      return "in";
-  }
+  return Result.ok({
+    provider,
+    credentials: parsed.data as Credentials,
+  });
 }

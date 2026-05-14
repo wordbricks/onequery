@@ -1,5 +1,4 @@
 import { create, toBinary } from "@bufbuild/protobuf";
-import { WorkflowSourceProvider } from "@onequery/proto-workflow/workflow/v1/common_pb";
 import * as sourceApiPb from "@onequery/proto-workflow/workflow/v1/source_api_action_pb";
 import type { SourceApiDescriptor } from "@onequery/server/source-api";
 import type { Result as ResultType } from "better-result";
@@ -575,7 +574,7 @@ describe("source api action protobuf codec", () => {
     });
   });
 
-  it("rejects unspecified generated enum values before reducers see them", () => {
+  it("rejects blank provider strings before reducers see them", () => {
     const bytes = Buffer.from(
       toBinary(
         sourceApiPb.SourceApiActionEventPayloadSchema,
@@ -587,7 +586,7 @@ describe("source api action protobuf codec", () => {
                 sourceApiPb.SourceApiActionSourceDescriptorSchema,
                 {
                   displayName: "GitHub Prod",
-                  provider: WorkflowSourceProvider.UNSPECIFIED,
+                  provider: "",
                   sourceId: "source_1",
                   sourceKey: "github-prod",
                 }
@@ -604,7 +603,7 @@ describe("source api action protobuf codec", () => {
 
     expect(decoded.isErr()).toBe(true);
     if (decoded.isOk()) {
-      throw new Error("expected unspecified provider enum to be rejected");
+      throw new Error("expected blank provider to be rejected");
     }
     expect(decoded.error).toMatchObject({
       _tag: "WorkflowStorageCorruptRowError",
@@ -613,7 +612,7 @@ describe("source api action protobuf codec", () => {
     });
   });
 
-  it("rejects invalid generated enum values before reducers see them", () => {
+  it("rejects unsupported provider strings before reducers see them", () => {
     const bytes = Buffer.from(
       toBinary(
         sourceApiPb.SourceApiActionEventPayloadSchema,
@@ -625,7 +624,7 @@ describe("source api action protobuf codec", () => {
                 sourceApiPb.SourceApiActionSourceDescriptorSchema,
                 {
                   displayName: "GitHub Prod",
-                  provider: 99 as WorkflowSourceProvider,
+                  provider: "unknown_provider",
                   sourceId: "source_1",
                   sourceKey: "github-prod",
                 }
@@ -642,7 +641,7 @@ describe("source api action protobuf codec", () => {
 
     expect(decoded.isErr()).toBe(true);
     if (decoded.isOk()) {
-      throw new Error("expected invalid provider enum to be rejected");
+      throw new Error("expected unsupported provider to be rejected");
     }
     expect(decoded.error).toMatchObject({
       _tag: "WorkflowStorageCorruptRowError",

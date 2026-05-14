@@ -23,7 +23,6 @@ import type {
   PreviewSourceApiResponse,
   ResumeSourceApiResponse,
 } from "@onequery/proto-cli/cli/v1/source_api_pb";
-import { SourceProvider } from "@onequery/proto-cli/cli/v1/source_pb";
 import { ErrorInfoSchema } from "@onequery/proto-cli/google/rpc/error_details_pb";
 import {
   SourceApiAdapterNotRegisteredError,
@@ -47,10 +46,6 @@ import {
   createHandlePreviewSourceApi,
   createHandleResumeSourceApi,
 } from "./source-api";
-
-function summarizeCliSourceProvider(provider: SourceProvider): string {
-  return SourceProvider[provider].toLowerCase();
-}
 
 function summarizeLoadOrgSourceAccessCall(
   call:
@@ -622,7 +617,7 @@ function summarizeDescribeSourceApiResponse(
     source: response.source
       ? {
           ...response.source,
-          provider: summarizeCliSourceProvider(response.source.provider),
+          provider: response.source.provider,
         }
       : null,
   };
@@ -690,7 +685,7 @@ function summarizeSourceApiOutcome(
           source: result.source
             ? {
                 ...result.source,
-                provider: summarizeCliSourceProvider(result.source.provider),
+                provider: result.source.provider,
               }
             : null,
           httpStatusCode: result.httpStatusCode,
@@ -715,7 +710,7 @@ function summarizeSourceApiPreview(
         source: preview.source
           ? {
               ...preview.source,
-              provider: summarizeCliSourceProvider(preview.source.provider),
+              provider: preview.source.provider,
             }
           : null,
         selector: preview.selector ?? null,

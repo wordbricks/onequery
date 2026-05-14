@@ -17,7 +17,6 @@ use crate::transport::read_controls::PageInfo;
 use crate::transport::read_controls::ReadRequestControls;
 use crate::transport::read_controls::SinglePageReadControls;
 use crate::transport::response_decode::require_non_empty_text;
-use crate::transport::source_connect_provider::SourceConnectProvider;
 use crate::transport::well_known::required_duration_ms;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq, Default)]
@@ -37,6 +36,24 @@ pub(crate) struct SourceListPayload {
     #[serde(default)]
     pub(crate) sources: Vec<SourceSummary>,
     pub(crate) page: PageInfo,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct SourceProviderListPayload {
+    #[serde(default)]
+    pub(crate) providers: Vec<SourceProviderSummary>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct SourceProviderSummary {
+    pub(crate) provider: String,
+    pub(crate) label: String,
+    pub(crate) connectable: bool,
+    pub(crate) testable: bool,
+    pub(crate) interfaces: Vec<String>,
+    pub(crate) credential_type: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
@@ -140,6 +157,46 @@ async fn fetch_source_page(
                 })
                 .collect::<Result<Vec<_>, ApiFailure>>()?,
             page: page_info_from_generated(page),
+        },
+        request_id,
+    })
+}
+
+pub(crate) async fn list_source_providers(
+    client: &AuthenticatedApiClient,
+    org: &str,
+) -> Result<ApiSuccess<SourceProviderListPayload>, ApiFailure> {
+    let org_slug: String = try_into_value(org, ErrorStage::ResolveSource)?;
+    let response = match client
+        .source()
+        .list_source_providers(types::ListSourceProvidersRequest {
+            org_slug: Some(org_slug),
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => {
+            return Err(failure_from_connect(error, ErrorStage::ResolveSource));
+        }
+    };
+
+    let request_id = success_response_request_id(&response);
+    let payload = response.into_owned();
+
+    Ok(ApiSuccess {
+        payload: SourceProviderListPayload {
+            providers: payload
+                .providers
+                .into_iter()
+                .map(|provider| {
+                    source_provider_summary_from_generated(
+                        provider,
+                        ErrorStage::ResolveSource,
+                        request_id.clone(),
+                    )
+                })
+                .collect::<Result<Vec<_>, ApiFailure>>()?,
         },
         request_id,
     })
@@ -341,29 +398,51 @@ pub(crate) fn source_summary_from_generated(
 }
 
 fn source_provider_from_generated(
-    value: Option<EnumValue<types::SourceProvider>>,
+    value: Option<String>,
     stage: ErrorStage,
     request_id: Option<String>,
 ) -> Result<String, ApiFailure> {
-    match value {
-        Some(value) => {
-            match value.as_known() {
-                Some(types::SourceProvider::SOURCE_PROVIDER_UNSPECIFIED) | None => Err(
-                    decode_failure(stage, "source response has invalid provider", request_id),
-                ),
-                Some(provider) => SourceConnectProvider::try_from(provider)
-                    .map(|provider| provider.to_string())
-                    .map_err(|()| {
-                        decode_failure(stage, "source response has invalid provider", request_id)
-                    }),
-            }
-        }
-        None => Err(decode_failure(
+    require_non_empty_text(value, stage, "source response missing provider", request_id)
+}
+
+fn source_provider_summary_from_generated(
+    provider: types::CliSourceProvider,
+    stage: ErrorStage,
+    request_id: Option<String>,
+) -> Result<SourceProviderSummary, ApiFailure> {
+    let types::CliSourceProvider {
+        provider,
+        label,
+        connectable,
+        testable,
+        interfaces,
+        credential_type,
+        ..
+    } = provider;
+
+    Ok(SourceProviderSummary {
+        provider: require_non_empty_text(
+            provider,
             stage,
-            "source response missing provider",
+            "source provider response missing provider",
+            request_id.clone(),
+        )?,
+        label: require_non_empty_text(
+            label,
+            stage,
+            "source provider response missing label",
+            request_id.clone(),
+        )?,
+        connectable: connectable.unwrap_or(false),
+        testable: testable.unwrap_or(false),
+        interfaces: source_interfaces_from_generated(interfaces, stage, request_id.clone())?,
+        credential_type: require_non_empty_text(
+            credential_type,
+            stage,
+            "source provider response missing credential type",
             request_id,
-        )),
-    }
+        )?,
+    })
 }
 
 fn source_status_from_generated(
@@ -528,11 +607,11 @@ mod tests {
     }
 
     #[test]
-    fn source_summary_from_generated_rejects_invalid_provider() {
+    fn source_summary_from_generated_rejects_missing_provider() {
         let error = source_summary_from_generated(
             types::CliSource {
                 source_key: Some("warehouse".to_owned()),
-                provider: Some(types::SourceProvider::SOURCE_PROVIDER_UNSPECIFIED.into()),
+                provider: Some(String::new()),
                 status: Some(types::SourceStatus::SOURCE_STATUS_ACTIVE.into()),
                 interfaces: vec![types::SourceInterface::SOURCE_INTERFACE_QUERY.into()],
                 ..Default::default()
@@ -540,13 +619,13 @@ mod tests {
             ErrorStage::Http,
             Some("req_source_provider".to_owned()),
         )
-        .expect_err("expected invalid provider to fail");
+        .expect_err("expected missing provider to fail");
 
         assert_eq!(
             error,
             ApiFailure::Decode(crate::transport::api_failure::DecodeFailure {
                 stage: ErrorStage::Http,
-                message: "source response has invalid provider".to_owned(),
+                message: "source response missing provider".to_owned(),
                 request_id: Some("req_source_provider".to_owned()),
             })
         );

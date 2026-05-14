@@ -111,6 +111,7 @@ const CLI_VALIDATION_PROBLEM_KEYS_BY_METHOD_NAME = new Map<
   [CliOrganizationService.method.listOrganizations.name, "ORG_REQUEST_INVALID"],
   [CliOrganizationService.method.getOrganization.name, "ORG_REQUEST_INVALID"],
   [CliSourceService.method.listSources.name, "SOURCE_REQUEST_INVALID"],
+  [CliSourceService.method.listSourceProviders.name, "SOURCE_REQUEST_INVALID"],
   [
     CliSourceService.method.getSourceConnectGuide.name,
     "SOURCE_REQUEST_INVALID",

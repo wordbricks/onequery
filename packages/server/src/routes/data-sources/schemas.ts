@@ -1,4 +1,3 @@
-import { CredentialsSchema } from "@onequery/db/server";
 import { z } from "zod";
 
 export const OrgQuerySchema = z.object({
@@ -11,30 +10,14 @@ export const CredentialsByNameQuerySchema = z.object({
 });
 
 export const CreateDataSourceSchema = z.object({
-  credentials: CredentialsSchema,
+  credentials: z.unknown(),
   name: z.string().min(1),
   organizationId: z.string().min(1),
-  provider: z.enum([
-    "postgres",
-    "supabase",
-    "mysql",
-    "mongodb",
-    "ga",
-    "bigquery",
-    "laminar",
-    "aws_athena_connector",
-    "amplitude",
-    "mixpanel",
-    "posthog",
-    "sentry",
-    "github",
-    "linear",
-    "cloudflare_workers_observability",
-  ]),
+  provider: z.string().min(1),
 });
 
 export const UpdateDataSourceSchema = z.object({
-  credentials: CredentialsSchema.optional(),
+  credentials: z.unknown().optional(),
   name: z.string().min(1).optional(),
   useAsDataSource: z.boolean().optional(),
 });

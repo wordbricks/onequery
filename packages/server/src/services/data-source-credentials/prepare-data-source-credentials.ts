@@ -1,4 +1,7 @@
-import { CredentialsSchema } from "@onequery/db/server";
+import {
+  CredentialsSchema,
+  doesSourceProviderMatchCredentials,
+} from "@onequery/db/server";
 import type { Credentials, ProviderType } from "@onequery/db/server";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
@@ -20,17 +23,6 @@ class PrepareCredentialsError extends TaggedError("PrepareCredentialsError")<{
   message: string;
   cause?: unknown;
 }>() {}
-
-function doesProviderMatchCredentials(input: {
-  provider: ProviderType;
-  credentialsType: Credentials["type"];
-}): boolean {
-  if (input.provider === input.credentialsType) {
-    return true;
-  }
-
-  return input.provider === "supabase" && input.credentialsType === "postgres";
-}
 
 type PrepareCredentialsResult = ResultType<
   {
@@ -73,7 +65,7 @@ export async function prepareDataSourceCredentials(input: {
   }
 
   if (
-    !doesProviderMatchCredentials({
+    !doesSourceProviderMatchCredentials({
       credentialsType: decrypted.value.type,
       provider: input.dataSource.provider,
     })

@@ -1,4 +1,3 @@
-import type { ProviderType } from "../data-source-provider-metadata";
 import { amplitudeGuideContent } from "./amplitude";
 import { awsAthenaConnectorGuideContent } from "./aws-athena-connector";
 import { bigqueryGuideContent } from "./bigquery";
@@ -19,7 +18,7 @@ import { CONNECTOR_BASE_URL_TOKEN } from "./types";
 export { CONNECTOR_BASE_URL_TOKEN };
 export type { GuideLocaleContent, GuideStep } from "./types";
 
-export const GUIDE_CONTENT: Record<ProviderType, GuideContent> = {
+export const GUIDE_CONTENT: Partial<Record<string, GuideContent>> = {
   amplitude: amplitudeGuideContent,
   aws_athena_connector: awsAthenaConnectorGuideContent,
   bigquery: bigqueryGuideContent,

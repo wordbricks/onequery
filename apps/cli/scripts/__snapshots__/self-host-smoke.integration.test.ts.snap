@@ -15,8 +15,10 @@ exports[`CLI self-host smoke > bootstraps a fresh self-host runtime and serves C
   "connectSource": {
     "nextCommand": "onequery source show Warehouse",
     "source": {
-      "provider": "POSTGRES",
-      "queryable": true,
+      "interfaces": [
+        "query",
+      ],
+      "provider": "postgres",
       "sourceKey": "Warehouse",
       "status": "ACTIVE",
     },
@@ -51,8 +53,10 @@ exports[`CLI self-host smoke > bootstraps a fresh self-host runtime and serves C
   },
   "getSource": {
     "source": {
-      "provider": "POSTGRES",
-      "queryable": true,
+      "interfaces": [
+        "query",
+      ],
+      "provider": "postgres",
       "sourceKey": "Warehouse",
       "status": "ACTIVE",
     },
@@ -117,8 +121,10 @@ Example input:
     },
     "sources": [
       {
-        "provider": "POSTGRES",
-        "queryable": true,
+        "interfaces": [
+          "query",
+        ],
+        "provider": "postgres",
         "sourceKey": "Warehouse",
         "status": "ACTIVE",
       },
@@ -140,8 +146,10 @@ Example input:
       "timeoutMs": 1000,
     },
     "source": {
-      "provider": "POSTGRES",
-      "queryable": true,
+      "interfaces": [
+        "query",
+      ],
+      "provider": "postgres",
       "sourceKey": "Warehouse",
       "status": "ACTIVE",
     },
@@ -167,6 +175,7 @@ exports[`CLI self-host smoke > runs the packaged CLI against the self-host Conne
       },
     },
     "ok": true,
+    "requestId": "req_cli_cmd_auth_refresh_123",
     "warnings": [],
   },
   "orgGet": {
@@ -189,6 +198,7 @@ exports[`CLI self-host smoke > runs the packaged CLI against the self-host Conne
       "slug": "owner-org",
     },
     "ok": true,
+    "requestId": "req_cli_cmd_org_get_123",
     "warnings": [],
   },
   "queryValidate": {
@@ -209,14 +219,17 @@ exports[`CLI self-host smoke > runs the packaged CLI against the self-host Conne
         "timeoutMs": 60000,
       },
       "source": {
+        "interfaces": [
+          "query",
+        ],
         "provider": "postgres",
-        "queryable": true,
         "sourceKey": "warehouse-cli",
         "status": "active",
       },
       "sqlNormalized": true,
     },
     "ok": true,
+    "requestId": "req_cli_cmd_query_validate_123",
     "warnings": [],
   },
   "sourceConnect": {
@@ -224,13 +237,16 @@ exports[`CLI self-host smoke > runs the packaged CLI against the self-host Conne
     "data": {
       "nextCommand": "onequery source show warehouse-cli",
       "source": {
+        "interfaces": [
+          "query",
+        ],
         "provider": "postgres",
-        "queryable": true,
         "sourceKey": "warehouse-cli",
         "status": "active",
       },
     },
     "ok": true,
+    "requestId": "req_cli_cmd_source_connect_123",
     "warnings": [],
   },
   "sourceGuide": {
@@ -256,10 +272,9 @@ The JSON input shape is always \`{ "sourceKey": string, "credentials": { ...prov
 Connect GitHub with a fine-grained personal access token and optional repository or installation scoping.
 
 Steps:
-1. Open \`https://github.com/settings/personal-access-tokens/new\` and create a fine-grained personal access token.
-2. Choose the correct resource owner, set \`Repository access\` to \`Only select repositories\`, and select the repositories OneQuery should query.
-3. Under repository permissions, set \`Contents\`, \`Issues\`, and \`Pull requests\` to \`Read-only\`. GitHub also requires \`Metadata: Read-only\`.
-4. Copy the token immediately and use it as \`credentials.accessToken\`. If the token belongs to a GitHub App installation, also include \`installationId\`; optionally restrict the OneQuery connection further with \`repositories\`.
+1. Create a fine-grained personal access token for the correct resource owner.
+2. Grant read-only repository permissions for Contents, Issues, Pull requests, and Metadata.
+3. Copy the token into \`credentials.accessToken\`; optionally include \`installationId\` and \`repositories\`.
 
 Example input:
 \`\`\`json
@@ -279,6 +294,7 @@ Example input:
       "title": "OneQuery Source Connect Guide",
     },
     "ok": true,
+    "requestId": "req_cli_cmd_source_guide_123",
     "warnings": [],
   },
   "sourceList": {
@@ -290,8 +306,10 @@ Example input:
       },
       "sources": [
         {
+          "interfaces": [
+            "query",
+          ],
           "provider": "postgres",
-          "queryable": true,
           "sourceKey": "warehouse-cli",
           "status": "active",
         },
@@ -302,17 +320,21 @@ Example input:
       "nextCursor": null,
       "returnedCount": 1,
     },
+    "requestId": "req_cli_cmd_source_list_123",
     "warnings": [],
   },
   "sourceShow": {
     "command": "source show",
     "data": {
+      "interfaces": [
+        "query",
+      ],
       "provider": "postgres",
-      "queryable": true,
       "sourceKey": "warehouse-cli",
       "status": "active",
     },
     "ok": true,
+    "requestId": "req_cli_cmd_source_show_123",
     "warnings": [],
   },
   "whoami": {
@@ -323,6 +345,7 @@ Example input:
       },
     },
     "ok": true,
+    "requestId": "req_cli_cmd_whoami_123",
     "warnings": [],
   },
 }

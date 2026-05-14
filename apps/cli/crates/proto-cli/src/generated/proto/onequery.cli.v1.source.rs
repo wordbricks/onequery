@@ -3,669 +3,6 @@
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[repr(i32)]
-pub enum SourceProvider {
-    SOURCE_PROVIDER_UNSPECIFIED = 0i32,
-    SOURCE_PROVIDER_POSTGRES = 1i32,
-    SOURCE_PROVIDER_SUPABASE = 2i32,
-    SOURCE_PROVIDER_MYSQL = 3i32,
-    SOURCE_PROVIDER_MONGODB = 4i32,
-    SOURCE_PROVIDER_BIGQUERY = 5i32,
-    SOURCE_PROVIDER_LAMINAR = 6i32,
-    SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR = 7i32,
-    SOURCE_PROVIDER_GOOGLE_ANALYTICS = 8i32,
-    SOURCE_PROVIDER_AMPLITUDE = 9i32,
-    SOURCE_PROVIDER_MIXPANEL = 10i32,
-    SOURCE_PROVIDER_POSTHOG = 11i32,
-    SOURCE_PROVIDER_SENTRY = 12i32,
-    SOURCE_PROVIDER_GITHUB = 13i32,
-    SOURCE_PROVIDER_LINEAR = 14i32,
-}
-impl ::core::default::Default for SourceProvider {
-    fn default() -> Self {
-        Self::SOURCE_PROVIDER_UNSPECIFIED
-    }
-}
-impl ::serde::Serialize for SourceProvider {
-    fn serialize<S: ::serde::Serializer>(
-        &self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        s.serialize_str(::buffa::Enumeration::proto_name(self))
-    }
-}
-impl<'de> ::serde::Deserialize<'de> for SourceProvider {
-    fn deserialize<D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        struct _V;
-        impl ::serde::de::Visitor<'_> for _V {
-            type Value = SourceProvider;
-            fn expecting(
-                &self,
-                f: &mut ::core::fmt::Formatter<'_>,
-            ) -> ::core::fmt::Result {
-                f.write_str(
-                    concat!(
-                        "a string, integer, or null for ", stringify!(SourceProvider)
-                    ),
-                )
-            }
-            fn visit_str<E: ::serde::de::Error>(
-                self,
-                v: &str,
-            ) -> ::core::result::Result<SourceProvider, E> {
-                <SourceProvider as ::buffa::Enumeration>::from_proto_name(v)
-                    .ok_or_else(|| { ::serde::de::Error::unknown_variant(v, &[]) })
-            }
-            fn visit_i64<E: ::serde::de::Error>(
-                self,
-                v: i64,
-            ) -> ::core::result::Result<SourceProvider, E> {
-                let v32 = i32::try_from(v)
-                    .map_err(|_| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("enum value {} out of i32 range", v),
-                        )
-                    })?;
-                <SourceProvider as ::buffa::Enumeration>::from_i32(v32)
-                    .ok_or_else(|| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("unknown enum value {}", v32),
-                        )
-                    })
-            }
-            fn visit_u64<E: ::serde::de::Error>(
-                self,
-                v: u64,
-            ) -> ::core::result::Result<SourceProvider, E> {
-                let v32 = i32::try_from(v)
-                    .map_err(|_| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("enum value {} out of i32 range", v),
-                        )
-                    })?;
-                <SourceProvider as ::buffa::Enumeration>::from_i32(v32)
-                    .ok_or_else(|| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("unknown enum value {}", v32),
-                        )
-                    })
-            }
-            fn visit_unit<E: ::serde::de::Error>(
-                self,
-            ) -> ::core::result::Result<SourceProvider, E> {
-                ::core::result::Result::Ok(::core::default::Default::default())
-            }
-        }
-        d.deserialize_any(_V)
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for SourceProvider {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-impl ::buffa::Enumeration for SourceProvider {
-    fn from_i32(value: i32) -> ::core::option::Option<Self> {
-        match value {
-            0i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_UNSPECIFIED),
-            1i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_POSTGRES),
-            2i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_SUPABASE),
-            3i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_MYSQL),
-            4i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_MONGODB),
-            5i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_BIGQUERY),
-            6i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_LAMINAR),
-            7i32 => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR)
-            }
-            8i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_GOOGLE_ANALYTICS),
-            9i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_AMPLITUDE),
-            10i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_MIXPANEL),
-            11i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_POSTHOG),
-            12i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_SENTRY),
-            13i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_GITHUB),
-            14i32 => ::core::option::Option::Some(Self::SOURCE_PROVIDER_LINEAR),
-            _ => ::core::option::Option::None,
-        }
-    }
-    fn to_i32(&self) -> i32 {
-        *self as i32
-    }
-    fn proto_name(&self) -> &'static str {
-        match self {
-            Self::SOURCE_PROVIDER_UNSPECIFIED => "SOURCE_PROVIDER_UNSPECIFIED",
-            Self::SOURCE_PROVIDER_POSTGRES => "SOURCE_PROVIDER_POSTGRES",
-            Self::SOURCE_PROVIDER_SUPABASE => "SOURCE_PROVIDER_SUPABASE",
-            Self::SOURCE_PROVIDER_MYSQL => "SOURCE_PROVIDER_MYSQL",
-            Self::SOURCE_PROVIDER_MONGODB => "SOURCE_PROVIDER_MONGODB",
-            Self::SOURCE_PROVIDER_BIGQUERY => "SOURCE_PROVIDER_BIGQUERY",
-            Self::SOURCE_PROVIDER_LAMINAR => "SOURCE_PROVIDER_LAMINAR",
-            Self::SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR => {
-                "SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR"
-            }
-            Self::SOURCE_PROVIDER_GOOGLE_ANALYTICS => "SOURCE_PROVIDER_GOOGLE_ANALYTICS",
-            Self::SOURCE_PROVIDER_AMPLITUDE => "SOURCE_PROVIDER_AMPLITUDE",
-            Self::SOURCE_PROVIDER_MIXPANEL => "SOURCE_PROVIDER_MIXPANEL",
-            Self::SOURCE_PROVIDER_POSTHOG => "SOURCE_PROVIDER_POSTHOG",
-            Self::SOURCE_PROVIDER_SENTRY => "SOURCE_PROVIDER_SENTRY",
-            Self::SOURCE_PROVIDER_GITHUB => "SOURCE_PROVIDER_GITHUB",
-            Self::SOURCE_PROVIDER_LINEAR => "SOURCE_PROVIDER_LINEAR",
-        }
-    }
-    fn from_proto_name(name: &str) -> ::core::option::Option<Self> {
-        match name {
-            "SOURCE_PROVIDER_UNSPECIFIED" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_UNSPECIFIED)
-            }
-            "SOURCE_PROVIDER_POSTGRES" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_POSTGRES)
-            }
-            "SOURCE_PROVIDER_SUPABASE" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_SUPABASE)
-            }
-            "SOURCE_PROVIDER_MYSQL" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_MYSQL)
-            }
-            "SOURCE_PROVIDER_MONGODB" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_MONGODB)
-            }
-            "SOURCE_PROVIDER_BIGQUERY" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_BIGQUERY)
-            }
-            "SOURCE_PROVIDER_LAMINAR" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_LAMINAR)
-            }
-            "SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_AWS_ATHENA_CONNECTOR)
-            }
-            "SOURCE_PROVIDER_GOOGLE_ANALYTICS" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_GOOGLE_ANALYTICS)
-            }
-            "SOURCE_PROVIDER_AMPLITUDE" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_AMPLITUDE)
-            }
-            "SOURCE_PROVIDER_MIXPANEL" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_MIXPANEL)
-            }
-            "SOURCE_PROVIDER_POSTHOG" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_POSTHOG)
-            }
-            "SOURCE_PROVIDER_SENTRY" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_SENTRY)
-            }
-            "SOURCE_PROVIDER_GITHUB" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_GITHUB)
-            }
-            "SOURCE_PROVIDER_LINEAR" => {
-                ::core::option::Option::Some(Self::SOURCE_PROVIDER_LINEAR)
-            }
-            _ => ::core::option::Option::None,
-        }
-    }
-}
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-#[repr(i32)]
-pub enum SourceConnectSslMode {
-    SOURCE_CONNECT_SSL_MODE_UNSPECIFIED = 0i32,
-    SOURCE_CONNECT_SSL_MODE_DISABLE = 1i32,
-    SOURCE_CONNECT_SSL_MODE_PREFER = 2i32,
-    SOURCE_CONNECT_SSL_MODE_REQUIRE = 3i32,
-}
-impl ::core::default::Default for SourceConnectSslMode {
-    fn default() -> Self {
-        Self::SOURCE_CONNECT_SSL_MODE_UNSPECIFIED
-    }
-}
-impl ::serde::Serialize for SourceConnectSslMode {
-    fn serialize<S: ::serde::Serializer>(
-        &self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        s.serialize_str(::buffa::Enumeration::proto_name(self))
-    }
-}
-impl<'de> ::serde::Deserialize<'de> for SourceConnectSslMode {
-    fn deserialize<D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        struct _V;
-        impl ::serde::de::Visitor<'_> for _V {
-            type Value = SourceConnectSslMode;
-            fn expecting(
-                &self,
-                f: &mut ::core::fmt::Formatter<'_>,
-            ) -> ::core::fmt::Result {
-                f.write_str(
-                    concat!(
-                        "a string, integer, or null for ",
-                        stringify!(SourceConnectSslMode)
-                    ),
-                )
-            }
-            fn visit_str<E: ::serde::de::Error>(
-                self,
-                v: &str,
-            ) -> ::core::result::Result<SourceConnectSslMode, E> {
-                <SourceConnectSslMode as ::buffa::Enumeration>::from_proto_name(v)
-                    .ok_or_else(|| { ::serde::de::Error::unknown_variant(v, &[]) })
-            }
-            fn visit_i64<E: ::serde::de::Error>(
-                self,
-                v: i64,
-            ) -> ::core::result::Result<SourceConnectSslMode, E> {
-                let v32 = i32::try_from(v)
-                    .map_err(|_| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("enum value {} out of i32 range", v),
-                        )
-                    })?;
-                <SourceConnectSslMode as ::buffa::Enumeration>::from_i32(v32)
-                    .ok_or_else(|| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("unknown enum value {}", v32),
-                        )
-                    })
-            }
-            fn visit_u64<E: ::serde::de::Error>(
-                self,
-                v: u64,
-            ) -> ::core::result::Result<SourceConnectSslMode, E> {
-                let v32 = i32::try_from(v)
-                    .map_err(|_| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("enum value {} out of i32 range", v),
-                        )
-                    })?;
-                <SourceConnectSslMode as ::buffa::Enumeration>::from_i32(v32)
-                    .ok_or_else(|| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("unknown enum value {}", v32),
-                        )
-                    })
-            }
-            fn visit_unit<E: ::serde::de::Error>(
-                self,
-            ) -> ::core::result::Result<SourceConnectSslMode, E> {
-                ::core::result::Result::Ok(::core::default::Default::default())
-            }
-        }
-        d.deserialize_any(_V)
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for SourceConnectSslMode {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-impl ::buffa::Enumeration for SourceConnectSslMode {
-    fn from_i32(value: i32) -> ::core::option::Option<Self> {
-        match value {
-            0i32 => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_SSL_MODE_UNSPECIFIED)
-            }
-            1i32 => ::core::option::Option::Some(Self::SOURCE_CONNECT_SSL_MODE_DISABLE),
-            2i32 => ::core::option::Option::Some(Self::SOURCE_CONNECT_SSL_MODE_PREFER),
-            3i32 => ::core::option::Option::Some(Self::SOURCE_CONNECT_SSL_MODE_REQUIRE),
-            _ => ::core::option::Option::None,
-        }
-    }
-    fn to_i32(&self) -> i32 {
-        *self as i32
-    }
-    fn proto_name(&self) -> &'static str {
-        match self {
-            Self::SOURCE_CONNECT_SSL_MODE_UNSPECIFIED => {
-                "SOURCE_CONNECT_SSL_MODE_UNSPECIFIED"
-            }
-            Self::SOURCE_CONNECT_SSL_MODE_DISABLE => "SOURCE_CONNECT_SSL_MODE_DISABLE",
-            Self::SOURCE_CONNECT_SSL_MODE_PREFER => "SOURCE_CONNECT_SSL_MODE_PREFER",
-            Self::SOURCE_CONNECT_SSL_MODE_REQUIRE => "SOURCE_CONNECT_SSL_MODE_REQUIRE",
-        }
-    }
-    fn from_proto_name(name: &str) -> ::core::option::Option<Self> {
-        match name {
-            "SOURCE_CONNECT_SSL_MODE_UNSPECIFIED" => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_SSL_MODE_UNSPECIFIED)
-            }
-            "SOURCE_CONNECT_SSL_MODE_DISABLE" => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_SSL_MODE_DISABLE)
-            }
-            "SOURCE_CONNECT_SSL_MODE_PREFER" => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_SSL_MODE_PREFER)
-            }
-            "SOURCE_CONNECT_SSL_MODE_REQUIRE" => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_SSL_MODE_REQUIRE)
-            }
-            _ => ::core::option::Option::None,
-        }
-    }
-}
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-#[repr(i32)]
-pub enum SourceConnectAmplitudeRegion {
-    SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED = 0i32,
-    SOURCE_CONNECT_AMPLITUDE_REGION_US = 1i32,
-    SOURCE_CONNECT_AMPLITUDE_REGION_EU = 2i32,
-}
-impl ::core::default::Default for SourceConnectAmplitudeRegion {
-    fn default() -> Self {
-        Self::SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED
-    }
-}
-impl ::serde::Serialize for SourceConnectAmplitudeRegion {
-    fn serialize<S: ::serde::Serializer>(
-        &self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        s.serialize_str(::buffa::Enumeration::proto_name(self))
-    }
-}
-impl<'de> ::serde::Deserialize<'de> for SourceConnectAmplitudeRegion {
-    fn deserialize<D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        struct _V;
-        impl ::serde::de::Visitor<'_> for _V {
-            type Value = SourceConnectAmplitudeRegion;
-            fn expecting(
-                &self,
-                f: &mut ::core::fmt::Formatter<'_>,
-            ) -> ::core::fmt::Result {
-                f.write_str(
-                    concat!(
-                        "a string, integer, or null for ",
-                        stringify!(SourceConnectAmplitudeRegion)
-                    ),
-                )
-            }
-            fn visit_str<E: ::serde::de::Error>(
-                self,
-                v: &str,
-            ) -> ::core::result::Result<SourceConnectAmplitudeRegion, E> {
-                <SourceConnectAmplitudeRegion as ::buffa::Enumeration>::from_proto_name(
-                        v,
-                    )
-                    .ok_or_else(|| { ::serde::de::Error::unknown_variant(v, &[]) })
-            }
-            fn visit_i64<E: ::serde::de::Error>(
-                self,
-                v: i64,
-            ) -> ::core::result::Result<SourceConnectAmplitudeRegion, E> {
-                let v32 = i32::try_from(v)
-                    .map_err(|_| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("enum value {} out of i32 range", v),
-                        )
-                    })?;
-                <SourceConnectAmplitudeRegion as ::buffa::Enumeration>::from_i32(v32)
-                    .ok_or_else(|| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("unknown enum value {}", v32),
-                        )
-                    })
-            }
-            fn visit_u64<E: ::serde::de::Error>(
-                self,
-                v: u64,
-            ) -> ::core::result::Result<SourceConnectAmplitudeRegion, E> {
-                let v32 = i32::try_from(v)
-                    .map_err(|_| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("enum value {} out of i32 range", v),
-                        )
-                    })?;
-                <SourceConnectAmplitudeRegion as ::buffa::Enumeration>::from_i32(v32)
-                    .ok_or_else(|| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("unknown enum value {}", v32),
-                        )
-                    })
-            }
-            fn visit_unit<E: ::serde::de::Error>(
-                self,
-            ) -> ::core::result::Result<SourceConnectAmplitudeRegion, E> {
-                ::core::result::Result::Ok(::core::default::Default::default())
-            }
-        }
-        d.deserialize_any(_V)
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for SourceConnectAmplitudeRegion {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-impl ::buffa::Enumeration for SourceConnectAmplitudeRegion {
-    fn from_i32(value: i32) -> ::core::option::Option<Self> {
-        match value {
-            0i32 => {
-                ::core::option::Option::Some(
-                    Self::SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED,
-                )
-            }
-            1i32 => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_AMPLITUDE_REGION_US)
-            }
-            2i32 => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_AMPLITUDE_REGION_EU)
-            }
-            _ => ::core::option::Option::None,
-        }
-    }
-    fn to_i32(&self) -> i32 {
-        *self as i32
-    }
-    fn proto_name(&self) -> &'static str {
-        match self {
-            Self::SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED => {
-                "SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED"
-            }
-            Self::SOURCE_CONNECT_AMPLITUDE_REGION_US => {
-                "SOURCE_CONNECT_AMPLITUDE_REGION_US"
-            }
-            Self::SOURCE_CONNECT_AMPLITUDE_REGION_EU => {
-                "SOURCE_CONNECT_AMPLITUDE_REGION_EU"
-            }
-        }
-    }
-    fn from_proto_name(name: &str) -> ::core::option::Option<Self> {
-        match name {
-            "SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED" => {
-                ::core::option::Option::Some(
-                    Self::SOURCE_CONNECT_AMPLITUDE_REGION_UNSPECIFIED,
-                )
-            }
-            "SOURCE_CONNECT_AMPLITUDE_REGION_US" => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_AMPLITUDE_REGION_US)
-            }
-            "SOURCE_CONNECT_AMPLITUDE_REGION_EU" => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_AMPLITUDE_REGION_EU)
-            }
-            _ => ::core::option::Option::None,
-        }
-    }
-}
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-#[repr(i32)]
-pub enum SourceConnectMixpanelRegion {
-    SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED = 0i32,
-    SOURCE_CONNECT_MIXPANEL_REGION_US = 1i32,
-    SOURCE_CONNECT_MIXPANEL_REGION_EU = 2i32,
-    SOURCE_CONNECT_MIXPANEL_REGION_IN = 3i32,
-}
-impl ::core::default::Default for SourceConnectMixpanelRegion {
-    fn default() -> Self {
-        Self::SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED
-    }
-}
-impl ::serde::Serialize for SourceConnectMixpanelRegion {
-    fn serialize<S: ::serde::Serializer>(
-        &self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        s.serialize_str(::buffa::Enumeration::proto_name(self))
-    }
-}
-impl<'de> ::serde::Deserialize<'de> for SourceConnectMixpanelRegion {
-    fn deserialize<D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        struct _V;
-        impl ::serde::de::Visitor<'_> for _V {
-            type Value = SourceConnectMixpanelRegion;
-            fn expecting(
-                &self,
-                f: &mut ::core::fmt::Formatter<'_>,
-            ) -> ::core::fmt::Result {
-                f.write_str(
-                    concat!(
-                        "a string, integer, or null for ",
-                        stringify!(SourceConnectMixpanelRegion)
-                    ),
-                )
-            }
-            fn visit_str<E: ::serde::de::Error>(
-                self,
-                v: &str,
-            ) -> ::core::result::Result<SourceConnectMixpanelRegion, E> {
-                <SourceConnectMixpanelRegion as ::buffa::Enumeration>::from_proto_name(v)
-                    .ok_or_else(|| { ::serde::de::Error::unknown_variant(v, &[]) })
-            }
-            fn visit_i64<E: ::serde::de::Error>(
-                self,
-                v: i64,
-            ) -> ::core::result::Result<SourceConnectMixpanelRegion, E> {
-                let v32 = i32::try_from(v)
-                    .map_err(|_| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("enum value {} out of i32 range", v),
-                        )
-                    })?;
-                <SourceConnectMixpanelRegion as ::buffa::Enumeration>::from_i32(v32)
-                    .ok_or_else(|| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("unknown enum value {}", v32),
-                        )
-                    })
-            }
-            fn visit_u64<E: ::serde::de::Error>(
-                self,
-                v: u64,
-            ) -> ::core::result::Result<SourceConnectMixpanelRegion, E> {
-                let v32 = i32::try_from(v)
-                    .map_err(|_| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("enum value {} out of i32 range", v),
-                        )
-                    })?;
-                <SourceConnectMixpanelRegion as ::buffa::Enumeration>::from_i32(v32)
-                    .ok_or_else(|| {
-                        ::serde::de::Error::custom(
-                            ::buffa::alloc::format!("unknown enum value {}", v32),
-                        )
-                    })
-            }
-            fn visit_unit<E: ::serde::de::Error>(
-                self,
-            ) -> ::core::result::Result<SourceConnectMixpanelRegion, E> {
-                ::core::result::Result::Ok(::core::default::Default::default())
-            }
-        }
-        d.deserialize_any(_V)
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for SourceConnectMixpanelRegion {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-impl ::buffa::Enumeration for SourceConnectMixpanelRegion {
-    fn from_i32(value: i32) -> ::core::option::Option<Self> {
-        match value {
-            0i32 => {
-                ::core::option::Option::Some(
-                    Self::SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED,
-                )
-            }
-            1i32 => ::core::option::Option::Some(Self::SOURCE_CONNECT_MIXPANEL_REGION_US),
-            2i32 => ::core::option::Option::Some(Self::SOURCE_CONNECT_MIXPANEL_REGION_EU),
-            3i32 => ::core::option::Option::Some(Self::SOURCE_CONNECT_MIXPANEL_REGION_IN),
-            _ => ::core::option::Option::None,
-        }
-    }
-    fn to_i32(&self) -> i32 {
-        *self as i32
-    }
-    fn proto_name(&self) -> &'static str {
-        match self {
-            Self::SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED => {
-                "SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED"
-            }
-            Self::SOURCE_CONNECT_MIXPANEL_REGION_US => {
-                "SOURCE_CONNECT_MIXPANEL_REGION_US"
-            }
-            Self::SOURCE_CONNECT_MIXPANEL_REGION_EU => {
-                "SOURCE_CONNECT_MIXPANEL_REGION_EU"
-            }
-            Self::SOURCE_CONNECT_MIXPANEL_REGION_IN => {
-                "SOURCE_CONNECT_MIXPANEL_REGION_IN"
-            }
-        }
-    }
-    fn from_proto_name(name: &str) -> ::core::option::Option<Self> {
-        match name {
-            "SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED" => {
-                ::core::option::Option::Some(
-                    Self::SOURCE_CONNECT_MIXPANEL_REGION_UNSPECIFIED,
-                )
-            }
-            "SOURCE_CONNECT_MIXPANEL_REGION_US" => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_MIXPANEL_REGION_US)
-            }
-            "SOURCE_CONNECT_MIXPANEL_REGION_EU" => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_MIXPANEL_REGION_EU)
-            }
-            "SOURCE_CONNECT_MIXPANEL_REGION_IN" => {
-                ::core::option::Option::Some(Self::SOURCE_CONNECT_MIXPANEL_REGION_IN)
-            }
-            _ => ::core::option::Option::None,
-        }
-    }
-}
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-#[repr(i32)]
 pub enum SourceStatus {
     SOURCE_STATUS_UNSPECIFIED = 0i32,
     SOURCE_STATUS_ACTIVE = 1i32,
@@ -1707,6 +1044,1075 @@ unsafe impl<'a> ::buffa::HasDefaultViewInstance for ListSourcesResponseView<'a> 
 #[derive(Clone, PartialEq, Default)]
 #[derive(::serde::Serialize, ::serde::Deserialize)]
 #[serde(default)]
+pub struct ListSourceProvidersRequest {
+    /// Field 1: `org_slug`
+    #[serde(
+        rename = "orgSlug",
+        alias = "org_slug",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub org_slug: Option<::buffa::alloc::string::String>,
+    #[serde(skip)]
+    #[doc(hidden)]
+    pub __buffa_unknown_fields: ::buffa::UnknownFields,
+    #[doc(hidden)]
+    #[serde(skip)]
+    pub __buffa_cached_size: ::buffa::__private::CachedSize,
+}
+impl ::core::fmt::Debug for ListSourceProvidersRequest {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        f.debug_struct("ListSourceProvidersRequest")
+            .field("org_slug", &self.org_slug)
+            .finish()
+    }
+}
+impl ListSourceProvidersRequest {
+    /// Protobuf type URL for this message, for use with `Any::pack` and
+    /// `Any::unpack_if`.
+    ///
+    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
+    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ListSourceProvidersRequest";
+}
+unsafe impl ::buffa::DefaultInstance for ListSourceProvidersRequest {
+    fn default_instance() -> &'static Self {
+        static VALUE: ::buffa::__private::OnceBox<ListSourceProvidersRequest> = ::buffa::__private::OnceBox::new();
+        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
+    }
+}
+impl ::buffa::Message for ListSourceProvidersRequest {
+    /// Returns the total encoded size in bytes.
+    ///
+    /// The result is a `u32`; the protobuf specification requires all
+    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
+    /// compliant message will never overflow this type.
+    fn compute_size(&self) -> u32 {
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        let mut size = 0u32;
+        if let Some(ref v) = self.org_slug {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
+        size += self.__buffa_unknown_fields.encoded_len() as u32;
+        self.__buffa_cached_size.set(size);
+        size
+    }
+    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        if let Some(ref v) = self.org_slug {
+            ::buffa::encoding::Tag::new(
+                    1u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        self.__buffa_unknown_fields.write_to(buf);
+    }
+    fn merge_field(
+        &mut self,
+        tag: ::buffa::encoding::Tag,
+        buf: &mut impl ::buffa::bytes::Buf,
+        depth: u32,
+    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
+        #[allow(unused_imports)]
+        use ::buffa::bytes::Buf as _;
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        match tag.field_number() {
+            1u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 1u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::types::merge_string(
+                    self
+                        .org_slug
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            _ => {
+                self.__buffa_unknown_fields
+                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+    fn cached_size(&self) -> u32 {
+        self.__buffa_cached_size.get()
+    }
+    fn clear(&mut self) {
+        self.org_slug = ::core::option::Option::None;
+        self.__buffa_unknown_fields.clear();
+        self.__buffa_cached_size.set(0);
+    }
+}
+impl ::buffa::ExtensionSet for ListSourceProvidersRequest {
+    const PROTO_FQN: &'static str = "onequery.cli.v1.ListSourceProvidersRequest";
+    fn unknown_fields(&self) -> &::buffa::UnknownFields {
+        &self.__buffa_unknown_fields
+    }
+    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
+        &mut self.__buffa_unknown_fields
+    }
+}
+impl ::buffa::json_helpers::ProtoElemJson for ListSourceProvidersRequest {
+    fn serialize_proto_json<S: ::serde::Serializer>(
+        v: &Self,
+        s: S,
+    ) -> ::core::result::Result<S::Ok, S::Error> {
+        ::serde::Serialize::serialize(v, s)
+    }
+    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
+        d: D,
+    ) -> ::core::result::Result<Self, D::Error> {
+        <Self as ::serde::Deserialize>::deserialize(d)
+    }
+}
+#[doc(hidden)]
+pub const __LIST_SOURCE_PROVIDERS_REQUEST_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
+    type_url: "type.googleapis.com/onequery.cli.v1.ListSourceProvidersRequest",
+    to_json: ::buffa::type_registry::any_to_json::<ListSourceProvidersRequest>,
+    from_json: ::buffa::type_registry::any_from_json::<ListSourceProvidersRequest>,
+    is_wkt: false,
+};
+#[derive(Clone, Debug, Default)]
+pub struct ListSourceProvidersRequestView<'a> {
+    /// Field 1: `org_slug`
+    pub org_slug: ::core::option::Option<&'a str>,
+    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
+}
+impl<'a> ListSourceProvidersRequestView<'a> {
+    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
+    ///
+    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
+    /// and by generated sub-message decode arms with `depth - 1`.
+    ///
+    /// **Not part of the public API.** Named with a leading underscore to
+    /// signal that it is for generated-code use only.
+    #[doc(hidden)]
+    pub fn _decode_depth(
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        let mut view = Self::default();
+        view._merge_into_view(buf, depth)?;
+        ::core::result::Result::Ok(view)
+    }
+    /// Merge fields from `buf` into this view (proto merge semantics).
+    ///
+    /// Repeated fields append; singular fields last-wins; singular
+    /// MESSAGE fields merge recursively. Used by sub-message decode
+    /// arms when the same field appears multiple times on the wire.
+    ///
+    /// **Not part of the public API.**
+    #[doc(hidden)]
+    pub fn _merge_into_view(
+        &mut self,
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
+        let _ = depth;
+        #[allow(unused_variables)]
+        let view = self;
+        let mut cur: &'a [u8] = buf;
+        while !cur.is_empty() {
+            let before_tag = cur;
+            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
+            match tag.field_number() {
+                1u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 1u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.org_slug = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                _ => {
+                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
+                    let span_len = before_tag.len() - cur.len();
+                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
+                }
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+}
+impl<'a> ::buffa::MessageView<'a> for ListSourceProvidersRequestView<'a> {
+    type Owned = ListSourceProvidersRequest;
+    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
+    }
+    fn decode_view_with_limit(
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        Self::_decode_depth(buf, depth)
+    }
+    /// Convert this view to the owned message type.
+    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
+    fn to_owned_message(&self) -> ListSourceProvidersRequest {
+        #[allow(unused_imports)]
+        use ::buffa::alloc::string::ToString as _;
+        ListSourceProvidersRequest {
+            org_slug: self.org_slug.map(|s| s.to_string()),
+            __buffa_unknown_fields: self
+                .__buffa_unknown_fields
+                .to_owned()
+                .unwrap_or_default()
+                .into(),
+            ..::core::default::Default::default()
+        }
+    }
+}
+unsafe impl ::buffa::DefaultViewInstance for ListSourceProvidersRequestView<'static> {
+    fn default_view_instance() -> &'static Self {
+        static VALUE: ::buffa::__private::OnceBox<
+            ListSourceProvidersRequestView<'static>,
+        > = ::buffa::__private::OnceBox::new();
+        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
+    }
+}
+unsafe impl<'a> ::buffa::HasDefaultViewInstance for ListSourceProvidersRequestView<'a> {
+    type Static = ListSourceProvidersRequestView<'static>;
+}
+#[derive(Clone, PartialEq, Default)]
+#[derive(::serde::Serialize, ::serde::Deserialize)]
+#[serde(default)]
+pub struct ListSourceProvidersResponse {
+    /// Field 1: `providers`
+    #[serde(
+        rename = "providers",
+        skip_serializing_if = "::buffa::json_helpers::skip_if::is_empty_vec",
+        deserialize_with = "::buffa::json_helpers::null_as_default"
+    )]
+    pub providers: ::buffa::alloc::vec::Vec<CliSourceProvider>,
+    #[serde(skip)]
+    #[doc(hidden)]
+    pub __buffa_unknown_fields: ::buffa::UnknownFields,
+    #[doc(hidden)]
+    #[serde(skip)]
+    pub __buffa_cached_size: ::buffa::__private::CachedSize,
+}
+impl ::core::fmt::Debug for ListSourceProvidersResponse {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        f.debug_struct("ListSourceProvidersResponse")
+            .field("providers", &self.providers)
+            .finish()
+    }
+}
+impl ListSourceProvidersResponse {
+    /// Protobuf type URL for this message, for use with `Any::pack` and
+    /// `Any::unpack_if`.
+    ///
+    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
+    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ListSourceProvidersResponse";
+}
+unsafe impl ::buffa::DefaultInstance for ListSourceProvidersResponse {
+    fn default_instance() -> &'static Self {
+        static VALUE: ::buffa::__private::OnceBox<ListSourceProvidersResponse> = ::buffa::__private::OnceBox::new();
+        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
+    }
+}
+impl ::buffa::Message for ListSourceProvidersResponse {
+    /// Returns the total encoded size in bytes.
+    ///
+    /// The result is a `u32`; the protobuf specification requires all
+    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
+    /// compliant message will never overflow this type.
+    fn compute_size(&self) -> u32 {
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        let mut size = 0u32;
+        for v in &self.providers {
+            let inner_size = v.compute_size();
+            size
+                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
+                    + inner_size;
+        }
+        size += self.__buffa_unknown_fields.encoded_len() as u32;
+        self.__buffa_cached_size.set(size);
+        size
+    }
+    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        for v in &self.providers {
+            ::buffa::encoding::Tag::new(
+                    1u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::encoding::encode_varint(v.cached_size() as u64, buf);
+            v.write_to(buf);
+        }
+        self.__buffa_unknown_fields.write_to(buf);
+    }
+    fn merge_field(
+        &mut self,
+        tag: ::buffa::encoding::Tag,
+        buf: &mut impl ::buffa::bytes::Buf,
+        depth: u32,
+    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
+        #[allow(unused_imports)]
+        use ::buffa::bytes::Buf as _;
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        match tag.field_number() {
+            1u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 1u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                let mut elem = ::core::default::Default::default();
+                ::buffa::Message::merge_length_delimited(&mut elem, buf, depth)?;
+                self.providers.push(elem);
+            }
+            _ => {
+                self.__buffa_unknown_fields
+                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+    fn cached_size(&self) -> u32 {
+        self.__buffa_cached_size.get()
+    }
+    fn clear(&mut self) {
+        self.providers.clear();
+        self.__buffa_unknown_fields.clear();
+        self.__buffa_cached_size.set(0);
+    }
+}
+impl ::buffa::ExtensionSet for ListSourceProvidersResponse {
+    const PROTO_FQN: &'static str = "onequery.cli.v1.ListSourceProvidersResponse";
+    fn unknown_fields(&self) -> &::buffa::UnknownFields {
+        &self.__buffa_unknown_fields
+    }
+    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
+        &mut self.__buffa_unknown_fields
+    }
+}
+impl ::buffa::json_helpers::ProtoElemJson for ListSourceProvidersResponse {
+    fn serialize_proto_json<S: ::serde::Serializer>(
+        v: &Self,
+        s: S,
+    ) -> ::core::result::Result<S::Ok, S::Error> {
+        ::serde::Serialize::serialize(v, s)
+    }
+    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
+        d: D,
+    ) -> ::core::result::Result<Self, D::Error> {
+        <Self as ::serde::Deserialize>::deserialize(d)
+    }
+}
+#[doc(hidden)]
+pub const __LIST_SOURCE_PROVIDERS_RESPONSE_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
+    type_url: "type.googleapis.com/onequery.cli.v1.ListSourceProvidersResponse",
+    to_json: ::buffa::type_registry::any_to_json::<ListSourceProvidersResponse>,
+    from_json: ::buffa::type_registry::any_from_json::<ListSourceProvidersResponse>,
+    is_wkt: false,
+};
+#[derive(Clone, Debug, Default)]
+pub struct ListSourceProvidersResponseView<'a> {
+    /// Field 1: `providers`
+    pub providers: ::buffa::RepeatedView<'a, CliSourceProviderView<'a>>,
+    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
+}
+impl<'a> ListSourceProvidersResponseView<'a> {
+    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
+    ///
+    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
+    /// and by generated sub-message decode arms with `depth - 1`.
+    ///
+    /// **Not part of the public API.** Named with a leading underscore to
+    /// signal that it is for generated-code use only.
+    #[doc(hidden)]
+    pub fn _decode_depth(
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        let mut view = Self::default();
+        view._merge_into_view(buf, depth)?;
+        ::core::result::Result::Ok(view)
+    }
+    /// Merge fields from `buf` into this view (proto merge semantics).
+    ///
+    /// Repeated fields append; singular fields last-wins; singular
+    /// MESSAGE fields merge recursively. Used by sub-message decode
+    /// arms when the same field appears multiple times on the wire.
+    ///
+    /// **Not part of the public API.**
+    #[doc(hidden)]
+    pub fn _merge_into_view(
+        &mut self,
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
+        let _ = depth;
+        #[allow(unused_variables)]
+        let view = self;
+        let mut cur: &'a [u8] = buf;
+        while !cur.is_empty() {
+            let before_tag = cur;
+            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
+            match tag.field_number() {
+                1u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 1u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    if depth == 0 {
+                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
+                    }
+                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
+                    view.providers
+                        .push(CliSourceProviderView::_decode_depth(sub, depth - 1)?);
+                }
+                _ => {
+                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
+                    let span_len = before_tag.len() - cur.len();
+                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
+                }
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+}
+impl<'a> ::buffa::MessageView<'a> for ListSourceProvidersResponseView<'a> {
+    type Owned = ListSourceProvidersResponse;
+    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
+    }
+    fn decode_view_with_limit(
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        Self::_decode_depth(buf, depth)
+    }
+    /// Convert this view to the owned message type.
+    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
+    fn to_owned_message(&self) -> ListSourceProvidersResponse {
+        #[allow(unused_imports)]
+        use ::buffa::alloc::string::ToString as _;
+        ListSourceProvidersResponse {
+            providers: self.providers.iter().map(|v| v.to_owned_message()).collect(),
+            __buffa_unknown_fields: self
+                .__buffa_unknown_fields
+                .to_owned()
+                .unwrap_or_default()
+                .into(),
+            ..::core::default::Default::default()
+        }
+    }
+}
+unsafe impl ::buffa::DefaultViewInstance for ListSourceProvidersResponseView<'static> {
+    fn default_view_instance() -> &'static Self {
+        static VALUE: ::buffa::__private::OnceBox<
+            ListSourceProvidersResponseView<'static>,
+        > = ::buffa::__private::OnceBox::new();
+        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
+    }
+}
+unsafe impl<'a> ::buffa::HasDefaultViewInstance for ListSourceProvidersResponseView<'a> {
+    type Static = ListSourceProvidersResponseView<'static>;
+}
+#[derive(Clone, PartialEq, Default)]
+#[derive(::serde::Serialize, ::serde::Deserialize)]
+#[serde(default)]
+pub struct CliSourceProvider {
+    /// Field 1: `provider`
+    #[serde(rename = "provider", skip_serializing_if = "Option::is_none")]
+    pub provider: Option<::buffa::alloc::string::String>,
+    /// Field 2: `label`
+    #[serde(rename = "label", skip_serializing_if = "Option::is_none")]
+    pub label: Option<::buffa::alloc::string::String>,
+    /// Field 3: `connectable`
+    #[serde(rename = "connectable", skip_serializing_if = "Option::is_none")]
+    pub connectable: Option<bool>,
+    /// Field 4: `testable`
+    #[serde(rename = "testable", skip_serializing_if = "Option::is_none")]
+    pub testable: Option<bool>,
+    /// Field 5: `interfaces`
+    #[serde(
+        rename = "interfaces",
+        with = "::buffa::json_helpers::repeated_enum",
+        skip_serializing_if = "::buffa::json_helpers::skip_if::is_empty_vec"
+    )]
+    pub interfaces: ::buffa::alloc::vec::Vec<::buffa::EnumValue<SourceInterface>>,
+    /// Field 6: `credential_type`
+    #[serde(
+        rename = "credentialType",
+        alias = "credential_type",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub credential_type: Option<::buffa::alloc::string::String>,
+    /// Field 7: `credential_example`
+    #[serde(
+        rename = "credentialExample",
+        alias = "credential_example",
+        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
+    )]
+    pub credential_example: ::buffa::MessageField<
+        ::buffa_types::google::protobuf::Struct,
+    >,
+    #[serde(skip)]
+    #[doc(hidden)]
+    pub __buffa_unknown_fields: ::buffa::UnknownFields,
+    #[doc(hidden)]
+    #[serde(skip)]
+    pub __buffa_cached_size: ::buffa::__private::CachedSize,
+}
+impl ::core::fmt::Debug for CliSourceProvider {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        f.debug_struct("CliSourceProvider")
+            .field("provider", &self.provider)
+            .field("label", &self.label)
+            .field("connectable", &self.connectable)
+            .field("testable", &self.testable)
+            .field("interfaces", &self.interfaces)
+            .field("credential_type", &self.credential_type)
+            .field("credential_example", &self.credential_example)
+            .finish()
+    }
+}
+impl CliSourceProvider {
+    /// Protobuf type URL for this message, for use with `Any::pack` and
+    /// `Any::unpack_if`.
+    ///
+    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
+    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.CliSourceProvider";
+}
+unsafe impl ::buffa::DefaultInstance for CliSourceProvider {
+    fn default_instance() -> &'static Self {
+        static VALUE: ::buffa::__private::OnceBox<CliSourceProvider> = ::buffa::__private::OnceBox::new();
+        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
+    }
+}
+impl ::buffa::Message for CliSourceProvider {
+    /// Returns the total encoded size in bytes.
+    ///
+    /// The result is a `u32`; the protobuf specification requires all
+    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
+    /// compliant message will never overflow this type.
+    fn compute_size(&self) -> u32 {
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        let mut size = 0u32;
+        if let Some(ref v) = self.provider {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
+        if let Some(ref v) = self.label {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
+        if self.connectable.is_some() {
+            size += 1u32 + ::buffa::types::BOOL_ENCODED_LEN as u32;
+        }
+        if self.testable.is_some() {
+            size += 1u32 + ::buffa::types::BOOL_ENCODED_LEN as u32;
+        }
+        if let Some(ref v) = self.credential_type {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
+        if self.credential_example.is_set() {
+            let inner_size = self.credential_example.compute_size();
+            size
+                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
+                    + inner_size;
+        }
+        if !self.interfaces.is_empty() {
+            let payload: u32 = self
+                .interfaces
+                .iter()
+                .map(|v| ::buffa::types::int32_encoded_len(v.to_i32()) as u32)
+                .sum::<u32>();
+            size
+                += 1u32 + ::buffa::encoding::varint_len(payload as u64) as u32 + payload;
+        }
+        size += self.__buffa_unknown_fields.encoded_len() as u32;
+        self.__buffa_cached_size.set(size);
+        size
+    }
+    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        if let Some(ref v) = self.provider {
+            ::buffa::encoding::Tag::new(
+                    1u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        if let Some(ref v) = self.label {
+            ::buffa::encoding::Tag::new(
+                    2u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        if let Some(v) = self.connectable {
+            ::buffa::encoding::Tag::new(3u32, ::buffa::encoding::WireType::Varint)
+                .encode(buf);
+            ::buffa::types::encode_bool(v, buf);
+        }
+        if let Some(v) = self.testable {
+            ::buffa::encoding::Tag::new(4u32, ::buffa::encoding::WireType::Varint)
+                .encode(buf);
+            ::buffa::types::encode_bool(v, buf);
+        }
+        if let Some(ref v) = self.credential_type {
+            ::buffa::encoding::Tag::new(
+                    6u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        if self.credential_example.is_set() {
+            ::buffa::encoding::Tag::new(
+                    7u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::encoding::encode_varint(
+                self.credential_example.cached_size() as u64,
+                buf,
+            );
+            self.credential_example.write_to(buf);
+        }
+        if !self.interfaces.is_empty() {
+            let payload: u32 = self
+                .interfaces
+                .iter()
+                .map(|v| ::buffa::types::int32_encoded_len(v.to_i32()) as u32)
+                .sum::<u32>();
+            ::buffa::encoding::Tag::new(
+                    5u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::encoding::encode_varint(payload as u64, buf);
+            for v in &self.interfaces {
+                ::buffa::types::encode_int32(v.to_i32(), buf);
+            }
+        }
+        self.__buffa_unknown_fields.write_to(buf);
+    }
+    fn merge_field(
+        &mut self,
+        tag: ::buffa::encoding::Tag,
+        buf: &mut impl ::buffa::bytes::Buf,
+        depth: u32,
+    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
+        #[allow(unused_imports)]
+        use ::buffa::bytes::Buf as _;
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        match tag.field_number() {
+            1u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 1u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::types::merge_string(
+                    self
+                        .provider
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            2u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 2u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::types::merge_string(
+                    self.label.get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            3u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 3u32,
+                        expected: 0u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                self.connectable = ::core::option::Option::Some(
+                    ::buffa::types::decode_bool(buf)?,
+                );
+            }
+            4u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 4u32,
+                        expected: 0u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                self.testable = ::core::option::Option::Some(
+                    ::buffa::types::decode_bool(buf)?,
+                );
+            }
+            6u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 6u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::types::merge_string(
+                    self
+                        .credential_type
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            7u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 7u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::Message::merge_length_delimited(
+                    self.credential_example.get_or_insert_default(),
+                    buf,
+                    depth,
+                )?;
+            }
+            5u32 => {
+                if tag.wire_type() == ::buffa::encoding::WireType::LengthDelimited {
+                    let len = ::buffa::encoding::decode_varint(buf)?;
+                    let len = usize::try_from(len)
+                        .map_err(|_| ::buffa::DecodeError::MessageTooLarge)?;
+                    if buf.remaining() < len {
+                        return ::core::result::Result::Err(
+                            ::buffa::DecodeError::UnexpectedEof,
+                        );
+                    }
+                    self.interfaces.reserve(len);
+                    let mut limited = buf.take(len);
+                    while limited.has_remaining() {
+                        self.interfaces
+                            .push(
+                                ::buffa::EnumValue::from(
+                                    ::buffa::types::decode_int32(&mut limited)?,
+                                ),
+                            );
+                    }
+                    let leftover = limited.remaining();
+                    if leftover > 0 {
+                        limited.advance(leftover);
+                    }
+                } else if tag.wire_type() == ::buffa::encoding::WireType::Varint {
+                    self.interfaces
+                        .push(
+                            ::buffa::EnumValue::from(::buffa::types::decode_int32(buf)?),
+                        );
+                } else {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 5u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+            }
+            _ => {
+                self.__buffa_unknown_fields
+                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+    fn cached_size(&self) -> u32 {
+        self.__buffa_cached_size.get()
+    }
+    fn clear(&mut self) {
+        self.provider = ::core::option::Option::None;
+        self.label = ::core::option::Option::None;
+        self.connectable = ::core::option::Option::None;
+        self.testable = ::core::option::Option::None;
+        self.credential_type = ::core::option::Option::None;
+        self.credential_example = ::buffa::MessageField::none();
+        self.interfaces.clear();
+        self.__buffa_unknown_fields.clear();
+        self.__buffa_cached_size.set(0);
+    }
+}
+impl ::buffa::ExtensionSet for CliSourceProvider {
+    const PROTO_FQN: &'static str = "onequery.cli.v1.CliSourceProvider";
+    fn unknown_fields(&self) -> &::buffa::UnknownFields {
+        &self.__buffa_unknown_fields
+    }
+    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
+        &mut self.__buffa_unknown_fields
+    }
+}
+impl ::buffa::json_helpers::ProtoElemJson for CliSourceProvider {
+    fn serialize_proto_json<S: ::serde::Serializer>(
+        v: &Self,
+        s: S,
+    ) -> ::core::result::Result<S::Ok, S::Error> {
+        ::serde::Serialize::serialize(v, s)
+    }
+    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
+        d: D,
+    ) -> ::core::result::Result<Self, D::Error> {
+        <Self as ::serde::Deserialize>::deserialize(d)
+    }
+}
+#[doc(hidden)]
+pub const __CLI_SOURCE_PROVIDER_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
+    type_url: "type.googleapis.com/onequery.cli.v1.CliSourceProvider",
+    to_json: ::buffa::type_registry::any_to_json::<CliSourceProvider>,
+    from_json: ::buffa::type_registry::any_from_json::<CliSourceProvider>,
+    is_wkt: false,
+};
+#[derive(Clone, Debug, Default)]
+pub struct CliSourceProviderView<'a> {
+    /// Field 1: `provider`
+    pub provider: ::core::option::Option<&'a str>,
+    /// Field 2: `label`
+    pub label: ::core::option::Option<&'a str>,
+    /// Field 3: `connectable`
+    pub connectable: ::core::option::Option<bool>,
+    /// Field 4: `testable`
+    pub testable: ::core::option::Option<bool>,
+    /// Field 5: `interfaces`
+    pub interfaces: ::buffa::RepeatedView<'a, ::buffa::EnumValue<SourceInterface>>,
+    /// Field 6: `credential_type`
+    pub credential_type: ::core::option::Option<&'a str>,
+    /// Field 7: `credential_example`
+    pub credential_example: ::buffa::MessageFieldView<
+        ::buffa_types::google::protobuf::StructView<'a>,
+    >,
+    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
+}
+impl<'a> CliSourceProviderView<'a> {
+    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
+    ///
+    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
+    /// and by generated sub-message decode arms with `depth - 1`.
+    ///
+    /// **Not part of the public API.** Named with a leading underscore to
+    /// signal that it is for generated-code use only.
+    #[doc(hidden)]
+    pub fn _decode_depth(
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        let mut view = Self::default();
+        view._merge_into_view(buf, depth)?;
+        ::core::result::Result::Ok(view)
+    }
+    /// Merge fields from `buf` into this view (proto merge semantics).
+    ///
+    /// Repeated fields append; singular fields last-wins; singular
+    /// MESSAGE fields merge recursively. Used by sub-message decode
+    /// arms when the same field appears multiple times on the wire.
+    ///
+    /// **Not part of the public API.**
+    #[doc(hidden)]
+    pub fn _merge_into_view(
+        &mut self,
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
+        let _ = depth;
+        #[allow(unused_variables)]
+        let view = self;
+        let mut cur: &'a [u8] = buf;
+        while !cur.is_empty() {
+            let before_tag = cur;
+            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
+            match tag.field_number() {
+                1u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 1u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.provider = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                2u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 2u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.label = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                3u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 3u32,
+                            expected: 0u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.connectable = Some(::buffa::types::decode_bool(&mut cur)?);
+                }
+                4u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 4u32,
+                            expected: 0u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.testable = Some(::buffa::types::decode_bool(&mut cur)?);
+                }
+                6u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 6u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.credential_type = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                7u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 7u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    if depth == 0 {
+                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
+                    }
+                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
+                    match view.credential_example.as_mut() {
+                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
+                        None => {
+                            view.credential_example = ::buffa::MessageFieldView::set(
+                                ::buffa_types::google::protobuf::StructView::_decode_depth(
+                                    sub,
+                                    depth - 1,
+                                )?,
+                            );
+                        }
+                    }
+                }
+                5u32 => {
+                    if tag.wire_type() == ::buffa::encoding::WireType::LengthDelimited {
+                        let payload = ::buffa::types::borrow_bytes(&mut cur)?;
+                        let mut pcur: &[u8] = payload;
+                        while !pcur.is_empty() {
+                            view.interfaces
+                                .push(
+                                    ::buffa::EnumValue::from(
+                                        ::buffa::types::decode_int32(&mut pcur)?,
+                                    ),
+                                );
+                        }
+                    } else if tag.wire_type() == ::buffa::encoding::WireType::Varint {
+                        view.interfaces
+                            .push(
+                                ::buffa::EnumValue::from(
+                                    ::buffa::types::decode_int32(&mut cur)?,
+                                ),
+                            );
+                    } else {
+                        return Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 5u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                }
+                _ => {
+                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
+                    let span_len = before_tag.len() - cur.len();
+                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
+                }
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+}
+impl<'a> ::buffa::MessageView<'a> for CliSourceProviderView<'a> {
+    type Owned = CliSourceProvider;
+    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
+    }
+    fn decode_view_with_limit(
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        Self::_decode_depth(buf, depth)
+    }
+    /// Convert this view to the owned message type.
+    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
+    fn to_owned_message(&self) -> CliSourceProvider {
+        #[allow(unused_imports)]
+        use ::buffa::alloc::string::ToString as _;
+        CliSourceProvider {
+            provider: self.provider.map(|s| s.to_string()),
+            label: self.label.map(|s| s.to_string()),
+            connectable: self.connectable,
+            testable: self.testable,
+            interfaces: self.interfaces.to_vec(),
+            credential_type: self.credential_type.map(|s| s.to_string()),
+            credential_example: match self.credential_example.as_option() {
+                Some(v) => {
+                    ::buffa::MessageField::<
+                        ::buffa_types::google::protobuf::Struct,
+                    >::some(v.to_owned_message())
+                }
+                None => ::buffa::MessageField::none(),
+            },
+            __buffa_unknown_fields: self
+                .__buffa_unknown_fields
+                .to_owned()
+                .unwrap_or_default()
+                .into(),
+            ..::core::default::Default::default()
+        }
+    }
+}
+unsafe impl ::buffa::DefaultViewInstance for CliSourceProviderView<'static> {
+    fn default_view_instance() -> &'static Self {
+        static VALUE: ::buffa::__private::OnceBox<CliSourceProviderView<'static>> = ::buffa::__private::OnceBox::new();
+        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
+    }
+}
+unsafe impl<'a> ::buffa::HasDefaultViewInstance for CliSourceProviderView<'a> {
+    type Static = CliSourceProviderView<'static>;
+}
+#[derive(Clone, PartialEq, Default)]
+#[derive(::serde::Serialize, ::serde::Deserialize)]
+#[serde(default)]
 pub struct GetSourceRequest {
     /// Field 1: `org_slug`
     #[serde(
@@ -2010,12 +2416,8 @@ pub struct CliSource {
     )]
     pub display_name: Option<::buffa::alloc::string::String>,
     /// Field 3: `provider`
-    #[serde(
-        rename = "provider",
-        with = "::buffa::json_helpers::opt_enum",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub provider: Option<::buffa::EnumValue<SourceProvider>>,
+    #[serde(rename = "provider", skip_serializing_if = "Option::is_none")]
+    pub provider: Option<::buffa::alloc::string::String>,
     /// Field 4: `interfaces`
     #[serde(
         rename = "interfaces",
@@ -2078,7 +2480,7 @@ impl ::buffa::Message for CliSource {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
         if let Some(ref v) = self.provider {
-            size += 1u32 + ::buffa::types::int32_encoded_len(v.to_i32()) as u32;
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
         if let Some(ref v) = self.status {
             size += 1u32 + ::buffa::types::int32_encoded_len(v.to_i32()) as u32;
@@ -2116,9 +2518,12 @@ impl ::buffa::Message for CliSource {
             ::buffa::types::encode_string(v, buf);
         }
         if let Some(ref v) = self.provider {
-            ::buffa::encoding::Tag::new(3u32, ::buffa::encoding::WireType::Varint)
+            ::buffa::encoding::Tag::new(
+                    3u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
                 .encode(buf);
-            ::buffa::types::encode_int32(v.to_i32(), buf);
+            ::buffa::types::encode_string(v, buf);
         }
         if let Some(ref v) = self.status {
             ::buffa::encoding::Tag::new(5u32, ::buffa::encoding::WireType::Varint)
@@ -2185,16 +2590,19 @@ impl ::buffa::Message for CliSource {
                 )?;
             }
             3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
                     return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
                         field_number: 3u32,
-                        expected: 0u8,
+                        expected: 2u8,
                         actual: tag.wire_type() as u8,
                     });
                 }
-                self.provider = ::core::option::Option::Some(
-                    ::buffa::EnumValue::from(::buffa::types::decode_int32(buf)?),
-                );
+                ::buffa::types::merge_string(
+                    self
+                        .provider
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
             }
             5u32 => {
                 if tag.wire_type() != ::buffa::encoding::WireType::Varint {
@@ -2301,7 +2709,7 @@ pub struct CliSourceView<'a> {
     /// Field 2: `display_name`
     pub display_name: ::core::option::Option<&'a str>,
     /// Field 3: `provider`
-    pub provider: ::core::option::Option<::buffa::EnumValue<SourceProvider>>,
+    pub provider: ::core::option::Option<&'a str>,
     /// Field 4: `interfaces`
     pub interfaces: ::buffa::RepeatedView<'a, ::buffa::EnumValue<SourceInterface>>,
     /// Field 5: `status`
@@ -2367,16 +2775,14 @@ impl<'a> CliSourceView<'a> {
                     view.display_name = Some(::buffa::types::borrow_str(&mut cur)?);
                 }
                 3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
                         return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
                             field_number: 3u32,
-                            expected: 0u8,
+                            expected: 2u8,
                             actual: tag.wire_type() as u8,
                         });
                     }
-                    view.provider = Some(
-                        ::buffa::EnumValue::from(::buffa::types::decode_int32(&mut cur)?),
-                    );
+                    view.provider = Some(::buffa::types::borrow_str(&mut cur)?);
                 }
                 5u32 => {
                     if tag.wire_type() != ::buffa::encoding::WireType::Varint {
@@ -2446,7 +2852,7 @@ impl<'a> ::buffa::MessageView<'a> for CliSourceView<'a> {
         CliSource {
             source_key: self.source_key.map(|s| s.to_string()),
             display_name: self.display_name.map(|s| s.to_string()),
-            provider: self.provider,
+            provider: self.provider.map(|s| s.to_string()),
             interfaces: self.interfaces.to_vec(),
             status: self.status,
             __buffa_unknown_fields: self
@@ -4961,12 +5367,8 @@ pub struct GetSourceConnectGuideRequest {
     )]
     pub org_slug: Option<::buffa::alloc::string::String>,
     /// Field 2: `provider`
-    #[serde(
-        rename = "provider",
-        with = "::buffa::json_helpers::opt_enum",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub provider: Option<::buffa::EnumValue<SourceProvider>>,
+    #[serde(rename = "provider", skip_serializing_if = "Option::is_none")]
+    pub provider: Option<::buffa::alloc::string::String>,
     #[serde(skip)]
     #[doc(hidden)]
     pub __buffa_unknown_fields: ::buffa::UnknownFields,
@@ -5009,7 +5411,7 @@ impl ::buffa::Message for GetSourceConnectGuideRequest {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
         if let Some(ref v) = self.provider {
-            size += 1u32 + ::buffa::types::int32_encoded_len(v.to_i32()) as u32;
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
         size += self.__buffa_unknown_fields.encoded_len() as u32;
         self.__buffa_cached_size.set(size);
@@ -5027,9 +5429,12 @@ impl ::buffa::Message for GetSourceConnectGuideRequest {
             ::buffa::types::encode_string(v, buf);
         }
         if let Some(ref v) = self.provider {
-            ::buffa::encoding::Tag::new(2u32, ::buffa::encoding::WireType::Varint)
+            ::buffa::encoding::Tag::new(
+                    2u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
                 .encode(buf);
-            ::buffa::types::encode_int32(v.to_i32(), buf);
+            ::buffa::types::encode_string(v, buf);
         }
         self.__buffa_unknown_fields.write_to(buf);
     }
@@ -5060,16 +5465,19 @@ impl ::buffa::Message for GetSourceConnectGuideRequest {
                 )?;
             }
             2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
                     return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
                         field_number: 2u32,
-                        expected: 0u8,
+                        expected: 2u8,
                         actual: tag.wire_type() as u8,
                     });
                 }
-                self.provider = ::core::option::Option::Some(
-                    ::buffa::EnumValue::from(::buffa::types::decode_int32(buf)?),
-                );
+                ::buffa::types::merge_string(
+                    self
+                        .provider
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
             }
             _ => {
                 self.__buffa_unknown_fields
@@ -5122,7 +5530,7 @@ pub struct GetSourceConnectGuideRequestView<'a> {
     /// Field 1: `org_slug`
     pub org_slug: ::core::option::Option<&'a str>,
     /// Field 2: `provider`
-    pub provider: ::core::option::Option<::buffa::EnumValue<SourceProvider>>,
+    pub provider: ::core::option::Option<&'a str>,
     pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
 }
 impl<'a> GetSourceConnectGuideRequestView<'a> {
@@ -5174,16 +5582,14 @@ impl<'a> GetSourceConnectGuideRequestView<'a> {
                     view.org_slug = Some(::buffa::types::borrow_str(&mut cur)?);
                 }
                 2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
                         return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
                             field_number: 2u32,
-                            expected: 0u8,
+                            expected: 2u8,
                             actual: tag.wire_type() as u8,
                         });
                     }
-                    view.provider = Some(
-                        ::buffa::EnumValue::from(::buffa::types::decode_int32(&mut cur)?),
-                    );
+                    view.provider = Some(::buffa::types::borrow_str(&mut cur)?);
                 }
                 _ => {
                     ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
@@ -5213,7 +5619,7 @@ impl<'a> ::buffa::MessageView<'a> for GetSourceConnectGuideRequestView<'a> {
         use ::buffa::alloc::string::ToString as _;
         GetSourceConnectGuideRequest {
             org_slug: self.org_slug.map(|s| s.to_string()),
-            provider: self.provider,
+            provider: self.provider.map(|s| s.to_string()),
             __buffa_unknown_fields: self
                 .__buffa_unknown_fields
                 .to_owned()
@@ -5661,12 +6067,15 @@ pub struct ConnectSourceRequest {
         skip_serializing_if = "Option::is_none"
     )]
     pub source_key: Option<::buffa::alloc::string::String>,
-    /// Field 3: `credentials`
+    /// Field 3: `provider`
+    #[serde(rename = "provider", skip_serializing_if = "Option::is_none")]
+    pub provider: Option<::buffa::alloc::string::String>,
+    /// Field 4: `credentials`
     #[serde(
         rename = "credentials",
         skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
     )]
-    pub credentials: ::buffa::MessageField<ConnectSourceCredentials>,
+    pub credentials: ::buffa::MessageField<::buffa_types::google::protobuf::Struct>,
     #[serde(skip)]
     #[doc(hidden)]
     pub __buffa_unknown_fields: ::buffa::UnknownFields,
@@ -5679,6 +6088,7 @@ impl ::core::fmt::Debug for ConnectSourceRequest {
         f.debug_struct("ConnectSourceRequest")
             .field("org_slug", &self.org_slug)
             .field("source_key", &self.source_key)
+            .field("provider", &self.provider)
             .field("credentials", &self.credentials)
             .finish()
     }
@@ -5712,6 +6122,9 @@ impl ::buffa::Message for ConnectSourceRequest {
         if let Some(ref v) = self.source_key {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
+        if let Some(ref v) = self.provider {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
         if self.credentials.is_set() {
             let inner_size = self.credentials.compute_size();
             size
@@ -5741,9 +6154,17 @@ impl ::buffa::Message for ConnectSourceRequest {
                 .encode(buf);
             ::buffa::types::encode_string(v, buf);
         }
-        if self.credentials.is_set() {
+        if let Some(ref v) = self.provider {
             ::buffa::encoding::Tag::new(
                     3u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        if self.credentials.is_set() {
+            ::buffa::encoding::Tag::new(
+                    4u32,
                     ::buffa::encoding::WireType::LengthDelimited,
                 )
                 .encode(buf);
@@ -5801,6 +6222,21 @@ impl ::buffa::Message for ConnectSourceRequest {
                         actual: tag.wire_type() as u8,
                     });
                 }
+                ::buffa::types::merge_string(
+                    self
+                        .provider
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            4u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 4u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
                 ::buffa::Message::merge_length_delimited(
                     self.credentials.get_or_insert_default(),
                     buf,
@@ -5820,6 +6256,7 @@ impl ::buffa::Message for ConnectSourceRequest {
     fn clear(&mut self) {
         self.org_slug = ::core::option::Option::None;
         self.source_key = ::core::option::Option::None;
+        self.provider = ::core::option::Option::None;
         self.credentials = ::buffa::MessageField::none();
         self.__buffa_unknown_fields.clear();
         self.__buffa_cached_size.set(0);
@@ -5860,8 +6297,12 @@ pub struct ConnectSourceRequestView<'a> {
     pub org_slug: ::core::option::Option<&'a str>,
     /// Field 2: `source_key`
     pub source_key: ::core::option::Option<&'a str>,
-    /// Field 3: `credentials`
-    pub credentials: ::buffa::MessageFieldView<ConnectSourceCredentialsView<'a>>,
+    /// Field 3: `provider`
+    pub provider: ::core::option::Option<&'a str>,
+    /// Field 4: `credentials`
+    pub credentials: ::buffa::MessageFieldView<
+        ::buffa_types::google::protobuf::StructView<'a>,
+    >,
     pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
 }
 impl<'a> ConnectSourceRequestView<'a> {
@@ -5930,6 +6371,16 @@ impl<'a> ConnectSourceRequestView<'a> {
                             actual: tag.wire_type() as u8,
                         });
                     }
+                    view.provider = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                4u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 4u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
                     if depth == 0 {
                         return Err(::buffa::DecodeError::RecursionLimitExceeded);
                     }
@@ -5938,7 +6389,10 @@ impl<'a> ConnectSourceRequestView<'a> {
                         Some(existing) => existing._merge_into_view(sub, depth - 1)?,
                         None => {
                             view.credentials = ::buffa::MessageFieldView::set(
-                                ConnectSourceCredentialsView::_decode_depth(sub, depth - 1)?,
+                                ::buffa_types::google::protobuf::StructView::_decode_depth(
+                                    sub,
+                                    depth - 1,
+                                )?,
                             );
                         }
                     }
@@ -5972,10 +6426,11 @@ impl<'a> ::buffa::MessageView<'a> for ConnectSourceRequestView<'a> {
         ConnectSourceRequest {
             org_slug: self.org_slug.map(|s| s.to_string()),
             source_key: self.source_key.map(|s| s.to_string()),
+            provider: self.provider.map(|s| s.to_string()),
             credentials: match self.credentials.as_option() {
                 Some(v) => {
                     ::buffa::MessageField::<
-                        ConnectSourceCredentials,
+                        ::buffa_types::google::protobuf::Struct,
                     >::some(v.to_owned_message())
                 }
                 None => ::buffa::MessageField::none(),
@@ -5997,10205 +6452,6 @@ unsafe impl ::buffa::DefaultViewInstance for ConnectSourceRequestView<'static> {
 }
 unsafe impl<'a> ::buffa::HasDefaultViewInstance for ConnectSourceRequestView<'a> {
     type Static = ConnectSourceRequestView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize)]
-#[serde(default)]
-pub struct ConnectSourceCredentials {
-    #[serde(flatten)]
-    pub kind: Option<connect_source_credentials::Kind>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceCredentials").field("kind", &self.kind).finish()
-    }
-}
-impl ConnectSourceCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let ::core::option::Option::Some(ref v) = self.kind {
-            match v {
-                connect_source_credentials::Kind::Postgres(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Supabase(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Mysql(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Mongodb(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Bigquery(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Laminar(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::AwsAthenaConnector(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::GoogleAnalytics(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Amplitude(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Mixpanel(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Posthog(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Sentry(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Github(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_credentials::Kind::Linear(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-            }
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let ::core::option::Option::Some(ref v) = self.kind {
-            match v {
-                connect_source_credentials::Kind::Postgres(x) => {
-                    ::buffa::encoding::Tag::new(
-                            1u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Supabase(x) => {
-                    ::buffa::encoding::Tag::new(
-                            2u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Mysql(x) => {
-                    ::buffa::encoding::Tag::new(
-                            3u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Mongodb(x) => {
-                    ::buffa::encoding::Tag::new(
-                            4u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Bigquery(x) => {
-                    ::buffa::encoding::Tag::new(
-                            5u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Laminar(x) => {
-                    ::buffa::encoding::Tag::new(
-                            6u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::AwsAthenaConnector(x) => {
-                    ::buffa::encoding::Tag::new(
-                            7u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::GoogleAnalytics(x) => {
-                    ::buffa::encoding::Tag::new(
-                            8u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Amplitude(x) => {
-                    ::buffa::encoding::Tag::new(
-                            9u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Mixpanel(x) => {
-                    ::buffa::encoding::Tag::new(
-                            10u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Posthog(x) => {
-                    ::buffa::encoding::Tag::new(
-                            11u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Sentry(x) => {
-                    ::buffa::encoding::Tag::new(
-                            12u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Github(x) => {
-                    ::buffa::encoding::Tag::new(
-                            13u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_credentials::Kind::Linear(x) => {
-                    ::buffa::encoding::Tag::new(
-                            14u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-            }
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Postgres(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Postgres(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Supabase(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Supabase(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Mysql(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Mysql(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            4u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 4u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Mongodb(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Mongodb(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            5u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 5u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Bigquery(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Bigquery(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            6u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 6u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Laminar(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Laminar(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            7u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 7u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::AwsAthenaConnector(
-                        ref mut existing,
-                    ),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::AwsAthenaConnector(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            8u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 8u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::GoogleAnalytics(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::GoogleAnalytics(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            9u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 9u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Amplitude(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Amplitude(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            10u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 10u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Mixpanel(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Mixpanel(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            11u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 11u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Posthog(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Posthog(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            12u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 12u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Sentry(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Sentry(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            13u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 13u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Github(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Github(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            14u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 14u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_credentials::Kind::Linear(ref mut existing),
-                ) = self.kind
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.kind = ::core::option::Option::Some(
-                        connect_source_credentials::Kind::Linear(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.kind = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl<'de> serde::Deserialize<'de> for ConnectSourceCredentials {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        struct _V;
-        impl<'de> serde::de::Visitor<'de> for _V {
-            type Value = ConnectSourceCredentials;
-            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                f.write_str("struct ConnectSourceCredentials")
-            }
-            #[allow(clippy::field_reassign_with_default)]
-            fn visit_map<A: serde::de::MapAccess<'de>>(
-                self,
-                mut map: A,
-            ) -> Result<ConnectSourceCredentials, A::Error> {
-                let mut __oneof_kind: Option<connect_source_credentials::Kind> = None;
-                while let Some(key) = map.next_key::<::buffa::alloc::string::String>()? {
-                    match key.as_str() {
-                        "postgres" => {
-                            let v: Option<ConnectSourcePostgresCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourcePostgresCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Postgres(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "supabase" => {
-                            let v: Option<ConnectSourcePostgresCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourcePostgresCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Supabase(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "mysql" => {
-                            let v: Option<ConnectSourceMySqlCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceMySqlCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Mysql(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "mongodb" => {
-                            let v: Option<ConnectSourceMongoDbCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceMongoDbCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Mongodb(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "bigquery" => {
-                            let v: Option<ConnectSourceBigQueryCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceBigQueryCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Bigquery(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "laminar" => {
-                            let v: Option<ConnectSourceLaminarCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceLaminarCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Laminar(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "awsAthenaConnector" | "aws_athena_connector" => {
-                            let v: Option<ConnectSourceAwsAthenaConnectorCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceAwsAthenaConnectorCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::AwsAthenaConnector(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "googleAnalytics" | "google_analytics" => {
-                            let v: Option<ConnectSourceGoogleAnalyticsCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceGoogleAnalyticsCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::GoogleAnalytics(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "amplitude" => {
-                            let v: Option<ConnectSourceAmplitudeCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceAmplitudeCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Amplitude(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "mixpanel" => {
-                            let v: Option<ConnectSourceMixpanelCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceMixpanelCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Mixpanel(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "posthog" => {
-                            let v: Option<ConnectSourcePostHogCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourcePostHogCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Posthog(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "sentry" => {
-                            let v: Option<ConnectSourceSentryCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceSentryCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Sentry(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "github" => {
-                            let v: Option<ConnectSourceGitHubCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceGitHubCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Github(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "linear" => {
-                            let v: Option<ConnectSourceLinearCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceLinearCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_kind.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'kind'",
-                                        ),
-                                    );
-                                }
-                                __oneof_kind = Some(
-                                    connect_source_credentials::Kind::Linear(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        _ => {
-                            map.next_value::<serde::de::IgnoredAny>()?;
-                        }
-                    }
-                }
-                let mut __r = <ConnectSourceCredentials as ::core::default::Default>::default();
-                __r.kind = __oneof_kind;
-                Ok(__r)
-            }
-        }
-        d.deserialize_map(_V)
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourceCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceCredentialsView<'a> {
-    pub kind: ::core::option::Option<connect_source_credentials::KindView<'a>>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Postgres(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Postgres(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourcePostgresCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Supabase(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Supabase(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourcePostgresCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Mysql(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Mysql(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceMySqlCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                4u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 4u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Mongodb(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Mongodb(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceMongoDbCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                5u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 5u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Bigquery(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Bigquery(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceBigQueryCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                6u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 6u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Laminar(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Laminar(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceLaminarCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                7u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 7u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::AwsAthenaConnector(
-                            ref mut existing,
-                        ),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::AwsAthenaConnector(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceAwsAthenaConnectorCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                8u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 8u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::GoogleAnalytics(
-                            ref mut existing,
-                        ),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::GoogleAnalytics(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceGoogleAnalyticsCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                9u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 9u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Amplitude(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Amplitude(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceAmplitudeCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                10u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 10u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Mixpanel(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Mixpanel(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceMixpanelCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                11u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 11u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Posthog(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Posthog(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourcePostHogCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                12u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 12u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Sentry(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Sentry(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceSentryCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                13u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 13u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Github(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Github(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceGitHubCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                14u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 14u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_credentials::KindView::Linear(ref mut existing),
-                    ) = view.kind
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.kind = Some(
-                            connect_source_credentials::KindView::Linear(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceLinearCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceCredentialsView<'a> {
-    type Owned = ConnectSourceCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceCredentials {
-            kind: self
-                .kind
-                .as_ref()
-                .map(|v| match v {
-                    connect_source_credentials::KindView::Postgres(v) => {
-                        connect_source_credentials::Kind::Postgres(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Supabase(v) => {
-                        connect_source_credentials::Kind::Supabase(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Mysql(v) => {
-                        connect_source_credentials::Kind::Mysql(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Mongodb(v) => {
-                        connect_source_credentials::Kind::Mongodb(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Bigquery(v) => {
-                        connect_source_credentials::Kind::Bigquery(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Laminar(v) => {
-                        connect_source_credentials::Kind::Laminar(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::AwsAthenaConnector(v) => {
-                        connect_source_credentials::Kind::AwsAthenaConnector(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::GoogleAnalytics(v) => {
-                        connect_source_credentials::Kind::GoogleAnalytics(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Amplitude(v) => {
-                        connect_source_credentials::Kind::Amplitude(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Mixpanel(v) => {
-                        connect_source_credentials::Kind::Mixpanel(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Posthog(v) => {
-                        connect_source_credentials::Kind::Posthog(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Sentry(v) => {
-                        connect_source_credentials::Kind::Sentry(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Github(v) => {
-                        connect_source_credentials::Kind::Github(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_credentials::KindView::Linear(v) => {
-                        connect_source_credentials::Kind::Linear(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                }),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance for ConnectSourceCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance for ConnectSourceCredentialsView<'a> {
-    type Static = ConnectSourceCredentialsView<'static>;
-}
-pub mod connect_source_credentials {
-    #[allow(unused_imports)]
-    use super::*;
-    #[derive(Clone, PartialEq, Debug)]
-    pub enum Kind {
-        Postgres(::buffa::alloc::boxed::Box<super::ConnectSourcePostgresCredentials>),
-        Supabase(::buffa::alloc::boxed::Box<super::ConnectSourcePostgresCredentials>),
-        Mysql(::buffa::alloc::boxed::Box<super::ConnectSourceMySqlCredentials>),
-        Mongodb(::buffa::alloc::boxed::Box<super::ConnectSourceMongoDbCredentials>),
-        Bigquery(::buffa::alloc::boxed::Box<super::ConnectSourceBigQueryCredentials>),
-        Laminar(::buffa::alloc::boxed::Box<super::ConnectSourceLaminarCredentials>),
-        AwsAthenaConnector(
-            ::buffa::alloc::boxed::Box<super::ConnectSourceAwsAthenaConnectorCredentials>,
-        ),
-        GoogleAnalytics(
-            ::buffa::alloc::boxed::Box<super::ConnectSourceGoogleAnalyticsCredentials>,
-        ),
-        Amplitude(::buffa::alloc::boxed::Box<super::ConnectSourceAmplitudeCredentials>),
-        Mixpanel(::buffa::alloc::boxed::Box<super::ConnectSourceMixpanelCredentials>),
-        Posthog(::buffa::alloc::boxed::Box<super::ConnectSourcePostHogCredentials>),
-        Sentry(::buffa::alloc::boxed::Box<super::ConnectSourceSentryCredentials>),
-        Github(::buffa::alloc::boxed::Box<super::ConnectSourceGitHubCredentials>),
-        Linear(::buffa::alloc::boxed::Box<super::ConnectSourceLinearCredentials>),
-    }
-    impl ::buffa::Oneof for Kind {}
-    impl From<super::ConnectSourceMySqlCredentials> for Kind {
-        fn from(v: super::ConnectSourceMySqlCredentials) -> Self {
-            Self::Mysql(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceMySqlCredentials> for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceMySqlCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourceMongoDbCredentials> for Kind {
-        fn from(v: super::ConnectSourceMongoDbCredentials) -> Self {
-            Self::Mongodb(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceMongoDbCredentials> for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceMongoDbCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourceBigQueryCredentials> for Kind {
-        fn from(v: super::ConnectSourceBigQueryCredentials) -> Self {
-            Self::Bigquery(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceBigQueryCredentials> for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceBigQueryCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourceLaminarCredentials> for Kind {
-        fn from(v: super::ConnectSourceLaminarCredentials) -> Self {
-            Self::Laminar(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceLaminarCredentials> for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceLaminarCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourceAwsAthenaConnectorCredentials> for Kind {
-        fn from(v: super::ConnectSourceAwsAthenaConnectorCredentials) -> Self {
-            Self::AwsAthenaConnector(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceAwsAthenaConnectorCredentials>
-    for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceAwsAthenaConnectorCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourceGoogleAnalyticsCredentials> for Kind {
-        fn from(v: super::ConnectSourceGoogleAnalyticsCredentials) -> Self {
-            Self::GoogleAnalytics(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceGoogleAnalyticsCredentials>
-    for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceGoogleAnalyticsCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourceAmplitudeCredentials> for Kind {
-        fn from(v: super::ConnectSourceAmplitudeCredentials) -> Self {
-            Self::Amplitude(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceAmplitudeCredentials>
-    for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceAmplitudeCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourceMixpanelCredentials> for Kind {
-        fn from(v: super::ConnectSourceMixpanelCredentials) -> Self {
-            Self::Mixpanel(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceMixpanelCredentials> for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceMixpanelCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourcePostHogCredentials> for Kind {
-        fn from(v: super::ConnectSourcePostHogCredentials) -> Self {
-            Self::Posthog(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourcePostHogCredentials> for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourcePostHogCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourceSentryCredentials> for Kind {
-        fn from(v: super::ConnectSourceSentryCredentials) -> Self {
-            Self::Sentry(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceSentryCredentials> for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceSentryCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourceGitHubCredentials> for Kind {
-        fn from(v: super::ConnectSourceGitHubCredentials) -> Self {
-            Self::Github(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceGitHubCredentials> for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceGitHubCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl From<super::ConnectSourceLinearCredentials> for Kind {
-        fn from(v: super::ConnectSourceLinearCredentials) -> Self {
-            Self::Linear(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceLinearCredentials> for ::core::option::Option<Kind> {
-        fn from(v: super::ConnectSourceLinearCredentials) -> Self {
-            Self::Some(Kind::from(v))
-        }
-    }
-    impl serde::Serialize for Kind {
-        fn serialize<S: serde::Serializer>(
-            &self,
-            s: S,
-        ) -> ::core::result::Result<S::Ok, S::Error> {
-            use serde::ser::SerializeMap;
-            let mut map = s.serialize_map(Some(1))?;
-            match self {
-                Kind::Postgres(v) => {
-                    map.serialize_entry("postgres", v)?;
-                }
-                Kind::Supabase(v) => {
-                    map.serialize_entry("supabase", v)?;
-                }
-                Kind::Mysql(v) => {
-                    map.serialize_entry("mysql", v)?;
-                }
-                Kind::Mongodb(v) => {
-                    map.serialize_entry("mongodb", v)?;
-                }
-                Kind::Bigquery(v) => {
-                    map.serialize_entry("bigquery", v)?;
-                }
-                Kind::Laminar(v) => {
-                    map.serialize_entry("laminar", v)?;
-                }
-                Kind::AwsAthenaConnector(v) => {
-                    map.serialize_entry("awsAthenaConnector", v)?;
-                }
-                Kind::GoogleAnalytics(v) => {
-                    map.serialize_entry("googleAnalytics", v)?;
-                }
-                Kind::Amplitude(v) => {
-                    map.serialize_entry("amplitude", v)?;
-                }
-                Kind::Mixpanel(v) => {
-                    map.serialize_entry("mixpanel", v)?;
-                }
-                Kind::Posthog(v) => {
-                    map.serialize_entry("posthog", v)?;
-                }
-                Kind::Sentry(v) => {
-                    map.serialize_entry("sentry", v)?;
-                }
-                Kind::Github(v) => {
-                    map.serialize_entry("github", v)?;
-                }
-                Kind::Linear(v) => {
-                    map.serialize_entry("linear", v)?;
-                }
-            }
-            map.end()
-        }
-    }
-    #[derive(Clone, Debug)]
-    pub enum KindView<'a> {
-        Postgres(
-            ::buffa::alloc::boxed::Box<super::ConnectSourcePostgresCredentialsView<'a>>,
-        ),
-        Supabase(
-            ::buffa::alloc::boxed::Box<super::ConnectSourcePostgresCredentialsView<'a>>,
-        ),
-        Mysql(::buffa::alloc::boxed::Box<super::ConnectSourceMySqlCredentialsView<'a>>),
-        Mongodb(
-            ::buffa::alloc::boxed::Box<super::ConnectSourceMongoDbCredentialsView<'a>>,
-        ),
-        Bigquery(
-            ::buffa::alloc::boxed::Box<super::ConnectSourceBigQueryCredentialsView<'a>>,
-        ),
-        Laminar(
-            ::buffa::alloc::boxed::Box<super::ConnectSourceLaminarCredentialsView<'a>>,
-        ),
-        AwsAthenaConnector(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceAwsAthenaConnectorCredentialsView<'a>,
-            >,
-        ),
-        GoogleAnalytics(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceGoogleAnalyticsCredentialsView<'a>,
-            >,
-        ),
-        Amplitude(
-            ::buffa::alloc::boxed::Box<super::ConnectSourceAmplitudeCredentialsView<'a>>,
-        ),
-        Mixpanel(
-            ::buffa::alloc::boxed::Box<super::ConnectSourceMixpanelCredentialsView<'a>>,
-        ),
-        Posthog(
-            ::buffa::alloc::boxed::Box<super::ConnectSourcePostHogCredentialsView<'a>>,
-        ),
-        Sentry(
-            ::buffa::alloc::boxed::Box<super::ConnectSourceSentryCredentialsView<'a>>,
-        ),
-        Github(
-            ::buffa::alloc::boxed::Box<super::ConnectSourceGitHubCredentialsView<'a>>,
-        ),
-        Linear(
-            ::buffa::alloc::boxed::Box<super::ConnectSourceLinearCredentialsView<'a>>,
-        ),
-    }
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourcePostgresCredentials {
-    /// Field 1: `database`
-    #[serde(rename = "database", skip_serializing_if = "Option::is_none")]
-    pub database: Option<::buffa::alloc::string::String>,
-    /// Field 2: `host`
-    #[serde(rename = "host", skip_serializing_if = "Option::is_none")]
-    pub host: Option<::buffa::alloc::string::String>,
-    /// Field 3: `password`
-    #[serde(rename = "password", skip_serializing_if = "Option::is_none")]
-    pub password: Option<::buffa::alloc::string::String>,
-    /// Field 4: `port`
-    #[serde(
-        rename = "port",
-        with = "::buffa::json_helpers::opt_uint32",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub port: Option<u32>,
-    /// Field 5: `ssl_mode`
-    #[serde(
-        rename = "sslMode",
-        alias = "ssl_mode",
-        with = "::buffa::json_helpers::opt_enum",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub ssl_mode: Option<::buffa::EnumValue<SourceConnectSslMode>>,
-    /// Field 6: `username`
-    #[serde(rename = "username", skip_serializing_if = "Option::is_none")]
-    pub username: Option<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourcePostgresCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourcePostgresCredentials")
-            .field("database", &self.database)
-            .field("host", &self.host)
-            .field("password", &self.password)
-            .field("port", &self.port)
-            .field("ssl_mode", &self.ssl_mode)
-            .field("username", &self.username)
-            .finish()
-    }
-}
-impl ConnectSourcePostgresCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourcePostgresCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourcePostgresCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourcePostgresCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourcePostgresCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.database {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.host {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.password {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(v) = self.port {
-            size += 1u32 + ::buffa::types::uint32_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.ssl_mode {
-            size += 1u32 + ::buffa::types::int32_encoded_len(v.to_i32()) as u32;
-        }
-        if let Some(ref v) = self.username {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.database {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.host {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.password {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(v) = self.port {
-            ::buffa::encoding::Tag::new(4u32, ::buffa::encoding::WireType::Varint)
-                .encode(buf);
-            ::buffa::types::encode_uint32(v, buf);
-        }
-        if let Some(ref v) = self.ssl_mode {
-            ::buffa::encoding::Tag::new(5u32, ::buffa::encoding::WireType::Varint)
-                .encode(buf);
-            ::buffa::types::encode_int32(v.to_i32(), buf);
-        }
-        if let Some(ref v) = self.username {
-            ::buffa::encoding::Tag::new(
-                    6u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .database
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self.host.get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .password
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            4u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 4u32,
-                        expected: 0u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                self.port = ::core::option::Option::Some(
-                    ::buffa::types::decode_uint32(buf)?,
-                );
-            }
-            5u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 5u32,
-                        expected: 0u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                self.ssl_mode = ::core::option::Option::Some(
-                    ::buffa::EnumValue::from(::buffa::types::decode_int32(buf)?),
-                );
-            }
-            6u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 6u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .username
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.database = ::core::option::Option::None;
-        self.host = ::core::option::Option::None;
-        self.password = ::core::option::Option::None;
-        self.port = ::core::option::Option::None;
-        self.ssl_mode = ::core::option::Option::None;
-        self.username = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourcePostgresCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourcePostgresCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourcePostgresCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_POSTGRES_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourcePostgresCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourcePostgresCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourcePostgresCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourcePostgresCredentialsView<'a> {
-    /// Field 1: `database`
-    pub database: ::core::option::Option<&'a str>,
-    /// Field 2: `host`
-    pub host: ::core::option::Option<&'a str>,
-    /// Field 3: `password`
-    pub password: ::core::option::Option<&'a str>,
-    /// Field 4: `port`
-    pub port: ::core::option::Option<u32>,
-    /// Field 5: `ssl_mode`
-    pub ssl_mode: ::core::option::Option<::buffa::EnumValue<SourceConnectSslMode>>,
-    /// Field 6: `username`
-    pub username: ::core::option::Option<&'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourcePostgresCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.database = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.host = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.password = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                4u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 4u32,
-                            expected: 0u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.port = Some(::buffa::types::decode_uint32(&mut cur)?);
-                }
-                5u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 5u32,
-                            expected: 0u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.ssl_mode = Some(
-                        ::buffa::EnumValue::from(::buffa::types::decode_int32(&mut cur)?),
-                    );
-                }
-                6u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 6u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.username = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourcePostgresCredentialsView<'a> {
-    type Owned = ConnectSourcePostgresCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourcePostgresCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourcePostgresCredentials {
-            database: self.database.map(|s| s.to_string()),
-            host: self.host.map(|s| s.to_string()),
-            password: self.password.map(|s| s.to_string()),
-            port: self.port,
-            ssl_mode: self.ssl_mode,
-            username: self.username.map(|s| s.to_string()),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourcePostgresCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourcePostgresCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourcePostgresCredentialsView<'a> {
-    type Static = ConnectSourcePostgresCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceMySqlCredentials {
-    /// Field 1: `database`
-    #[serde(rename = "database", skip_serializing_if = "Option::is_none")]
-    pub database: Option<::buffa::alloc::string::String>,
-    /// Field 2: `host`
-    #[serde(rename = "host", skip_serializing_if = "Option::is_none")]
-    pub host: Option<::buffa::alloc::string::String>,
-    /// Field 3: `password`
-    #[serde(rename = "password", skip_serializing_if = "Option::is_none")]
-    pub password: Option<::buffa::alloc::string::String>,
-    /// Field 4: `port`
-    #[serde(
-        rename = "port",
-        with = "::buffa::json_helpers::opt_uint32",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub port: Option<u32>,
-    /// Field 5: `ssl_mode`
-    #[serde(
-        rename = "sslMode",
-        alias = "ssl_mode",
-        with = "::buffa::json_helpers::opt_enum",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub ssl_mode: Option<::buffa::EnumValue<SourceConnectSslMode>>,
-    /// Field 6: `username`
-    #[serde(rename = "username", skip_serializing_if = "Option::is_none")]
-    pub username: Option<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceMySqlCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceMySqlCredentials")
-            .field("database", &self.database)
-            .field("host", &self.host)
-            .field("password", &self.password)
-            .field("port", &self.port)
-            .field("ssl_mode", &self.ssl_mode)
-            .field("username", &self.username)
-            .finish()
-    }
-}
-impl ConnectSourceMySqlCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceMySqlCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceMySqlCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceMySqlCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceMySqlCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.database {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.host {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.password {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(v) = self.port {
-            size += 1u32 + ::buffa::types::uint32_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.ssl_mode {
-            size += 1u32 + ::buffa::types::int32_encoded_len(v.to_i32()) as u32;
-        }
-        if let Some(ref v) = self.username {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.database {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.host {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.password {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(v) = self.port {
-            ::buffa::encoding::Tag::new(4u32, ::buffa::encoding::WireType::Varint)
-                .encode(buf);
-            ::buffa::types::encode_uint32(v, buf);
-        }
-        if let Some(ref v) = self.ssl_mode {
-            ::buffa::encoding::Tag::new(5u32, ::buffa::encoding::WireType::Varint)
-                .encode(buf);
-            ::buffa::types::encode_int32(v.to_i32(), buf);
-        }
-        if let Some(ref v) = self.username {
-            ::buffa::encoding::Tag::new(
-                    6u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .database
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self.host.get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .password
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            4u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 4u32,
-                        expected: 0u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                self.port = ::core::option::Option::Some(
-                    ::buffa::types::decode_uint32(buf)?,
-                );
-            }
-            5u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 5u32,
-                        expected: 0u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                self.ssl_mode = ::core::option::Option::Some(
-                    ::buffa::EnumValue::from(::buffa::types::decode_int32(buf)?),
-                );
-            }
-            6u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 6u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .username
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.database = ::core::option::Option::None;
-        self.host = ::core::option::Option::None;
-        self.password = ::core::option::Option::None;
-        self.port = ::core::option::Option::None;
-        self.ssl_mode = ::core::option::Option::None;
-        self.username = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceMySqlCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceMySqlCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceMySqlCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_MY_SQL_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceMySqlCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceMySqlCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourceMySqlCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceMySqlCredentialsView<'a> {
-    /// Field 1: `database`
-    pub database: ::core::option::Option<&'a str>,
-    /// Field 2: `host`
-    pub host: ::core::option::Option<&'a str>,
-    /// Field 3: `password`
-    pub password: ::core::option::Option<&'a str>,
-    /// Field 4: `port`
-    pub port: ::core::option::Option<u32>,
-    /// Field 5: `ssl_mode`
-    pub ssl_mode: ::core::option::Option<::buffa::EnumValue<SourceConnectSslMode>>,
-    /// Field 6: `username`
-    pub username: ::core::option::Option<&'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceMySqlCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.database = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.host = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.password = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                4u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 4u32,
-                            expected: 0u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.port = Some(::buffa::types::decode_uint32(&mut cur)?);
-                }
-                5u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 5u32,
-                            expected: 0u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.ssl_mode = Some(
-                        ::buffa::EnumValue::from(::buffa::types::decode_int32(&mut cur)?),
-                    );
-                }
-                6u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 6u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.username = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceMySqlCredentialsView<'a> {
-    type Owned = ConnectSourceMySqlCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceMySqlCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceMySqlCredentials {
-            database: self.database.map(|s| s.to_string()),
-            host: self.host.map(|s| s.to_string()),
-            password: self.password.map(|s| s.to_string()),
-            port: self.port,
-            ssl_mode: self.ssl_mode,
-            username: self.username.map(|s| s.to_string()),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance for ConnectSourceMySqlCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceMySqlCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceMySqlCredentialsView<'a> {
-    type Static = ConnectSourceMySqlCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceMongoDbCredentials {
-    /// Field 1: `connection_string`
-    #[serde(
-        rename = "connectionString",
-        alias = "connection_string",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub connection_string: Option<::buffa::alloc::string::String>,
-    /// Field 2: `database`
-    #[serde(rename = "database", skip_serializing_if = "Option::is_none")]
-    pub database: Option<::buffa::alloc::string::String>,
-    /// Field 3: `databases`
-    #[serde(
-        rename = "databases",
-        skip_serializing_if = "::buffa::json_helpers::skip_if::is_empty_vec",
-        deserialize_with = "::buffa::json_helpers::null_as_default"
-    )]
-    pub databases: ::buffa::alloc::vec::Vec<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceMongoDbCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceMongoDbCredentials")
-            .field("connection_string", &self.connection_string)
-            .field("database", &self.database)
-            .field("databases", &self.databases)
-            .finish()
-    }
-}
-impl ConnectSourceMongoDbCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceMongoDbCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceMongoDbCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceMongoDbCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceMongoDbCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.connection_string {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.database {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        for v in &self.databases {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.connection_string {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.database {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        for v in &self.databases {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .connection_string
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .database
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                self.databases.push(::buffa::types::decode_string(buf)?);
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.connection_string = ::core::option::Option::None;
-        self.database = ::core::option::Option::None;
-        self.databases.clear();
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceMongoDbCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceMongoDbCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceMongoDbCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_MONGO_DB_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceMongoDbCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceMongoDbCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourceMongoDbCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceMongoDbCredentialsView<'a> {
-    /// Field 1: `connection_string`
-    pub connection_string: ::core::option::Option<&'a str>,
-    /// Field 2: `database`
-    pub database: ::core::option::Option<&'a str>,
-    /// Field 3: `databases`
-    pub databases: ::buffa::RepeatedView<'a, &'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceMongoDbCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.connection_string = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.database = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.databases.push(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceMongoDbCredentialsView<'a> {
-    type Owned = ConnectSourceMongoDbCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceMongoDbCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceMongoDbCredentials {
-            connection_string: self.connection_string.map(|s| s.to_string()),
-            database: self.database.map(|s| s.to_string()),
-            databases: self.databases.iter().map(|s| s.to_string()).collect(),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceMongoDbCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceMongoDbCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceMongoDbCredentialsView<'a> {
-    type Static = ConnectSourceMongoDbCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceServiceAccountCredentials {
-    /// Field 1: `project_id`
-    #[serde(
-        rename = "projectId",
-        alias = "project_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub project_id: Option<::buffa::alloc::string::String>,
-    /// Field 2: `client_email`
-    #[serde(
-        rename = "clientEmail",
-        alias = "client_email",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub client_email: Option<::buffa::alloc::string::String>,
-    /// Field 3: `private_key`
-    #[serde(
-        rename = "privateKey",
-        alias = "private_key",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub private_key: Option<::buffa::alloc::string::String>,
-    /// Field 4: `private_key_id`
-    #[serde(
-        rename = "privateKeyId",
-        alias = "private_key_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub private_key_id: Option<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceServiceAccountCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceServiceAccountCredentials")
-            .field("project_id", &self.project_id)
-            .field("client_email", &self.client_email)
-            .field("private_key", &self.private_key)
-            .field("private_key_id", &self.private_key_id)
-            .finish()
-    }
-}
-impl ConnectSourceServiceAccountCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceServiceAccountCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceServiceAccountCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceServiceAccountCredentials,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceServiceAccountCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.project_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.client_email {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.private_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.private_key_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.project_id {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.client_email {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.private_key {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.private_key_id {
-            ::buffa::encoding::Tag::new(
-                    4u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .project_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .client_email
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .private_key
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            4u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 4u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .private_key_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.project_id = ::core::option::Option::None;
-        self.client_email = ::core::option::Option::None;
-        self.private_key = ::core::option::Option::None;
-        self.private_key_id = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceServiceAccountCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceServiceAccountCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceServiceAccountCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_SERVICE_ACCOUNT_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceServiceAccountCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<
-        ConnectSourceServiceAccountCredentials,
-    >,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceServiceAccountCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceServiceAccountCredentialsView<'a> {
-    /// Field 1: `project_id`
-    pub project_id: ::core::option::Option<&'a str>,
-    /// Field 2: `client_email`
-    pub client_email: ::core::option::Option<&'a str>,
-    /// Field 3: `private_key`
-    pub private_key: ::core::option::Option<&'a str>,
-    /// Field 4: `private_key_id`
-    pub private_key_id: ::core::option::Option<&'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceServiceAccountCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.project_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.client_email = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.private_key = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                4u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 4u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.private_key_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceServiceAccountCredentialsView<'a> {
-    type Owned = ConnectSourceServiceAccountCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceServiceAccountCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceServiceAccountCredentials {
-            project_id: self.project_id.map(|s| s.to_string()),
-            client_email: self.client_email.map(|s| s.to_string()),
-            private_key: self.private_key.map(|s| s.to_string()),
-            private_key_id: self.private_key_id.map(|s| s.to_string()),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceServiceAccountCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceServiceAccountCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceServiceAccountCredentialsView<'a> {
-    type Static = ConnectSourceServiceAccountCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceGoogleOauthCredentials {
-    /// Field 1: `access_token`
-    #[serde(
-        rename = "accessToken",
-        alias = "access_token",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub access_token: Option<::buffa::alloc::string::String>,
-    /// Field 2: `refresh_token`
-    #[serde(
-        rename = "refreshToken",
-        alias = "refresh_token",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub refresh_token: Option<::buffa::alloc::string::String>,
-    /// Field 3: `expires_at`
-    #[serde(
-        rename = "expiresAt",
-        alias = "expires_at",
-        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
-    )]
-    pub expires_at: ::buffa::MessageField<::buffa_types::google::protobuf::Timestamp>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceGoogleOauthCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceGoogleOauthCredentials")
-            .field("access_token", &self.access_token)
-            .field("refresh_token", &self.refresh_token)
-            .field("expires_at", &self.expires_at)
-            .finish()
-    }
-}
-impl ConnectSourceGoogleOauthCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceGoogleOauthCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceGoogleOauthCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceGoogleOauthCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceGoogleOauthCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.access_token {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.refresh_token {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if self.expires_at.is_set() {
-            let inner_size = self.expires_at.compute_size();
-            size
-                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
-                    + inner_size;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.access_token {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.refresh_token {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if self.expires_at.is_set() {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::encoding::encode_varint(self.expires_at.cached_size() as u64, buf);
-            self.expires_at.write_to(buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .access_token
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .refresh_token
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::Message::merge_length_delimited(
-                    self.expires_at.get_or_insert_default(),
-                    buf,
-                    depth,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.access_token = ::core::option::Option::None;
-        self.refresh_token = ::core::option::Option::None;
-        self.expires_at = ::buffa::MessageField::none();
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceGoogleOauthCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceGoogleOauthCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceGoogleOauthCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_GOOGLE_OAUTH_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceGoogleOauthCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceGoogleOauthCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceGoogleOauthCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceGoogleOauthCredentialsView<'a> {
-    /// Field 1: `access_token`
-    pub access_token: ::core::option::Option<&'a str>,
-    /// Field 2: `refresh_token`
-    pub refresh_token: ::core::option::Option<&'a str>,
-    /// Field 3: `expires_at`
-    pub expires_at: ::buffa::MessageFieldView<
-        ::buffa_types::google::protobuf::TimestampView<'a>,
-    >,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceGoogleOauthCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.access_token = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.refresh_token = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    match view.expires_at.as_mut() {
-                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
-                        None => {
-                            view.expires_at = ::buffa::MessageFieldView::set(
-                                ::buffa_types::google::protobuf::TimestampView::_decode_depth(
-                                    sub,
-                                    depth - 1,
-                                )?,
-                            );
-                        }
-                    }
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceGoogleOauthCredentialsView<'a> {
-    type Owned = ConnectSourceGoogleOauthCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceGoogleOauthCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceGoogleOauthCredentials {
-            access_token: self.access_token.map(|s| s.to_string()),
-            refresh_token: self.refresh_token.map(|s| s.to_string()),
-            expires_at: match self.expires_at.as_option() {
-                Some(v) => {
-                    ::buffa::MessageField::<
-                        ::buffa_types::google::protobuf::Timestamp,
-                    >::some(v.to_owned_message())
-                }
-                None => ::buffa::MessageField::none(),
-            },
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceGoogleOauthCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceGoogleOauthCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceGoogleOauthCredentialsView<'a> {
-    type Static = ConnectSourceGoogleOauthCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize)]
-#[serde(default)]
-pub struct ConnectSourceBigQueryCredentials {
-    #[serde(flatten)]
-    pub auth: Option<connect_source_big_query_credentials::Auth>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceBigQueryCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceBigQueryCredentials")
-            .field("auth", &self.auth)
-            .finish()
-    }
-}
-impl ConnectSourceBigQueryCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceBigQueryCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceBigQueryCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceBigQueryCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceBigQueryCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let ::core::option::Option::Some(ref v) = self.auth {
-            match v {
-                connect_source_big_query_credentials::Auth::Oauth(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_big_query_credentials::Auth::ServiceAccount(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-            }
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let ::core::option::Option::Some(ref v) = self.auth {
-            match v {
-                connect_source_big_query_credentials::Auth::Oauth(x) => {
-                    ::buffa::encoding::Tag::new(
-                            1u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_big_query_credentials::Auth::ServiceAccount(x) => {
-                    ::buffa::encoding::Tag::new(
-                            2u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-            }
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_big_query_credentials::Auth::Oauth(ref mut existing),
-                ) = self.auth
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.auth = ::core::option::Option::Some(
-                        connect_source_big_query_credentials::Auth::Oauth(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_big_query_credentials::Auth::ServiceAccount(
-                        ref mut existing,
-                    ),
-                ) = self.auth
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.auth = ::core::option::Option::Some(
-                        connect_source_big_query_credentials::Auth::ServiceAccount(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.auth = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceBigQueryCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceBigQueryCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl<'de> serde::Deserialize<'de> for ConnectSourceBigQueryCredentials {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        struct _V;
-        impl<'de> serde::de::Visitor<'de> for _V {
-            type Value = ConnectSourceBigQueryCredentials;
-            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                f.write_str("struct ConnectSourceBigQueryCredentials")
-            }
-            #[allow(clippy::field_reassign_with_default)]
-            fn visit_map<A: serde::de::MapAccess<'de>>(
-                self,
-                mut map: A,
-            ) -> Result<ConnectSourceBigQueryCredentials, A::Error> {
-                let mut __oneof_auth: Option<
-                    connect_source_big_query_credentials::Auth,
-                > = None;
-                while let Some(key) = map.next_key::<::buffa::alloc::string::String>()? {
-                    match key.as_str() {
-                        "oauth" => {
-                            let v: Option<ConnectSourceBigQueryOauthCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceBigQueryOauthCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_auth.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'auth'",
-                                        ),
-                                    );
-                                }
-                                __oneof_auth = Some(
-                                    connect_source_big_query_credentials::Auth::Oauth(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "serviceAccount" | "service_account" => {
-                            let v: Option<
-                                ConnectSourceBigQueryServiceAccountCredentials,
-                            > = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceBigQueryServiceAccountCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_auth.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'auth'",
-                                        ),
-                                    );
-                                }
-                                __oneof_auth = Some(
-                                    connect_source_big_query_credentials::Auth::ServiceAccount(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        _ => {
-                            map.next_value::<serde::de::IgnoredAny>()?;
-                        }
-                    }
-                }
-                let mut __r = <ConnectSourceBigQueryCredentials as ::core::default::Default>::default();
-                __r.auth = __oneof_auth;
-                Ok(__r)
-            }
-        }
-        d.deserialize_map(_V)
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceBigQueryCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_BIG_QUERY_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceBigQueryCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceBigQueryCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourceBigQueryCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceBigQueryCredentialsView<'a> {
-    pub auth: ::core::option::Option<connect_source_big_query_credentials::AuthView<'a>>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceBigQueryCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_big_query_credentials::AuthView::Oauth(
-                            ref mut existing,
-                        ),
-                    ) = view.auth
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.auth = Some(
-                            connect_source_big_query_credentials::AuthView::Oauth(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceBigQueryOauthCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_big_query_credentials::AuthView::ServiceAccount(
-                            ref mut existing,
-                        ),
-                    ) = view.auth
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.auth = Some(
-                            connect_source_big_query_credentials::AuthView::ServiceAccount(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceBigQueryServiceAccountCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceBigQueryCredentialsView<'a> {
-    type Owned = ConnectSourceBigQueryCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceBigQueryCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceBigQueryCredentials {
-            auth: self
-                .auth
-                .as_ref()
-                .map(|v| match v {
-                    connect_source_big_query_credentials::AuthView::Oauth(v) => {
-                        connect_source_big_query_credentials::Auth::Oauth(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_big_query_credentials::AuthView::ServiceAccount(v) => {
-                        connect_source_big_query_credentials::Auth::ServiceAccount(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                }),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceBigQueryCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceBigQueryCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceBigQueryCredentialsView<'a> {
-    type Static = ConnectSourceBigQueryCredentialsView<'static>;
-}
-pub mod connect_source_big_query_credentials {
-    #[allow(unused_imports)]
-    use super::*;
-    #[derive(Clone, PartialEq, Debug)]
-    pub enum Auth {
-        Oauth(::buffa::alloc::boxed::Box<super::ConnectSourceBigQueryOauthCredentials>),
-        ServiceAccount(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceBigQueryServiceAccountCredentials,
-            >,
-        ),
-    }
-    impl ::buffa::Oneof for Auth {}
-    impl From<super::ConnectSourceBigQueryOauthCredentials> for Auth {
-        fn from(v: super::ConnectSourceBigQueryOauthCredentials) -> Self {
-            Self::Oauth(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceBigQueryOauthCredentials>
-    for ::core::option::Option<Auth> {
-        fn from(v: super::ConnectSourceBigQueryOauthCredentials) -> Self {
-            Self::Some(Auth::from(v))
-        }
-    }
-    impl From<super::ConnectSourceBigQueryServiceAccountCredentials> for Auth {
-        fn from(v: super::ConnectSourceBigQueryServiceAccountCredentials) -> Self {
-            Self::ServiceAccount(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceBigQueryServiceAccountCredentials>
-    for ::core::option::Option<Auth> {
-        fn from(v: super::ConnectSourceBigQueryServiceAccountCredentials) -> Self {
-            Self::Some(Auth::from(v))
-        }
-    }
-    impl serde::Serialize for Auth {
-        fn serialize<S: serde::Serializer>(
-            &self,
-            s: S,
-        ) -> ::core::result::Result<S::Ok, S::Error> {
-            use serde::ser::SerializeMap;
-            let mut map = s.serialize_map(Some(1))?;
-            match self {
-                Auth::Oauth(v) => {
-                    map.serialize_entry("oauth", v)?;
-                }
-                Auth::ServiceAccount(v) => {
-                    map.serialize_entry("serviceAccount", v)?;
-                }
-            }
-            map.end()
-        }
-    }
-    #[derive(Clone, Debug)]
-    pub enum AuthView<'a> {
-        Oauth(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceBigQueryOauthCredentialsView<'a>,
-            >,
-        ),
-        ServiceAccount(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceBigQueryServiceAccountCredentialsView<'a>,
-            >,
-        ),
-    }
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceBigQueryOauthCredentials {
-    /// Field 1: `project_id`
-    #[serde(
-        rename = "projectId",
-        alias = "project_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub project_id: Option<::buffa::alloc::string::String>,
-    /// Field 2: `credentials`
-    #[serde(
-        rename = "credentials",
-        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
-    )]
-    pub credentials: ::buffa::MessageField<ConnectSourceGoogleOauthCredentials>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceBigQueryOauthCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceBigQueryOauthCredentials")
-            .field("project_id", &self.project_id)
-            .field("credentials", &self.credentials)
-            .finish()
-    }
-}
-impl ConnectSourceBigQueryOauthCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceBigQueryOauthCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceBigQueryOauthCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceBigQueryOauthCredentials,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceBigQueryOauthCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.project_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if self.credentials.is_set() {
-            let inner_size = self.credentials.compute_size();
-            size
-                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
-                    + inner_size;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.project_id {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if self.credentials.is_set() {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::encoding::encode_varint(self.credentials.cached_size() as u64, buf);
-            self.credentials.write_to(buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .project_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::Message::merge_length_delimited(
-                    self.credentials.get_or_insert_default(),
-                    buf,
-                    depth,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.project_id = ::core::option::Option::None;
-        self.credentials = ::buffa::MessageField::none();
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceBigQueryOauthCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceBigQueryOauthCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceBigQueryOauthCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_BIG_QUERY_OAUTH_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceBigQueryOauthCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<
-        ConnectSourceBigQueryOauthCredentials,
-    >,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceBigQueryOauthCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceBigQueryOauthCredentialsView<'a> {
-    /// Field 1: `project_id`
-    pub project_id: ::core::option::Option<&'a str>,
-    /// Field 2: `credentials`
-    pub credentials: ::buffa::MessageFieldView<
-        ConnectSourceGoogleOauthCredentialsView<'a>,
-    >,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceBigQueryOauthCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.project_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    match view.credentials.as_mut() {
-                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
-                        None => {
-                            view.credentials = ::buffa::MessageFieldView::set(
-                                ConnectSourceGoogleOauthCredentialsView::_decode_depth(
-                                    sub,
-                                    depth - 1,
-                                )?,
-                            );
-                        }
-                    }
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceBigQueryOauthCredentialsView<'a> {
-    type Owned = ConnectSourceBigQueryOauthCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceBigQueryOauthCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceBigQueryOauthCredentials {
-            project_id: self.project_id.map(|s| s.to_string()),
-            credentials: match self.credentials.as_option() {
-                Some(v) => {
-                    ::buffa::MessageField::<
-                        ConnectSourceGoogleOauthCredentials,
-                    >::some(v.to_owned_message())
-                }
-                None => ::buffa::MessageField::none(),
-            },
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceBigQueryOauthCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceBigQueryOauthCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceBigQueryOauthCredentialsView<'a> {
-    type Static = ConnectSourceBigQueryOauthCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceBigQueryServiceAccountCredentials {
-    /// Field 1: `project_id`
-    #[serde(
-        rename = "projectId",
-        alias = "project_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub project_id: Option<::buffa::alloc::string::String>,
-    /// Field 2: `service_account`
-    #[serde(
-        rename = "serviceAccount",
-        alias = "service_account",
-        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
-    )]
-    pub service_account: ::buffa::MessageField<ConnectSourceServiceAccountCredentials>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceBigQueryServiceAccountCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceBigQueryServiceAccountCredentials")
-            .field("project_id", &self.project_id)
-            .field("service_account", &self.service_account)
-            .finish()
-    }
-}
-impl ConnectSourceBigQueryServiceAccountCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceBigQueryServiceAccountCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceBigQueryServiceAccountCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceBigQueryServiceAccountCredentials,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceBigQueryServiceAccountCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.project_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if self.service_account.is_set() {
-            let inner_size = self.service_account.compute_size();
-            size
-                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
-                    + inner_size;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.project_id {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if self.service_account.is_set() {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::encoding::encode_varint(
-                self.service_account.cached_size() as u64,
-                buf,
-            );
-            self.service_account.write_to(buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .project_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::Message::merge_length_delimited(
-                    self.service_account.get_or_insert_default(),
-                    buf,
-                    depth,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.project_id = ::core::option::Option::None;
-        self.service_account = ::buffa::MessageField::none();
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceBigQueryServiceAccountCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceBigQueryServiceAccountCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson
-for ConnectSourceBigQueryServiceAccountCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_BIG_QUERY_SERVICE_ACCOUNT_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceBigQueryServiceAccountCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<
-        ConnectSourceBigQueryServiceAccountCredentials,
-    >,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceBigQueryServiceAccountCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceBigQueryServiceAccountCredentialsView<'a> {
-    /// Field 1: `project_id`
-    pub project_id: ::core::option::Option<&'a str>,
-    /// Field 2: `service_account`
-    pub service_account: ::buffa::MessageFieldView<
-        ConnectSourceServiceAccountCredentialsView<'a>,
-    >,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceBigQueryServiceAccountCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.project_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    match view.service_account.as_mut() {
-                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
-                        None => {
-                            view.service_account = ::buffa::MessageFieldView::set(
-                                ConnectSourceServiceAccountCredentialsView::_decode_depth(
-                                    sub,
-                                    depth - 1,
-                                )?,
-                            );
-                        }
-                    }
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a>
-for ConnectSourceBigQueryServiceAccountCredentialsView<'a> {
-    type Owned = ConnectSourceBigQueryServiceAccountCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceBigQueryServiceAccountCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceBigQueryServiceAccountCredentials {
-            project_id: self.project_id.map(|s| s.to_string()),
-            service_account: match self.service_account.as_option() {
-                Some(v) => {
-                    ::buffa::MessageField::<
-                        ConnectSourceServiceAccountCredentials,
-                    >::some(v.to_owned_message())
-                }
-                None => ::buffa::MessageField::none(),
-            },
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceBigQueryServiceAccountCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceBigQueryServiceAccountCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceBigQueryServiceAccountCredentialsView<'a> {
-    type Static = ConnectSourceBigQueryServiceAccountCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceLaminarCredentials {
-    /// Field 1: `api_base_url`
-    #[serde(
-        rename = "apiBaseUrl",
-        alias = "api_base_url",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub api_base_url: Option<::buffa::alloc::string::String>,
-    /// Field 2: `api_key`
-    #[serde(
-        rename = "apiKey",
-        alias = "api_key",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub api_key: Option<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceLaminarCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceLaminarCredentials")
-            .field("api_base_url", &self.api_base_url)
-            .field("api_key", &self.api_key)
-            .finish()
-    }
-}
-impl ConnectSourceLaminarCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceLaminarCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceLaminarCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceLaminarCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceLaminarCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.api_base_url {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.api_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.api_base_url {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.api_key {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .api_base_url
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self.api_key.get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.api_base_url = ::core::option::Option::None;
-        self.api_key = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceLaminarCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceLaminarCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceLaminarCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_LAMINAR_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceLaminarCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceLaminarCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourceLaminarCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceLaminarCredentialsView<'a> {
-    /// Field 1: `api_base_url`
-    pub api_base_url: ::core::option::Option<&'a str>,
-    /// Field 2: `api_key`
-    pub api_key: ::core::option::Option<&'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceLaminarCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.api_base_url = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.api_key = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceLaminarCredentialsView<'a> {
-    type Owned = ConnectSourceLaminarCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceLaminarCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceLaminarCredentials {
-            api_base_url: self.api_base_url.map(|s| s.to_string()),
-            api_key: self.api_key.map(|s| s.to_string()),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceLaminarCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceLaminarCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceLaminarCredentialsView<'a> {
-    type Static = ConnectSourceLaminarCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceAwsAthenaConnectorCredentials {
-    /// Field 1: `connector_id`
-    #[serde(
-        rename = "connectorId",
-        alias = "connector_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub connector_id: Option<::buffa::alloc::string::String>,
-    /// Field 2: `database`
-    #[serde(rename = "database", skip_serializing_if = "Option::is_none")]
-    pub database: Option<::buffa::alloc::string::String>,
-    /// Field 3: `max_rows`
-    #[serde(
-        rename = "maxRows",
-        alias = "max_rows",
-        with = "::buffa::json_helpers::opt_uint32",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub max_rows: Option<u32>,
-    /// Field 4: `workgroup`
-    #[serde(rename = "workgroup", skip_serializing_if = "Option::is_none")]
-    pub workgroup: Option<::buffa::alloc::string::String>,
-    /// Field 5: `timeout`
-    #[serde(
-        rename = "timeout",
-        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
-    )]
-    pub timeout: ::buffa::MessageField<::buffa_types::google::protobuf::Duration>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceAwsAthenaConnectorCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceAwsAthenaConnectorCredentials")
-            .field("connector_id", &self.connector_id)
-            .field("database", &self.database)
-            .field("max_rows", &self.max_rows)
-            .field("workgroup", &self.workgroup)
-            .field("timeout", &self.timeout)
-            .finish()
-    }
-}
-impl ConnectSourceAwsAthenaConnectorCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceAwsAthenaConnectorCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceAwsAthenaConnectorCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceAwsAthenaConnectorCredentials,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceAwsAthenaConnectorCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.connector_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.database {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(v) = self.max_rows {
-            size += 1u32 + ::buffa::types::uint32_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.workgroup {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if self.timeout.is_set() {
-            let inner_size = self.timeout.compute_size();
-            size
-                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
-                    + inner_size;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.connector_id {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.database {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(v) = self.max_rows {
-            ::buffa::encoding::Tag::new(3u32, ::buffa::encoding::WireType::Varint)
-                .encode(buf);
-            ::buffa::types::encode_uint32(v, buf);
-        }
-        if let Some(ref v) = self.workgroup {
-            ::buffa::encoding::Tag::new(
-                    4u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if self.timeout.is_set() {
-            ::buffa::encoding::Tag::new(
-                    5u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::encoding::encode_varint(self.timeout.cached_size() as u64, buf);
-            self.timeout.write_to(buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .connector_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .database
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 0u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                self.max_rows = ::core::option::Option::Some(
-                    ::buffa::types::decode_uint32(buf)?,
-                );
-            }
-            4u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 4u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .workgroup
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            5u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 5u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::Message::merge_length_delimited(
-                    self.timeout.get_or_insert_default(),
-                    buf,
-                    depth,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.connector_id = ::core::option::Option::None;
-        self.database = ::core::option::Option::None;
-        self.max_rows = ::core::option::Option::None;
-        self.workgroup = ::core::option::Option::None;
-        self.timeout = ::buffa::MessageField::none();
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceAwsAthenaConnectorCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceAwsAthenaConnectorCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson
-for ConnectSourceAwsAthenaConnectorCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_AWS_ATHENA_CONNECTOR_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceAwsAthenaConnectorCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<
-        ConnectSourceAwsAthenaConnectorCredentials,
-    >,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceAwsAthenaConnectorCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceAwsAthenaConnectorCredentialsView<'a> {
-    /// Field 1: `connector_id`
-    pub connector_id: ::core::option::Option<&'a str>,
-    /// Field 2: `database`
-    pub database: ::core::option::Option<&'a str>,
-    /// Field 3: `max_rows`
-    pub max_rows: ::core::option::Option<u32>,
-    /// Field 4: `workgroup`
-    pub workgroup: ::core::option::Option<&'a str>,
-    /// Field 5: `timeout`
-    pub timeout: ::buffa::MessageFieldView<
-        ::buffa_types::google::protobuf::DurationView<'a>,
-    >,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceAwsAthenaConnectorCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.connector_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.database = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 0u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.max_rows = Some(::buffa::types::decode_uint32(&mut cur)?);
-                }
-                4u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 4u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.workgroup = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                5u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 5u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    match view.timeout.as_mut() {
-                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
-                        None => {
-                            view.timeout = ::buffa::MessageFieldView::set(
-                                ::buffa_types::google::protobuf::DurationView::_decode_depth(
-                                    sub,
-                                    depth - 1,
-                                )?,
-                            );
-                        }
-                    }
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a>
-for ConnectSourceAwsAthenaConnectorCredentialsView<'a> {
-    type Owned = ConnectSourceAwsAthenaConnectorCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceAwsAthenaConnectorCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceAwsAthenaConnectorCredentials {
-            connector_id: self.connector_id.map(|s| s.to_string()),
-            database: self.database.map(|s| s.to_string()),
-            max_rows: self.max_rows,
-            workgroup: self.workgroup.map(|s| s.to_string()),
-            timeout: match self.timeout.as_option() {
-                Some(v) => {
-                    ::buffa::MessageField::<
-                        ::buffa_types::google::protobuf::Duration,
-                    >::some(v.to_owned_message())
-                }
-                None => ::buffa::MessageField::none(),
-            },
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceAwsAthenaConnectorCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceAwsAthenaConnectorCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceAwsAthenaConnectorCredentialsView<'a> {
-    type Static = ConnectSourceAwsAthenaConnectorCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize)]
-#[serde(default)]
-pub struct ConnectSourceGoogleAnalyticsCredentials {
-    #[serde(flatten)]
-    pub auth: Option<connect_source_google_analytics_credentials::Auth>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceGoogleAnalyticsCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceGoogleAnalyticsCredentials")
-            .field("auth", &self.auth)
-            .finish()
-    }
-}
-impl ConnectSourceGoogleAnalyticsCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceGoogleAnalyticsCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceGoogleAnalyticsCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceGoogleAnalyticsCredentials,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceGoogleAnalyticsCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let ::core::option::Option::Some(ref v) = self.auth {
-            match v {
-                connect_source_google_analytics_credentials::Auth::Oauth(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_google_analytics_credentials::Auth::ServiceAccount(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-            }
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let ::core::option::Option::Some(ref v) = self.auth {
-            match v {
-                connect_source_google_analytics_credentials::Auth::Oauth(x) => {
-                    ::buffa::encoding::Tag::new(
-                            1u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_google_analytics_credentials::Auth::ServiceAccount(x) => {
-                    ::buffa::encoding::Tag::new(
-                            2u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-            }
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_google_analytics_credentials::Auth::Oauth(
-                        ref mut existing,
-                    ),
-                ) = self.auth
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.auth = ::core::option::Option::Some(
-                        connect_source_google_analytics_credentials::Auth::Oauth(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_google_analytics_credentials::Auth::ServiceAccount(
-                        ref mut existing,
-                    ),
-                ) = self.auth
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.auth = ::core::option::Option::Some(
-                        connect_source_google_analytics_credentials::Auth::ServiceAccount(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.auth = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceGoogleAnalyticsCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceGoogleAnalyticsCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl<'de> serde::Deserialize<'de> for ConnectSourceGoogleAnalyticsCredentials {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        struct _V;
-        impl<'de> serde::de::Visitor<'de> for _V {
-            type Value = ConnectSourceGoogleAnalyticsCredentials;
-            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                f.write_str("struct ConnectSourceGoogleAnalyticsCredentials")
-            }
-            #[allow(clippy::field_reassign_with_default)]
-            fn visit_map<A: serde::de::MapAccess<'de>>(
-                self,
-                mut map: A,
-            ) -> Result<ConnectSourceGoogleAnalyticsCredentials, A::Error> {
-                let mut __oneof_auth: Option<
-                    connect_source_google_analytics_credentials::Auth,
-                > = None;
-                while let Some(key) = map.next_key::<::buffa::alloc::string::String>()? {
-                    match key.as_str() {
-                        "oauth" => {
-                            let v: Option<
-                                ConnectSourceGoogleAnalyticsOauthCredentials,
-                            > = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceGoogleAnalyticsOauthCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_auth.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'auth'",
-                                        ),
-                                    );
-                                }
-                                __oneof_auth = Some(
-                                    connect_source_google_analytics_credentials::Auth::Oauth(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "serviceAccount" | "service_account" => {
-                            let v: Option<
-                                ConnectSourceGoogleAnalyticsServiceAccountCredentials,
-                            > = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceGoogleAnalyticsServiceAccountCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_auth.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'auth'",
-                                        ),
-                                    );
-                                }
-                                __oneof_auth = Some(
-                                    connect_source_google_analytics_credentials::Auth::ServiceAccount(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        _ => {
-                            map.next_value::<serde::de::IgnoredAny>()?;
-                        }
-                    }
-                }
-                let mut __r = <ConnectSourceGoogleAnalyticsCredentials as ::core::default::Default>::default();
-                __r.auth = __oneof_auth;
-                Ok(__r)
-            }
-        }
-        d.deserialize_map(_V)
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceGoogleAnalyticsCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_GOOGLE_ANALYTICS_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceGoogleAnalyticsCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<
-        ConnectSourceGoogleAnalyticsCredentials,
-    >,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceGoogleAnalyticsCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceGoogleAnalyticsCredentialsView<'a> {
-    pub auth: ::core::option::Option<
-        connect_source_google_analytics_credentials::AuthView<'a>,
-    >,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceGoogleAnalyticsCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_google_analytics_credentials::AuthView::Oauth(
-                            ref mut existing,
-                        ),
-                    ) = view.auth
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.auth = Some(
-                            connect_source_google_analytics_credentials::AuthView::Oauth(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceGoogleAnalyticsOauthCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_google_analytics_credentials::AuthView::ServiceAccount(
-                            ref mut existing,
-                        ),
-                    ) = view.auth
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.auth = Some(
-                            connect_source_google_analytics_credentials::AuthView::ServiceAccount(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceGoogleAnalyticsServiceAccountCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceGoogleAnalyticsCredentialsView<'a> {
-    type Owned = ConnectSourceGoogleAnalyticsCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceGoogleAnalyticsCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceGoogleAnalyticsCredentials {
-            auth: self
-                .auth
-                .as_ref()
-                .map(|v| match v {
-                    connect_source_google_analytics_credentials::AuthView::Oauth(v) => {
-                        connect_source_google_analytics_credentials::Auth::Oauth(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_google_analytics_credentials::AuthView::ServiceAccount(
-                        v,
-                    ) => {
-                        connect_source_google_analytics_credentials::Auth::ServiceAccount(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                }),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceGoogleAnalyticsCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceGoogleAnalyticsCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceGoogleAnalyticsCredentialsView<'a> {
-    type Static = ConnectSourceGoogleAnalyticsCredentialsView<'static>;
-}
-pub mod connect_source_google_analytics_credentials {
-    #[allow(unused_imports)]
-    use super::*;
-    #[derive(Clone, PartialEq, Debug)]
-    pub enum Auth {
-        Oauth(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceGoogleAnalyticsOauthCredentials,
-            >,
-        ),
-        ServiceAccount(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceGoogleAnalyticsServiceAccountCredentials,
-            >,
-        ),
-    }
-    impl ::buffa::Oneof for Auth {}
-    impl From<super::ConnectSourceGoogleAnalyticsOauthCredentials> for Auth {
-        fn from(v: super::ConnectSourceGoogleAnalyticsOauthCredentials) -> Self {
-            Self::Oauth(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceGoogleAnalyticsOauthCredentials>
-    for ::core::option::Option<Auth> {
-        fn from(v: super::ConnectSourceGoogleAnalyticsOauthCredentials) -> Self {
-            Self::Some(Auth::from(v))
-        }
-    }
-    impl From<super::ConnectSourceGoogleAnalyticsServiceAccountCredentials> for Auth {
-        fn from(
-            v: super::ConnectSourceGoogleAnalyticsServiceAccountCredentials,
-        ) -> Self {
-            Self::ServiceAccount(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceGoogleAnalyticsServiceAccountCredentials>
-    for ::core::option::Option<Auth> {
-        fn from(
-            v: super::ConnectSourceGoogleAnalyticsServiceAccountCredentials,
-        ) -> Self {
-            Self::Some(Auth::from(v))
-        }
-    }
-    impl serde::Serialize for Auth {
-        fn serialize<S: serde::Serializer>(
-            &self,
-            s: S,
-        ) -> ::core::result::Result<S::Ok, S::Error> {
-            use serde::ser::SerializeMap;
-            let mut map = s.serialize_map(Some(1))?;
-            match self {
-                Auth::Oauth(v) => {
-                    map.serialize_entry("oauth", v)?;
-                }
-                Auth::ServiceAccount(v) => {
-                    map.serialize_entry("serviceAccount", v)?;
-                }
-            }
-            map.end()
-        }
-    }
-    #[derive(Clone, Debug)]
-    pub enum AuthView<'a> {
-        Oauth(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceGoogleAnalyticsOauthCredentialsView<'a>,
-            >,
-        ),
-        ServiceAccount(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceGoogleAnalyticsServiceAccountCredentialsView<'a>,
-            >,
-        ),
-    }
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceGoogleAnalyticsOauthCredentials {
-    /// Field 1: `property_id`
-    #[serde(
-        rename = "propertyId",
-        alias = "property_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub property_id: Option<::buffa::alloc::string::String>,
-    /// Field 2: `credentials`
-    #[serde(
-        rename = "credentials",
-        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
-    )]
-    pub credentials: ::buffa::MessageField<ConnectSourceGoogleOauthCredentials>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceGoogleAnalyticsOauthCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceGoogleAnalyticsOauthCredentials")
-            .field("property_id", &self.property_id)
-            .field("credentials", &self.credentials)
-            .finish()
-    }
-}
-impl ConnectSourceGoogleAnalyticsOauthCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceGoogleAnalyticsOauthCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceGoogleAnalyticsOauthCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceGoogleAnalyticsOauthCredentials,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceGoogleAnalyticsOauthCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.property_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if self.credentials.is_set() {
-            let inner_size = self.credentials.compute_size();
-            size
-                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
-                    + inner_size;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.property_id {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if self.credentials.is_set() {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::encoding::encode_varint(self.credentials.cached_size() as u64, buf);
-            self.credentials.write_to(buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .property_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::Message::merge_length_delimited(
-                    self.credentials.get_or_insert_default(),
-                    buf,
-                    depth,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.property_id = ::core::option::Option::None;
-        self.credentials = ::buffa::MessageField::none();
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceGoogleAnalyticsOauthCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceGoogleAnalyticsOauthCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson
-for ConnectSourceGoogleAnalyticsOauthCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_GOOGLE_ANALYTICS_OAUTH_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceGoogleAnalyticsOauthCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<
-        ConnectSourceGoogleAnalyticsOauthCredentials,
-    >,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceGoogleAnalyticsOauthCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceGoogleAnalyticsOauthCredentialsView<'a> {
-    /// Field 1: `property_id`
-    pub property_id: ::core::option::Option<&'a str>,
-    /// Field 2: `credentials`
-    pub credentials: ::buffa::MessageFieldView<
-        ConnectSourceGoogleOauthCredentialsView<'a>,
-    >,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceGoogleAnalyticsOauthCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.property_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    match view.credentials.as_mut() {
-                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
-                        None => {
-                            view.credentials = ::buffa::MessageFieldView::set(
-                                ConnectSourceGoogleOauthCredentialsView::_decode_depth(
-                                    sub,
-                                    depth - 1,
-                                )?,
-                            );
-                        }
-                    }
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a>
-for ConnectSourceGoogleAnalyticsOauthCredentialsView<'a> {
-    type Owned = ConnectSourceGoogleAnalyticsOauthCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceGoogleAnalyticsOauthCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceGoogleAnalyticsOauthCredentials {
-            property_id: self.property_id.map(|s| s.to_string()),
-            credentials: match self.credentials.as_option() {
-                Some(v) => {
-                    ::buffa::MessageField::<
-                        ConnectSourceGoogleOauthCredentials,
-                    >::some(v.to_owned_message())
-                }
-                None => ::buffa::MessageField::none(),
-            },
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceGoogleAnalyticsOauthCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceGoogleAnalyticsOauthCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceGoogleAnalyticsOauthCredentialsView<'a> {
-    type Static = ConnectSourceGoogleAnalyticsOauthCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-    /// Field 1: `property_id`
-    #[serde(
-        rename = "propertyId",
-        alias = "property_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub property_id: Option<::buffa::alloc::string::String>,
-    /// Field 2: `service_account`
-    #[serde(
-        rename = "serviceAccount",
-        alias = "service_account",
-        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
-    )]
-    pub service_account: ::buffa::MessageField<ConnectSourceServiceAccountCredentials>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceGoogleAnalyticsServiceAccountCredentials")
-            .field("property_id", &self.property_id)
-            .field("service_account", &self.service_account)
-            .finish()
-    }
-}
-impl ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceGoogleAnalyticsServiceAccountCredentials";
-}
-unsafe impl ::buffa::DefaultInstance
-for ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceGoogleAnalyticsServiceAccountCredentials,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.property_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if self.service_account.is_set() {
-            let inner_size = self.service_account.compute_size();
-            size
-                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
-                    + inner_size;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.property_id {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if self.service_account.is_set() {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::encoding::encode_varint(
-                self.service_account.cached_size() as u64,
-                buf,
-            );
-            self.service_account.write_to(buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .property_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::Message::merge_length_delimited(
-                    self.service_account.get_or_insert_default(),
-                    buf,
-                    depth,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.property_id = ::core::option::Option::None;
-        self.service_account = ::buffa::MessageField::none();
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceGoogleAnalyticsServiceAccountCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson
-for ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_GOOGLE_ANALYTICS_SERVICE_ACCOUNT_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceGoogleAnalyticsServiceAccountCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<
-        ConnectSourceGoogleAnalyticsServiceAccountCredentials,
-    >,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceGoogleAnalyticsServiceAccountCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceGoogleAnalyticsServiceAccountCredentialsView<'a> {
-    /// Field 1: `property_id`
-    pub property_id: ::core::option::Option<&'a str>,
-    /// Field 2: `service_account`
-    pub service_account: ::buffa::MessageFieldView<
-        ConnectSourceServiceAccountCredentialsView<'a>,
-    >,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceGoogleAnalyticsServiceAccountCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.property_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    match view.service_account.as_mut() {
-                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
-                        None => {
-                            view.service_account = ::buffa::MessageFieldView::set(
-                                ConnectSourceServiceAccountCredentialsView::_decode_depth(
-                                    sub,
-                                    depth - 1,
-                                )?,
-                            );
-                        }
-                    }
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a>
-for ConnectSourceGoogleAnalyticsServiceAccountCredentialsView<'a> {
-    type Owned = ConnectSourceGoogleAnalyticsServiceAccountCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceGoogleAnalyticsServiceAccountCredentials {
-            property_id: self.property_id.map(|s| s.to_string()),
-            service_account: match self.service_account.as_option() {
-                Some(v) => {
-                    ::buffa::MessageField::<
-                        ConnectSourceServiceAccountCredentials,
-                    >::some(v.to_owned_message())
-                }
-                None => ::buffa::MessageField::none(),
-            },
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceGoogleAnalyticsServiceAccountCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceGoogleAnalyticsServiceAccountCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceGoogleAnalyticsServiceAccountCredentialsView<'a> {
-    type Static = ConnectSourceGoogleAnalyticsServiceAccountCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceAmplitudeCredentials {
-    /// Field 1: `api_key`
-    #[serde(
-        rename = "apiKey",
-        alias = "api_key",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub api_key: Option<::buffa::alloc::string::String>,
-    /// Field 2: `region`
-    #[serde(
-        rename = "region",
-        with = "::buffa::json_helpers::opt_enum",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub region: Option<::buffa::EnumValue<SourceConnectAmplitudeRegion>>,
-    /// Field 3: `secret_key`
-    #[serde(
-        rename = "secretKey",
-        alias = "secret_key",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub secret_key: Option<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceAmplitudeCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceAmplitudeCredentials")
-            .field("api_key", &self.api_key)
-            .field("region", &self.region)
-            .field("secret_key", &self.secret_key)
-            .finish()
-    }
-}
-impl ConnectSourceAmplitudeCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceAmplitudeCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceAmplitudeCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceAmplitudeCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceAmplitudeCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.api_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.region {
-            size += 1u32 + ::buffa::types::int32_encoded_len(v.to_i32()) as u32;
-        }
-        if let Some(ref v) = self.secret_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.api_key {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.region {
-            ::buffa::encoding::Tag::new(2u32, ::buffa::encoding::WireType::Varint)
-                .encode(buf);
-            ::buffa::types::encode_int32(v.to_i32(), buf);
-        }
-        if let Some(ref v) = self.secret_key {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self.api_key.get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 0u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                self.region = ::core::option::Option::Some(
-                    ::buffa::EnumValue::from(::buffa::types::decode_int32(buf)?),
-                );
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .secret_key
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.api_key = ::core::option::Option::None;
-        self.region = ::core::option::Option::None;
-        self.secret_key = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceAmplitudeCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceAmplitudeCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceAmplitudeCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_AMPLITUDE_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceAmplitudeCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceAmplitudeCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceAmplitudeCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceAmplitudeCredentialsView<'a> {
-    /// Field 1: `api_key`
-    pub api_key: ::core::option::Option<&'a str>,
-    /// Field 2: `region`
-    pub region: ::core::option::Option<::buffa::EnumValue<SourceConnectAmplitudeRegion>>,
-    /// Field 3: `secret_key`
-    pub secret_key: ::core::option::Option<&'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceAmplitudeCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.api_key = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 0u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.region = Some(
-                        ::buffa::EnumValue::from(::buffa::types::decode_int32(&mut cur)?),
-                    );
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.secret_key = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceAmplitudeCredentialsView<'a> {
-    type Owned = ConnectSourceAmplitudeCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceAmplitudeCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceAmplitudeCredentials {
-            api_key: self.api_key.map(|s| s.to_string()),
-            region: self.region,
-            secret_key: self.secret_key.map(|s| s.to_string()),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceAmplitudeCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceAmplitudeCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceAmplitudeCredentialsView<'a> {
-    type Static = ConnectSourceAmplitudeCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceMixpanelCredentials {
-    /// Field 1: `project_id`
-    #[serde(
-        rename = "projectId",
-        alias = "project_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub project_id: Option<::buffa::alloc::string::String>,
-    /// Field 2: `region`
-    #[serde(
-        rename = "region",
-        with = "::buffa::json_helpers::opt_enum",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub region: Option<::buffa::EnumValue<SourceConnectMixpanelRegion>>,
-    /// Field 3: `secret`
-    #[serde(rename = "secret", skip_serializing_if = "Option::is_none")]
-    pub secret: Option<::buffa::alloc::string::String>,
-    /// Field 4: `username`
-    #[serde(rename = "username", skip_serializing_if = "Option::is_none")]
-    pub username: Option<::buffa::alloc::string::String>,
-    /// Field 5: `workspace_id`
-    #[serde(
-        rename = "workspaceId",
-        alias = "workspace_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub workspace_id: Option<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceMixpanelCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceMixpanelCredentials")
-            .field("project_id", &self.project_id)
-            .field("region", &self.region)
-            .field("secret", &self.secret)
-            .field("username", &self.username)
-            .field("workspace_id", &self.workspace_id)
-            .finish()
-    }
-}
-impl ConnectSourceMixpanelCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceMixpanelCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceMixpanelCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceMixpanelCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceMixpanelCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.project_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.region {
-            size += 1u32 + ::buffa::types::int32_encoded_len(v.to_i32()) as u32;
-        }
-        if let Some(ref v) = self.secret {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.username {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.workspace_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.project_id {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.region {
-            ::buffa::encoding::Tag::new(2u32, ::buffa::encoding::WireType::Varint)
-                .encode(buf);
-            ::buffa::types::encode_int32(v.to_i32(), buf);
-        }
-        if let Some(ref v) = self.secret {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.username {
-            ::buffa::encoding::Tag::new(
-                    4u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.workspace_id {
-            ::buffa::encoding::Tag::new(
-                    5u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .project_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 0u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                self.region = ::core::option::Option::Some(
-                    ::buffa::EnumValue::from(::buffa::types::decode_int32(buf)?),
-                );
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self.secret.get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            4u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 4u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .username
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            5u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 5u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .workspace_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.project_id = ::core::option::Option::None;
-        self.region = ::core::option::Option::None;
-        self.secret = ::core::option::Option::None;
-        self.username = ::core::option::Option::None;
-        self.workspace_id = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceMixpanelCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceMixpanelCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceMixpanelCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_MIXPANEL_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceMixpanelCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceMixpanelCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourceMixpanelCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceMixpanelCredentialsView<'a> {
-    /// Field 1: `project_id`
-    pub project_id: ::core::option::Option<&'a str>,
-    /// Field 2: `region`
-    pub region: ::core::option::Option<::buffa::EnumValue<SourceConnectMixpanelRegion>>,
-    /// Field 3: `secret`
-    pub secret: ::core::option::Option<&'a str>,
-    /// Field 4: `username`
-    pub username: ::core::option::Option<&'a str>,
-    /// Field 5: `workspace_id`
-    pub workspace_id: ::core::option::Option<&'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceMixpanelCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.project_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::Varint {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 0u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.region = Some(
-                        ::buffa::EnumValue::from(::buffa::types::decode_int32(&mut cur)?),
-                    );
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.secret = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                4u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 4u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.username = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                5u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 5u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.workspace_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceMixpanelCredentialsView<'a> {
-    type Owned = ConnectSourceMixpanelCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceMixpanelCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceMixpanelCredentials {
-            project_id: self.project_id.map(|s| s.to_string()),
-            region: self.region,
-            secret: self.secret.map(|s| s.to_string()),
-            username: self.username.map(|s| s.to_string()),
-            workspace_id: self.workspace_id.map(|s| s.to_string()),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceMixpanelCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceMixpanelCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceMixpanelCredentialsView<'a> {
-    type Static = ConnectSourceMixpanelCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourcePostHogCredentials {
-    /// Field 1: `host_url`
-    #[serde(
-        rename = "hostUrl",
-        alias = "host_url",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub host_url: Option<::buffa::alloc::string::String>,
-    /// Field 2: `personal_api_key`
-    #[serde(
-        rename = "personalApiKey",
-        alias = "personal_api_key",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub personal_api_key: Option<::buffa::alloc::string::String>,
-    /// Field 3: `project_id`
-    #[serde(
-        rename = "projectId",
-        alias = "project_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub project_id: Option<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourcePostHogCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourcePostHogCredentials")
-            .field("host_url", &self.host_url)
-            .field("personal_api_key", &self.personal_api_key)
-            .field("project_id", &self.project_id)
-            .finish()
-    }
-}
-impl ConnectSourcePostHogCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourcePostHogCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourcePostHogCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourcePostHogCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourcePostHogCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.host_url {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.personal_api_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.project_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.host_url {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.personal_api_key {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.project_id {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .host_url
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .personal_api_key
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .project_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.host_url = ::core::option::Option::None;
-        self.personal_api_key = ::core::option::Option::None;
-        self.project_id = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourcePostHogCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourcePostHogCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourcePostHogCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_POST_HOG_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourcePostHogCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourcePostHogCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourcePostHogCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourcePostHogCredentialsView<'a> {
-    /// Field 1: `host_url`
-    pub host_url: ::core::option::Option<&'a str>,
-    /// Field 2: `personal_api_key`
-    pub personal_api_key: ::core::option::Option<&'a str>,
-    /// Field 3: `project_id`
-    pub project_id: ::core::option::Option<&'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourcePostHogCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.host_url = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.personal_api_key = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.project_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourcePostHogCredentialsView<'a> {
-    type Owned = ConnectSourcePostHogCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourcePostHogCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourcePostHogCredentials {
-            host_url: self.host_url.map(|s| s.to_string()),
-            personal_api_key: self.personal_api_key.map(|s| s.to_string()),
-            project_id: self.project_id.map(|s| s.to_string()),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourcePostHogCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourcePostHogCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourcePostHogCredentialsView<'a> {
-    type Static = ConnectSourcePostHogCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceSentryCredentials {
-    /// Field 1: `api_base_url`
-    #[serde(
-        rename = "apiBaseUrl",
-        alias = "api_base_url",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub api_base_url: Option<::buffa::alloc::string::String>,
-    /// Field 2: `auth_token`
-    #[serde(
-        rename = "authToken",
-        alias = "auth_token",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub auth_token: Option<::buffa::alloc::string::String>,
-    /// Field 3: `organization_slug`
-    #[serde(
-        rename = "organizationSlug",
-        alias = "organization_slug",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub organization_slug: Option<::buffa::alloc::string::String>,
-    /// Field 4: `project_slug`
-    #[serde(
-        rename = "projectSlug",
-        alias = "project_slug",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub project_slug: Option<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceSentryCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceSentryCredentials")
-            .field("api_base_url", &self.api_base_url)
-            .field("auth_token", &self.auth_token)
-            .field("organization_slug", &self.organization_slug)
-            .field("project_slug", &self.project_slug)
-            .finish()
-    }
-}
-impl ConnectSourceSentryCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceSentryCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceSentryCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceSentryCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceSentryCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.api_base_url {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.auth_token {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.organization_slug {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.project_slug {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.api_base_url {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.auth_token {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.organization_slug {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.project_slug {
-            ::buffa::encoding::Tag::new(
-                    4u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .api_base_url
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .auth_token
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .organization_slug
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            4u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 4u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .project_slug
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.api_base_url = ::core::option::Option::None;
-        self.auth_token = ::core::option::Option::None;
-        self.organization_slug = ::core::option::Option::None;
-        self.project_slug = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceSentryCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceSentryCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceSentryCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_SENTRY_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceSentryCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceSentryCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourceSentryCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceSentryCredentialsView<'a> {
-    /// Field 1: `api_base_url`
-    pub api_base_url: ::core::option::Option<&'a str>,
-    /// Field 2: `auth_token`
-    pub auth_token: ::core::option::Option<&'a str>,
-    /// Field 3: `organization_slug`
-    pub organization_slug: ::core::option::Option<&'a str>,
-    /// Field 4: `project_slug`
-    pub project_slug: ::core::option::Option<&'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceSentryCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.api_base_url = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.auth_token = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.organization_slug = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                4u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 4u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.project_slug = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceSentryCredentialsView<'a> {
-    type Owned = ConnectSourceSentryCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceSentryCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceSentryCredentials {
-            api_base_url: self.api_base_url.map(|s| s.to_string()),
-            auth_token: self.auth_token.map(|s| s.to_string()),
-            organization_slug: self.organization_slug.map(|s| s.to_string()),
-            project_slug: self.project_slug.map(|s| s.to_string()),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceSentryCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceSentryCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceSentryCredentialsView<'a> {
-    type Static = ConnectSourceSentryCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceGitHubCredentials {
-    /// Field 1: `access_token`
-    #[serde(
-        rename = "accessToken",
-        alias = "access_token",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub access_token: Option<::buffa::alloc::string::String>,
-    /// Field 2: `installation_id`
-    #[serde(
-        rename = "installationId",
-        alias = "installation_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub installation_id: Option<::buffa::alloc::string::String>,
-    /// Field 3: `repositories`
-    #[serde(
-        rename = "repositories",
-        skip_serializing_if = "::buffa::json_helpers::skip_if::is_empty_vec",
-        deserialize_with = "::buffa::json_helpers::null_as_default"
-    )]
-    pub repositories: ::buffa::alloc::vec::Vec<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceGitHubCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceGitHubCredentials")
-            .field("access_token", &self.access_token)
-            .field("installation_id", &self.installation_id)
-            .field("repositories", &self.repositories)
-            .finish()
-    }
-}
-impl ConnectSourceGitHubCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceGitHubCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceGitHubCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceGitHubCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceGitHubCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.access_token {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.installation_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        for v in &self.repositories {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.access_token {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.installation_id {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        for v in &self.repositories {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .access_token
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .installation_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                self.repositories.push(::buffa::types::decode_string(buf)?);
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.access_token = ::core::option::Option::None;
-        self.installation_id = ::core::option::Option::None;
-        self.repositories.clear();
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceGitHubCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceGitHubCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceGitHubCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_GIT_HUB_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceGitHubCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceGitHubCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourceGitHubCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceGitHubCredentialsView<'a> {
-    /// Field 1: `access_token`
-    pub access_token: ::core::option::Option<&'a str>,
-    /// Field 2: `installation_id`
-    pub installation_id: ::core::option::Option<&'a str>,
-    /// Field 3: `repositories`
-    pub repositories: ::buffa::RepeatedView<'a, &'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceGitHubCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.access_token = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.installation_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.repositories.push(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceGitHubCredentialsView<'a> {
-    type Owned = ConnectSourceGitHubCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceGitHubCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceGitHubCredentials {
-            access_token: self.access_token.map(|s| s.to_string()),
-            installation_id: self.installation_id.map(|s| s.to_string()),
-            repositories: self.repositories.iter().map(|s| s.to_string()).collect(),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceGitHubCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceGitHubCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceGitHubCredentialsView<'a> {
-    type Static = ConnectSourceGitHubCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize)]
-#[serde(default)]
-pub struct ConnectSourceLinearCredentials {
-    #[serde(flatten)]
-    pub auth: Option<connect_source_linear_credentials::Auth>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceLinearCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceLinearCredentials")
-            .field("auth", &self.auth)
-            .finish()
-    }
-}
-impl ConnectSourceLinearCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceLinearCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceLinearCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceLinearCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceLinearCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let ::core::option::Option::Some(ref v) = self.auth {
-            match v {
-                connect_source_linear_credentials::Auth::ApiKey(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-                connect_source_linear_credentials::Auth::Oauth(x) => {
-                    let inner = x.compute_size();
-                    size
-                        += 1u32 + ::buffa::encoding::varint_len(inner as u64) as u32
-                            + inner;
-                }
-            }
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let ::core::option::Option::Some(ref v) = self.auth {
-            match v {
-                connect_source_linear_credentials::Auth::ApiKey(x) => {
-                    ::buffa::encoding::Tag::new(
-                            1u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-                connect_source_linear_credentials::Auth::Oauth(x) => {
-                    ::buffa::encoding::Tag::new(
-                            2u32,
-                            ::buffa::encoding::WireType::LengthDelimited,
-                        )
-                        .encode(buf);
-                    ::buffa::encoding::encode_varint(x.cached_size() as u64, buf);
-                    x.write_to(buf);
-                }
-            }
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_linear_credentials::Auth::ApiKey(ref mut existing),
-                ) = self.auth
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.auth = ::core::option::Option::Some(
-                        connect_source_linear_credentials::Auth::ApiKey(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                if let ::core::option::Option::Some(
-                    connect_source_linear_credentials::Auth::Oauth(ref mut existing),
-                ) = self.auth
-                {
-                    ::buffa::Message::merge_length_delimited(
-                        &mut **existing,
-                        buf,
-                        depth,
-                    )?;
-                } else {
-                    let mut val = ::core::default::Default::default();
-                    ::buffa::Message::merge_length_delimited(&mut val, buf, depth)?;
-                    self.auth = ::core::option::Option::Some(
-                        connect_source_linear_credentials::Auth::Oauth(
-                            ::buffa::alloc::boxed::Box::new(val),
-                        ),
-                    );
-                }
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.auth = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceLinearCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceLinearCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl<'de> serde::Deserialize<'de> for ConnectSourceLinearCredentials {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        struct _V;
-        impl<'de> serde::de::Visitor<'de> for _V {
-            type Value = ConnectSourceLinearCredentials;
-            fn expecting(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                f.write_str("struct ConnectSourceLinearCredentials")
-            }
-            #[allow(clippy::field_reassign_with_default)]
-            fn visit_map<A: serde::de::MapAccess<'de>>(
-                self,
-                mut map: A,
-            ) -> Result<ConnectSourceLinearCredentials, A::Error> {
-                let mut __oneof_auth: Option<connect_source_linear_credentials::Auth> = None;
-                while let Some(key) = map.next_key::<::buffa::alloc::string::String>()? {
-                    match key.as_str() {
-                        "apiKey" | "api_key" => {
-                            let v: Option<ConnectSourceLinearApiKeyCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceLinearApiKeyCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_auth.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'auth'",
-                                        ),
-                                    );
-                                }
-                                __oneof_auth = Some(
-                                    connect_source_linear_credentials::Auth::ApiKey(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        "oauth" => {
-                            let v: Option<ConnectSourceLinearOauthCredentials> = map
-                                .next_value_seed(
-                                    ::buffa::json_helpers::NullableDeserializeSeed(
-                                        ::buffa::json_helpers::DefaultDeserializeSeed::<
-                                            ConnectSourceLinearOauthCredentials,
-                                        >::new(),
-                                    ),
-                                )?;
-                            if let Some(v) = v {
-                                if __oneof_auth.is_some() {
-                                    return Err(
-                                        serde::de::Error::custom(
-                                            "multiple oneof fields set for 'auth'",
-                                        ),
-                                    );
-                                }
-                                __oneof_auth = Some(
-                                    connect_source_linear_credentials::Auth::Oauth(
-                                        ::buffa::alloc::boxed::Box::new(v),
-                                    ),
-                                );
-                            }
-                        }
-                        _ => {
-                            map.next_value::<serde::de::IgnoredAny>()?;
-                        }
-                    }
-                }
-                let mut __r = <ConnectSourceLinearCredentials as ::core::default::Default>::default();
-                __r.auth = __oneof_auth;
-                Ok(__r)
-            }
-        }
-        d.deserialize_map(_V)
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceLinearCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_LINEAR_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceLinearCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceLinearCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<ConnectSourceLinearCredentials>,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceLinearCredentialsView<'a> {
-    pub auth: ::core::option::Option<connect_source_linear_credentials::AuthView<'a>>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceLinearCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_linear_credentials::AuthView::ApiKey(
-                            ref mut existing,
-                        ),
-                    ) = view.auth
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.auth = Some(
-                            connect_source_linear_credentials::AuthView::ApiKey(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceLinearApiKeyCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    if let Some(
-                        connect_source_linear_credentials::AuthView::Oauth(
-                            ref mut existing,
-                        ),
-                    ) = view.auth
-                    {
-                        existing._merge_into_view(sub, depth - 1)?;
-                    } else {
-                        view.auth = Some(
-                            connect_source_linear_credentials::AuthView::Oauth(
-                                ::buffa::alloc::boxed::Box::new(
-                                    ConnectSourceLinearOauthCredentialsView::_decode_depth(
-                                        sub,
-                                        depth - 1,
-                                    )?,
-                                ),
-                            ),
-                        );
-                    }
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceLinearCredentialsView<'a> {
-    type Owned = ConnectSourceLinearCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceLinearCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceLinearCredentials {
-            auth: self
-                .auth
-                .as_ref()
-                .map(|v| match v {
-                    connect_source_linear_credentials::AuthView::ApiKey(v) => {
-                        connect_source_linear_credentials::Auth::ApiKey(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                    connect_source_linear_credentials::AuthView::Oauth(v) => {
-                        connect_source_linear_credentials::Auth::Oauth(
-                            ::buffa::alloc::boxed::Box::new(v.to_owned_message()),
-                        )
-                    }
-                }),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceLinearCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceLinearCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceLinearCredentialsView<'a> {
-    type Static = ConnectSourceLinearCredentialsView<'static>;
-}
-pub mod connect_source_linear_credentials {
-    #[allow(unused_imports)]
-    use super::*;
-    #[derive(Clone, PartialEq, Debug)]
-    pub enum Auth {
-        ApiKey(::buffa::alloc::boxed::Box<super::ConnectSourceLinearApiKeyCredentials>),
-        Oauth(::buffa::alloc::boxed::Box<super::ConnectSourceLinearOauthCredentials>),
-    }
-    impl ::buffa::Oneof for Auth {}
-    impl From<super::ConnectSourceLinearApiKeyCredentials> for Auth {
-        fn from(v: super::ConnectSourceLinearApiKeyCredentials) -> Self {
-            Self::ApiKey(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceLinearApiKeyCredentials>
-    for ::core::option::Option<Auth> {
-        fn from(v: super::ConnectSourceLinearApiKeyCredentials) -> Self {
-            Self::Some(Auth::from(v))
-        }
-    }
-    impl From<super::ConnectSourceLinearOauthCredentials> for Auth {
-        fn from(v: super::ConnectSourceLinearOauthCredentials) -> Self {
-            Self::Oauth(::buffa::alloc::boxed::Box::new(v))
-        }
-    }
-    impl From<super::ConnectSourceLinearOauthCredentials>
-    for ::core::option::Option<Auth> {
-        fn from(v: super::ConnectSourceLinearOauthCredentials) -> Self {
-            Self::Some(Auth::from(v))
-        }
-    }
-    impl serde::Serialize for Auth {
-        fn serialize<S: serde::Serializer>(
-            &self,
-            s: S,
-        ) -> ::core::result::Result<S::Ok, S::Error> {
-            use serde::ser::SerializeMap;
-            let mut map = s.serialize_map(Some(1))?;
-            match self {
-                Auth::ApiKey(v) => {
-                    map.serialize_entry("apiKey", v)?;
-                }
-                Auth::Oauth(v) => {
-                    map.serialize_entry("oauth", v)?;
-                }
-            }
-            map.end()
-        }
-    }
-    #[derive(Clone, Debug)]
-    pub enum AuthView<'a> {
-        ApiKey(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceLinearApiKeyCredentialsView<'a>,
-            >,
-        ),
-        Oauth(
-            ::buffa::alloc::boxed::Box<
-                super::ConnectSourceLinearOauthCredentialsView<'a>,
-            >,
-        ),
-    }
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceLinearApiKeyCredentials {
-    /// Field 1: `api_key`
-    #[serde(
-        rename = "apiKey",
-        alias = "api_key",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub api_key: Option<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceLinearApiKeyCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceLinearApiKeyCredentials")
-            .field("api_key", &self.api_key)
-            .finish()
-    }
-}
-impl ConnectSourceLinearApiKeyCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceLinearApiKeyCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceLinearApiKeyCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceLinearApiKeyCredentials,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceLinearApiKeyCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.api_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.api_key {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self.api_key.get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.api_key = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceLinearApiKeyCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceLinearApiKeyCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceLinearApiKeyCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_LINEAR_API_KEY_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceLinearApiKeyCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceLinearApiKeyCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceLinearApiKeyCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceLinearApiKeyCredentialsView<'a> {
-    /// Field 1: `api_key`
-    pub api_key: ::core::option::Option<&'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceLinearApiKeyCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.api_key = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceLinearApiKeyCredentialsView<'a> {
-    type Owned = ConnectSourceLinearApiKeyCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceLinearApiKeyCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceLinearApiKeyCredentials {
-            api_key: self.api_key.map(|s| s.to_string()),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceLinearApiKeyCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceLinearApiKeyCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceLinearApiKeyCredentialsView<'a> {
-    type Static = ConnectSourceLinearApiKeyCredentialsView<'static>;
-}
-#[derive(Clone, PartialEq, Default)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
-#[serde(default)]
-pub struct ConnectSourceLinearOauthCredentials {
-    /// Field 1: `access_token`
-    #[serde(
-        rename = "accessToken",
-        alias = "access_token",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub access_token: Option<::buffa::alloc::string::String>,
-    /// Field 2: `app_user_id`
-    #[serde(
-        rename = "appUserId",
-        alias = "app_user_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub app_user_id: Option<::buffa::alloc::string::String>,
-    /// Field 3: `expires_at`
-    #[serde(
-        rename = "expiresAt",
-        alias = "expires_at",
-        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
-    )]
-    pub expires_at: ::buffa::MessageField<::buffa_types::google::protobuf::Timestamp>,
-    /// Field 4: `linear_organization_id`
-    #[serde(
-        rename = "linearOrganizationId",
-        alias = "linear_organization_id",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub linear_organization_id: Option<::buffa::alloc::string::String>,
-    /// Field 5: `linear_organization_name`
-    #[serde(
-        rename = "linearOrganizationName",
-        alias = "linear_organization_name",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub linear_organization_name: Option<::buffa::alloc::string::String>,
-    /// Field 6: `refresh_token`
-    #[serde(
-        rename = "refreshToken",
-        alias = "refresh_token",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub refresh_token: Option<::buffa::alloc::string::String>,
-    /// Field 7: `scope`
-    #[serde(rename = "scope", skip_serializing_if = "Option::is_none")]
-    pub scope: Option<::buffa::alloc::string::String>,
-    /// Field 8: `token_type`
-    #[serde(
-        rename = "tokenType",
-        alias = "token_type",
-        skip_serializing_if = "Option::is_none"
-    )]
-    pub token_type: Option<::buffa::alloc::string::String>,
-    #[serde(skip)]
-    #[doc(hidden)]
-    pub __buffa_unknown_fields: ::buffa::UnknownFields,
-    #[doc(hidden)]
-    #[serde(skip)]
-    pub __buffa_cached_size: ::buffa::__private::CachedSize,
-}
-impl ::core::fmt::Debug for ConnectSourceLinearOauthCredentials {
-    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-        f.debug_struct("ConnectSourceLinearOauthCredentials")
-            .field("access_token", &self.access_token)
-            .field("app_user_id", &self.app_user_id)
-            .field("expires_at", &self.expires_at)
-            .field("linear_organization_id", &self.linear_organization_id)
-            .field("linear_organization_name", &self.linear_organization_name)
-            .field("refresh_token", &self.refresh_token)
-            .field("scope", &self.scope)
-            .field("token_type", &self.token_type)
-            .finish()
-    }
-}
-impl ConnectSourceLinearOauthCredentials {
-    /// Protobuf type URL for this message, for use with `Any::pack` and
-    /// `Any::unpack_if`.
-    ///
-    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
-    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.ConnectSourceLinearOauthCredentials";
-}
-unsafe impl ::buffa::DefaultInstance for ConnectSourceLinearOauthCredentials {
-    fn default_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<ConnectSourceLinearOauthCredentials> = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-impl ::buffa::Message for ConnectSourceLinearOauthCredentials {
-    /// Returns the total encoded size in bytes.
-    ///
-    /// The result is a `u32`; the protobuf specification requires all
-    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
-    /// compliant message will never overflow this type.
-    fn compute_size(&self) -> u32 {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        let mut size = 0u32;
-        if let Some(ref v) = self.access_token {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.app_user_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if self.expires_at.is_set() {
-            let inner_size = self.expires_at.compute_size();
-            size
-                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
-                    + inner_size;
-        }
-        if let Some(ref v) = self.linear_organization_id {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.linear_organization_name {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.refresh_token {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.scope {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        if let Some(ref v) = self.token_type {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
-        }
-        size += self.__buffa_unknown_fields.encoded_len() as u32;
-        self.__buffa_cached_size.set(size);
-        size
-    }
-    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        if let Some(ref v) = self.access_token {
-            ::buffa::encoding::Tag::new(
-                    1u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.app_user_id {
-            ::buffa::encoding::Tag::new(
-                    2u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if self.expires_at.is_set() {
-            ::buffa::encoding::Tag::new(
-                    3u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::encoding::encode_varint(self.expires_at.cached_size() as u64, buf);
-            self.expires_at.write_to(buf);
-        }
-        if let Some(ref v) = self.linear_organization_id {
-            ::buffa::encoding::Tag::new(
-                    4u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.linear_organization_name {
-            ::buffa::encoding::Tag::new(
-                    5u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.refresh_token {
-            ::buffa::encoding::Tag::new(
-                    6u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.scope {
-            ::buffa::encoding::Tag::new(
-                    7u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        if let Some(ref v) = self.token_type {
-            ::buffa::encoding::Tag::new(
-                    8u32,
-                    ::buffa::encoding::WireType::LengthDelimited,
-                )
-                .encode(buf);
-            ::buffa::types::encode_string(v, buf);
-        }
-        self.__buffa_unknown_fields.write_to(buf);
-    }
-    fn merge_field(
-        &mut self,
-        tag: ::buffa::encoding::Tag,
-        buf: &mut impl ::buffa::bytes::Buf,
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        #[allow(unused_imports)]
-        use ::buffa::bytes::Buf as _;
-        #[allow(unused_imports)]
-        use ::buffa::Enumeration as _;
-        match tag.field_number() {
-            1u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 1u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .access_token
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            2u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 2u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .app_user_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            3u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 3u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::Message::merge_length_delimited(
-                    self.expires_at.get_or_insert_default(),
-                    buf,
-                    depth,
-                )?;
-            }
-            4u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 4u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .linear_organization_id
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            5u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 5u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .linear_organization_name
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            6u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 6u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .refresh_token
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            7u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 7u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self.scope.get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            8u32 => {
-                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                        field_number: 8u32,
-                        expected: 2u8,
-                        actual: tag.wire_type() as u8,
-                    });
-                }
-                ::buffa::types::merge_string(
-                    self
-                        .token_type
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
-                    buf,
-                )?;
-            }
-            _ => {
-                self.__buffa_unknown_fields
-                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-    fn cached_size(&self) -> u32 {
-        self.__buffa_cached_size.get()
-    }
-    fn clear(&mut self) {
-        self.access_token = ::core::option::Option::None;
-        self.app_user_id = ::core::option::Option::None;
-        self.expires_at = ::buffa::MessageField::none();
-        self.linear_organization_id = ::core::option::Option::None;
-        self.linear_organization_name = ::core::option::Option::None;
-        self.refresh_token = ::core::option::Option::None;
-        self.scope = ::core::option::Option::None;
-        self.token_type = ::core::option::Option::None;
-        self.__buffa_unknown_fields.clear();
-        self.__buffa_cached_size.set(0);
-    }
-}
-impl ::buffa::ExtensionSet for ConnectSourceLinearOauthCredentials {
-    const PROTO_FQN: &'static str = "onequery.cli.v1.ConnectSourceLinearOauthCredentials";
-    fn unknown_fields(&self) -> &::buffa::UnknownFields {
-        &self.__buffa_unknown_fields
-    }
-    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
-        &mut self.__buffa_unknown_fields
-    }
-}
-impl ::buffa::json_helpers::ProtoElemJson for ConnectSourceLinearOauthCredentials {
-    fn serialize_proto_json<S: ::serde::Serializer>(
-        v: &Self,
-        s: S,
-    ) -> ::core::result::Result<S::Ok, S::Error> {
-        ::serde::Serialize::serialize(v, s)
-    }
-    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
-        d: D,
-    ) -> ::core::result::Result<Self, D::Error> {
-        <Self as ::serde::Deserialize>::deserialize(d)
-    }
-}
-#[doc(hidden)]
-pub const __CONNECT_SOURCE_LINEAR_OAUTH_CREDENTIALS_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
-    type_url: "type.googleapis.com/onequery.cli.v1.ConnectSourceLinearOauthCredentials",
-    to_json: ::buffa::type_registry::any_to_json::<ConnectSourceLinearOauthCredentials>,
-    from_json: ::buffa::type_registry::any_from_json::<
-        ConnectSourceLinearOauthCredentials,
-    >,
-    is_wkt: false,
-};
-#[derive(Clone, Debug, Default)]
-pub struct ConnectSourceLinearOauthCredentialsView<'a> {
-    /// Field 1: `access_token`
-    pub access_token: ::core::option::Option<&'a str>,
-    /// Field 2: `app_user_id`
-    pub app_user_id: ::core::option::Option<&'a str>,
-    /// Field 3: `expires_at`
-    pub expires_at: ::buffa::MessageFieldView<
-        ::buffa_types::google::protobuf::TimestampView<'a>,
-    >,
-    /// Field 4: `linear_organization_id`
-    pub linear_organization_id: ::core::option::Option<&'a str>,
-    /// Field 5: `linear_organization_name`
-    pub linear_organization_name: ::core::option::Option<&'a str>,
-    /// Field 6: `refresh_token`
-    pub refresh_token: ::core::option::Option<&'a str>,
-    /// Field 7: `scope`
-    pub scope: ::core::option::Option<&'a str>,
-    /// Field 8: `token_type`
-    pub token_type: ::core::option::Option<&'a str>,
-    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
-}
-impl<'a> ConnectSourceLinearOauthCredentialsView<'a> {
-    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
-    ///
-    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
-    /// and by generated sub-message decode arms with `depth - 1`.
-    ///
-    /// **Not part of the public API.** Named with a leading underscore to
-    /// signal that it is for generated-code use only.
-    #[doc(hidden)]
-    pub fn _decode_depth(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        let mut view = Self::default();
-        view._merge_into_view(buf, depth)?;
-        ::core::result::Result::Ok(view)
-    }
-    /// Merge fields from `buf` into this view (proto merge semantics).
-    ///
-    /// Repeated fields append; singular fields last-wins; singular
-    /// MESSAGE fields merge recursively. Used by sub-message decode
-    /// arms when the same field appears multiple times on the wire.
-    ///
-    /// **Not part of the public API.**
-    #[doc(hidden)]
-    pub fn _merge_into_view(
-        &mut self,
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
-        let _ = depth;
-        #[allow(unused_variables)]
-        let view = self;
-        let mut cur: &'a [u8] = buf;
-        while !cur.is_empty() {
-            let before_tag = cur;
-            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
-            match tag.field_number() {
-                1u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 1u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.access_token = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                2u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 2u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.app_user_id = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                3u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 3u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    if depth == 0 {
-                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
-                    }
-                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
-                    match view.expires_at.as_mut() {
-                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
-                        None => {
-                            view.expires_at = ::buffa::MessageFieldView::set(
-                                ::buffa_types::google::protobuf::TimestampView::_decode_depth(
-                                    sub,
-                                    depth - 1,
-                                )?,
-                            );
-                        }
-                    }
-                }
-                4u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 4u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.linear_organization_id = Some(
-                        ::buffa::types::borrow_str(&mut cur)?,
-                    );
-                }
-                5u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 5u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.linear_organization_name = Some(
-                        ::buffa::types::borrow_str(&mut cur)?,
-                    );
-                }
-                6u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 6u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.refresh_token = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                7u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 7u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.scope = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                8u32 => {
-                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
-                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
-                            field_number: 8u32,
-                            expected: 2u8,
-                            actual: tag.wire_type() as u8,
-                        });
-                    }
-                    view.token_type = Some(::buffa::types::borrow_str(&mut cur)?);
-                }
-                _ => {
-                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
-                    let span_len = before_tag.len() - cur.len();
-                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
-                }
-            }
-        }
-        ::core::result::Result::Ok(())
-    }
-}
-impl<'a> ::buffa::MessageView<'a> for ConnectSourceLinearOauthCredentialsView<'a> {
-    type Owned = ConnectSourceLinearOauthCredentials;
-    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
-    }
-    fn decode_view_with_limit(
-        buf: &'a [u8],
-        depth: u32,
-    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
-        Self::_decode_depth(buf, depth)
-    }
-    /// Convert this view to the owned message type.
-    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
-    fn to_owned_message(&self) -> ConnectSourceLinearOauthCredentials {
-        #[allow(unused_imports)]
-        use ::buffa::alloc::string::ToString as _;
-        ConnectSourceLinearOauthCredentials {
-            access_token: self.access_token.map(|s| s.to_string()),
-            app_user_id: self.app_user_id.map(|s| s.to_string()),
-            expires_at: match self.expires_at.as_option() {
-                Some(v) => {
-                    ::buffa::MessageField::<
-                        ::buffa_types::google::protobuf::Timestamp,
-                    >::some(v.to_owned_message())
-                }
-                None => ::buffa::MessageField::none(),
-            },
-            linear_organization_id: self.linear_organization_id.map(|s| s.to_string()),
-            linear_organization_name: self
-                .linear_organization_name
-                .map(|s| s.to_string()),
-            refresh_token: self.refresh_token.map(|s| s.to_string()),
-            scope: self.scope.map(|s| s.to_string()),
-            token_type: self.token_type.map(|s| s.to_string()),
-            __buffa_unknown_fields: self
-                .__buffa_unknown_fields
-                .to_owned()
-                .unwrap_or_default()
-                .into(),
-            ..::core::default::Default::default()
-        }
-    }
-}
-unsafe impl ::buffa::DefaultViewInstance
-for ConnectSourceLinearOauthCredentialsView<'static> {
-    fn default_view_instance() -> &'static Self {
-        static VALUE: ::buffa::__private::OnceBox<
-            ConnectSourceLinearOauthCredentialsView<'static>,
-        > = ::buffa::__private::OnceBox::new();
-        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
-    }
-}
-unsafe impl<'a> ::buffa::HasDefaultViewInstance
-for ConnectSourceLinearOauthCredentialsView<'a> {
-    type Static = ConnectSourceLinearOauthCredentialsView<'static>;
 }
 #[derive(Clone, PartialEq, Default)]
 #[derive(::serde::Serialize, ::serde::Deserialize)]

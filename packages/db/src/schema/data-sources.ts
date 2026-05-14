@@ -1,81 +1,27 @@
 import { boolean, index, text, timestamp, unique } from "drizzle-orm/pg-core";
 
+import {
+  ANALYSIS_SOURCE_PROVIDER_TYPES,
+  SOURCE_PROVIDER_IDS,
+  TESTABLE_PROVIDER_TYPES,
+  isTestableProviderType,
+} from "../source-providers";
 import { organization } from "./auth";
 import { pgTable } from "./table";
 import { ulid } from "./ulid";
 
-export const PROVIDER_TYPES = [
-  "postgres",
-  "supabase",
-  "mysql",
-  "mongodb",
-  "bigquery",
-  "laminar",
-  "aws_athena_connector",
-  "ga", // Google Analytics
-  "amplitude",
-  "mixpanel",
-  "posthog",
-  "sentry",
-  "github",
-  "linear",
-  "cloudflare_workers_observability",
-] as const;
+export const PROVIDER_TYPES = SOURCE_PROVIDER_IDS;
 
 export type ProviderType = (typeof PROVIDER_TYPES)[number];
 
 /** Provider types that can be used as analysis sources (not delivery channels). */
-export const ANALYSIS_SOURCE_PROVIDER_TYPES = [
-  "postgres",
-  "supabase",
-  "mysql",
-  "mongodb",
-  "bigquery",
-  "laminar",
-  "aws_athena_connector",
-  "ga",
-  "amplitude",
-  "mixpanel",
-  "posthog",
-  "sentry",
-  "github",
-  "linear",
-  "cloudflare_workers_observability",
-] as const satisfies readonly ProviderType[];
+export { ANALYSIS_SOURCE_PROVIDER_TYPES };
 
 export type AnalysisSourceProviderType =
   (typeof ANALYSIS_SOURCE_PROVIDER_TYPES)[number];
 
-export const TESTABLE_PROVIDER = {
-  AMPLITUDE: "amplitude",
-  MIXPANEL: "mixpanel",
-  MONGODB: "mongodb",
-  MYSQL: "mysql",
-  POSTGRES: "postgres",
-  SUPABASE: "supabase",
-  POSTHOG: "posthog",
-  SENTRY: "sentry",
-} as const;
-
-export type TestableProviderType =
-  (typeof TESTABLE_PROVIDER)[keyof typeof TESTABLE_PROVIDER];
-
-export const TESTABLE_PROVIDER_TYPES = [
-  TESTABLE_PROVIDER.POSTGRES,
-  TESTABLE_PROVIDER.SUPABASE,
-  TESTABLE_PROVIDER.MYSQL,
-  TESTABLE_PROVIDER.MONGODB,
-  TESTABLE_PROVIDER.AMPLITUDE,
-  TESTABLE_PROVIDER.MIXPANEL,
-  TESTABLE_PROVIDER.POSTHOG,
-  TESTABLE_PROVIDER.SENTRY,
-] as const satisfies readonly TestableProviderType[];
-
-export function isTestableProviderType(
-  provider: ProviderType
-): provider is TestableProviderType {
-  return TESTABLE_PROVIDER_TYPES.some((value) => value === provider);
-}
+export { TESTABLE_PROVIDER_TYPES, isTestableProviderType };
+export type TestableProviderType = (typeof TESTABLE_PROVIDER_TYPES)[number];
 
 export const DATA_SOURCE_STATUS = ["active", "error", "disconnected"] as const;
 

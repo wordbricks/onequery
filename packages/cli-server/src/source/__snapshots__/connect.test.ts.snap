@@ -66,11 +66,9 @@ The JSON input shape is always \`{ "sourceKey": string, "credentials": { ...prov
 Connect PostHog with the PostHog app host URL, a personal API key, and project ID.
 
 Steps:
-1. Open the PostHog project you want to connect, then go to \`Settings -> Project -> General\` and copy the \`Project ID\` from the \`Project token & ID\` section.
-2. Use the PostHog app origin as \`credentials.hostUrl\`: \`https://us.posthog.com\` for US Cloud, \`https://eu.posthog.com\` for EU Cloud, or your self-hosted base URL. Do not use the SDK \`api_host\` value such as \`https://us.i.posthog.com\`.
-3. Go to \`Settings -> Account -> Personal API keys\`, create a personal API key, and make sure \`Organization & project access\` includes the project you plan to connect.
-4. Grant at least \`Read\` access to \`Project\` and \`Query\`, then copy the secret immediately into \`credentials.personalApiKey\`. PostHog may only show the full key once.
-5. Use the canonical host URL without a trailing slash when possible; the server still normalizes extra trailing slashes.
+1. Open the PostHog project settings and copy the Project ID.
+2. Use the PostHog app origin as \`credentials.hostUrl\`.
+3. Create a personal API key with project read access and copy it into \`credentials.personalApiKey\`.
 
 Example input:
 \`\`\`json
@@ -110,7 +108,7 @@ Connect Supabase with the session pooler host, database, and login credentials o
 
 Steps:
 1. Open the Supabase Connect panel and retrieve the Session pooler host, database name, username, and password.
-2. Use the Supabase provider with the Postgres connection fields shown below. The CLI maps those fields onto the typed Supabase wire shape directly.
+2. Use the Supabase provider with the Postgres connection fields shown below.
 3. Prefer the Session pooler for OneQuery's persistent backend connection path. Keep SSL enabled and confirm the correct port before building the payload.
 
 Example input:

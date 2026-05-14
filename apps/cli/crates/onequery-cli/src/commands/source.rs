@@ -131,6 +131,10 @@ pub(super) async fn execute<B, T>(
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
+    if let SourceSubcommand::Providers = command {
+        return super::source_providers::execute(context, runtime).await;
+    }
+
     if let SourceSubcommand::Connect(args) = command {
         return super::source_connect::execute(args, context, runtime).await;
     }
@@ -144,6 +148,7 @@ pub(super) async fn execute<B, T>(
         SourceSubcommand::Test { source_key } => SourceMode::Test {
             source_key: source_key.clone(),
         },
+        SourceSubcommand::Providers => unreachable!("source providers is delegated"),
         SourceSubcommand::Connect(_) => unreachable!("source connect is delegated"),
     };
 
@@ -583,7 +588,10 @@ fn render_source_list_output(
     let sources = payload.sources.as_slice();
     if sources.is_empty() {
         return Ok(CommandOutput::try_deferred(
-            vec!["No connected sources found.".to_owned()],
+            vec![
+                "No connected sources found.".to_owned(),
+                "Run `onequery source providers` to view available providers.".to_owned(),
+            ],
             move || serialize_command_data(&payload, "onequery source list"),
         ));
     }
@@ -830,6 +838,29 @@ mod tests {
         )
         .expect("expected source list output");
         assert_snapshot!(output.lines.join("\n"));
+    }
+
+    #[test]
+    fn render_source_list_output_recommends_provider_discovery_when_empty() {
+        let output = render_source_list_output(
+            SourceListPayload {
+                sources: Vec::new(),
+                page: PageInfo {
+                    next_cursor: None,
+                    returned_count: 0,
+                },
+            },
+            &ListReadArgs::default(),
+        )
+        .expect("expected source list output");
+
+        assert_eq!(
+            output.lines,
+            vec![
+                "No connected sources found.".to_owned(),
+                "Run `onequery source providers` to view available providers.".to_owned(),
+            ]
+        );
     }
 
     #[test]

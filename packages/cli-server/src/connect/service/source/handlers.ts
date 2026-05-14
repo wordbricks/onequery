@@ -1,4 +1,10 @@
-import { safeValidateCredentials } from "@onequery/db/server";
+import { create } from "@bufbuild/protobuf";
+import type { JsonObject } from "@bufbuild/protobuf";
+import { listPublicSourceProviders } from "@onequery/db/server";
+import {
+  CliSourceProviderSchema,
+  ListSourceProvidersResponseSchema,
+} from "@onequery/proto-cli/cli/v1/source_pb";
 import { ensureConnectorOrganization } from "@onequery/server/services/connectors/broker";
 import { Result } from "better-result";
 
@@ -32,15 +38,13 @@ import type { CliResultServiceMethod, CliServiceResult } from "../result";
 import { cliServiceErr, liftCliServiceMethod } from "../result";
 import { fromCliSourceProvider } from "../source-provider";
 import type { CliHonoContext, CliServiceMethod } from "../types";
-import {
-  createCliConnectSourceValidationError,
-  parseConnectSourceCredentials,
-} from "./credentials";
+import { parseConnectSourceCredentials } from "./credentials";
 import {
   buildCliSource,
   buildGetSourceResponse,
   buildTestSourceResponse,
   toCliContentFormat,
+  toCliSourceInterface,
 } from "./response";
 import type {
   ConnectSourceResponseInit,
@@ -88,6 +92,46 @@ const handleListSourcesImpl: CliResultServiceMethod<"listSources"> = async (
       sources: page.items.map(buildCliSource),
       page: buildCliPage(page.page),
     });
+  });
+
+const handleListSourceProvidersImpl: CliResultServiceMethod<
+  "listSourceProviders"
+> = async (request, context) =>
+  Result.gen(async function* handleListSourceProvidersFlow() {
+    const access = yield* Result.await(
+      resolveAuthorizedSourceRequestState(
+        "source.connect",
+        request.orgSlug,
+        context
+      )
+    );
+    const providers = listPublicSourceProviders();
+
+    logCliEvent({
+      details: buildCliRequestLogDetails(access.c, {
+        orgSlug: access.authorizedOrg.org.slug,
+        roles: access.authorizedOrg.membershipRoles,
+        providerCount: providers.length,
+      }),
+      event: "source.providers.listed",
+      level: "info",
+    });
+
+    return Result.ok(
+      create(ListSourceProvidersResponseSchema, {
+        providers: providers.map((provider) =>
+          create(CliSourceProviderSchema, {
+            provider: provider.id,
+            label: provider.label,
+            connectable: provider.connectable,
+            testable: provider.testable,
+            interfaces: provider.interfaces.map(toCliSourceInterface),
+            credentialType: provider.credentialType,
+            credentialExample: toJsonObject(provider.credentialExample),
+          })
+        ),
+      })
+    );
   });
 
 const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
@@ -262,19 +306,13 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
       )
     );
     const { credentials, provider } = yield* parseConnectSourceCredentials(
+      request.provider,
       request.credentials
     );
-    const parsedCredentials = safeValidateCredentials(credentials);
-    if (!parsedCredentials.success) {
-      return createCliConnectSourceValidationError(parsedCredentials.error);
-    }
 
-    if (
-      credentials.type === "aws_athena_connector" &&
-      parsedCredentials.data.type === "aws_athena_connector"
-    ) {
+    if (credentials.type === "aws_athena_connector") {
       const organizationCheck = await ensureConnectorOrganization({
-        connectorId: parsedCredentials.data.connectorId,
+        connectorId: credentials.connectorId,
         db: access.c.var.storage.db,
         organizationId: access.authorizedOrg.org.id,
       });
@@ -289,7 +327,7 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
     const result = await runCliConnectSourceEffect({
       db: access.c.var.storage.db,
       effect: {
-        credentials: parsedCredentials.data,
+        credentials,
         kind: "connect_source",
         name: request.sourceKey,
         organizationId: access.authorizedOrg.org.id,
@@ -324,6 +362,10 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
   });
 
 export const handleListSources = liftCliServiceMethod(handleListSourcesImpl);
+
+export const handleListSourceProviders = liftCliServiceMethod(
+  handleListSourceProvidersImpl
+);
 
 export const handleGetSource = liftCliServiceMethod(handleGetSourceImpl);
 
@@ -361,4 +403,8 @@ async function resolveAuthorizedSourceRequestState(
       c: requestContext.honoContext,
     });
   });
+}
+
+function toJsonObject(value: Record<string, unknown>): JsonObject {
+  return JSON.parse(JSON.stringify(value)) as JsonObject;
 }

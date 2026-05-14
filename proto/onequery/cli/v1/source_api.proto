@@ -5,7 +5,6 @@ package onequery.cli.v1;
 
 import "buf/validate/validate.proto";
 import "google/protobuf/struct.proto";
-import "onequery/cli/v1/source.proto";
 
 message DescribeSourceApiRequest {
   string org_slug = 1 [
@@ -253,10 +252,11 @@ message CliSourceApiSource {
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
   ];
-  SourceProvider provider = 2 [
+  string provider = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
   string display_name = 3 [
     (buf.validate.field).string.min_len = 1,

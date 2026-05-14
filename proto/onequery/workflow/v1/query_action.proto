@@ -177,10 +177,11 @@ message QueryActionRecordValidatePreparationSourceNotFoundCommand {
 }
 
 message QueryActionRecordValidatePreparationQueryInterfaceMissingCommand {
-  WorkflowSourceProvider provider = 1 [
+  string provider = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
   WorkflowDataSourceStatus source_status = 2 [
     (buf.validate.field).required = true,
@@ -233,10 +234,11 @@ message QueryActionRecordExecutePreparationSourceNotFoundCommand {
 }
 
 message QueryActionRecordExecutePreparationQueryInterfaceMissingCommand {
-  WorkflowSourceProvider provider = 1 [
+  string provider = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
   WorkflowDataSourceStatus source_status = 2 [
     (buf.validate.field).required = true,
@@ -273,10 +275,11 @@ message QueryActionSourceNotFoundEvent {
 }
 
 message QueryActionSourceQueryInterfaceMissingEvent {
-  WorkflowSourceProvider provider = 1 [
+  string provider = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
   WorkflowDataSourceStatus source_status = 2 [
     (buf.validate.field).required = true,
@@ -436,10 +439,11 @@ message QueryActionSourceDescriptor {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255
   ];
-  WorkflowSourceProvider provider = 4 [
+  string provider = 4 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
   string source_id = 5 [
     (buf.validate.field).required = true,
@@ -485,10 +489,11 @@ message QueryActionQuerySourceRecord {
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255
   ];
-  WorkflowSourceProvider provider = 3 [
+  string provider = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).enum.not_in = 0,
-    (buf.validate.field).enum.defined_only = true
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
   ];
   string source_key = 4 [
     (buf.validate.field).required = true,

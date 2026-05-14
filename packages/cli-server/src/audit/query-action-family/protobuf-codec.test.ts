@@ -1,8 +1,5 @@
 import { create, toBinary } from "@bufbuild/protobuf";
-import {
-  WorkflowDataSourceStatus,
-  WorkflowSourceProvider,
-} from "@onequery/proto-workflow/workflow/v1/common_pb";
+import { WorkflowDataSourceStatus } from "@onequery/proto-workflow/workflow/v1/common_pb";
 import {
   QueryActionCommandPayloadSchema,
   QueryActionEventPayloadSchema,
@@ -594,7 +591,7 @@ describe("query action protobuf codec", () => {
                   rows: [],
                   source: create(QueryActionQuerySourceRecordSchema, {
                     displayName: "Warehouse",
-                    provider: WorkflowSourceProvider.POSTGRES,
+                    provider: "postgres",
                     sourceId: "source_1",
                     sourceKey: "warehouse",
                     sourceStatus: WorkflowDataSourceStatus.ACTIVE,
@@ -709,7 +706,7 @@ describe("query action protobuf codec", () => {
             value: create(
               QueryActionRecordValidatePreparationQueryInterfaceMissingCommandSchema,
               {
-                provider: WorkflowSourceProvider.POSTGRES,
+                provider: "postgres",
                 sourceStatus: WorkflowDataSourceStatus.UNSPECIFIED,
               }
             ),

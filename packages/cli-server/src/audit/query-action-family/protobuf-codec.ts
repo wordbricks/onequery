@@ -1,10 +1,8 @@
 import { create, isFieldSet } from "@bufbuild/protobuf";
 import { durationFromMs, durationMs } from "@bufbuild/protobuf/wkt";
+import { isSourceProviderId } from "@onequery/db/server";
 import type { DataSourceStatus, ProviderType } from "@onequery/db/server";
-import {
-  WorkflowDataSourceStatus,
-  WorkflowSourceProvider,
-} from "@onequery/proto-workflow/workflow/v1/common_pb";
+import { WorkflowDataSourceStatus } from "@onequery/proto-workflow/workflow/v1/common_pb";
 import {
   QueryActionCommandPayloadSchema,
   QueryActionCredentialsLoadedEventSchema,
@@ -1246,81 +1244,14 @@ function fromQueryLogicalType(
 }
 
 function toWorkflowSourceProvider(provider: ProviderType) {
-  switch (provider) {
-    case "postgres":
-      return WorkflowSourceProvider.POSTGRES;
-    case "supabase":
-      return WorkflowSourceProvider.SUPABASE;
-    case "mysql":
-      return WorkflowSourceProvider.MYSQL;
-    case "mongodb":
-      return WorkflowSourceProvider.MONGODB;
-    case "bigquery":
-      return WorkflowSourceProvider.BIGQUERY;
-    case "laminar":
-      return WorkflowSourceProvider.LAMINAR;
-    case "aws_athena_connector":
-      return WorkflowSourceProvider.AWS_ATHENA_CONNECTOR;
-    case "ga":
-      return WorkflowSourceProvider.GOOGLE_ANALYTICS;
-    case "amplitude":
-      return WorkflowSourceProvider.AMPLITUDE;
-    case "mixpanel":
-      return WorkflowSourceProvider.MIXPANEL;
-    case "posthog":
-      return WorkflowSourceProvider.POSTHOG;
-    case "sentry":
-      return WorkflowSourceProvider.SENTRY;
-    case "github":
-      return WorkflowSourceProvider.GITHUB;
-    case "linear":
-      return WorkflowSourceProvider.LINEAR;
-    case "cloudflare_workers_observability":
-      return WorkflowSourceProvider.CLOUDFLARE_WORKERS_OBSERVABILITY;
-    default:
-      return assertNever(provider);
-  }
+  return provider;
 }
 
-function fromWorkflowSourceProvider(
-  provider: WorkflowSourceProvider
-): ProviderType {
-  switch (provider) {
-    case WorkflowSourceProvider.POSTGRES:
-      return "postgres";
-    case WorkflowSourceProvider.SUPABASE:
-      return "supabase";
-    case WorkflowSourceProvider.MYSQL:
-      return "mysql";
-    case WorkflowSourceProvider.MONGODB:
-      return "mongodb";
-    case WorkflowSourceProvider.BIGQUERY:
-      return "bigquery";
-    case WorkflowSourceProvider.LAMINAR:
-      return "laminar";
-    case WorkflowSourceProvider.AWS_ATHENA_CONNECTOR:
-      return "aws_athena_connector";
-    case WorkflowSourceProvider.GOOGLE_ANALYTICS:
-      return "ga";
-    case WorkflowSourceProvider.AMPLITUDE:
-      return "amplitude";
-    case WorkflowSourceProvider.MIXPANEL:
-      return "mixpanel";
-    case WorkflowSourceProvider.POSTHOG:
-      return "posthog";
-    case WorkflowSourceProvider.SENTRY:
-      return "sentry";
-    case WorkflowSourceProvider.GITHUB:
-      return "github";
-    case WorkflowSourceProvider.LINEAR:
-      return "linear";
-    case WorkflowSourceProvider.CLOUDFLARE_WORKERS_OBSERVABILITY:
-      return "cloudflare_workers_observability";
-    case WorkflowSourceProvider.UNSPECIFIED:
-      throw new Error("workflow source provider is unspecified");
-    default:
-      throw new Error(`unsupported workflow source provider: ${provider}`);
+function fromWorkflowSourceProvider(provider: string): ProviderType {
+  if (isSourceProviderId(provider)) {
+    return provider;
   }
+  throw new Error(`unsupported workflow source provider: ${provider}`);
 }
 
 function toWorkflowDataSourceStatus(status: DataSourceStatus) {
