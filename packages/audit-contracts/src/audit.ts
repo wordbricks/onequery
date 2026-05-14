@@ -284,6 +284,7 @@ export type AuditTarget = z.infer<typeof auditTargetSchema>;
 export const auditQueryActionMetricsSchema = z
   .object({
     elapsedMs: z.number().int().nullable(),
+    estimatedCostUsd: z.number().finite().nonnegative().nullable().optional(),
     rowCount: z.number().int().nullable(),
   })
   .strict();

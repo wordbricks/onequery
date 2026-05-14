@@ -411,6 +411,6 @@ async function dispatchStartSourceApiWorkflow(
     db: input.c.var.storage.db,
     organizationId: input.organizationId,
     requestId: input.requestId,
-    surface: "cli",
+    surface: input.surface ?? "cli",
   });
 }
