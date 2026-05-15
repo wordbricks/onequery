@@ -332,7 +332,7 @@ export async function listAuditFeedPage(input: {
   organizationId: string;
   params: AuditListParams;
 }): Promise<AuditListResponse> {
-  await syncAuditFeedProjection(input.db);
+  await syncAuditFeedProjection(input.db, { family: input.params.family });
   const checkpointSnapshot = await loadAuditProjectionCheckpointSnapshot(
     input.db
   );

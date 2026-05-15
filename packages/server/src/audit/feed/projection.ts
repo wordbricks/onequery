@@ -646,18 +646,25 @@ async function advanceSourceApiActionProjectionBatch(db: DatabaseExecutor) {
   return true;
 }
 
-export async function syncAuditFeedProjection(db: Database): Promise<void> {
+export async function syncAuditFeedProjection(
+  db: Database,
+  options: { family?: WorkflowFamily } = {}
+): Promise<void> {
   for (
     let batchIndex = 0;
     batchIndex < AUDIT_PROJECTION_MAX_BATCHES_PER_REQUEST;
     batchIndex += 1
   ) {
-    const queryAdvanced = await db.transaction((tx) =>
-      advanceQueryActionProjectionBatch(tx)
-    );
-    const sourceAdvanced = await db.transaction((tx) =>
-      advanceSourceApiActionProjectionBatch(tx)
-    );
+    const queryAdvanced =
+      options.family === undefined || options.family === "query_action"
+        ? await db.transaction((tx) => advanceQueryActionProjectionBatch(tx))
+        : false;
+    const sourceAdvanced =
+      options.family === undefined || options.family === "source_api_action"
+        ? await db.transaction((tx) =>
+            advanceSourceApiActionProjectionBatch(tx)
+          )
+        : false;
 
     if (!queryAdvanced && !sourceAdvanced) {
       break;

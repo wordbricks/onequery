@@ -524,7 +524,7 @@ export async function getAuditActionDetail(input: {
   family: AuditFamily;
   organizationId: string;
 }): Promise<AuditActionDetail | null> {
-  await syncAuditFeedProjection(input.db);
+  await syncAuditFeedProjection(input.db, { family: input.family });
 
   if (input.family === "query_action") {
     return loadQueryActionDetail(input);
