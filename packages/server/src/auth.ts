@@ -37,6 +37,16 @@ type DbInstance = ReturnType<typeof createDb>;
 // Comment: Keep this value aligned with the Rust CLI constant in
 // apps/cli/crates/onequery-cli/src/transport/auth.rs.
 const CLI_DEVICE_AUTH_CLIENT_ID = "onequery-cli";
+const SECONDS_PER_MINUTE = 60;
+const SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
+const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
+const AUTH_SESSION_REFRESH_INTERVAL_DAYS = 8;
+const AUTH_SESSION_EXPIRES_IN_DAYS = AUTH_SESSION_REFRESH_INTERVAL_DAYS + 1;
+const AUTH_SESSION_UPDATE_AGE_SECONDS =
+  AUTH_SESSION_REFRESH_INTERVAL_DAYS * SECONDS_PER_DAY;
+const AUTH_SESSION_EXPIRES_IN_SECONDS =
+  AUTH_SESSION_EXPIRES_IN_DAYS * SECONDS_PER_DAY;
+const AUTH_SESSION_COOKIE_CACHE_MAX_AGE_SECONDS = 15 * SECONDS_PER_MINUTE;
 
 // ============================================================================
 // Database-Backed Session Cache Configuration
@@ -48,6 +58,9 @@ const CLI_DEVICE_AUTH_CLIENT_ID = "onequery-cli";
 // 1. Cookie cache (JWE encrypted) - serves cached session reads for 15 minutes
 // 2. Database - source of truth after cache expiry and for server-side session
 //    lifecycle operations
+//
+// Auth sessions follow Codex's 8-day refresh cadence. Better Auth still needs
+// an explicit expiry, so keep a one-day grace window beyond the refresh interval.
 //
 // Trade-off: Revoked sessions may remain active until the cookie cache expires.
 // The cookie cache version only invalidates cached payloads, not database
@@ -99,11 +112,11 @@ export function createAuth(config: AuthConfig) {
     // Database-backed session cache: encrypted cookie payloads avoid most
     // session reads while revocation still lives in the database.
     session: {
-      expiresIn: 60 * 60 * 24 * 7, // 7 days
-      updateAge: 60 * 60 * 24, // 1 day
+      expiresIn: AUTH_SESSION_EXPIRES_IN_SECONDS,
+      updateAge: AUTH_SESSION_UPDATE_AGE_SECONDS,
       cookieCache: {
         enabled: true,
-        maxAge: 15 * 60, // 15 minutes - security/performance balance (SuperAdmin consideration)
+        maxAge: AUTH_SESSION_COOKIE_CACHE_MAX_AGE_SECONDS,
         strategy: "jwe", // Encrypted session data (hidden from client)
         version: "1", // Increment to invalidate cached session payloads on deploy
       },

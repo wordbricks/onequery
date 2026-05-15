@@ -3,7 +3,7 @@ export const CLI_DEVICE_AUTH_CODE_PATH = "/api/auth/device/code";
 export const CLI_DEVICE_AUTH_TOKEN_PATH = "/api/auth/device/token";
 export const CLI_DEVICE_AUTH_GRANT_TYPE =
   "urn:ietf:params:oauth:grant-type:device_code";
-export const CLI_DEFAULT_LOGIN_TIMEOUT_SEC = 180;
+export const CLI_DEFAULT_LOGIN_TIMEOUT_SEC = 15 * 60;
 export const CLI_DEFAULT_POLL_AFTER_MS = 5_000;
 const CLI_DEVICE_AUTH_SLOW_DOWN_INCREMENT_MS = 5_000;
 
