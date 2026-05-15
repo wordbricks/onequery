@@ -112,4 +112,62 @@ describe("audit feed projection", () => {
     expect(error.message).toContain("payloadType=start_execute");
     expect(error.message).not.toContain(rawCommandBody);
   });
+
+  it("does not advance unrelated audit families when a family filter is provided", async () => {
+    const db = pgliteTestDb;
+
+    const actionId = "source_api_action_corrupt_payload";
+    const commandId = "source_api_command_corrupt_payload";
+    const eventId = "source_api_event_corrupt_payload";
+    const commitId = "source_api_commit_corrupt_payload";
+
+    await db.insert(organization).values({
+      id: "org_audit_feed_family_filter",
+      name: "Audit Feed Family Filter Test",
+      slug: "audit-feed-family-filter-test",
+    });
+    await db.insert(workflowJournal).values({
+      actorSnapshotJson: {
+        authMode: "api_key",
+        email: "owner@example.com",
+        membershipRoles: ["owner"],
+        userId: "user_audit_feed_family_filter",
+      },
+      causedByEventId: null,
+      commandInvocationId: `${actionId}:start_describe`,
+      commitId,
+      entryKind: "command",
+      family: "source_api_action",
+      id: commandId,
+      occurredAt: new Date("2026-04-26T01:00:00.000Z"),
+      organizationId: "org_audit_feed_family_filter",
+      payloadBytes: Buffer.from([0xff]),
+      payloadType: "start_describe",
+      requestId: "request_audit_feed_family_filter",
+      streamId: actionId,
+      streamPosition: 1,
+      surface: "cli",
+    });
+    await db.insert(workflowJournal).values({
+      commitId,
+      entryKind: "event",
+      eventId,
+      eventType: "action_received",
+      family: "source_api_action",
+      id: eventId,
+      occurredAt: new Date("2026-04-26T01:00:00.000Z"),
+      organizationId: "org_audit_feed_family_filter",
+      payloadBytes: Buffer.from([0xff]),
+      payloadType: "action_received",
+      streamId: actionId,
+      streamPosition: 2,
+    });
+
+    await expect(
+      syncAuditFeedProjection(db, { family: "query_action" })
+    ).resolves.toBeUndefined();
+    await expect(
+      syncAuditFeedProjection(db, { family: "source_api_action" })
+    ).rejects.toBeInstanceOf(AuditFeedProjectionCorruptPayloadError);
+  });
 });

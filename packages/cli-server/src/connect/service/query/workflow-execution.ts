@@ -95,26 +95,36 @@ function scheduleQueryUsagePersistenceFollowUp(input: {
   >["decision"];
   input: CliQueryExecutionWorkflowInput;
 }) {
-  setTimeout(() => {
-    void runQueryUsagePersistenceStep({
+  const createWork = () =>
+    runQueryUsagePersistenceStep({
       actorSnapshot: input.input.actorSnapshot,
       currentDecision: input.executionDecision,
       db: input.input.db,
       dispatch: input.input.dispatch,
       organizationId: input.input.org.id,
       requestId: input.input.requestId,
-    }).catch((error: unknown) => {
-      logCliEvent({
-        details: {
-          error: toCliErrorMessage(error),
-          organizationId: input.input.org.id,
-          requestId: input.input.requestId,
-          sourceName: input.input.sourceName,
-        },
-        event: "cli.query.usage_persistence_followup_failed",
-        level: "warn",
+    })
+      .then(() => undefined)
+      .catch((error: unknown) => {
+        logCliEvent({
+          details: {
+            error: toCliErrorMessage(error),
+            organizationId: input.input.org.id,
+            requestId: input.input.requestId,
+            sourceName: input.input.sourceName,
+          },
+          event: "cli.query.usage_persistence_followup_failed",
+          level: "warn",
+        });
       });
-    });
+
+  if (input.input.scheduleUsagePersistenceFollowUp) {
+    input.input.scheduleUsagePersistenceFollowUp(createWork());
+    return;
+  }
+
+  setTimeout(() => {
+    void createWork();
   }, 0);
 }
 

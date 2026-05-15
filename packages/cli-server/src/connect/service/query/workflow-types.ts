@@ -40,6 +40,7 @@ export type QueryWorkflowRuntimeBaseInput = {
   org: AccessibleCliOrg;
   requestId: string;
   resourceCache?: QueryWorkflowResourceCache;
+  scheduleUsagePersistenceFollowUp?: (work: Promise<void>) => void;
   sourceName: string;
   sql: string;
   surface?: WorkflowSurface;
