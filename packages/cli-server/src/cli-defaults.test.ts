@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CLI_DEFAULT_LOGIN_TIMEOUT_SEC,
   CLI_DEFAULT_POLL_AFTER_MS,
   CLI_DEFAULT_RELAY_TIMEOUT_MS,
   buildCliSourceConnectCommand,
@@ -24,6 +25,7 @@ describe("cli defaults", () => {
   });
 
   it("keeps device authorization polling defaults in milliseconds", () => {
+    expect(CLI_DEFAULT_LOGIN_TIMEOUT_SEC).toBe(15 * 60);
     expect(CLI_DEFAULT_POLL_AFTER_MS).toBe(5_000);
     expect(deviceAuthorizationPollAfterMs()).toBe(5_000);
     expect(deviceAuthorizationPollAfterMs(9)).toBe(9_000);

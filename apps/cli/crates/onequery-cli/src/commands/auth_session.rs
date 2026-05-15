@@ -26,6 +26,7 @@ use super::CommandContext;
 use super::Runtime;
 
 const SESSION_REFRESH_SKEW: time::Duration = time::Duration::minutes(5);
+const SESSION_PROACTIVE_REFRESH_INTERVAL: time::Duration = time::Duration::days(8);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct PersistedLogin {
@@ -321,15 +322,27 @@ async fn execute_auth_session_effect<B, T>(
 }
 
 fn auth_session_refresh_required<B, T>(runtime: &Runtime<B, T>) -> bool {
-    let Some(expires_at) = runtime.auth_session.metadata().expires_at() else {
+    let now = OffsetDateTime::now_utc();
+
+    if let Some(expires_at) = runtime.auth_session.metadata().expires_at() {
+        let Ok(expires_at) = OffsetDateTime::parse(expires_at, &Rfc3339) else {
+            return true;
+        };
+
+        if expires_at <= now + SESSION_REFRESH_SKEW {
+            return true;
+        }
+    }
+
+    let Some(last_refresh) = runtime.auth_session.metadata().last_refresh() else {
         return false;
     };
 
-    let Ok(expires_at) = OffsetDateTime::parse(expires_at, &Rfc3339) else {
+    let Ok(last_refresh) = OffsetDateTime::parse(last_refresh, &Rfc3339) else {
         return true;
     };
 
-    expires_at <= OffsetDateTime::now_utc() + SESSION_REFRESH_SKEW
+    last_refresh <= now - SESSION_PROACTIVE_REFRESH_INTERVAL
 }
 
 pub(crate) fn authenticated_api_client<B, T>(
@@ -457,6 +470,7 @@ mod tests {
     use crate::config::AppConfig;
     use crate::config::ConfigStore;
     use crate::credentials::AuthSessionStore;
+    use crate::credentials::ImportedAuthSession;
     use crate::platform::BrowserLaunchError;
     use crate::platform::BrowserLauncher;
     use crate::platform::Terminal;
@@ -770,6 +784,74 @@ mod tests {
             });
 
         assert_eq!(runtime.auth_session.access_token(), Some("token_current"));
+    }
+
+    #[tokio::test]
+    async fn ensure_authenticated_refreshes_after_codex_style_refresh_interval() {
+        let listener =
+            TcpListener::bind("127.0.0.1:0").expect("expected test TCP listener to bind");
+        let address = listener
+            .local_addr()
+            .expect("expected test listener address");
+
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener
+                .accept()
+                .expect("expected CLI request to connect to test listener");
+
+            let mut request_bytes = Vec::new();
+            let mut chunk = [0_u8; 1024];
+            loop {
+                let read = stream
+                    .read(&mut chunk)
+                    .expect("expected request bytes from CLI");
+                if read == 0 {
+                    break;
+                }
+
+                request_bytes.extend_from_slice(&chunk[..read]);
+                if request_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
+                    break;
+                }
+            }
+
+            let response_body = refresh_session_response_body(
+                "token_refreshed",
+                Some("acme"),
+                1_773_187_200,
+                1_773_792_000,
+            );
+            write_proto_response(&mut stream, "req_refresh", &response_body)
+                .expect("expected proto response write to CLI");
+        });
+
+        let context = test_context(format!("http://{address}"), "onequery org list");
+        let credentials_path = std::env::temp_dir()
+            .join(format!("onequery-auth-session-{}", Uuid::new_v4()))
+            .join("auth.json");
+        let mut auth_session =
+            AuthSessionStore::with_file_access_token_for_test(credentials_path, None);
+        auth_session
+            .persist_imported_session(
+                &ImportedAuthSession {
+                    user_id: "user-1".to_owned(),
+                    email: "alice@example.com".to_owned(),
+                    display_name: Some("Alice".to_owned()),
+                    access_token: "token_stale".to_owned(),
+                    issued_at: Some("2026-03-10T00:00:00Z".to_owned()),
+                    expires_at: Some("2099-03-17T00:00:00Z".to_owned()),
+                    last_refresh: Some("2000-03-10T00:00:00Z".to_owned()),
+                },
+                "onequery auth import --input -",
+            )
+            .unwrap_or_else(|error| panic!("expected stale auth session persistence: {error}"));
+        let mut runtime = test_runtime(auth_session);
+
+        ensure_authenticated(&context, &mut runtime)
+            .await
+            .unwrap_or_else(|error| panic!("expected auth session workflow to refresh: {error}"));
+
+        assert_eq!(runtime.auth_session.access_token(), Some("token_refreshed"));
     }
 
     #[tokio::test]
