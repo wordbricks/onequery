@@ -297,6 +297,13 @@ describe("query workflow audit runtime", () => {
       kind: "found",
       source,
     } satisfies CliLoadSourceEffectResult);
+    const executeSql = vi.fn(
+      async (): Promise<CliQueryExecutionResult> => ({
+        elapsedMs: 12,
+        kind: "succeeded",
+        rows: [{ answer: 42 }],
+      })
+    );
     const resourceCache = createQueryWorkflowResourceCache({
       organizationId: org.id,
       sourceKey: source.sourceKey,
@@ -310,11 +317,7 @@ describe("query workflow audit runtime", () => {
       actorSnapshot,
       db,
       dispatch: {
-        executeSql: async (): Promise<CliQueryExecutionResult> => ({
-          elapsedMs: 12,
-          kind: "succeeded",
-          rows: [{ answer: 42 }],
-        }),
+        executeSql,
         loadCredentials: async (): Promise<CliLoadCredentialsEffectResult> => ({
           credentials: fakeCredentials,
           kind: "credentials_loaded",
@@ -366,6 +369,12 @@ describe("query workflow audit runtime", () => {
 
     expect(persistUsage).toHaveBeenCalledTimes(1);
     expect(loadSource).not.toHaveBeenCalled();
+    expect(executeSql).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionId: actionRow?.id,
+        requestId: "req-execute-1",
+      })
+    );
     expect(commandRows.map((row) => row.payloadType)).toEqual([
       "start_execute",
       "record_execute_preparation_succeeded",
