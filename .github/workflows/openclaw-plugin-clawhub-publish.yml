@@ -1,0 +1,37 @@
+name: OpenClaw Plugin ClawHub Publish
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/openclaw-plugin-clawhub-publish.yml"
+      - "packages/openclaw-plugin/**"
+  workflow_dispatch:
+  push:
+    tags:
+      - "openclaw-plugin-v*.*.*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dry-run:
+    if: github.event_name == 'pull_request'
+    uses: openclaw/clawhub/.github/workflows/package-publish.yml@v0.15.0
+    with:
+      dry_run: true
+      owner: onequery
+      source_path: packages/openclaw-plugin
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/openclaw-plugin-v')
+    permissions:
+      contents: read
+      id-token: write
+    uses: openclaw/clawhub/.github/workflows/package-publish.yml@v0.15.0
+    with:
+      dry_run: false
+      owner: onequery
+      source_path: packages/openclaw-plugin
+    secrets:
+      clawhub_token: ${{ secrets.CLAWHUB_TOKEN }}

@@ -19,6 +19,7 @@
     "directory": "packages/openclaw-plugin"
   },
   "files": [
+    "dist",
     "src/index.ts",
     "src/openclaw.d.ts",
     "README.md",
@@ -32,13 +33,15 @@
     ".": {
       "types": "./src/index.ts",
       "bun": "./src/index.ts",
-      "default": "./src/index.ts"
+      "default": "./dist/index.js"
     }
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
+    "prepack": "bun run build",
+    "build": "bun build src/index.ts --outdir dist --target node --format esm",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -46,6 +49,9 @@
   "openclaw": {
     "extensions": [
       "./src/index.ts"
+    ],
+    "runtimeExtensions": [
+      "./dist/index.js"
     ],
     "compat": {
       "pluginApi": ">=2026.4.10",
