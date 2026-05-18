@@ -16,6 +16,7 @@ openclaw plugins enable onequery
 From a checkout of this repository:
 
 ```bash
+bun run --cwd packages/openclaw-plugin build
 openclaw plugins install -l ./packages/openclaw-plugin
 openclaw plugins enable onequery
 ```
@@ -34,6 +35,13 @@ Then enable the plugin in `openclaw.json`:
 
 Start a new session after enabling the plugin so OpenClaw reloads the bundled
 skill.
+
+## Publish
+
+GitHub Actions runs a ClawHub dry-run for pull requests that touch this package.
+Pushing an `openclaw-plugin-v*.*.*` tag or running the publish workflow manually
+publishes to the `@onequery` ClawHub owner. Tag-triggered publishes need the
+`CLAWHUB_TOKEN` repository secret.
 
 ## Requirements
 
