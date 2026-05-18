@@ -248,3 +248,16 @@ jobs:
           fi
 
           exit "${publish_status}"
+
+  publish-clawhub:
+    needs: [tag-check, publish-npm]
+    permissions:
+      contents: read
+      id-token: write
+    uses: openclaw/clawhub/.github/workflows/package-publish.yml@v0.15.0
+    with:
+      dry_run: false
+      owner: onequery
+      source_path: packages/openclaw-plugin
+    secrets:
+      clawhub_token: ${{ secrets.CLAWHUB_TOKEN }}

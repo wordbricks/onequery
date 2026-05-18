@@ -39,9 +39,9 @@ skill.
 ## Publish
 
 GitHub Actions runs a ClawHub dry-run for pull requests that touch this package.
-Pushing an `openclaw-plugin-v*.*.*` tag or running the publish workflow manually
-publishes to the `@onequery` ClawHub owner. Tag-triggered publishes need the
-`CLAWHUB_TOKEN` repository secret.
+Pushing an `openclaw-plugin-v*.*.*` tag runs the OpenClaw plugin release workflow,
+which publishes the npm package first and then publishes to the `@onequery`
+ClawHub owner. ClawHub publishes need the `CLAWHUB_TOKEN` repository secret.
 
 ## Requirements
 
