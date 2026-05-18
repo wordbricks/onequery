@@ -17,6 +17,9 @@ concurrency:
 jobs:
   dry-run:
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      id-token: write
     uses: openclaw/clawhub/.github/workflows/package-publish.yml@v0.15.0
     with:
       dry_run: true
