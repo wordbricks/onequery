@@ -8,17 +8,16 @@ Use this skill when the user wants company or customer data that should be read
 through OneQuery-managed access, or when you need to resolve org and source
 context before a bounded query.
 
-Use OpenClaw's `exec` tool to run the `onequery` CLI directly. Prefer
-`--json` so the result stays structured.
+Use OpenClaw's `exec` tool to run the `onequery` CLI directly.
 
 Use these commands in this order:
 
-1. `onequery auth whoami --json`
-2. `onequery org current --json` or `onequery org list --json --page-size 25`
-3. `onequery source list --org <org> --json --page-size 25`
-4. `onequery source show <source> --org <org> --json`
-5. `onequery query validate --org <org> --source <source> --json --sql '<sql>' --max-rows 100 --max-bytes 1048576 --cell-max-chars 2000 --timeout-ms 60000`
-6. `onequery query exec --org <org> --source <source> --json --sql '<sql>' --max-rows 100 --max-bytes 1048576 --cell-max-chars 2000 --timeout-ms 60000`
+1. `onequery auth whoami`
+2. `onequery org current` or `onequery org list --page-size 25`
+3. `onequery source list --org <org> --page-size 25`
+4. `onequery source show <source> --org <org>`
+5. `onequery query validate --org <org> --source <source> --sql '<sql>' --max-rows 100 --max-bytes 1048576 --cell-max-chars 2000 --timeout-ms 60000`
+6. `onequery query exec --org <org> --source <source> --sql '<sql>' --max-rows 100 --max-bytes 1048576 --cell-max-chars 2000 --timeout-ms 60000`
 
 Rules:
 
@@ -48,9 +47,9 @@ Rules:
 
 Recovery:
 
-- Auth issues: rerun `onequery auth whoami --json`, then ask the user to
-  refresh the OneQuery CLI session if needed.
-- Org ambiguity: `onequery org list --json --page-size 25`
-- Source ambiguity: `onequery source list --org <org> --json --page-size 25`,
-  then `onequery source show <source> --org <org> --json`
+- Auth issues: rerun `onequery auth whoami`, then ask the user to refresh the
+  OneQuery CLI session if needed.
+- Org ambiguity: `onequery org list --page-size 25`
+- Source ambiguity: `onequery source list --org <org> --page-size 25`, then
+  `onequery source show <source> --org <org>`
 - SQL shape issues: `onequery query validate ...`

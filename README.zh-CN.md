@@ -113,21 +113,38 @@ npx skills add https://github.com/wordbricks/skills --skill onequery-cli -y
 
 ## OpenClaw 插件
 
-从 npm 安装：
+OpenClaw 插件会打包 `onequery-openclaw` skill，让 Agent 通过 OpenClaw 内置的
+`exec` 工具直接调用 `onequery` CLI。
+
+显式从 ClawHub 安装：
+
+```bash
+openclaw plugins install clawhub:@onequery/openclaw-plugin
+openclaw plugins enable onequery
+```
+
+从 npm 安装（对于这种 bare package spec，OpenClaw 也会先查 ClawHub，再回退到 npm）：
 
 ```bash
 openclaw plugins install @onequery/openclaw-plugin
 openclaw plugins enable onequery
 ```
 
-从本仓库安装：
+从本仓库源码安装：
 
 ```bash
+bun run --cwd packages/openclaw-plugin build
 openclaw plugins install -l ./packages/openclaw-plugin
 openclaw plugins enable onequery
 ```
 
-然后在 `openclaw.json` 里启用：
+如果你想先用独立的 ClawHub CLI 查看已发布包：
+
+```bash
+clawhub package inspect @onequery/openclaw-plugin
+```
+
+如果你的环境会把插件条目持久化到 `openclaw.json`，也请确认这里是启用状态：
 
 ```json5
 {
@@ -138,6 +155,8 @@ openclaw plugins enable onequery
   }
 }
 ```
+
+启用后请开启一个新的会话，这样 OpenClaw 才会重新加载打包进来的 skill。
 
 ## Hermes
 
