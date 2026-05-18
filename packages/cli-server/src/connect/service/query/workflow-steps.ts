@@ -402,6 +402,7 @@ export async function runQueryExecutionStep(input: {
       });
 
       const executionResult = await input.dispatch.executeSql({
+        actionId: input.currentDecision.actionId,
         clientTimeoutMs: input.timeoutMs,
         credentials: queryCredentials,
         kind: "execute_sql",

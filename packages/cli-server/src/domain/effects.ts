@@ -121,6 +121,7 @@ export type CliValidateQueryEffectResult =
 
 export type CliExecuteSqlEffect = {
   kind: "execute_sql";
+  actionId: string;
   requestId: string;
   source: CliQuerySourceRecord;
   credentials: DatabaseCredentials;
