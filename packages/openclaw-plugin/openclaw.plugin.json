@@ -2,7 +2,7 @@
   "id": "onequery",
   "name": "OneQuery",
   "description": "Bundles the onequery-openclaw skill for direct OneQuery CLI usage",
-  "version": "0.0.0",
+  "version": "0.1.4",
   "skills": ["./skills"],
   "configSchema": {
     "type": "object",
