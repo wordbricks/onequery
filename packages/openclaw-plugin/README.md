@@ -6,7 +6,17 @@ instead of registering a separate wrapper tool surface.
 
 ## Install
 
-From npm:
+This plugin bundles the `onequery-openclaw` skill. It does not add custom
+runtime tools or plugin-specific config.
+
+From ClawHub explicitly:
+
+```bash
+openclaw plugins install clawhub:@onequery/openclaw-plugin
+openclaw plugins enable onequery
+```
+
+From npm (OpenClaw also checks ClawHub first for bare package specs):
 
 ```bash
 openclaw plugins install @onequery/openclaw-plugin
@@ -16,11 +26,20 @@ openclaw plugins enable onequery
 From a checkout of this repository:
 
 ```bash
+bun run --cwd packages/openclaw-plugin build
 openclaw plugins install -l ./packages/openclaw-plugin
 openclaw plugins enable onequery
 ```
 
-Then enable the plugin in `openclaw.json`:
+If you want to inspect or validate the published package through the separate
+ClawHub CLI first:
+
+```bash
+clawhub package inspect @onequery/openclaw-plugin
+```
+
+If your setup persists plugin entries in `openclaw.json`, make sure the plugin
+is enabled there too:
 
 ```json5
 {
@@ -35,6 +54,25 @@ Then enable the plugin in `openclaw.json`:
 Start a new session after enabling the plugin so OpenClaw reloads the bundled
 skill.
 
+## Quick check
+
+```bash
+onequery auth whoami
+onequery org current
+```
+
+Then ask an agent something like:
+
+- "Use OneQuery to list my org sources."
+- "Use the gg source and get yesterday's DAU."
+
+## Publish
+
+GitHub Actions runs a ClawHub dry-run for pull requests that touch this package.
+Pushing an `openclaw-plugin-v*.*.*` tag runs the OpenClaw plugin release workflow,
+which publishes the npm package first and then publishes to the `@onequery`
+ClawHub owner. ClawHub publishes need the `CLAWHUB_TOKEN` repository secret.
+
 ## Requirements
 
 - `onequery` must be installed and available on `PATH`.
@@ -47,7 +85,7 @@ skill.
 - The plugin adds no custom agent tools and has no plugin-specific runtime
   config.
 - The bundled `onequery-openclaw` skill teaches the agent to run
-  `onequery ... --json` directly via `exec`.
+  `onequery ...` directly via `exec`.
 - The skill keeps the same workflow as before: resolve auth and org context,
   inspect sources, validate unfamiliar SQL first, then execute bounded
   read-only queries.

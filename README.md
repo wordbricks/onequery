@@ -113,21 +113,39 @@ npx skills add https://github.com/wordbricks/skills --skill onequery-cli -y
 
 ## OpenClaw Plugin
 
-From npm:
+The OpenClaw plugin bundles the `onequery-openclaw` skill so agents can use the
+`onequery` CLI directly through OpenClaw's built-in `exec` tool.
+
+Install from ClawHub explicitly:
+
+```bash
+openclaw plugins install clawhub:@onequery/openclaw-plugin
+openclaw plugins enable onequery
+```
+
+Install from npm (OpenClaw also checks ClawHub first for bare package specs):
 
 ```bash
 openclaw plugins install @onequery/openclaw-plugin
 openclaw plugins enable onequery
 ```
 
-From a checkout of this repository:
+Install from a checkout of this repository:
 
 ```bash
+bun run --cwd packages/openclaw-plugin build
 openclaw plugins install -l ./packages/openclaw-plugin
 openclaw plugins enable onequery
 ```
 
-Then enable the plugin in `openclaw.json`:
+If you want to inspect the published package through the separate ClawHub CLI first:
+
+```bash
+clawhub package inspect @onequery/openclaw-plugin
+```
+
+If your setup persists plugin entries in `openclaw.json`, make sure the plugin
+is enabled there too:
 
 ```json5
 {
@@ -138,6 +156,9 @@ Then enable the plugin in `openclaw.json`:
   }
 }
 ```
+
+After enabling the plugin, start a new session so OpenClaw reloads the bundled
+skill.
 
 ## Hermes
 
