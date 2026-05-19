@@ -37,7 +37,7 @@ export async function createBigQueryClient(
   };
 }
 
-async function resolveBigQueryAccessToken(
+export async function resolveBigQueryAccessToken(
   credentials: BigQueryCredentials
 ): Promise<string> {
   if (credentials.authType === "service_account") {

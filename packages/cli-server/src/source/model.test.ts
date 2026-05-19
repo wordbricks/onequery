@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { createCliSourceKey, sortCliSourceRecords } from "./model";
+import {
+  createCliSourceKey,
+  getCliSourceInterfaceTypes,
+  sortCliSourceRecords,
+} from "./model";
 
 describe("source model", () => {
   it("sorts loaded source records by source key and provider", () => {
@@ -33,5 +37,12 @@ describe("source model", () => {
 
   it("rejects traversal-style source keys when normalizing db rows", () => {
     expect(createCliSourceKey(" .. ")).toBeNull();
+  });
+
+  it("exposes BigQuery as both query and API capable", () => {
+    expect(getCliSourceInterfaceTypes("bigquery", "active")).toEqual([
+      "query",
+      "api",
+    ]);
   });
 });
