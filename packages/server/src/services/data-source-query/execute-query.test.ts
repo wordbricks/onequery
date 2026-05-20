@@ -157,6 +157,7 @@ describe("data source query execution", () => {
     expect(rows).toEqual([{ result: 1 }]);
     expect(receivedConfigs).toHaveLength(1);
     expect(receivedConfigs[0]).toMatchObject({
+      options: expect.stringContaining("default_transaction_read_only=on"),
       ssl: { rejectUnauthorized: false },
     });
   });

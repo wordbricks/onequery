@@ -120,7 +120,6 @@ function describeBigQueryDatasetEffect(
     path: "/datasets",
     query: {
       all: "true",
-      maxResults: "1000",
       ...(state.pageToken ? { pageToken: state.pageToken } : {}),
     },
   };

@@ -1,27 +1,32 @@
 import type { DatabaseCredentialProviderType } from "@onequery/db/server";
 import {
   Dialect,
-  generate,
+  ast as polyglotAst,
   init as initPolyglot,
   parse,
+  tokenize,
+  validate as validateSqlSyntax,
 } from "@polyglot-sql/sdk";
 import type * as PolyglotSdk from "@polyglot-sql/sdk";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-export const MAX_LIMIT = 1000;
 const OUTFILE_ERROR = "SELECT INTO OUTFILE/DUMPFILE is not allowed";
-const OUTFILE_PATTERN = /\bINTO\s+(OUTFILE|DUMPFILE)\b/i;
 const ERRORS = {
   cteSelectOnly: "CTEs must only contain SELECT statements",
+  unsafeFunction: (name: string) =>
+    `Side-effecting SQL functions are not allowed: ${name}`,
+  locking: "SELECT locking clauses are not allowed",
   selectInto: "SELECT INTO is not allowed",
 } as const;
 
-type Violation = (typeof ERRORS)[keyof typeof ERRORS] | typeof OUTFILE_ERROR;
+type Violation =
+  | Exclude<(typeof ERRORS)[keyof typeof ERRORS], (name: string) => string>
+  | typeof OUTFILE_ERROR
+  | ReturnType<typeof ERRORS.unsafeFunction>;
 
 type ValidationValue = {
   sql: string;
-  changed: boolean;
 };
 
 export type CliQueryValidationFailure =
@@ -38,11 +43,12 @@ export type CliQueryValidationFailure =
 type SqlValidationErrorReason =
   | "cte_must_select"
   | "empty_query"
-  | "limit_not_numeric"
+  | "locking_not_allowed"
   | "multiple_statements"
   | "non_select_query"
   | "parse_failed"
   | "parser_init_failed"
+  | "unsafe_function"
   | "select_into_not_allowed";
 
 class SqlValidationError extends TaggedError("SqlValidationError")<{
@@ -61,6 +67,156 @@ const DIALECT_MAP = {
   postgres: Dialect.PostgreSQL,
 } as const satisfies Record<DatabaseCredentialProviderType, Dialect>;
 
+const SIDE_EFFECTING_EXPRESSION_KINDS = new Set([
+  "add_partition",
+  "alter_column",
+  "alter_index",
+  "alter_sequence",
+  "alter_session",
+  "alter_set",
+  "alter_sort_key",
+  "alter_table",
+  "alter_view",
+  "analyze",
+  "analyze_delete",
+  "analyze_histogram",
+  "analyze_list_chained_rows",
+  "analyze_sample",
+  "analyze_statistics",
+  "analyze_validate",
+  "analyze_with",
+  "attach",
+  "cache",
+  "command",
+  "comment",
+  "commit",
+  "conditional_insert",
+  "copy",
+  "create_database",
+  "create_function",
+  "create_index",
+  "create_procedure",
+  "create_schema",
+  "create_sequence",
+  "create_synonym",
+  "create_table",
+  "create_task",
+  "create_trigger",
+  "create_type",
+  "create_view",
+  "declare",
+  "delete",
+  "detach",
+  "drop_database",
+  "drop_function",
+  "drop_index",
+  "drop_namespace",
+  "drop_partition",
+  "drop_procedure",
+  "drop_schema",
+  "drop_sequence",
+  "drop_table",
+  "drop_trigger",
+  "drop_type",
+  "drop_view",
+  "execute",
+  "export",
+  "grant",
+  "install",
+  "insert",
+  "kill",
+  "load_data",
+  "lock",
+  "locking_statement",
+  "merge",
+  "multitable_inserts",
+  "next_value_for",
+  "pragma",
+  "property_e_q",
+  "put",
+  "raw",
+  "refresh",
+  "rename_column",
+  "replace_partition",
+  "return_stmt",
+  "revoke",
+  "rollback",
+  "set",
+  "set_statement",
+  "transaction",
+  "truncate",
+  "truncate_table",
+  "uncache",
+  "undrop",
+  "update",
+  "use",
+]);
+
+const POSTGRES_UNSAFE_FUNCTIONS = new Set([
+  "dblink",
+  "dblink_cancel_query",
+  "dblink_close",
+  "dblink_connect",
+  "dblink_disconnect",
+  "dblink_exec",
+  "dblink_get_notify",
+  "dblink_get_pkey",
+  "dblink_get_result",
+  "dblink_is_busy",
+  "dblink_open",
+  "dblink_send_query",
+  "dblink_send_query_params",
+  "lo_export",
+  "lo_import",
+  "lo_unlink",
+  "nextval",
+  "pg_advisory_lock",
+  "pg_advisory_lock_shared",
+  "pg_advisory_unlock",
+  "pg_advisory_unlock_all",
+  "pg_advisory_unlock_shared",
+  "pg_advisory_xact_lock",
+  "pg_advisory_xact_lock_shared",
+  "pg_backup_start",
+  "pg_backup_stop",
+  "pg_cancel_backend",
+  "pg_create_logical_replication_slot",
+  "pg_create_physical_replication_slot",
+  "pg_drop_replication_slot",
+  "pg_export_snapshot",
+  "pg_log_standby_snapshot",
+  "pg_notify",
+  "pg_promote",
+  "pg_reload_conf",
+  "pg_rotate_logfile",
+  "pg_sleep",
+  "pg_sleep_for",
+  "pg_sleep_until",
+  "pg_start_backup",
+  "pg_stop_backup",
+  "pg_switch_wal",
+  "pg_terminate_backend",
+  "pg_try_advisory_lock",
+  "pg_try_advisory_lock_shared",
+  "pg_try_advisory_xact_lock",
+  "pg_try_advisory_xact_lock_shared",
+  "pg_wal_replay_pause",
+  "pg_wal_replay_resume",
+  "set_config",
+  "setval",
+]);
+
+const MYSQL_UNSAFE_FUNCTIONS = new Set([
+  "benchmark",
+  "get_lock",
+  "load_file",
+  "release_all_locks",
+  "release_lock",
+  "sleep",
+  "sys_eval",
+  "sys_exec",
+]);
+
 type ValidationContext = {
   trimmedSql: string;
   dbType: DatabaseCredentialProviderType;
@@ -73,23 +229,34 @@ type ParsedQuery = {
 
 type Expression = PolyglotSdk.ast.Expression;
 type ExpressionRecord = Record<string, unknown>;
+type TokenInfo = PolyglotSdk.TokenInfo & {
+  token_type?: string;
+};
 
 type SelectData = ExpressionRecord & {
-  fetch?: FetchData | null;
   into?: unknown;
-  limit?: LimitData | null;
+  locks?: unknown[];
   with?: WithData | null;
 };
 
 type SetOperationData = ExpressionRecord & {
-  left?: Expression;
-  limit?: Expression | null;
-  right?: Expression;
   with?: WithData | null;
 };
 
 type SubqueryData = ExpressionRecord & {
   this?: Expression;
+};
+
+type FunctionData = ExpressionRecord & {
+  name?: unknown;
+};
+
+type MethodCallData = ExpressionRecord & {
+  method?: unknown;
+};
+
+type IdentifierLike = {
+  name?: unknown;
 };
 
 type WithData = ExpressionRecord & {
@@ -98,19 +265,6 @@ type WithData = ExpressionRecord & {
 
 type CteData = ExpressionRecord & {
   this?: Expression;
-};
-
-type LimitData = ExpressionRecord & {
-  this?: Expression;
-};
-
-type FetchData = ExpressionRecord & {
-  count?: Expression | null;
-};
-
-type LiteralData = ExpressionRecord & {
-  literal_type?: unknown;
-  value?: unknown;
 };
 
 function getSelectIntoError(dbType: DatabaseCredentialProviderType): Violation {
@@ -124,10 +278,6 @@ function buildContext(
   const trimmedSql = sql.trim();
   if (!trimmedSql) {
     return invalid("empty_query", "Query cannot be empty");
-  }
-
-  if (dbType === "mysql" && OUTFILE_PATTERN.test(trimmedSql)) {
-    return invalid("select_into_not_allowed", OUTFILE_ERROR);
   }
 
   return Result.ok({
@@ -150,6 +300,78 @@ async function initSqlParser(): Promise<ResultType<null, SqlValidationError>> {
         reason: "parser_init_failed",
       }),
   });
+}
+
+function validateStrictSyntax(
+  context: ValidationContext
+): ResultType<null, SqlValidationError> {
+  return Result.try({
+    try: () => {
+      const outfileViolation = findMysqlOutfileClause(context);
+      if (outfileViolation) {
+        throw new SqlValidationError({
+          message: outfileViolation,
+          reason: "select_into_not_allowed",
+        });
+      }
+
+      const validation = validateSqlSyntax(
+        context.trimmedSql,
+        context.dialect,
+        {
+          strictSyntax: true,
+        }
+      );
+
+      const firstError = validation.errors.find(
+        (error) => error.severity === "error"
+      );
+      if (!validation.valid || firstError) {
+        throw new Error(firstError?.message ?? "unknown syntax error");
+      }
+
+      return null;
+    },
+    catch: (cause) =>
+      cause instanceof SqlValidationError
+        ? cause
+        : new SqlValidationError({
+            cause,
+            message: `Failed to parse SQL: ${toErrorMessage(cause)}`,
+            reason: "parse_failed",
+          }),
+  });
+}
+
+function findMysqlOutfileClause(context: ValidationContext): Violation | null {
+  if (context.dbType !== "mysql") {
+    return null;
+  }
+
+  const tokenization = tokenize(context.trimmedSql, context.dialect);
+  if (!tokenization.success || !Array.isArray(tokenization.tokens)) {
+    return null;
+  }
+
+  const tokens = tokenization.tokens as TokenInfo[];
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    const currentToken = tokens[index];
+    const nextToken = tokens[index + 1];
+    const current = normalizeTokenText(currentToken);
+    const next = normalizeTokenText(nextToken);
+
+    if (current === "into" && (next === "outfile" || next === "dumpfile")) {
+      return OUTFILE_ERROR;
+    }
+  }
+
+  return null;
+}
+
+function normalizeTokenText(token: TokenInfo | undefined): string {
+  return (token?.text ?? token?.tokenType ?? token?.token_type ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 async function parseStatements(
@@ -192,8 +414,9 @@ function extractParsedQuery(
     return invalid("parse_failed", "Failed to parse SQL: invalid AST");
   }
 
-  if (!isTopLevelQueryExpression(statement)) {
-    const kind = getExpressionKind(statement);
+  const query = unwrapParenthesizedQuery(statement);
+  if (!query || !isTopLevelQueryExpression(query)) {
+    const kind = getDeepestExpressionKind(statement);
     return invalid(
       "non_select_query",
       `Only SELECT queries are allowed. Got: ${kind ?? "unknown"}`
@@ -204,231 +427,80 @@ function extractParsedQuery(
 }
 
 function validateReadOnlyQuery(
-  query: Expression,
+  parsedQuery: ParsedQuery,
   dbType: DatabaseCredentialProviderType
-): ResultType<Expression, SqlValidationError> {
-  const cteViolation = findCteViolation(query);
+): ResultType<null, SqlValidationError> {
+  const cteViolation = findCteViolation(parsedQuery.statement);
   if (cteViolation) {
     return invalid("cte_must_select", cteViolation);
   }
 
-  const selectIntoViolation = findSelectIntoViolationInQuery(query, dbType);
+  const selectIntoViolation = findSelectIntoViolationInQuery(
+    parsedQuery.statement,
+    dbType
+  );
   if (selectIntoViolation) {
     return invalid("select_into_not_allowed", selectIntoViolation);
   }
 
-  if (!isReadOnlyQueryExpression(query)) {
-    return invalid("non_select_query", "Only SELECT queries are allowed.");
+  const lockingViolation = findLockingViolation(parsedQuery.statement);
+  if (lockingViolation) {
+    return invalid("locking_not_allowed", lockingViolation);
   }
 
-  return Result.ok(query);
+  const unsafeFunctionViolation = findUnsafeFunctionViolation(
+    parsedQuery.statement,
+    dbType
+  );
+  if (unsafeFunctionViolation) {
+    return invalid("unsafe_function", unsafeFunctionViolation);
+  }
+
+  const mutableKind = findSideEffectingExpressionKind(parsedQuery.statement);
+  if (mutableKind) {
+    return invalid(
+      "non_select_query",
+      `Only SELECT queries are allowed. Got: ${mutableKind}`
+    );
+  }
+
+  return Result.ok(null);
 }
 
-function finalizeSql(
-  parsedQuery: ParsedQuery,
-  context: ValidationContext
-): ValidationResult {
-  const limitResult = normalizeLimit(parsedQuery.statement);
-  if (limitResult.isErr()) {
-    return Result.err(limitResult.error);
-  }
-
-  if (limitResult.value) {
-    return Result.try({
-      try: () => ({
-        changed: true,
-        sql: generateSql(parsedQuery.statement, context.dialect),
-      }),
-      catch: (cause) =>
-        new SqlValidationError({
-          cause,
-          message: `Failed to generate SQL: ${toErrorMessage(cause)}`,
-          reason: "parse_failed",
-        }),
-    });
-  }
-
-  return Result.ok({ changed: false, sql: context.trimmedSql });
-}
-
-function createNumericExpr(value: number): Expression {
-  return {
-    literal: {
-      literal_type: "number",
-      value: String(value),
-    },
-  };
-}
-
-function createLimitClause(limitValue: number): LimitData {
-  return {
-    comments: [],
-    percent: false,
-    this: createNumericExpr(limitValue),
-  };
-}
-
-function getNumericValueFromExpr(expr: Expression | undefined): number | null {
-  const literal = getExpressionData<LiteralData>(expr, "literal");
-  if (!literal || literal.literal_type !== "number") {
-    return null;
-  }
-
-  const raw = literal.value;
-  if (typeof raw !== "string") {
-    return null;
-  }
-
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) {
-    return null;
-  }
-
-  return parsed;
-}
-
-function normalizeFetchLimit(
-  select: SelectData
-): ResultType<boolean, SqlValidationError> {
-  const fetch = select.fetch;
-  if (!fetch) {
-    return Result.ok(false);
-  }
-
-  const count = fetch.count ?? undefined;
-  if (!count) {
-    return invalid("limit_not_numeric", "LIMIT value must be numeric");
-  }
-
-  const fetchValue = getNumericValueFromExpr(count);
-  if (fetchValue === null) {
-    return invalid("limit_not_numeric", "LIMIT value must be numeric");
-  }
-
-  if (fetchValue <= MAX_LIMIT) {
-    return Result.ok(false);
-  }
-
-  fetch.count = createNumericExpr(MAX_LIMIT);
-  return Result.ok(true);
-}
-
-function normalizeLimitClause(
-  select: SelectData
-): ResultType<boolean, SqlValidationError> {
-  const limitClause = select.limit;
-  if (!limitClause) {
-    return Result.ok(false);
-  }
-
-  const limitExpr = limitClause.this;
-  if (!limitExpr) {
-    if (select.fetch) {
-      return Result.ok(false);
-    }
-
-    limitClause.this = createNumericExpr(MAX_LIMIT);
-    return Result.ok(true);
-  }
-
-  const limitValue = getNumericValueFromExpr(limitExpr);
-  if (limitValue === null) {
-    return invalid("limit_not_numeric", "LIMIT value must be numeric");
-  }
-
-  if (limitValue <= MAX_LIMIT) {
-    return Result.ok(false);
-  }
-
-  limitClause.this = createNumericExpr(MAX_LIMIT);
-  return Result.ok(true);
-}
-
-function normalizeSelectLimit(
-  select: SelectData
-): ResultType<boolean, SqlValidationError> {
-  const fetchResult = normalizeFetchLimit(select);
-  if (fetchResult.isErr()) {
-    return fetchResult;
-  }
-
-  const limitResult = normalizeLimitClause(select);
-  if (limitResult.isErr()) {
-    return limitResult;
-  }
-
-  const hasLimit = Boolean(select.fetch) || Boolean(select.limit?.this);
-  if (!hasLimit) {
-    select.limit = createLimitClause(MAX_LIMIT);
-    return Result.ok(true);
-  }
-
-  return Result.ok(fetchResult.value || limitResult.value);
-}
-
-function normalizeSetOperationLimit(
-  setOperation: SetOperationData
-): ResultType<boolean, SqlValidationError> {
-  const limitExpr = setOperation.limit ?? undefined;
-  if (!limitExpr) {
-    setOperation.limit = createNumericExpr(MAX_LIMIT);
-    return Result.ok(true);
-  }
-
-  const limitValue = getNumericValueFromExpr(limitExpr);
-  if (limitValue === null) {
-    return invalid("limit_not_numeric", "LIMIT value must be numeric");
-  }
-
-  if (limitValue <= MAX_LIMIT) {
-    return Result.ok(false);
-  }
-
-  setOperation.limit = createNumericExpr(MAX_LIMIT);
-  return Result.ok(true);
-}
-
-function normalizeLimit(
-  statement: Expression
-): ResultType<boolean, SqlValidationError> {
-  const select = getExpressionData<SelectData>(statement, "select");
-  if (select) {
-    return normalizeSelectLimit(select);
-  }
-
-  const setOperation = getSetOperationData(statement);
-  if (setOperation) {
-    return normalizeSetOperationLimit(setOperation);
-  }
-
-  return Result.ok(false);
+function finalizeSql(context: ValidationContext): ValidationResult {
+  return Result.ok({ sql: context.trimmedSql });
 }
 
 function isExpression(value: unknown): value is Expression {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-
-  return Object.keys(value).length === 1;
+  return polyglotAst.isExpressionValue(value);
 }
 
-function getExpressionKind(expr: Expression | undefined): string | null {
-  if (!isExpression(expr)) {
+function getExpressionKind(expr: Expression | undefined): string {
+  return expr && isExpression(expr) ? polyglotAst.getExprType(expr) : "unknown";
+}
+
+function getDeepestExpressionKind(expr: Expression | undefined): string | null {
+  if (!expr || !isExpression(expr)) {
     return null;
   }
 
-  return Object.keys(expr)[0] ?? null;
+  const subquery = getExpressionData<SubqueryData>(expr, "subquery");
+  if (subquery?.this && isExpression(subquery.this)) {
+    return getDeepestExpressionKind(subquery.this);
+  }
+
+  return getExpressionKind(expr);
 }
 
 function getExpressionData<T extends ExpressionRecord>(
   expr: Expression | undefined,
   kind: string
 ): T | null {
-  if (!isExpression(expr) || !(kind in expr)) {
+  if (!expr || !isExpression(expr) || getExpressionKind(expr) !== kind) {
     return null;
   }
 
-  const data = (expr as ExpressionRecord)[kind];
+  const data = polyglotAst.getExprData(expr);
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return null;
   }
@@ -437,11 +509,57 @@ function getExpressionData<T extends ExpressionRecord>(
 }
 
 function getSetOperationData(expr: Expression): SetOperationData | null {
-  return (
-    getExpressionData<SetOperationData>(expr, "union") ??
-    getExpressionData<SetOperationData>(expr, "intersect") ??
-    getExpressionData<SetOperationData>(expr, "except")
-  );
+  if (!polyglotAst.isSetOperation(expr)) {
+    return null;
+  }
+
+  const kind = getExpressionKind(expr);
+  return getExpressionData<SetOperationData>(expr, kind);
+}
+
+function unwrapParenthesizedQuery(expr: Expression): Expression | null {
+  if (isTopLevelQueryExpression(expr)) {
+    return expr;
+  }
+
+  if (!polyglotAst.isSubquery(expr)) {
+    return null;
+  }
+
+  const subquery = getExpressionData<SubqueryData>(expr, "subquery");
+  if (!subquery?.this || !isExpression(subquery.this)) {
+    return null;
+  }
+  return unwrapParenthesizedQuery(subquery.this);
+}
+
+function isTopLevelQueryExpression(expr: Expression): boolean {
+  return polyglotAst.isSelect(expr) || polyglotAst.isSetOperation(expr);
+}
+
+function isCteQueryExpression(expr: Expression): boolean {
+  const unwrapped = unwrapParenthesizedQuery(expr);
+  return Boolean(unwrapped && isTopLevelQueryExpression(unwrapped));
+}
+
+function findCteViolation(query: Expression): Violation | null {
+  const violatingCte = polyglotAst.findFirst(query, (expr) => {
+    const withClause = getWithClause(expr);
+    const ctes = Array.isArray(withClause?.ctes) ? withClause.ctes : [];
+    for (const cte of ctes) {
+      if (
+        !cte.this ||
+        !isExpression(cte.this) ||
+        !isCteQueryExpression(cte.this)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+
+  return violatingCte ? ERRORS.cteSelectOnly : null;
 }
 
 function getWithClause(expr: Expression): WithData | null {
@@ -454,146 +572,115 @@ function getWithClause(expr: Expression): WithData | null {
   return setOperation?.with ?? null;
 }
 
-function getCtes(expr: Expression): CteData[] {
-  const ctes = getWithClause(expr)?.ctes;
-  return Array.isArray(ctes) ? ctes : [];
-}
-
-function isTopLevelQueryExpression(expr: Expression): boolean {
-  const kind = getExpressionKind(expr);
-  return (
-    kind === "select" ||
-    kind === "union" ||
-    kind === "intersect" ||
-    kind === "except"
-  );
-}
-
-function areCtesReadOnly(expr: Expression): boolean {
-  for (const cte of getCtes(expr)) {
-    if (!isExpression(cte.this) || !isReadOnlyQueryExpression(cte.this)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function isReadOnlyQueryExpression(expr: Expression): boolean {
-  if (!areCtesReadOnly(expr)) {
-    return false;
-  }
-
-  const select = getExpressionData<SelectData>(expr, "select");
-  if (select) {
-    return true;
-  }
-
-  const setOperation = getSetOperationData(expr);
-  if (setOperation) {
-    return (
-      isExpression(setOperation.left) &&
-      isReadOnlyQueryExpression(setOperation.left) &&
-      isExpression(setOperation.right) &&
-      isReadOnlyQueryExpression(setOperation.right)
-    );
-  }
-
-  const subquery = getExpressionData<SubqueryData>(expr, "subquery");
-  if (subquery?.this && isExpression(subquery.this)) {
-    return isReadOnlyQueryExpression(subquery.this);
-  }
-
-  return (
-    getExpressionKind(expr) === "values" || getExpressionKind(expr) === "table"
-  );
-}
-
-function findCteViolation(query: Expression): Violation | null {
-  for (const cte of getCtes(query)) {
-    if (!isExpression(cte.this) || !isReadOnlyQueryExpression(cte.this)) {
-      return ERRORS.cteSelectOnly;
-    }
-
-    const nestedViolation = findCteViolation(cte.this);
-    if (nestedViolation) {
-      return nestedViolation;
-    }
-  }
-
-  const setOperation = getSetOperationData(query);
-  if (setOperation) {
-    if (setOperation.left) {
-      const leftViolation = findCteViolation(setOperation.left);
-      if (leftViolation) {
-        return leftViolation;
-      }
-    }
-
-    if (setOperation.right) {
-      return findCteViolation(setOperation.right);
-    }
-  }
-
-  const subquery = getExpressionData<SubqueryData>(query, "subquery");
-  if (subquery?.this) {
-    return findCteViolation(subquery.this);
-  }
-
-  return null;
-}
-
 function findSelectIntoViolationInQuery(
   query: Expression,
   dbType: DatabaseCredentialProviderType
 ): Violation | null {
-  const select = getExpressionData<SelectData>(query, "select");
-  if (select?.into) {
-    return getSelectIntoError(dbType);
+  const selectInto = polyglotAst.findFirst(query, (expr) => {
+    const select = getExpressionData<SelectData>(expr, "select");
+    return Boolean(select?.into);
+  });
+
+  return selectInto ? getSelectIntoError(dbType) : null;
+}
+
+function findLockingViolation(query: Expression): Violation | null {
+  const lockingSelect = polyglotAst.findFirst(query, (expr) => {
+    const select = getExpressionData<SelectData>(expr, "select");
+    return Array.isArray(select?.locks) && select.locks.length > 0;
+  });
+
+  return lockingSelect ? ERRORS.locking : null;
+}
+
+function findUnsafeFunctionViolation(
+  query: Expression,
+  dbType: DatabaseCredentialProviderType
+): Violation | null {
+  const unsafeFunctionCall = polyglotAst.findFirst(query, (expr) => {
+    const functionName = getCalledFunctionName(expr);
+    if (!functionName || !isUnsafeFunctionName(functionName, dbType)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const functionName = unsafeFunctionCall
+    ? getCalledFunctionName(unsafeFunctionCall)
+    : null;
+  return functionName ? ERRORS.unsafeFunction(functionName) : null;
+}
+
+function getCalledFunctionName(expr: Expression): string | null {
+  const functionData = getExpressionData<FunctionData>(expr, "function");
+  if (functionData) {
+    return normalizeIdentifierName(functionData.name);
   }
 
-  for (const cte of getCtes(query)) {
-    if (cte.this) {
-      const cteViolation = findSelectIntoViolationInQuery(cte.this, dbType);
-      if (cteViolation) {
-        return cteViolation;
-      }
-    }
-  }
-
-  const setOperation = getSetOperationData(query);
-  if (setOperation) {
-    if (setOperation.left) {
-      const leftViolation = findSelectIntoViolationInQuery(
-        setOperation.left,
-        dbType
-      );
-      if (leftViolation) {
-        return leftViolation;
-      }
-    }
-
-    if (setOperation.right) {
-      return findSelectIntoViolationInQuery(setOperation.right, dbType);
-    }
-  }
-
-  const subquery = getExpressionData<SubqueryData>(query, "subquery");
-  if (subquery?.this) {
-    return findSelectIntoViolationInQuery(subquery.this, dbType);
+  const methodCallData = getExpressionData<MethodCallData>(expr, "method_call");
+  if (methodCallData) {
+    return normalizeIdentifierName(methodCallData.method);
   }
 
   return null;
 }
 
-function generateSql(statement: Expression, dialect: Dialect): string {
-  const generated = generate([statement], dialect);
-  const sql = generated.sql?.[0];
-  if (!generated.success || !sql) {
-    throw new Error(generated.error ?? "unknown generator error");
+function normalizeIdentifierName(value: unknown): string | null {
+  const rawName =
+    typeof value === "string"
+      ? value
+      : value && typeof value === "object" && !Array.isArray(value)
+        ? (value as IdentifierLike).name
+        : null;
+  if (typeof rawName !== "string") {
+    return null;
   }
 
-  return sql;
+  const normalized = rawName
+    .trim()
+    .replace(/^[`"[]|[`"\]]$/gu, "")
+    .toLowerCase();
+  const parts = normalized.split(".");
+  const functionName = parts.at(-1)?.trim() ?? "";
+  return functionName.length > 0 ? functionName : null;
+}
+
+function isUnsafeFunctionName(
+  functionName: string,
+  dbType: DatabaseCredentialProviderType
+): boolean {
+  if (dbType === "postgres") {
+    return (
+      POSTGRES_UNSAFE_FUNCTIONS.has(functionName) ||
+      functionName.startsWith("dblink_") ||
+      functionName.startsWith("pg_advisory_")
+    );
+  }
+
+  if (dbType === "mysql") {
+    return MYSQL_UNSAFE_FUNCTIONS.has(functionName);
+  }
+
+  return false;
+}
+
+function findSideEffectingExpressionKind(query: Expression): string | null {
+  const mutableExpression = polyglotAst.findFirst(query, (expr) =>
+    isSideEffectingExpression(expr)
+  );
+
+  return mutableExpression ? getExpressionKind(mutableExpression) : null;
+}
+
+function isSideEffectingExpression(expr: Expression): boolean {
+  return (
+    polyglotAst.isInsert(expr) ||
+    polyglotAst.isUpdate(expr) ||
+    polyglotAst.isDelete(expr) ||
+    polyglotAst.isDDL(expr) ||
+    SIDE_EFFECTING_EXPRESSION_KINDS.has(getExpressionKind(expr))
+  );
 }
 
 function toErrorMessage(error: unknown): string {
@@ -646,9 +733,10 @@ export async function validateAndNormalizeReadOnlyQuery(
   return Result.gen(async function* validateReadOnlyQueryFlow() {
     const context = yield* buildContext(sql, dbType);
     yield* Result.await(initSqlParser());
+    yield* validateStrictSyntax(context);
     const statements = yield* Result.await(parseStatements(context));
     const parsedQuery = yield* extractParsedQuery(statements);
-    yield* validateReadOnlyQuery(parsedQuery.statement, context.dbType);
-    return finalizeSql(parsedQuery, context);
+    yield* validateReadOnlyQuery(parsedQuery, context.dbType);
+    return finalizeSql(context);
   });
 }

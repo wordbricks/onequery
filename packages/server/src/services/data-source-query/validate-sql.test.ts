@@ -1,9 +1,28 @@
+import type { DatabaseCredentialProviderType } from "@onequery/db/server";
 import { describe, expect, it } from "vitest";
 
 import { validateAndNormalizeReadOnlyQuery } from "./validate-sql";
 
-async function expectValidationError(sql: string, message: string) {
-  const result = await validateAndNormalizeReadOnlyQuery(sql, "postgres");
+async function expectValidQuery(
+  sql: string,
+  expected: { sql: string },
+  dbType: DatabaseCredentialProviderType = "postgres"
+) {
+  const result = await validateAndNormalizeReadOnlyQuery(sql, dbType);
+
+  expect(result.isOk()).toBe(true);
+  if (result.isErr()) {
+    throw result.error;
+  }
+  expect(result.value).toEqual(expected);
+}
+
+async function expectValidationError(
+  sql: string,
+  message: string,
+  dbType: DatabaseCredentialProviderType = "postgres"
+) {
+  const result = await validateAndNormalizeReadOnlyQuery(sql, dbType);
 
   expect(result.isErr()).toBe(true);
   if (result.isOk()) {
@@ -13,65 +32,61 @@ async function expectValidationError(sql: string, message: string) {
 }
 
 describe("validateAndNormalizeReadOnlyQuery", () => {
-  it("adds a default limit to read-only selects", async () => {
-    const result = await validateAndNormalizeReadOnlyQuery(
-      "SELECT id FROM users",
-      "postgres"
-    );
-
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    expect(result.value).toEqual({
-      changed: true,
-      sql: "SELECT id FROM users LIMIT 1000",
+  it("preserves read-only selects without adding or changing limits", async () => {
+    let sql = "SELECT id FROM users";
+    await expectValidQuery(sql, {
+      sql,
     });
-  });
 
-  it("clamps existing limits above the maximum", async () => {
-    const result = await validateAndNormalizeReadOnlyQuery(
-      "SELECT id FROM users LIMIT 2000",
-      "postgres"
-    );
-
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    expect(result.value).toEqual({
-      changed: true,
-      sql: "SELECT id FROM users LIMIT 1000",
+    sql = "SELECT id FROM users LIMIT 2000";
+    await expectValidQuery(sql, {
+      sql,
     });
-  });
 
-  it("preserves selects whose limit is already within bounds", async () => {
-    const sql = "SELECT id FROM users LIMIT 25";
-    const result = await validateAndNormalizeReadOnlyQuery(sql, "postgres");
+    sql = "SELECT id FROM users LIMIT ?";
+    await expectValidQuery(sql, {
+      sql,
+    });
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    expect(result.value).toEqual({
-      changed: false,
+    sql = "SELECT id FROM users LIMIT 10 PERCENT";
+    await expectValidQuery(sql, {
+      sql,
+    });
+
+    sql = "SELECT id FROM users FETCH FIRST 10 ROWS WITH TIES";
+    await expectValidQuery(sql, {
       sql,
     });
   });
 
-  it("adds a limit to set operations", async () => {
-    const result = await validateAndNormalizeReadOnlyQuery(
-      "SELECT id FROM users UNION SELECT id FROM archived_users",
-      "postgres"
-    );
+  it("supports safe parenthesized selects", async () => {
+    let sql = "(SELECT id FROM users)";
+    await expectValidQuery(sql, {
+      sql,
+    });
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    expect(result.value).toEqual({
-      changed: true,
-      sql: "SELECT id FROM users UNION SELECT id FROM archived_users LIMIT 1000",
+    sql = "((SELECT id FROM users LIMIT 25))";
+    await expectValidQuery(sql, {
+      sql,
+    });
+  });
+
+  it("preserves set operations without adding or changing limits", async () => {
+    let bounded = "SELECT id FROM users UNION SELECT id FROM archived_users";
+    await expectValidQuery(bounded, {
+      sql: bounded,
+    });
+
+    bounded =
+      "SELECT id FROM users UNION ALL SELECT id FROM archived_users LIMIT 2000";
+    await expectValidQuery(bounded, {
+      sql: bounded,
+    });
+
+    bounded =
+      "SELECT id FROM users UNION SELECT id FROM archived_users UNION SELECT id FROM deleted_users LIMIT 2000";
+    await expectValidQuery(bounded, {
+      sql: bounded,
     });
   });
 
@@ -92,9 +107,106 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
       "SELECT * INTO new_users FROM users",
       "SELECT INTO is not allowed"
     );
+  });
+
+  it("rejects mutable or side-effecting constructs anywhere in the tree", async () => {
     await expectValidationError(
-      "SELECT id FROM users LIMIT ?",
-      "LIMIT value must be numeric"
+      "SELECT * FROM (DELETE FROM users RETURNING *) x",
+      "Only SELECT queries are allowed. Got: delete"
+    );
+    await expectValidationError(
+      "SELECT * FROM (INSERT INTO users(id) VALUES (1) RETURNING *) x",
+      "Only SELECT queries are allowed. Got: insert"
+    );
+    await expectValidationError(
+      "SELECT * FROM (CREATE TABLE new_users AS SELECT * FROM users) x",
+      "Only SELECT queries are allowed. Got: create_table"
+    );
+    await expectValidationError(
+      "SELECT * FROM (SELECT * INTO new_users FROM users) x",
+      "SELECT INTO is not allowed"
+    );
+    await expectValidationError(
+      "SELECT * FROM users INTO OUTFILE '/tmp/users.csv'",
+      "SELECT INTO OUTFILE/DUMPFILE is not allowed",
+      "mysql"
+    );
+  });
+
+  it("does not treat MySQL OUTFILE text in literals or comments as an OUTFILE clause", async () => {
+    let sql = "SELECT 'INTO OUTFILE'";
+    await expectValidQuery(
+      sql,
+      {
+        sql,
+      },
+      "mysql"
+    );
+
+    sql = "SELECT 1 -- INTO OUTFILE\n";
+    await expectValidQuery(
+      sql,
+      {
+        sql: sql.trim(),
+      },
+      "mysql"
+    );
+
+    sql = "SELECT 1 /* INTO OUTFILE */";
+    await expectValidQuery(
+      sql,
+      {
+        sql,
+      },
+      "mysql"
+    );
+  });
+
+  it("rejects side-effecting functions", async () => {
+    await expectValidationError(
+      "SELECT pg_advisory_lock(1)",
+      "Side-effecting SQL functions are not allowed: pg_advisory_lock"
+    );
+    await expectValidationError(
+      "SELECT pg_catalog.pg_advisory_lock(1)",
+      "Side-effecting SQL functions are not allowed: pg_advisory_lock"
+    );
+    await expectValidationError(
+      "SELECT dblink_exec('conn', 'DROP TABLE users')",
+      "Side-effecting SQL functions are not allowed: dblink_exec"
+    );
+    await expectValidationError(
+      "SELECT nextval('users_id_seq')",
+      "Side-effecting SQL functions are not allowed: nextval"
+    );
+    await expectValidationError(
+      "SELECT GET_LOCK('users', 1)",
+      "Side-effecting SQL functions are not allowed: get_lock",
+      "mysql"
+    );
+    await expectValidationError(
+      "SELECT @x := 1",
+      "Only SELECT queries are allowed. Got: property_e_q",
+      "mysql"
+    );
+  });
+
+  it("rejects locking reads", async () => {
+    await expectValidationError(
+      "SELECT id FROM users FOR UPDATE",
+      "SELECT locking clauses are not allowed"
+    );
+    await expectValidationError(
+      "SELECT id FROM users LOCK IN SHARE MODE",
+      "SELECT locking clauses are not allowed",
+      "mysql"
+    );
+  });
+
+  it("uses strict syntax validation before parsing", async () => {
+    await expectValidationError(
+      "SELECT name, FROM employees",
+      "Failed to parse SQL: Trailing comma before FROM is not allowed in strict syntax mode"
     );
   });
 });
