@@ -145,6 +145,12 @@ export async function testDataSource(
     });
   }
 
+  if (credentials.type === "cloudflare_d1") {
+    return testCloudflareD1Connection(credentials, {
+      timeoutSeconds: options.timeoutSeconds,
+    });
+  }
+
   const reason = getUnsupportedReason(credentials);
   return Result.err(
     new UnsupportedDataSourceTestError({
@@ -252,6 +258,47 @@ async function testConnectorConnection(
   });
 }
 
+async function testCloudflareD1Connection(
+  credentials: Extract<Credentials, { type: "cloudflare_d1" }>,
+  options: {
+    timeoutSeconds?: number;
+  }
+): Promise<ConnectionTestOutcome> {
+  const startTime = Date.now();
+
+  return runQueryConnectionTest({
+    execute: async (timeoutMs) => {
+      await executeDatabaseQuery({
+        credentials,
+        sql: CONNECTION_TEST_QUERY,
+        timeoutMs,
+      });
+    },
+    mapError: (error, latencyMs) => {
+      const statusCode = readCloudflareD1StatusCode(error);
+      if (statusCode === 401) {
+        return createFailedConnectionTest({
+          detail: "Invalid or expired Cloudflare credentials",
+          latencyMs,
+          message: "Authentication failed",
+        });
+      }
+      if (statusCode === 403) {
+        return createFailedConnectionTest({
+          detail:
+            "Cloudflare credentials do not have access to this D1 database",
+          latencyMs,
+          message: "Access denied",
+        });
+      }
+
+      return null;
+    },
+    startTime,
+    timeoutSeconds: options.timeoutSeconds,
+  });
+}
+
 async function testBigQueryConnection(
   credentials: Extract<Credentials, { type: "bigquery" }>,
   options: {
@@ -350,6 +397,17 @@ function resolveConnectionTestTimeoutMs(
 function readBigQueryStatusCode(error: unknown): number | null {
   const message = readErrorMessage(error);
   const match = /BigQuery API request failed: (\d{3})\b/u.exec(message);
+  if (!match) {
+    return null;
+  }
+
+  const statusCode = Number(match[1]);
+  return Number.isInteger(statusCode) ? statusCode : null;
+}
+
+function readCloudflareD1StatusCode(error: unknown): number | null {
+  const message = readErrorMessage(error);
+  const match = /Cloudflare D1 query failed: (\d{3})\b/u.exec(message);
   if (!match) {
     return null;
   }

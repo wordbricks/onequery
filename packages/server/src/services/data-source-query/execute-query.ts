@@ -1,6 +1,7 @@
 import { isRecord } from "@onequery/base";
 import type {
   BigQueryCredentials,
+  CloudflareD1Credentials,
   ConnectorCredentials,
   Database,
   DatabaseCredentials,
@@ -34,6 +35,7 @@ import {
 } from "./postgres-transport";
 import type { PostgresClientConfig } from "./postgres-transport";
 
+const DEFAULT_CLOUDFLARE_API_BASE_URL = "https://api.cloudflare.com/client/v4";
 const DEFAULT_LAMINAR_API_BASE_URL = "https://api.lmnr.ai";
 export const QUERY_TIMEOUT_MS = 10_000;
 const MAX_QUERY_TIMEOUT_MS = 60_000;
@@ -48,6 +50,7 @@ const TRANSIENT_ERROR_CODES = new Set([
   "PROTOCOL_SEQUENCE_TIMEOUT",
 ]);
 const TRANSIENT_BIGQUERY_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+const TRANSIENT_CLOUDFLARE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 
 type MySQLSslConfig = { rejectUnauthorized: boolean } | undefined;
 type BigQueryQueryOptions = {
@@ -270,6 +273,16 @@ async function executeDatabaseQueryInternal(
           organizationId: input.organizationId,
           timeoutMs,
         }),
+      };
+    }
+
+    if (input.credentials.type === "cloudflare_d1") {
+      return {
+        rows: await executeCloudflareD1Query(
+          input.credentials,
+          normalizedSql,
+          timeoutMs
+        ),
       };
     }
 
@@ -666,6 +679,51 @@ export async function executeBigQueryQueryWithStats(
   };
 }
 
+export async function executeCloudflareD1Query(
+  creds: CloudflareD1Credentials,
+  query: string,
+  timeoutMs = QUERY_TIMEOUT_MS
+): Promise<Record<string, unknown>[]> {
+  const responseOutcome = await fetch(resolveCloudflareD1QueryUrl(creds), {
+    body: JSON.stringify({ sql: query }),
+    headers: {
+      Authorization: `Bearer ${normalizeCloudflareApiToken(creds.apiToken)}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+    signal: createTimeoutSignal(timeoutMs),
+  })
+    .then((response) => ({ response }))
+    .catch((error: unknown) => ({ error }));
+
+  if ("error" in responseOutcome) {
+    throw responseOutcome.error;
+  }
+
+  const response = responseOutcome.response;
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "Unknown error");
+    throw new DataSourceQueryExecutionError(
+      `Cloudflare D1 query failed: ${response.status} ${sanitizeCloudflareErrorText(errorText, creds.apiToken)}`,
+      {
+        retryable: TRANSIENT_CLOUDFLARE_STATUS_CODES.has(response.status),
+        timedOut: response.status === 504,
+      }
+    );
+  }
+
+  const jsonOutcome = await response
+    .json()
+    .then((data) => ({ data }))
+    .catch((error: unknown) => ({ error }));
+
+  if ("error" in jsonOutcome) {
+    throw jsonOutcome.error;
+  }
+
+  return extractCloudflareD1Rows(jsonOutcome.data, creds.apiToken);
+}
+
 export async function executeLaminarQuery(
   creds: LaminarCredentials,
   query: string,
@@ -716,6 +774,90 @@ export async function executeLaminarQuery(
   return normalizeRecordRows("Laminar", payload.data);
 }
 
+function resolveCloudflareD1QueryUrl(credentials: CloudflareD1Credentials) {
+  const trimmedBaseUrl = credentials.apiBaseUrl?.trim() ?? "";
+  const configuredBaseUrl =
+    trimmedBaseUrl.length > 0
+      ? trimmedBaseUrl
+      : DEFAULT_CLOUDFLARE_API_BASE_URL;
+  const baseUrl = configuredBaseUrl.replace(/\/+$/, "");
+  const accountId = encodeURIComponent(credentials.accountId.trim());
+  const databaseId = encodeURIComponent(credentials.databaseId.trim());
+
+  return `${baseUrl}/accounts/${accountId}/d1/database/${databaseId}/query`;
+}
+
+function normalizeCloudflareApiToken(apiToken: string): string {
+  const normalized = apiToken.trim();
+  if (normalized.length === 0 || hasControlCharacters(normalized)) {
+    throw new DataSourceQueryExecutionError("Cloudflare API token is required");
+  }
+  return normalized;
+}
+
+function extractCloudflareD1Rows(
+  payload: unknown,
+  apiToken: string
+): Record<string, unknown>[] {
+  if (!isRecord(payload)) {
+    throw new Error("Cloudflare D1 query response was not an object.");
+  }
+
+  if (payload.success === false) {
+    throw new DataSourceQueryExecutionError(
+      `Cloudflare D1 query failed: ${sanitizeCloudflareErrorText(readCloudflareErrorText(payload), apiToken)}`,
+      {
+        retryable: false,
+        timedOut: false,
+      }
+    );
+  }
+
+  const result = Array.isArray(payload.result)
+    ? payload.result[0]
+    : payload.result;
+
+  if (!isRecord(result)) {
+    throw new Error("Cloudflare D1 query response did not include a result.");
+  }
+
+  if (result.success === false) {
+    throw new DataSourceQueryExecutionError(
+      `Cloudflare D1 query failed: ${sanitizeCloudflareErrorText(readCloudflareErrorText(result), apiToken)}`,
+      {
+        retryable: false,
+        timedOut: false,
+      }
+    );
+  }
+
+  return normalizeRecordRows("Cloudflare D1", result.results);
+}
+
+function readCloudflareErrorText(payload: Record<string, unknown>): string {
+  const errors = payload.errors;
+  if (!Array.isArray(errors) || errors.length === 0) {
+    return "Unknown error";
+  }
+
+  return errors
+    .map((entry) => {
+      if (!isRecord(entry)) {
+        return String(entry);
+      }
+      const code =
+        typeof entry.code === "number" || typeof entry.code === "string"
+          ? `${entry.code}: `
+          : "";
+      const message =
+        typeof entry.message === "string"
+          ? entry.message
+          : JSON.stringify(entry);
+      return `${code}${message}`;
+    })
+    .join("; ");
+}
+
 function resolveLaminarQueryUrl(credentials: LaminarCredentials): string {
   const trimmedBaseUrl = credentials.apiBaseUrl?.trim() ?? "";
   const configuredBaseUrl =
@@ -763,6 +905,13 @@ function sanitizeProviderErrorText(text: string, secret: string): string {
       ? text
       : text.split(normalizedSecret).join("***");
   return redacted.trim().slice(0, MAX_PROVIDER_ERROR_DETAIL_LENGTH);
+}
+
+function sanitizeCloudflareErrorText(text: string, apiToken: string): string {
+  return sanitizeProviderErrorText(
+    text.replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/giu, "Bearer [REDACTED]"),
+    apiToken
+  );
 }
 
 function normalizeConnectorRows(

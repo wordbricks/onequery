@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   executeBigQueryQuery,
+  executeCloudflareD1Query,
   executeDatabaseQuery,
   executeValidatedDatabaseQuery,
   executeLaminarQuery,
@@ -138,6 +139,74 @@ describe("data source query execution", () => {
     expect(JSON.parse(fetchSpy.mock.calls[0]?.[1]?.body as string)).toEqual({
       query: "DELETE FROM users",
     });
+  });
+
+  it("executes Cloudflare D1 queries through the D1 REST API", async () => {
+    const fetchSpy = vi.fn(async (_url: string | URL, _init?: RequestInit) => ({
+      json: async () => ({
+        errors: [],
+        messages: [],
+        result: [
+          {
+            meta: {},
+            results: [{ one: 1 }],
+            success: true,
+          },
+        ],
+        success: true,
+      }),
+      ok: true,
+      status: 200,
+      text: async () => "",
+    }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const rows = await executeCloudflareD1Query(
+      {
+        accountId: "acct_123",
+        apiToken: "cf-token",
+        databaseId: "db_123",
+        type: "cloudflare_d1",
+      },
+      "SELECT 1"
+    );
+
+    expect(rows).toEqual([{ one: 1 }]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(url)).toBe(
+      "https://api.cloudflare.com/client/v4/accounts/acct_123/d1/database/db_123/query"
+    );
+    expect(init?.method).toBe("POST");
+    expect(init?.headers).toMatchObject({
+      Authorization: "Bearer cf-token",
+      "Content-Type": "application/json",
+    });
+    expect(JSON.parse(init?.body as string)).toEqual({ sql: "SELECT 1" });
+  });
+
+  it("sanitizes Cloudflare D1 error text", async () => {
+    const fetchSpy = vi.fn(async (_url: string | URL, _init?: RequestInit) => ({
+      json: async () => ({}),
+      ok: false,
+      status: 403,
+      text: async () => "Bearer cf-token cannot access cf-token",
+    }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    await expect(
+      executeCloudflareD1Query(
+        {
+          accountId: "acct_123",
+          apiToken: "cf-token",
+          databaseId: "db_123",
+          type: "cloudflare_d1",
+        },
+        "SELECT 1"
+      )
+    ).rejects.toThrow(
+      "Cloudflare D1 query failed: 403 Bearer [REDACTED] cannot access ***"
+    );
   });
 
   it("uses TLS without certificate verification for postgres sslmode=require", async () => {

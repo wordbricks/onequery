@@ -4,6 +4,7 @@ export type DataSourceConnectionGuideProvider =
   | "amplitude"
   | "aws_athena_connector"
   | "bigquery"
+  | "cloudflare_d1"
   | "cloudflare_workers_observability"
   | "ga"
   | "github"

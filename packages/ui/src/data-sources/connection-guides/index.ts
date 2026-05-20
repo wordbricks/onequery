@@ -1,6 +1,7 @@
 import { amplitudeGuideContent } from "./amplitude";
 import { awsAthenaConnectorGuideContent } from "./aws-athena-connector";
 import { bigqueryGuideContent } from "./bigquery";
+import { cloudflareD1GuideContent } from "./cloudflare-d1";
 import { cloudflareWorkersObservabilityGuideContent } from "./cloudflare-workers-observability";
 import { gaGuideContent } from "./ga";
 import { githubGuideContent } from "./github";
@@ -30,6 +31,7 @@ export const GUIDE_CONTENT: Record<
   amplitude: amplitudeGuideContent,
   aws_athena_connector: awsAthenaConnectorGuideContent,
   bigquery: bigqueryGuideContent,
+  cloudflare_d1: cloudflareD1GuideContent,
   cloudflare_workers_observability: cloudflareWorkersObservabilityGuideContent,
   ga: gaGuideContent,
   github: githubGuideContent,
