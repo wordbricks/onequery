@@ -50,9 +50,7 @@ const TRANSIENT_ERROR_CODES = new Set([
   "PROTOCOL_SEQUENCE_TIMEOUT",
 ]);
 const TRANSIENT_BIGQUERY_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
-const TRANSIENT_CLOUDFLARE_STATUS_CODES = new Set([
-  429, 500, 502, 503, 504,
-]);
+const TRANSIENT_CLOUDFLARE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 
 type MySQLSslConfig = { rejectUnauthorized: boolean } | undefined;
 type BigQueryQueryOptions = {
@@ -852,7 +850,9 @@ function readCloudflareErrorText(payload: Record<string, unknown>): string {
           ? `${entry.code}: `
           : "";
       const message =
-        typeof entry.message === "string" ? entry.message : JSON.stringify(entry);
+        typeof entry.message === "string"
+          ? entry.message
+          : JSON.stringify(entry);
       return `${code}${message}`;
     })
     .join("; ");

@@ -285,7 +285,8 @@ async function testCloudflareD1Connection(
       }
       if (statusCode === 403) {
         return createFailedConnectionTest({
-          detail: "Cloudflare credentials do not have access to this D1 database",
+          detail:
+            "Cloudflare credentials do not have access to this D1 database",
           latencyMs,
           message: "Access denied",
         });
