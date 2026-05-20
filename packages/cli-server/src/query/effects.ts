@@ -5,10 +5,6 @@ import {
   DataSourceQueryExecutionError,
   executeValidatedDatabaseQuery,
 } from "@onequery/server/services/data-source-query/execute-query";
-import {
-  classifyCliQueryValidationFailure,
-  validateAndNormalizeReadOnlyQuery,
-} from "@onequery/server/services/data-source-query/validate-sql";
 import { Result } from "better-result";
 
 import type {
@@ -25,6 +21,10 @@ import type {
 export async function runCliValidateQueryEffect(
   effect: CliValidateQueryEffect
 ): Promise<CliValidateQueryEffectResult> {
+  const {
+    classifyCliQueryValidationFailure,
+    validateAndNormalizeReadOnlyQuery,
+  } = await import("@onequery/server/services/data-source-query/validate-sql");
   const validation = await validateAndNormalizeReadOnlyQuery(
     effect.sql,
     effect.databaseType
