@@ -52,6 +52,7 @@ onequery-config = { workspace = true }
 onequery-gateway = { workspace = true }
 onequery-install-context = { workspace = true }
 onequery-proto-cli = { workspace = true }
+onequery-source-connect-cli = { workspace = true }
 onequery-utils = { workspace = true }
 onequery-utils-path = { workspace = true }
 
