@@ -169,6 +169,22 @@ pub trait SourceConnectHost {
     fn max_workflow_steps(&self) -> usize {
         DEFAULT_MAX_WORKFLOW_STEPS
     }
+    fn record_workflow_reduce(
+        &self,
+        _step: usize,
+        _state_before: &'static str,
+        _event: &'static str,
+    ) {
+    }
+    fn record_workflow_transition(
+        &self,
+        _step: usize,
+        _state_after: Option<&'static str>,
+        _terminal_state: Option<&'static str>,
+    ) {
+    }
+    fn record_workflow_effect_dispatch(&self, _step: usize, _effect: &'static str) {}
+    fn record_workflow_effect_emitted_event(&self, _step: usize, _event: &'static str) {}
 }
 
 pub async fn execute<H>(
@@ -191,11 +207,21 @@ where
     let mut state = SourceConnectState::Idle { mode };
     let mut event = SourceConnectEvent::Start;
 
-    for _ in 0..host.max_workflow_steps() {
-        match reduce(state, event) {
+    for step in 1..=host.max_workflow_steps() {
+        host.record_workflow_reduce(step, state.workflow_label(), event.workflow_label());
+        let transition = reduce(state, event);
+        host.record_workflow_transition(
+            step,
+            transition.next_state_label(),
+            transition.terminal_state_label(),
+        );
+
+        match transition {
             SourceConnectTransition::Continue { next_state, effect } => {
                 state = next_state;
+                host.record_workflow_effect_dispatch(step, effect.workflow_label());
                 event = execute_effect(effect, host).await;
+                host.record_workflow_effect_emitted_event(step, event.workflow_label());
             }
             SourceConnectTransition::Done(terminal_state) => {
                 return terminal_state_to_result(terminal_state, host);
@@ -374,6 +400,22 @@ where
         | SourceConnectTerminalState::Failed { error } => Err(error),
         SourceConnectTerminalState::UnexpectedTransition { state, event } => {
             Err(host.unexpected_transition_error(state, event))
+        }
+    }
+}
+
+impl<E> SourceConnectTransition<E> {
+    pub fn next_state_label(&self) -> Option<&'static str> {
+        match self {
+            Self::Continue { next_state, .. } => Some(next_state.workflow_label()),
+            Self::Done { .. } => None,
+        }
+    }
+
+    pub fn terminal_state_label(&self) -> Option<&'static str> {
+        match self {
+            Self::Continue { .. } => None,
+            Self::Done(terminal_state) => Some(terminal_state.workflow_label()),
         }
     }
 }

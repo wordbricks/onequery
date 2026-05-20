@@ -188,6 +188,57 @@ impl<B, T> SourceConnectHost for OneQuerySourceConnectHost<'_, B, T> {
             format!("unexpected source connect workflow transition: state={state}, event={event}"),
         )
     }
+
+    fn record_workflow_reduce(&self, step: usize, state_before: &'static str, event: &'static str) {
+        if self.context.verbose {
+            tracing::info!(
+                workflow = "source_connect",
+                step,
+                state_before,
+                event,
+                "workflow reduce",
+            );
+        }
+    }
+
+    fn record_workflow_transition(
+        &self,
+        step: usize,
+        state_after: Option<&'static str>,
+        terminal_state: Option<&'static str>,
+    ) {
+        if self.context.verbose {
+            tracing::info!(
+                workflow = "source_connect",
+                step,
+                state_after = ?state_after,
+                terminal_state = ?terminal_state,
+                "workflow transition",
+            );
+        }
+    }
+
+    fn record_workflow_effect_dispatch(&self, step: usize, effect: &'static str) {
+        if self.context.verbose {
+            tracing::info!(
+                workflow = "source_connect",
+                step,
+                effect,
+                "workflow effect dispatch",
+            );
+        }
+    }
+
+    fn record_workflow_effect_emitted_event(&self, step: usize, event: &'static str) {
+        if self.context.verbose {
+            tracing::info!(
+                workflow = "source_connect",
+                step,
+                event,
+                "workflow effect emitted event",
+            );
+        }
+    }
 }
 
 #[cfg(test)]
