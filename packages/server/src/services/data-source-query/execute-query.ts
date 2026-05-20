@@ -33,7 +33,7 @@ import {
   resolvePostgresFailureTransitions,
 } from "./postgres-transport";
 import type { PostgresClientConfig } from "./postgres-transport";
-import { MAX_LIMIT, validateAndNormalizeReadOnlyQuery } from "./validate-sql";
+import { validateAndNormalizeReadOnlyQuery } from "./validate-sql";
 
 const DEFAULT_LAMINAR_API_BASE_URL = "https://api.lmnr.ai";
 export const QUERY_TIMEOUT_MS = 10_000;
@@ -58,7 +58,6 @@ type BigQueryQueryOptions = {
 type BigQueryRestQuery = {
   query: string;
   timeoutMs: number;
-  maxResults: number;
   location?: string;
 };
 
@@ -325,7 +324,6 @@ function buildBigQueryQueryOptions(input: {
   location?: string;
 }): BigQueryRestQuery {
   const base: BigQueryRestQuery = {
-    maxResults: MAX_LIMIT,
     query: input.query,
     timeoutMs: input.timeoutMs,
   };
@@ -453,8 +451,13 @@ async function runPostgresQuery(
   await client.connect();
 
   try {
+    await client.query("BEGIN READ ONLY");
     const result = await client.query(query);
+    await client.query("COMMIT");
     return normalizeRecordRows("PostgreSQL", result.rows);
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
   } finally {
     await client.end();
   }
@@ -498,8 +501,13 @@ async function runMySQLQuery(
 
   try {
     await connection.execute("SET SESSION max_execution_time = ?", [timeoutMs]);
+    await connection.query("START TRANSACTION READ ONLY");
     const result = await connection.execute(query);
+    await connection.query("COMMIT");
     return normalizeRecordRows("MySQL", result[0]);
+  } catch (error) {
+    await connection.query("ROLLBACK").catch(() => {});
+    throw error;
   } finally {
     await connection.end().catch(() => {});
   }

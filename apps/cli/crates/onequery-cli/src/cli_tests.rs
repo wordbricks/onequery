@@ -512,7 +512,20 @@ fn parse_invocation_accepts_gateway_foreground_and_lifecycle_subcommands() {
 fn parse_invocation_accepts_upgrade_command() {
     let invocation = parse_invocation(&["onequery", "upgrade"]);
 
-    assert!(matches!(invocation.command, Command::Upgrade));
+    assert!(matches!(
+        invocation.command,
+        Command::Upgrade(args) if args.minimum_release_age.is_none()
+    ));
+}
+
+#[test]
+fn parse_invocation_accepts_upgrade_minimum_release_age() {
+    let invocation = parse_invocation(&["onequery", "upgrade", "--minimum-release-age", "0"]);
+
+    assert!(matches!(
+        invocation.command,
+        Command::Upgrade(args) if args.minimum_release_age == Some(0)
+    ));
 }
 
 #[test]

@@ -37,7 +37,7 @@ export async function runCliValidateQueryEffect(
   return {
     kind: "query_ready",
     normalizedSql: validation.value.sql,
-    truncated: validation.value.changed,
+    truncated: false,
   };
 }
 

@@ -112,6 +112,13 @@ pub(crate) struct RestoreArgs {
     pub archive_path: PathBuf,
 }
 
+#[derive(Debug, Clone, Args, Default, Eq, PartialEq)]
+pub(crate) struct UpgradeArgs {
+    /// Override Bun's minimum package release age in seconds during upgrade.
+    #[arg(long = "minimum-release-age", value_name = "SECONDS")]
+    pub minimum_release_age: Option<u64>,
+}
+
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct AuthImportArgs {
     /// Read one auth session payload from a file path or stdin (`-`).

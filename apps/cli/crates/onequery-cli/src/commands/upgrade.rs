@@ -7,6 +7,7 @@ use onequery_install_context::InstallContext;
 use onequery_install_context::StandalonePlatform;
 use serde_json::json;
 
+use crate::cli::UpgradeArgs;
 use crate::output::CommandOutput;
 use crate::platform::Terminal;
 
@@ -66,22 +67,48 @@ impl UpgradeAction {
     }
 
     /// Returns the list of command-line arguments for invoking the upgrade.
-    fn command_args(self) -> (&'static str, &'static [&'static str]) {
-        match self {
+    fn command_args(self, args: &UpgradeArgs) -> (String, Vec<String>) {
+        let (program, mut command_args): (&str, Vec<String>) = match self {
             Self::StandaloneUnix => (
                 "sh",
-                &["-c", "curl -fsSL https://onequery.dev/install.sh | sh"],
+                vec![
+                    "-c".to_owned(),
+                    "curl -fsSL https://onequery.dev/install.sh | sh".to_owned(),
+                ],
             ),
-            Self::BrewUpgrade => ("brew", &["upgrade", "wordbricks/tap/onequery"]),
-            Self::NpmGlobalLatest => ("npm", &["install", "-g", "@onequery/cli@latest"]),
-            Self::BunGlobalLatest => ("bun", &["install", "-g", "@onequery/cli@latest"]),
+            Self::BrewUpgrade => (
+                "brew",
+                vec!["upgrade".to_owned(), "wordbricks/tap/onequery".to_owned()],
+            ),
+            Self::NpmGlobalLatest => (
+                "npm",
+                vec![
+                    "install".to_owned(),
+                    "-g".to_owned(),
+                    "@onequery/cli@latest".to_owned(),
+                ],
+            ),
+            Self::BunGlobalLatest => (
+                "bun",
+                vec![
+                    "install".to_owned(),
+                    "-g".to_owned(),
+                    "@onequery/cli@latest".to_owned(),
+                ],
+            ),
+        };
+
+        if let (Self::BunGlobalLatest, Some(seconds)) = (self, args.minimum_release_age) {
+            command_args.push(format!("--minimum-release-age={seconds}"));
         }
+
+        (program.to_owned(), command_args)
     }
 
     /// Returns string representation of the command-line arguments for invoking the upgrade.
-    fn command_str(self) -> String {
-        let (command, args) = self.command_args();
-        shlex::try_join(std::iter::once(command).chain(args.iter().copied()))
+    fn command_str(self, args: &UpgradeArgs) -> String {
+        let (command, args) = self.command_args(args);
+        shlex::try_join(std::iter::once(command.as_str()).chain(args.iter().map(String::as_str)))
             .unwrap_or_else(|_| format!("{command} {}", args.join(" ")))
     }
 }
@@ -113,6 +140,7 @@ impl GatewayAction {
 }
 
 pub(crate) async fn execute<B, T>(
+    args: &UpgradeArgs,
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError>
@@ -130,15 +158,16 @@ where
         ));
     };
 
+    validate_upgrade_args(args, action, &context.command_line)?;
     ensure_gateway_stopped_for_upgrade(&context.command_line)?;
 
     runtime
         .terminal
         .stderr_line(&format!("Running upgrade via {}...", action.label()));
 
-    let (program, args) = action.command_args();
-    let output = ProcessCommand::new(program)
-        .args(args)
+    let (program, command_args) = action.command_args(args);
+    let output = ProcessCommand::new(&program)
+        .args(&command_args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -147,7 +176,7 @@ where
             let why = match error.kind() {
                 std::io::ErrorKind::NotFound => format!(
                     "required installer command {program} was not found while running {}",
-                    action.command_str()
+                    action.command_str(args)
                 ),
                 _ => error.to_string(),
             };
@@ -157,7 +186,7 @@ where
                 &context.command_line,
                 ErrorStage::Internal,
                 why,
-                retry_upgrade_commands(action),
+                retry_upgrade_commands(action, args),
             )
         })?;
 
@@ -167,13 +196,31 @@ where
             &context.command_line,
             ErrorStage::Internal,
             render_command_failure(&output.stdout, &output.stderr, output.status.code()),
-            retry_upgrade_commands(action),
+            retry_upgrade_commands_for_failure(action, args, &output),
         ));
     }
 
     let installed_version = install_context.installed_version();
 
-    Ok(render_upgrade_output(action, installed_version))
+    Ok(render_upgrade_output(action, args, installed_version))
+}
+
+fn validate_upgrade_args(
+    args: &UpgradeArgs,
+    action: UpgradeAction,
+    command_line: &str,
+) -> Result<(), CliError> {
+    if args.minimum_release_age.is_some() && action != UpgradeAction::BunGlobalLatest {
+        return Err(CliError::new(
+            "unsupported upgrade option",
+            command_line,
+            ErrorStage::ParseCommand,
+            "`--minimum-release-age` is only supported for Bun installs because it is passed through to `bun install`",
+            retry_upgrade_commands(action, &UpgradeArgs::default()),
+        ));
+    }
+
+    Ok(())
 }
 
 fn unsupported_install_context_message(context: &InstallContext) -> String {
@@ -254,8 +301,40 @@ fn truncated_output(output: &str) -> Option<String> {
     )
 }
 
-fn retry_upgrade_commands(action: UpgradeAction) -> Vec<String> {
-    vec![action.command_str()]
+fn retry_upgrade_commands(action: UpgradeAction, args: &UpgradeArgs) -> Vec<String> {
+    vec![action.command_str(args)]
+}
+
+fn retry_upgrade_commands_for_failure(
+    action: UpgradeAction,
+    args: &UpgradeArgs,
+    output: &std::process::Output,
+) -> Vec<String> {
+    retry_upgrade_commands_for_failure_output(action, args, &output.stdout, &output.stderr)
+}
+
+fn retry_upgrade_commands_for_failure_output(
+    action: UpgradeAction,
+    args: &UpgradeArgs,
+    stdout: &[u8],
+    stderr: &[u8],
+) -> Vec<String> {
+    let mut commands = Vec::new();
+    if action == UpgradeAction::BunGlobalLatest
+        && args.minimum_release_age != Some(0)
+        && command_output_mentions_minimum_release_age(stdout, stderr)
+    {
+        commands.push("onequery upgrade --minimum-release-age 0".to_owned());
+    }
+    commands.extend(retry_upgrade_commands(action, args));
+    commands
+}
+
+fn command_output_mentions_minimum_release_age(stdout: &[u8], stderr: &[u8]) -> bool {
+    [stdout, stderr]
+        .into_iter()
+        .map(String::from_utf8_lossy)
+        .any(|text| text.contains("minimum-release-age"))
 }
 
 fn manual_upgrade_commands() -> Vec<String> {
@@ -266,12 +345,13 @@ fn manual_upgrade_commands() -> Vec<String> {
         UpgradeAction::BunGlobalLatest,
     ]
     .into_iter()
-    .map(UpgradeAction::command_str)
+    .map(|action| action.command_str(&UpgradeArgs::default()))
     .collect()
 }
 
 fn render_upgrade_output(
     action: UpgradeAction,
+    args: &UpgradeArgs,
     installed_version: Option<String>,
 ) -> CommandOutput {
     let mut lines = vec!["Upgrade completed.".to_owned()];
@@ -279,7 +359,7 @@ fn render_upgrade_output(
         Some(version) => lines.push(format!("Version: {version}")),
         None => lines.push("Version: unavailable".to_owned()),
     }
-    let command = action.command_str();
+    let command = action.command_str(args);
     lines.push(format!("Installer: {}", action.label()));
     lines.push(format!("Command: {command}"));
 
@@ -300,7 +380,10 @@ fn render_upgrade_output(
 mod tests {
     use std::path::PathBuf;
 
+    use crate::cli::UpgradeArgs;
+
     use insta::assert_snapshot;
+    use onequery_core::error::ErrorStage;
     use onequery_install_context::InstallContext;
     use onequery_install_context::StandalonePlatform;
     use pretty_assertions::assert_eq;
@@ -311,11 +394,14 @@ mod tests {
     use super::reject_running_gateway_for_upgrade;
     use super::render_command_failure;
     use super::render_upgrade_output;
+    use super::retry_upgrade_commands_for_failure_output;
     use super::unsupported_install_context_message;
+    use super::validate_upgrade_args;
 
-    type CommandArgs = (&'static str, &'static [&'static str]);
-    type UpgradeActionCommandCase = (UpgradeAction, CommandArgs, String);
-    type GatewayActionCommandCase = (GatewayAction, CommandArgs, String);
+    type UpgradeCommandArgs = (String, Vec<String>);
+    type GatewayCommandArgs = (&'static str, &'static [&'static str]);
+    type UpgradeActionCommandCase = (UpgradeAction, UpgradeCommandArgs, String);
+    type GatewayActionCommandCase = (GatewayAction, GatewayCommandArgs, String);
 
     #[test]
     fn upgrade_action_maps_install_contexts_to_upgrade_actions() {
@@ -371,34 +457,83 @@ mod tests {
             (
                 UpgradeAction::StandaloneUnix,
                 (
-                    "sh",
-                    &["-c", "curl -fsSL https://onequery.dev/install.sh | sh"],
+                    "sh".to_owned(),
+                    vec![
+                        "-c".to_owned(),
+                        "curl -fsSL https://onequery.dev/install.sh | sh".to_owned(),
+                    ],
                 ),
                 "sh -c 'curl -fsSL https://onequery.dev/install.sh | sh'".to_owned(),
             ),
             (
                 UpgradeAction::BrewUpgrade,
-                ("brew", &["upgrade", "wordbricks/tap/onequery"]),
+                (
+                    "brew".to_owned(),
+                    vec!["upgrade".to_owned(), "wordbricks/tap/onequery".to_owned()],
+                ),
                 "brew upgrade wordbricks/tap/onequery".to_owned(),
             ),
             (
                 UpgradeAction::NpmGlobalLatest,
-                ("npm", &["install", "-g", "@onequery/cli@latest"]),
+                (
+                    "npm".to_owned(),
+                    vec![
+                        "install".to_owned(),
+                        "-g".to_owned(),
+                        "@onequery/cli@latest".to_owned(),
+                    ],
+                ),
                 "npm install -g @onequery/cli@latest".to_owned(),
             ),
             (
                 UpgradeAction::BunGlobalLatest,
-                ("bun", &["install", "-g", "@onequery/cli@latest"]),
+                (
+                    "bun".to_owned(),
+                    vec![
+                        "install".to_owned(),
+                        "-g".to_owned(),
+                        "@onequery/cli@latest".to_owned(),
+                    ],
+                ),
                 "bun install -g @onequery/cli@latest".to_owned(),
             ),
         ];
 
         for (action, expected_args, expected_command) in cases {
             assert_eq!(
-                (action.command_args(), action.command_str()),
+                (
+                    action.command_args(&UpgradeArgs::default()),
+                    action.command_str(&UpgradeArgs::default())
+                ),
                 (expected_args, expected_command)
             );
         }
+    }
+
+    #[test]
+    fn bun_upgrade_action_passes_minimum_release_age() {
+        let args = UpgradeArgs {
+            minimum_release_age: Some(0),
+        };
+
+        assert_eq!(
+            (
+                UpgradeAction::BunGlobalLatest.command_args(&args),
+                UpgradeAction::BunGlobalLatest.command_str(&args)
+            ),
+            (
+                (
+                    "bun".to_owned(),
+                    vec![
+                        "install".to_owned(),
+                        "-g".to_owned(),
+                        "@onequery/cli@latest".to_owned(),
+                        "--minimum-release-age=0".to_owned(),
+                    ]
+                ),
+                "bun install -g @onequery/cli@latest '--minimum-release-age=0'".to_owned()
+            )
+        );
     }
 
     #[test]
@@ -456,9 +591,64 @@ mod tests {
 
     #[test]
     fn render_upgrade_output_snapshot() {
-        let output = render_upgrade_output(UpgradeAction::StandaloneUnix, Some("1.2.3".to_owned()));
+        let output = render_upgrade_output(
+            UpgradeAction::StandaloneUnix,
+            &UpgradeArgs::default(),
+            Some("1.2.3".to_owned()),
+        );
 
         assert_snapshot!(output.lines.join("\n"));
+    }
+
+    #[test]
+    fn validate_upgrade_args_rejects_minimum_release_age_for_non_bun_installs() {
+        let args = UpgradeArgs {
+            minimum_release_age: Some(0),
+        };
+        let error =
+            validate_upgrade_args(&args, UpgradeAction::NpmGlobalLatest, "onequery upgrade")
+                .expect_err("expected non-Bun minimum release age to fail");
+
+        assert_eq!(error.title.as_str(), "unsupported upgrade option");
+        assert_eq!(error.stage, ErrorStage::ParseCommand);
+        assert!(error.why.contains("only supported for Bun installs"));
+    }
+
+    #[test]
+    fn bun_minimum_release_age_failures_recommend_cli_override() {
+        let args = UpgradeArgs::default();
+        let commands = retry_upgrade_commands_for_failure_output(
+            UpgradeAction::BunGlobalLatest,
+            &args,
+            b"",
+            br#"error: No version matching "@onequery/cli" found for specifier "0.1.57" (blocked by minimum-release-age: 259200 seconds)"#,
+        );
+
+        assert_eq!(
+            commands,
+            vec![
+                "onequery upgrade --minimum-release-age 0".to_owned(),
+                "bun install -g @onequery/cli@latest".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn bun_minimum_release_age_failures_do_not_repeat_zero_override() {
+        let args = UpgradeArgs {
+            minimum_release_age: Some(0),
+        };
+        let commands = retry_upgrade_commands_for_failure_output(
+            UpgradeAction::BunGlobalLatest,
+            &args,
+            b"",
+            b"blocked by minimum-release-age: 259200 seconds",
+        );
+
+        assert_eq!(
+            commands,
+            vec!["bun install -g @onequery/cli@latest '--minimum-release-age=0'".to_owned()]
+        );
     }
 
     #[test]

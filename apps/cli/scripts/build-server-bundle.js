@@ -30,7 +30,6 @@ const BUILD_SERVER_BUNDLE_OPTIONS = new Set([
 const EXTERNAL_SPECIFIERS = new Set([
   ...builtinModules,
   ...builtinModules.map((specifier) => `node:${specifier}`),
-  "@casual-simulation/sql-parser/pkg/sql_parser_wasm_bg.wasm",
 ]);
 
 export function defaultOutdirForTarget(targetTriple) {

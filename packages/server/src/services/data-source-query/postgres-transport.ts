@@ -87,7 +87,7 @@ export function buildPostgresClientConfig(
     connectionTimeoutMillis: timeoutMs,
     database: creds.database,
     host: creds.host,
-    options: `-c statement_timeout=${timeoutMs}`,
+    options: `-c statement_timeout=${timeoutMs} -c default_transaction_read_only=on`,
     password: creds.password,
     port: creds.port,
     ssl: buildPostgresSslConfig(state),

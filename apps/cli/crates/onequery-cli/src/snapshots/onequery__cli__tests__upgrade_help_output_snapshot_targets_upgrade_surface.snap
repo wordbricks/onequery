@@ -7,8 +7,9 @@ Upgrade this published CLI installation in place
 Usage: onequery upgrade [OPTIONS]
 
 Options:
-  -h, --help     Print help
-  -V, --version  Print version
+      --minimum-release-age <SECONDS>  Override Bun's minimum package release age in seconds during upgrade
+  -h, --help                           Print help
+  -V, --version                        Print version
 
 Global Options:
       --org <ORG_SLUG>           Override the active org for this invocation
