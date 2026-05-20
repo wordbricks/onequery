@@ -6,7 +6,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { resolvePackagedRuntimeAssetPath } from "@onequery/base/runtime-bundle";
 import {
@@ -23,6 +24,15 @@ import {
   stageWorkspaceDevRuntimeAssetsResult,
 } from "../../../scripts/run-self-host-runtime";
 
+const selfHostRuntimeDir = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  ".."
+);
+const workspaceDevBundleAdjacentPolyglotWasmPath = join(
+  selfHostRuntimeDir,
+  "dist",
+  "polyglot_sql_wasm_bg.wasm"
+);
 const stagedRoots = new Set<string>();
 
 afterEach(() => {
@@ -99,9 +109,10 @@ describe("self-host runtime dev entrypoint", () => {
     );
     expect(
       existsSync(
-        resolvePackagedRuntimeAssetPath(runtimeRoot, "sqlParser", "wasm")
+        resolvePackagedRuntimeAssetPath(runtimeRoot, "polyglotSql", "wasm")
       )
     ).toBe(true);
+    expect(existsSync(workspaceDevBundleAdjacentPolyglotWasmPath)).toBe(true);
     expect(
       existsSync(
         resolvePackagedRuntimeAssetPath(runtimeRoot, "pglite", "pgliteWasm")
