@@ -45,4 +45,10 @@ describe("source model", () => {
       "api",
     ]);
   });
+
+  it("exposes Cloudflare D1 as query capable", () => {
+    expect(getCliSourceInterfaceTypes("cloudflare_d1", "active")).toEqual([
+      "query",
+    ]);
+  });
 });

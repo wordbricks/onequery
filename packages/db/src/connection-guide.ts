@@ -110,6 +110,25 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
     },
   },
   {
+    provider: "cloudflare_d1",
+    summary:
+      "Connect Cloudflare D1 with an account ID, D1 database ID, and account-scoped API token.",
+    steps: [
+      "Copy the Cloudflare Account ID from the dashboard.",
+      "Open the target D1 database settings and copy the Database ID.",
+      "Create a Cloudflare API token that can query the target D1 database.",
+      "Only include `apiBaseUrl` when you need a non-default Cloudflare API origin.",
+    ],
+    exampleInput: {
+      sourceKey: "cloudflare_d1_prod",
+      credentials: {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        apiToken: "cloudflare_api_token",
+      },
+    },
+  },
+  {
     provider: "laminar",
     summary:
       "Connect Laminar with an API key and optional non-default base URL.",

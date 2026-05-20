@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AmplitudeCredentialsSchema,
   BigQueryCredentialsSchema,
+  CloudflareD1CredentialsSchema,
   ConnectorCredentialsSchema,
   credentialSchemaMap,
   GitHubCredentialsSchema,
@@ -30,6 +31,7 @@ import {
 import type {
   AmplitudeCredentials,
   BigQueryCredentials,
+  CloudflareD1Credentials,
   ConnectorCredentials,
   Credentials,
   GitHubCredentials,
@@ -411,6 +413,66 @@ describe("credentials schemas", () => {
       };
 
       const result = BigQueryCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("CloudflareD1CredentialsSchema", () => {
+    it("should validate valid Cloudflare D1 credentials", () => {
+      const credentials: CloudflareD1Credentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_api_token",
+        databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        type: "cloudflare_d1",
+      };
+
+      const result = CloudflareD1CredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should accept optional apiBaseUrl", () => {
+      const credentials: CloudflareD1Credentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiBaseUrl: "https://api.cloudflare.com/client/v4",
+        apiToken: "cf_api_token",
+        databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        type: "cloudflare_d1",
+      };
+
+      const result = CloudflareD1CredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.apiBaseUrl).toBe(
+          "https://api.cloudflare.com/client/v4"
+        );
+      }
+    });
+
+    it("should treat blank optional apiBaseUrl as undefined", () => {
+      const result = CloudflareD1CredentialsSchema.safeParse({
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiBaseUrl: "   ",
+        apiToken: "cf_api_token",
+        databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        type: "cloudflare_d1",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.apiBaseUrl).toBeUndefined();
+      }
+    });
+
+    it("should reject missing databaseId", () => {
+      const result = CloudflareD1CredentialsSchema.safeParse({
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_api_token",
+        type: "cloudflare_d1",
+      });
+
       expect(result.success).toBe(false);
     });
   });
@@ -1271,6 +1333,12 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.bigquery).toBe(BigQueryCredentialsSchema);
     });
 
+    it("should map cloudflare_d1 to CloudflareD1CredentialsSchema", () => {
+      expect(credentialSchemaMap.cloudflare_d1).toBe(
+        CloudflareD1CredentialsSchema
+      );
+    });
+
     it("should map laminar to LaminarCredentialsSchema", () => {
       expect(credentialSchemaMap.laminar).toBe(LaminarCredentialsSchema);
     });
@@ -1418,6 +1486,18 @@ describe("credentials schemas", () => {
       expect(result.type).toBe("aws_athena_connector");
     });
 
+    it("should validate Cloudflare D1 credentials", () => {
+      const credentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_api_token",
+        databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        type: "cloudflare_d1",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("cloudflare_d1");
+    });
+
     it("should validate Sentry credentials", () => {
       const credentials = {
         authToken: "sntrys_123",
@@ -1490,6 +1570,12 @@ describe("credentials schemas", () => {
           type: "bigquery",
         },
         {
+          accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+          apiToken: "cf_api_token",
+          databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+          type: "cloudflare_d1",
+        },
+        {
           apiKey: "lmnr_project_key_123",
           type: "laminar",
         },
@@ -1543,6 +1629,7 @@ describe("credentials schemas", () => {
         [
           "bigquery",
           "aws_athena_connector",
+          "cloudflare_d1",
           "laminar",
           "mysql",
           "postgres",

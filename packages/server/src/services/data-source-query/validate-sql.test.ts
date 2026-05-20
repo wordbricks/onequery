@@ -71,6 +71,22 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
     });
   });
 
+  it("validates Cloudflare D1 queries with the SQLite dialect", async () => {
+    await expectValidQuery(
+      "SELECT json_extract(payload, '$.kind') AS kind FROM events LIMIT 10",
+      {
+        sql: "SELECT json_extract(payload, '$.kind') AS kind FROM events LIMIT 10",
+      },
+      "cloudflare_d1"
+    );
+
+    await expectValidationError(
+      "DELETE FROM events",
+      "Only SELECT queries are allowed. Got: delete",
+      "cloudflare_d1"
+    );
+  });
+
   it("preserves set operations without adding or changing limits", async () => {
     let bounded = "SELECT id FROM users UNION SELECT id FROM archived_users";
     await expectValidQuery(bounded, {

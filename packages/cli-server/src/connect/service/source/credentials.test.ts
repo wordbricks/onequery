@@ -107,6 +107,29 @@ describe("parseConnectSourceCredentials", () => {
     });
   });
 
+  it("injects the Cloudflare D1 credential type", () => {
+    const result = parseConnectSourceCredentials("cloudflare_d1", {
+      accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+      apiToken: "cf_api_token",
+      databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value).toEqual({
+      provider: "cloudflare_d1",
+      credentials: {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_api_token",
+        databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        type: "cloudflare_d1",
+      },
+    });
+  });
+
   it("infers Google Analytics service-account auth mode from guide-shaped credentials", () => {
     const result = parseConnectSourceCredentials("ga", {
       propertyId: "123456789",

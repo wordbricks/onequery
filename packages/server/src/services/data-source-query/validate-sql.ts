@@ -62,6 +62,7 @@ type ValidationResult = ResultType<ValidationValue, SqlValidationError>;
 const DIALECT_MAP = {
   aws_athena_connector: Dialect.Athena,
   bigquery: Dialect.BigQuery,
+  cloudflare_d1: Dialect.SQLite,
   laminar: Dialect.ClickHouse,
   mysql: Dialect.MySQL,
   postgres: Dialect.PostgreSQL,
