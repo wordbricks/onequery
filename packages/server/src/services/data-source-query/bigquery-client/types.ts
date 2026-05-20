@@ -5,7 +5,6 @@ export const BIGQUERY_SCOPE = "https://www.googleapis.com/auth/bigquery";
 export type BigQueryQueryRequest = {
   query: string;
   timeoutMs: number;
-  maxResults: number;
   location?: string;
 };
 

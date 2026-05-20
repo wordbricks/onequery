@@ -267,21 +267,22 @@ function runtimeAssetOwnerPackageJsonPath(ownerPackage: string): string {
   }
 }
 
-function copyRuntimeAssetFamily(input: {
-  runtimeRoot: string;
+function copyRuntimeAssetFamilyToDir(input: {
+  outDir: string;
   family: RuntimeAssetFamilyId;
 }): void {
   const familyConfig = runtimeBundleLayout.runtimeAssetFamilies[input.family];
   const familyRequire = createRequire(
     runtimeAssetOwnerPackageJsonPath(familyConfig.buildOwnerPackage)
   );
-  const outDir = resolve(input.runtimeRoot, familyConfig.packagedPath);
 
-  mkdirSync(outDir, {
+  mkdirSync(input.outDir, {
     recursive: true,
   });
 
-  const buildSource = familyConfig.buildSource;
+  const buildSource = familyConfig.buildSource as
+    | { packageSpecifier: string }
+    | { specifiersByFileRole: Readonly<Record<string, string>> };
 
   if ("packageSpecifier" in buildSource) {
     const resolvedPackageFile = familyRequire.resolve(
@@ -292,7 +293,7 @@ function copyRuntimeAssetFamily(input: {
     for (const fileConfig of Object.values(familyConfig.files)) {
       copyFileSync(
         join(sourceDir, fileConfig.filename),
-        join(outDir, fileConfig.filename)
+        join(input.outDir, fileConfig.filename)
       );
     }
     return;
@@ -312,7 +313,7 @@ function copyRuntimeAssetFamily(input: {
       }
 
       const sourcePath = familyRequire.resolve(sourceSpecifier);
-      copyFileSync(sourcePath, join(outDir, fileConfig.filename));
+      copyFileSync(sourcePath, join(input.outDir, fileConfig.filename));
     }
     return;
   }
@@ -320,6 +321,36 @@ function copyRuntimeAssetFamily(input: {
   throw new Error(
     `Unsupported runtime asset build source for '${input.family}'.`
   );
+}
+
+function copyRuntimeAssetFamily(input: {
+  runtimeRoot: string;
+  family: RuntimeAssetFamilyId;
+}): void {
+  const familyConfig = runtimeBundleLayout.runtimeAssetFamilies[input.family];
+  copyRuntimeAssetFamilyToDir({
+    family: input.family,
+    outDir: resolve(input.runtimeRoot, familyConfig.packagedPath),
+  });
+}
+
+function copyWorkspaceDevBundleAdjacentRuntimeAssets(): void {
+  for (const family of Object.keys(
+    runtimeBundleLayout.runtimeAssetFamilies
+  ) as RuntimeAssetFamilyId[]) {
+    const familyConfig = runtimeBundleLayout.runtimeAssetFamilies[family];
+    if (
+      familyConfig.packagedPath !==
+      runtimeBundleLayout.directories.server.relativePath
+    ) {
+      continue;
+    }
+
+    copyRuntimeAssetFamilyToDir({
+      family,
+      outDir: dirname(bundledRuntimePath),
+    });
+  }
 }
 
 export async function stageWorkspaceDevRuntimeAssetsResult(
@@ -334,6 +365,7 @@ export async function stageWorkspaceDevRuntimeAssetsResult(
     ) as RuntimeAssetFamilyId[]) {
       copyRuntimeAssetFamily({ family, runtimeRoot });
     }
+    copyWorkspaceDevBundleAdjacentRuntimeAssets();
     return createOkResult();
   } catch (cause) {
     return createErrResult(

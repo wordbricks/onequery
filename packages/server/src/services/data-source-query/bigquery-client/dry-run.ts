@@ -14,7 +14,6 @@ export async function runBigQueryDryRun(
         query: {
           query: input.query,
           useLegacySql: false,
-          maxResults: input.maxResults,
         },
       },
       jobReference: {

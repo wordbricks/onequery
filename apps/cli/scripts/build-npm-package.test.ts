@@ -26,16 +26,17 @@ describe("build-npm-package runtime asset resolution", () => {
     );
   });
 
-  it("anchors sqlParser assets to the declared owner package manifest", async () => {
+  it("anchors polyglotSql assets to the declared owner package manifest", async () => {
     const sourcePaths =
-      await __internal.resolveRuntimeAssetSourcePaths("sqlParser");
+      await __internal.resolveRuntimeAssetSourcePaths("polyglotSql");
     const serverRequire = createRequire(SERVER_PACKAGE_MANIFEST_PATH);
 
     expect(sourcePaths).toEqual([
       {
-        filename: "sql_parser_wasm_bg.wasm",
-        sourcePath: serverRequire.resolve(
-          "@casual-simulation/sql-parser/pkg/sql_parser_wasm_bg.wasm"
+        filename: "polyglot_sql_wasm_bg.wasm",
+        sourcePath: path.join(
+          path.dirname(serverRequire.resolve("@polyglot-sql/sdk")),
+          "polyglot_sql_wasm_bg.wasm"
         ),
       },
     ]);
