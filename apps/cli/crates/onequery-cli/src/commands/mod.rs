@@ -38,6 +38,7 @@ use crate::platform::PlatformAdapters;
 use crate::platform::StderrTerminal;
 use crate::platform::SystemBrowserLauncher;
 use crate::platform::Terminal;
+use crate::profile::SelectedProfile;
 use crate::recovery::missing_org_try_next;
 use crate::transport::query::QueryRequestWindow;
 use crate::transport::read_controls::ReadRequestControls;
@@ -121,6 +122,7 @@ impl Runtime<SystemBrowserLauncher, StderrTerminal> {
     pub(crate) fn load(
         raw_config_overrides: crate::config::RawCliConfigOverrides,
         typed_config_overrides: TypedConfigOverrides,
+        profile: &SelectedProfile,
     ) -> Result<Self, CliError> {
         // CONTEXT: docs/core/SPEC.md recommends a Rust crate layout while the monorepo runtime is
         // Bun-first.
@@ -129,8 +131,9 @@ impl Runtime<SystemBrowserLauncher, StderrTerminal> {
             STARTUP_COMMAND,
             raw_config_overrides,
             typed_config_overrides,
+            profile,
         )?;
-        let auth_session = AuthSessionStore::load(STARTUP_COMMAND)?;
+        let auth_session = AuthSessionStore::load(STARTUP_COMMAND, profile)?;
         let platform = PlatformAdapters::system();
         Ok(Self {
             config,

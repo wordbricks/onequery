@@ -27,6 +27,22 @@ onequery source list
 onequery query exec --source <key> --sql "SELECT * FROM users LIMIT 10"
 ```
 
+## Profiles
+
+OneQuery stores the default CLI auth session and config in `~/.onequery/auth.json`
+and `~/.onequery/config.toml`, or under `ONEQUERY_HOME` when it is set. Named
+profiles keep separate local auth/config state under
+`~/.onequery/profiles/<profile>/`.
+
+```sh
+onequery --profile work auth login
+ONEQUERY_PROFILE=work onequery auth whoami
+```
+
+`--profile` takes precedence over `ONEQUERY_PROFILE`. `ONEQUERY_ACCESS_TOKEN`
+remains invocation-only and takes precedence over the selected profile's stored
+auth session without implicitly writing to it.
+
 ## Self-host
 
 ```sh

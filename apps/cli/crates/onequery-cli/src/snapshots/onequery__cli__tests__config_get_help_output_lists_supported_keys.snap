@@ -1,5 +1,6 @@
 ---
 source: crates/onequery-cli/src/cli/../cli_tests.rs
+assertion_line: 137
 expression: "rendered_display(&[\"onequery\", \"config\", \"get\", \"--help\"])"
 ---
 Read one effective CLI config value
@@ -25,6 +26,9 @@ Options:
 Global Options:
       --org <ORG_SLUG>
           Override the active org for this invocation
+
+      --profile <PROFILE>
+          Select a local auth/config profile for this invocation
 
   -c, --config <KEY=VALUE>
           Apply a raw config override for this invocation using `key=value`

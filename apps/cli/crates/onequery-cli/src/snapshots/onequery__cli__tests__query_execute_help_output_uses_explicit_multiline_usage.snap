@@ -1,5 +1,6 @@
 ---
 source: crates/onequery-cli/src/cli/../cli_tests.rs
+assertion_line: 165
 expression: "rendered_display(&[\"onequery\", \"query\", \"exec\", \"--help\"])"
 ---
 Execute a query and return rows
@@ -36,6 +37,7 @@ Result Window:
 
 Global Options:
       --org <ORG_SLUG>           Override the active org for this invocation
+      --profile <PROFILE>        Select a local auth/config profile for this invocation
   -c, --config <KEY=VALUE>       Apply a raw config override for this invocation using `key=value`
       --request-id <REQUEST_ID>  Attach a caller-supplied request ID to outbound API requests
       --timeout <SECONDS>        Override the request timeout in seconds for this invocation

@@ -12,6 +12,7 @@ mod output;
 mod output_metadata;
 mod platform;
 mod presentation;
+mod profile;
 mod recovery;
 mod startup;
 #[cfg(test)]
@@ -77,6 +78,24 @@ async fn main() {
     let command_path = invocation.command.command_path();
     let persist_failures = invocation.command.should_persist_failures();
     let verbose_errors = invocation.global.verbose;
+    let profile = match profile::SelectedProfile::resolve(
+        invocation.global.profile.as_deref(),
+        &invocation.raw_command,
+    ) {
+        Ok(profile) => profile,
+        Err(error) => emit_failure_and_exit(
+            error.with_command_path(Some(command_path.to_owned())),
+            output_mode,
+            Some(command_path),
+            persist_failures,
+            verbose_errors,
+        ),
+    };
+    tracing::info!(
+        profile = profile.name(),
+        profile_source = profile.source().describe(),
+        "profile resolved"
+    );
 
     if !invocation.command.requires_runtime() {
         // Comment: `doctor report` must still work when config loading is broken, so
@@ -112,6 +131,7 @@ async fn main() {
     let mut runtime = match Runtime::load(
         invocation.global.raw_config_overrides.clone(),
         config::TypedConfigOverrides::from_request_timeout_sec(invocation.global.timeout_sec),
+        &profile,
     ) {
         Ok(runtime) => runtime,
         Err(error) => emit_failure_and_exit(
