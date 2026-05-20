@@ -33,7 +33,6 @@ import {
   resolvePostgresFailureTransitions,
 } from "./postgres-transport";
 import type { PostgresClientConfig } from "./postgres-transport";
-import { validateAndNormalizeReadOnlyQuery } from "./validate-sql";
 
 const DEFAULT_LAMINAR_API_BASE_URL = "https://api.lmnr.ai";
 export const QUERY_TIMEOUT_MS = 10_000;
@@ -290,6 +289,7 @@ async function validateSqlForExecution(
   sql: string,
   provider: DatabaseCredentials["type"]
 ): Promise<string> {
+  const { validateAndNormalizeReadOnlyQuery } = await import("./validate-sql");
   const validation = await validateAndNormalizeReadOnlyQuery(sql, provider);
   if (validation.isErr()) {
     throw new DataSourceQueryExecutionError(validation.error.message, {
