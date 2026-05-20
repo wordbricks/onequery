@@ -12,6 +12,7 @@ members = [
   "crates/process-hardening",
   "crates/proto-cli",
   "crates/proto-runtime",
+  "crates/source-connect-cli",
   "crates/utils",
   "crates/utils/absolute-path",
   "crates/utils/cargo-bin",
@@ -51,6 +52,7 @@ onequery-install-context = { path = "crates/install-context" }
 onequery-process-hardening = { path = "crates/process-hardening" }
 onequery-proto-cli = { path = "crates/proto-cli" }
 onequery-proto-runtime = { path = "crates/proto-runtime" }
+onequery-source-connect-cli = { path = "crates/source-connect-cli" }
 onequery-utils = { path = "crates/utils" }
 onequery-utils-absolute-path = { path = "crates/utils/absolute-path" }
 onequery-utils-cargo-bin = { path = "crates/utils/cargo-bin" }

@@ -5,7 +5,6 @@ mod config_cmd;
 mod debug;
 mod doctor;
 mod explain;
-mod json_input;
 mod org;
 mod query;
 mod restore;

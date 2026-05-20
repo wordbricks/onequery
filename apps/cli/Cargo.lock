@@ -1491,6 +1491,7 @@ dependencies = [
  "onequery-gateway",
  "onequery-install-context",
  "onequery-proto-cli",
+ "onequery-source-connect-cli",
  "onequery-utils",
  "onequery-utils-path",
  "pretty_assertions",
@@ -1655,6 +1656,20 @@ dependencies = [
  "http-body",
  "serde",
  "tokio",
+]
+
+[[package]]
+name = "onequery-source-connect-cli"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "buffa",
+ "buffa-types",
+ "onequery-proto-cli",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "thiserror",
 ]
 
 [[package]]

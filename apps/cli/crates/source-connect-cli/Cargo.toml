@@ -1,0 +1,20 @@
+[package]
+name = "onequery-source-connect-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait = { workspace = true }
+buffa = { workspace = true }
+buffa-types = { workspace = true, features = ["json"] }
+onequery-proto-cli = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+
+[lints]
+workspace = true
