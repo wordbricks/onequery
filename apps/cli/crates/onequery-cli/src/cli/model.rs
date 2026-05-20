@@ -32,6 +32,7 @@ use super::args::OrgSubcommand;
 use super::args::QuerySubcommand;
 use super::args::RestoreArgs;
 use super::args::SourceSubcommand;
+use super::args::UpgradeArgs;
 use super::args::parse_non_zero_u64;
 use super::args::parse_org_slug;
 use super::args::parse_request_id;
@@ -219,7 +220,7 @@ pub(crate) enum Command {
     #[command(after_help = GATEWAY_AFTER_HELP)]
     Gateway(GatewayArgs),
     /// Upgrade this published CLI installation in place.
-    Upgrade,
+    Upgrade(UpgradeArgs),
     /// Open the OneQuery dashboard in browser.
     Web,
     /// Internal process supervisor for the managed gateway.
@@ -268,7 +269,7 @@ impl Command {
             Self::Query(QuerySubcommand::Validate(_)) => "query validate",
             Self::Restore(_) => "restore",
             Self::Gateway(args) => args.command_path(),
-            Self::Upgrade => "upgrade",
+            Self::Upgrade(_) => "upgrade",
             Self::Web => "web",
             Self::GatewaySupervisor(_) => "__gateway-supervisor",
             Self::Api(_) => "api",
