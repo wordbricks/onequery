@@ -92,6 +92,9 @@ struct GlobalArgs {
         value_parser = parse_org_slug
     )]
     org_override: Option<OrgSlug>,
+    /// Select a local auth/config profile for this invocation.
+    #[arg(global = true, long = "profile", value_name = "PROFILE")]
+    profile: Option<String>,
     /// Apply a raw config override for this invocation using `key=value`.
     #[arg(global = true, long = "config", short = 'c', value_name = "KEY=VALUE")]
     config_overrides: Vec<String>,
@@ -164,6 +167,12 @@ impl GlobalArgs {
 
         Ok(GlobalOptions {
             org: self.org_override,
+            profile: self
+                .profile
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToOwned::to_owned),
             raw_config_overrides,
             request_id: self.request_id,
             timeout_sec: self.timeout_sec.map(NonZeroU64::get),
@@ -187,6 +196,7 @@ pub(crate) struct Invocation {
 #[derive(Debug, Clone)]
 pub(crate) struct GlobalOptions {
     pub org: Option<OrgSlug>,
+    pub profile: Option<String>,
     pub raw_config_overrides: RawCliConfigOverrides,
     pub request_id: Option<RequestId>,
     pub timeout_sec: Option<u64>,

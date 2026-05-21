@@ -642,6 +642,16 @@ fn parse_invocation_accepts_request_id_and_timeout_transport_controls() {
 }
 
 #[test]
+fn parse_invocation_accepts_profile_global_option() {
+    let invocation = parse_invocation(&["onequery", "--profile", "work", "auth", "whoami"]);
+
+    assert_eq!(
+        (invocation.global.profile, invocation.command.command_path()),
+        (Some("work".to_owned()), "auth whoami")
+    );
+}
+
+#[test]
 fn parse_invocation_accepts_raw_config_overrides() {
     let invocation = parse_invocation(&[
         "onequery",

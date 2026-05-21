@@ -1,5 +1,6 @@
 ---
 source: crates/onequery-cli/src/cli/../cli_tests.rs
+assertion_line: 147
 expression: "rendered_display(&[\"onequery\", \"config\", \"set\", \"--help\"])"
 ---
 Persist one supported CLI config value
@@ -27,6 +28,9 @@ Options:
 Global Options:
       --org <ORG_SLUG>
           Override the active org for this invocation
+
+      --profile <PROFILE>
+          Select a local auth/config profile for this invocation
 
   -c, --config <KEY=VALUE>
           Apply a raw config override for this invocation using `key=value`

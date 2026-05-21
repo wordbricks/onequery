@@ -21,6 +21,7 @@ Options:
 
 Global Options:
       --org <ORG_SLUG>           Override the active org for this invocation
+      --profile <PROFILE>        Select a local auth/config profile for this invocation
   -c, --config <KEY=VALUE>       Apply a raw config override for this invocation using `key=value`
       --request-id <REQUEST_ID>  Attach a caller-supplied request ID to outbound API requests
       --timeout <SECONDS>        Override the request timeout in seconds for this invocation

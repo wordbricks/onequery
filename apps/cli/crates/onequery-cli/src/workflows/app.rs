@@ -264,6 +264,7 @@ mod tests {
             raw_command: "onequery source list".to_owned(),
             global: GlobalOptions {
                 org: None,
+                profile: None,
                 raw_config_overrides: Vec::new(),
                 request_id: None,
                 timeout_sec: None,

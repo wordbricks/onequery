@@ -9,10 +9,14 @@ use super::AuthSessionSnapshot;
 use super::AuthSessionSource;
 use super::AuthSessionStore;
 use super::paths::auth_path;
+use crate::profile::SelectedProfile;
 use onequery_core::private_files;
 
-pub(super) fn load_auth_session_store(startup_command: &str) -> Result<AuthSessionStore, CliError> {
-    let path = auth_path(startup_command)?;
+pub(super) fn load_auth_session_store(
+    startup_command: &str,
+    profile: &SelectedProfile,
+) -> Result<AuthSessionStore, CliError> {
+    let path = auth_path(startup_command, profile)?;
     let persisted_snapshot = match read_persisted_auth_session_record(&path, startup_command)? {
         Some(record) => AuthSessionSnapshot::from_auth_json(record),
         None => AuthSessionSnapshot::empty(),
