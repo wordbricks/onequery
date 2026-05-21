@@ -64,6 +64,10 @@ const DIALECT_MAP = {
   bigquery: Dialect.BigQuery,
   cloudflare_d1: Dialect.SQLite,
   laminar: Dialect.ClickHouse,
+  // MotherDuck executes DuckDB SQL through a PostgreSQL wire endpoint. DuckDB's
+  // dialect intentionally follows PostgreSQL closely enough for our read-only
+  // validator until Polyglot exposes a DuckDB dialect.
+  motherduck: Dialect.PostgreSQL,
   mysql: Dialect.MySQL,
   postgres: Dialect.PostgreSQL,
 } as const satisfies Record<DatabaseCredentialProviderType, Dialect>;

@@ -4,6 +4,7 @@ import {
   executeBigQueryQuery,
   executeCloudflareD1Query,
   executeDatabaseQuery,
+  executeMotherDuckQuery,
   executeValidatedDatabaseQuery,
   executeLaminarQuery,
   executePostgresQuery,
@@ -229,6 +230,43 @@ describe("data source query execution", () => {
       options: expect.stringContaining("default_transaction_read_only=on"),
       ssl: { rejectUnauthorized: false },
     });
+  });
+
+  it("executes MotherDuck queries through the Postgres wire endpoint", async () => {
+    const receivedConfigs: unknown[] = [];
+    const rows = await executeMotherDuckQuery(
+      {
+        database: "md:analytics",
+        host: "pg.us-east-1-aws.motherduck.com",
+        port: 5432,
+        token: "md-token",
+        type: "motherduck",
+        username: "postgres",
+      },
+      "SELECT 1",
+      12_000,
+      async (config, query) => {
+        receivedConfigs.push({ config, query });
+        return [{ result: 1 }];
+      }
+    );
+
+    expect(rows).toEqual([{ result: 1 }]);
+    expect(receivedConfigs).toEqual([
+      {
+        config: {
+          connectionTimeoutMillis: 12_000,
+          database: "md:analytics",
+          host: "pg.us-east-1-aws.motherduck.com",
+          password: "md-token",
+          port: 5432,
+          query_timeout: 12_000,
+          ssl: { rejectUnauthorized: true },
+          user: "postgres",
+        },
+        query: "SELECT 1",
+      },
+    ]);
   });
 
   it("relaxes certificate verification before retrying postgres sslmode=prefer", async () => {

@@ -19,6 +19,7 @@ import {
   LaminarCredentialsSchema,
   LinearCredentialsSchema,
   MixpanelCredentialsSchema,
+  MotherDuckCredentialsSchema,
   MongoDBCredentialsSchema,
   MySQLCredentialsSchema,
   normalizeEnvVarName,
@@ -39,6 +40,7 @@ import type {
   LaminarCredentials,
   LinearCredentials,
   MixpanelCredentials,
+  MotherDuckCredentials,
   MongoDBCredentials,
   MySQLCredentials,
   PostgresCredentials,
@@ -545,6 +547,65 @@ describe("credentials schemas", () => {
       };
 
       const result = LaminarCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("MotherDuckCredentialsSchema", () => {
+    it("should validate valid MotherDuck credentials", () => {
+      const credentials: MotherDuckCredentials = {
+        database: "md:analytics",
+        host: "pg.us-east-1-aws.motherduck.com",
+        port: 5432,
+        token: "md_token",
+        type: "motherduck",
+        username: "postgres",
+      };
+
+      const result = MotherDuckCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should apply MotherDuck endpoint defaults", () => {
+      const result = MotherDuckCredentialsSchema.safeParse({
+        token: "md_token",
+        type: "motherduck",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({
+          database: "md:",
+          host: "pg.us-east-1-aws.motherduck.com",
+          port: 5432,
+          token: "md_token",
+          type: "motherduck",
+          username: "postgres",
+        });
+      }
+    });
+
+    it("should normalize plain database names to md: database paths", () => {
+      const result = MotherDuckCredentialsSchema.safeParse({
+        database: "analytics",
+        token: "md_token",
+        type: "motherduck",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.database).toBe("md:analytics");
+      }
+    });
+
+    it("should reject missing token", () => {
+      const result = MotherDuckCredentialsSchema.safeParse({
+        type: "motherduck",
+      });
+
       expect(result.success).toBe(false);
     });
   });
@@ -1343,6 +1404,10 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.laminar).toBe(LaminarCredentialsSchema);
     });
 
+    it("should map motherduck to MotherDuckCredentialsSchema", () => {
+      expect(credentialSchemaMap.motherduck).toBe(MotherDuckCredentialsSchema);
+    });
+
     it("should map connector to ConnectorCredentialsSchema", () => {
       expect(credentialSchemaMap.aws_athena_connector).toBe(
         ConnectorCredentialsSchema
@@ -1486,6 +1551,16 @@ describe("credentials schemas", () => {
       expect(result.type).toBe("aws_athena_connector");
     });
 
+    it("should validate MotherDuck credentials", () => {
+      const credentials = {
+        token: "md_token",
+        type: "motherduck",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("motherduck");
+    });
+
     it("should validate Cloudflare D1 credentials", () => {
       const credentials = {
         accountId: "023e105f4ecef8ad9ca31a8372d0c353",
@@ -1580,6 +1655,14 @@ describe("credentials schemas", () => {
           type: "laminar",
         },
         {
+          database: "md:",
+          host: "pg.us-east-1-aws.motherduck.com",
+          port: 5432,
+          token: "md_token",
+          type: "motherduck",
+          username: "postgres",
+        },
+        {
           connectorId: "connector_123",
           database: "analytics",
           type: "aws_athena_connector",
@@ -1631,6 +1714,7 @@ describe("credentials schemas", () => {
           "aws_athena_connector",
           "cloudflare_d1",
           "laminar",
+          "motherduck",
           "mysql",
           "postgres",
         ].toSorted()

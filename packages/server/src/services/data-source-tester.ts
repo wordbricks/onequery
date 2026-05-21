@@ -145,6 +145,12 @@ export async function testDataSource(
     });
   }
 
+  if (credentials.type === "motherduck") {
+    return testMotherDuckConnection(credentials, {
+      timeoutSeconds: options.timeoutSeconds,
+    });
+  }
+
   if (credentials.type === "cloudflare_d1") {
     return testCloudflareD1Connection(credentials, {
       timeoutSeconds: options.timeoutSeconds,
@@ -293,6 +299,27 @@ async function testCloudflareD1Connection(
       }
 
       return null;
+    },
+    startTime,
+    timeoutSeconds: options.timeoutSeconds,
+  });
+}
+
+async function testMotherDuckConnection(
+  credentials: Extract<Credentials, { type: "motherduck" }>,
+  options: {
+    timeoutSeconds?: number;
+  }
+): Promise<ConnectionTestOutcome> {
+  const startTime = Date.now();
+
+  return runQueryConnectionTest({
+    execute: async (timeoutMs) => {
+      await executeDatabaseQuery({
+        credentials,
+        sql: CONNECTION_TEST_QUERY,
+        timeoutMs,
+      });
     },
     startTime,
     timeoutSeconds: options.timeoutSeconds,

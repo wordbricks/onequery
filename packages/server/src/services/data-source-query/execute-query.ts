@@ -6,6 +6,7 @@ import type {
   Database,
   DatabaseCredentials,
   LaminarCredentials,
+  MotherDuckCredentials,
   MySQLCredentials,
   PostgresCredentials,
 } from "@onequery/db/server";
@@ -223,6 +224,16 @@ async function executeDatabaseQueryInternal(
     if (input.credentials.type === "mysql") {
       return {
         rows: await executeMySQLQuery(
+          input.credentials,
+          normalizedSql,
+          timeoutMs
+        ),
+      };
+    }
+
+    if (input.credentials.type === "motherduck") {
+      return {
+        rows: await executeMotherDuckQuery(
           input.credentials,
           normalizedSql,
           timeoutMs
@@ -455,6 +466,22 @@ type PostgresQueryRunner = (
   query: string
 ) => Promise<Record<string, unknown>[]>;
 
+type MotherDuckClientConfig = {
+  connectionTimeoutMillis: number;
+  database: string;
+  host: string;
+  password: string;
+  port: number;
+  query_timeout: number;
+  ssl: { rejectUnauthorized: true };
+  user: string;
+};
+
+type MotherDuckQueryRunner = (
+  config: MotherDuckClientConfig,
+  query: string
+) => Promise<Record<string, unknown>[]>;
+
 async function runPostgresQuery(
   pg: typeof import("pg"),
   config: PostgresClientConfig,
@@ -479,6 +506,43 @@ async function runPostgresQuery(
 async function resolvePostgresQueryRunner(): Promise<PostgresQueryRunner> {
   const pg = await import("pg");
   return (config, query) => runPostgresQuery(pg, config, query);
+}
+
+async function runMotherDuckQuery(
+  pg: typeof import("pg"),
+  config: MotherDuckClientConfig,
+  query: string
+): Promise<Record<string, unknown>[]> {
+  const client = new pg.Client(config);
+  await client.connect();
+
+  try {
+    const result = await client.query(query);
+    return normalizeRecordRows("MotherDuck", result.rows);
+  } finally {
+    await client.end();
+  }
+}
+
+async function resolveMotherDuckQueryRunner(): Promise<MotherDuckQueryRunner> {
+  const pg = await import("pg");
+  return (config, query) => runMotherDuckQuery(pg, config, query);
+}
+
+function buildMotherDuckClientConfig(
+  creds: MotherDuckCredentials,
+  timeoutMs: number
+): MotherDuckClientConfig {
+  return {
+    connectionTimeoutMillis: timeoutMs,
+    database: creds.database,
+    host: creds.host,
+    password: creds.token,
+    port: creds.port,
+    query_timeout: timeoutMs,
+    ssl: { rejectUnauthorized: true },
+    user: creds.username,
+  };
 }
 
 function buildMySQLConnectionConfig(
@@ -563,6 +627,16 @@ export async function executePostgresQuery(
 
     throw priorError;
   }
+}
+
+export async function executeMotherDuckQuery(
+  creds: MotherDuckCredentials,
+  query: string,
+  timeoutMs = QUERY_TIMEOUT_MS,
+  runner?: MotherDuckQueryRunner
+): Promise<Record<string, unknown>[]> {
+  const queryRunner = runner ?? (await resolveMotherDuckQueryRunner());
+  return queryRunner(buildMotherDuckClientConfig(creds, timeoutMs), query);
 }
 
 export async function executeMySQLQuery(

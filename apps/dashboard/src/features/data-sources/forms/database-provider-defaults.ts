@@ -3,9 +3,15 @@ const POSTGRES_CONNECTION_FORMAT =
   "postgres://user:password@host:port/database";
 const SUPABASE_CONNECTION_PLACEHOLDER =
   "postgresql://postgres.[project-ref]:password@aws-0-[region].pooler.supabase.com:5432/postgres";
+const MOTHERDUCK_CONNECTION_PLACEHOLDER =
+  "postgres://postgres:[token]@pg.us-east-1-aws.motherduck.com:5432/md:";
 const MYSQL_CONNECTION_FORMAT = "mysql://user:password@host:port/database";
 
-export type DatabaseProviderType = "postgres" | "supabase" | "mysql";
+export type DatabaseProviderType =
+  | "postgres"
+  | "supabase"
+  | "motherduck"
+  | "mysql";
 
 type DatabaseProviderDefaults = {
   connectionStringFormat: string;
@@ -38,6 +44,21 @@ const DATABASE_PROVIDER_DEFAULTS = {
     namePlaceholder: "My Database",
     supportedProtocols: ["mysql"],
     usernamePlaceholder: "root",
+  },
+  motherduck: {
+    connectionStringFormat: MOTHERDUCK_CONNECTION_PLACEHOLDER,
+    connectionStringPlaceholder: MOTHERDUCK_CONNECTION_PLACEHOLDER,
+    databasePlaceholder: "md:",
+    defaultDatabase: "md:",
+    defaultPort: 5432,
+    defaultSslMode: "prefer",
+    fallbackHost: "pg.us-east-1-aws.motherduck.com",
+    hostPlaceholder: "pg.us-east-1-aws.motherduck.com",
+    invalidConnectionStringFormat: MOTHERDUCK_CONNECTION_PLACEHOLDER,
+    isPostgresFamily: true,
+    namePlaceholder: "My MotherDuck",
+    supportedProtocols: ["postgres", "postgresql"],
+    usernamePlaceholder: "postgres",
   },
   postgres: {
     connectionStringFormat: POSTGRES_CONNECTION_FORMAT,
@@ -75,7 +96,10 @@ export function isDatabaseProvider(
   provider: string
 ): provider is DatabaseProviderType {
   return (
-    provider === "postgres" || provider === "supabase" || provider === "mysql"
+    provider === "postgres" ||
+    provider === "supabase" ||
+    provider === "motherduck" ||
+    provider === "mysql"
   );
 }
 

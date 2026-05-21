@@ -486,6 +486,7 @@ export const ProviderIcons = {
   laminar: LaminarIcon,
   linear: LinearIcon,
   mixpanel: MixpanelIcon,
+  motherduck: ConnectorIcon,
   mongodb: MongodbIcon,
   mysql: MysqlIcon,
   postgres: PostgresIcon,

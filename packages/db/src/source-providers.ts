@@ -11,6 +11,7 @@ import {
   LaminarCredentialsSchema,
   LinearCredentialsSchema,
   MixpanelCredentialsSchema,
+  MotherDuckCredentialsSchema,
   MongoDBCredentialsSchema,
   MySQLCredentialsSchema,
   PostgresCredentialsSchema,
@@ -251,6 +252,34 @@ export const SOURCE_PROVIDER_REGISTRY = {
         sourceKey: "laminar_main",
         credentials: {
           apiKey: "laminar_api_key",
+        },
+      },
+    },
+  },
+  motherduck: {
+    label: "MotherDuck",
+    credentialSchema: MotherDuckCredentialsSchema,
+    credentialType: "motherduck",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: true,
+    sourceApiInterface: false,
+    testable: true,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "database",
+    guide: {
+      summary:
+        "Connect MotherDuck through its PostgreSQL wire protocol endpoint with a service token.",
+      steps: [
+        "Create a MotherDuck service token with access to the target database.",
+        "Use `md:` for the default database, or `md:database_name` for a specific MotherDuck database.",
+        "Only override host, port, or username if MotherDuck documents a different endpoint for your environment.",
+      ],
+      exampleInput: {
+        sourceKey: "motherduck_prod",
+        credentials: {
+          database: "md:",
+          token: "motherduck_service_token",
         },
       },
     },

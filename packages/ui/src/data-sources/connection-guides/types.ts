@@ -10,6 +10,7 @@ export type DataSourceConnectionGuideProvider =
   | "github"
   | "laminar"
   | "mixpanel"
+  | "motherduck"
   | "mongodb"
   | "mysql"
   | "postgres"

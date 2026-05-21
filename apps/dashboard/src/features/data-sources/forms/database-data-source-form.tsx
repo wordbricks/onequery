@@ -1,5 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { MySQLCredentials, PostgresCredentials } from "@onequery/db";
+import type {
+  MotherDuckCredentials,
+  MySQLCredentials,
+  PostgresCredentials,
+} from "@onequery/db";
 import { Input } from "@onequery/ui/components/input";
 import { Label } from "@onequery/ui/components/label";
 import {
@@ -53,10 +57,11 @@ export function DatabaseDataSourceForm({
     defaultValues: {
       provider,
       name: "",
-      host: "",
+      host: provider === "motherduck" ? providerDefaults.fallbackHost : "",
       port: providerDefaults.defaultPort,
       database: providerDefaults.defaultDatabase,
-      username: "",
+      username:
+        provider === "motherduck" ? providerDefaults.usernamePlaceholder : "",
       password: "",
       sslMode: providerDefaults.defaultSslMode,
     },
@@ -81,26 +86,38 @@ export function DatabaseDataSourceForm({
     }),
     mutationFn: async (data) => {
       const defaults = getDatabaseProviderDefaults(data.provider);
-      const credentials: PostgresCredentials | MySQLCredentials =
-        defaults.isPostgresFamily
+      const credentials:
+        | PostgresCredentials
+        | MySQLCredentials
+        | MotherDuckCredentials =
+        data.provider === "motherduck"
           ? {
-              type: "postgres",
+              type: "motherduck",
               host: data.host,
               port: data.port,
               database: data.database,
               username: data.username,
-              password: data.password,
-              sslMode: data.sslMode ?? defaults.defaultSslMode,
+              token: data.password,
             }
-          : {
-              type: "mysql",
-              host: data.host,
-              port: data.port,
-              database: data.database,
-              username: data.username,
-              password: data.password,
-              sslMode: data.sslMode ?? defaults.defaultSslMode,
-            };
+          : defaults.isPostgresFamily
+            ? {
+                type: "postgres",
+                host: data.host,
+                port: data.port,
+                database: data.database,
+                username: data.username,
+                password: data.password,
+                sslMode: data.sslMode ?? defaults.defaultSslMode,
+              }
+            : {
+                type: "mysql",
+                host: data.host,
+                port: data.port,
+                database: data.database,
+                username: data.username,
+                password: data.password,
+                sslMode: data.sslMode ?? defaults.defaultSslMode,
+              };
 
       return createDataSource({
         organizationId,
