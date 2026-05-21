@@ -6,6 +6,10 @@ import {
   ListSourceProvidersResponseSchema,
 } from "@onequery/proto-cli/cli/v1/source_pb";
 import { ensureConnectorOrganization } from "@onequery/server/services/connectors/broker";
+import {
+  serializeDataSourceTestOutcome,
+  testDataSource,
+} from "@onequery/server/services/data-source-tester";
 import { Result } from "better-result";
 
 import type {
@@ -166,9 +170,11 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
         level: "warn",
       });
 
-      return yield* createCliSourceNotFoundFailure(
-        access.authorizedOrg.org.slug,
-        request.sourceKey
+      return Result.err(
+        createCliSourceNotFoundFailure(
+          access.authorizedOrg.org.slug,
+          request.sourceKey
+        )
       );
     }
 
@@ -224,9 +230,11 @@ const handleTestSourceImpl: CliResultServiceMethod<"testSource"> = async (
         level: "warn",
       });
 
-      return yield* createCliSourceNotFoundFailure(
-        access.authorizedOrg.org.slug,
-        request.sourceKey
+      return Result.err(
+        createCliSourceNotFoundFailure(
+          access.authorizedOrg.org.slug,
+          request.sourceKey
+        )
       );
     }
 
@@ -324,6 +332,37 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
       }
     }
 
+    if (credentials.type === "github") {
+      const validation = serializeDataSourceTestOutcome(
+        await testDataSource(credentials, {
+          db: access.c.var.storage.db,
+          organizationId: access.authorizedOrg.org.id,
+        })
+      );
+      if (
+        validation.kind === "supported" &&
+        validation.result.success === false
+      ) {
+        return cliServiceErr({
+          detail: validation.result.error,
+          errors: [
+            {
+              code: "invalid_credentials",
+              field: "credentials.accessToken",
+              message: validation.result.message,
+            },
+          ],
+          key: "SOURCE_REQUEST_INVALID",
+        });
+      }
+      if (validation.kind === "unsupported") {
+        return cliServiceErr({
+          detail: validation.message,
+          key: "SOURCE_REQUEST_INVALID",
+        });
+      }
+    }
+
     const result = await runCliConnectSourceEffect({
       db: access.c.var.storage.db,
       effect: {
@@ -336,9 +375,11 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
       masterEncryptionKey: access.c.var.runtime.crypto.masterEncryptionKey,
     });
     if (result.kind === "name_conflict") {
-      return yield* createCliSourceNameConflictFailure(
-        access.authorizedOrg.org.slug,
-        result.sourceName
+      return Result.err(
+        createCliSourceNameConflictFailure(
+          access.authorizedOrg.org.slug,
+          result.sourceName
+        )
       );
     }
 

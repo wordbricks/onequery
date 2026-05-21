@@ -136,13 +136,15 @@ export async function assertPreparedSourceApiStillValid(
       input.source.provider !== input.prepared.provider ||
       input.source.sourceKey !== input.prepared.sourceKey
     ) {
-      return yield* createSourceApiFailure({
-        error: new SourceApiInvalidatedError(
-          "Source API execution state no longer matches the current source"
-        ),
-        phase: "execute",
-        renderError: dependencies.toCliErrorMessage,
-      });
+      return Result.err(
+        createSourceApiFailure({
+          error: new SourceApiInvalidatedError(
+            "Source API execution state no longer matches the current source"
+          ),
+          phase: "execute",
+          renderError: dependencies.toCliErrorMessage,
+        })
+      );
     }
 
     if (!input.prepared.descriptorVersion) {
@@ -160,13 +162,15 @@ export async function assertPreparedSourceApiStillValid(
     );
 
     if (descriptor.descriptorVersion !== input.prepared.descriptorVersion) {
-      return yield* createSourceApiFailure({
-        error: new SourceApiInvalidatedError(
-          "Source API execution state descriptor version no longer matches the current source API descriptor"
-        ),
-        phase: "execute",
-        renderError: dependencies.toCliErrorMessage,
-      });
+      return Result.err(
+        createSourceApiFailure({
+          error: new SourceApiInvalidatedError(
+            "Source API execution state descriptor version no longer matches the current source API descriptor"
+          ),
+          phase: "execute",
+          renderError: dependencies.toCliErrorMessage,
+        })
+      );
     }
 
     return Result.ok(undefined);
@@ -315,9 +319,11 @@ async function requirePreparedCliSourceApiSource(
     });
 
     if (source.kind === "not_found") {
-      return yield* createCliSourceNotFoundFailure(
-        input.authorizedOrg.org.slug,
-        input.sourceKey
+      return Result.err(
+        createCliSourceNotFoundFailure(
+          input.authorizedOrg.org.slug,
+          input.sourceKey
+        )
       );
     }
 

@@ -19,6 +19,7 @@ import type {
 } from "./testers/connection-test-outcome";
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./testers/defaults";
 import { testGoogleAnalyticsConnection } from "./testers/ga-tester";
+import { testGitHubConnection } from "./testers/github-tester";
 import { testMixpanelConnection } from "./testers/mixpanel-tester";
 import { testMySQLConnection } from "./testers/mysql-tester";
 import { testPostgresConnection } from "./testers/postgres-tester";
@@ -64,6 +65,10 @@ const DIRECT_CONNECTION_TESTERS: Partial<
     testAmplitudeConnection(
       credentials as Extract<Credentials, { type: "amplitude" }>,
       options.timeoutSeconds
+    ),
+  github: async (credentials): Promise<DataSourceTestOutcome> =>
+    testGitHubConnection(
+      credentials as Extract<Credentials, { type: "github" }>
     ),
   mixpanel: async (credentials, options): Promise<DataSourceTestOutcome> =>
     testMixpanelConnection(

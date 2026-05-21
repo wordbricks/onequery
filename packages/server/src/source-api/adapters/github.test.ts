@@ -1,17 +1,20 @@
+import type { GitHubCredentials } from "@onequery/db/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { finalizePreparedSourceApi } from "../normalize";
 import type { PreparedSourceConnection } from "../types";
-import { githubSourceApiAdapter } from "./github";
+import { buildGitHubUrl, githubSourceApiAdapter } from "./github";
 
 const originalFetch = globalThis.fetch;
 
+const githubCredentials = {
+  accessToken: "ghp_test-token",
+  repositories: ["openai/example"],
+  type: "github",
+} satisfies GitHubCredentials;
+
 const source: PreparedSourceConnection = {
-  credentials: {
-    accessToken: "ghp_test-token",
-    repositories: ["openai/example"],
-    type: "github",
-  },
+  credentials: githubCredentials,
   displayName: "GitHub Prod",
   id: "source_1",
   provider: "github",
@@ -78,6 +81,23 @@ describe("github source api adapter", () => {
 
     expect(finalizedPlan.host).toBe("api.github.com");
     expect(finalizedPlan).toMatchSnapshot();
+  });
+
+  it("normalizes owner/repo shorthand into canonical GitHub URLs", () => {
+    expect(
+      buildGitHubUrl({
+        credentials: githubCredentials,
+        endpoint: "openai/example",
+      })
+    ).toBe("https://api.github.com/repos/openai/example");
+
+    expect(
+      buildGitHubUrl({
+        credentials: githubCredentials,
+        endpoint: "openai/example/pulls",
+        params: { state: "all" },
+      })
+    ).toBe("https://api.github.com/repos/openai/example/pulls?state=all");
   });
 
   it("executes GitHub requests with upstream status and headers", async () => {
