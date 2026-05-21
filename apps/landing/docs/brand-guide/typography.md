@@ -9,7 +9,7 @@ compact UI labels, and code typography only where code is real.
 This guide is based on:
 
 - `DESIGN.md`
-- `src/app/styles.css`
+- `src/styles/base.css`
 - `../landing-video/src/compositions/open-claw-demo/tokens.ts`
 
 ## Font Families

@@ -14,7 +14,7 @@ Color supports hierarchy and proof. It should not become the story.
 This guide is based on:
 
 - `DESIGN.md`
-- `src/app/styles.css`
+- `src/styles/base.css`
 - `../landing-video/src/compositions/open-claw-demo/tokens.ts`
 - `public/onequery-icon.png`
 
