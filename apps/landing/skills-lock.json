@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "astro": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "computedHash": "88e5967a26240b1ae697b466a51c7d5cb9eed45b06da50533b20971c8546363d"
+    },
     "seo-geo": {
       "source": "resciencelab/opc-skills",
       "sourceType": "github",
