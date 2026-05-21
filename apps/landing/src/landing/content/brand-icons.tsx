@@ -1,4 +1,5 @@
-import type { ComponentPropsWithoutRef } from "react";
+import { SimpleIconSvg } from "@onequery/ui/icons/svg-icon";
+import type { IconSvgProps } from "@onequery/ui/icons/svg-icon";
 import {
   siGithub,
   siGooglebigquery,
@@ -25,34 +26,12 @@ const BRAND_ICONS = {
 
 export type BrandIconName = keyof typeof BRAND_ICONS;
 
-type BrandIconProps = Omit<
-  ComponentPropsWithoutRef<"svg">,
-  "children" | "viewBox"
-> & {
+type BrandIconProps = IconSvgProps & {
   name: BrandIconName;
-  title?: string;
 };
 
-export function BrandIcon({
-  "aria-hidden": ariaHidden,
-  "aria-label": ariaLabel,
-  name,
-  role,
-  title,
-  ...props
-}: BrandIconProps) {
+export function BrandIcon({ name, ...props }: BrandIconProps) {
   const icon = BRAND_ICONS[name];
-  const isHidden = ariaHidden === true || ariaHidden === "true";
 
-  return (
-    <svg
-      {...props}
-      aria-hidden={ariaHidden}
-      aria-label={isHidden ? undefined : (ariaLabel ?? title ?? icon.title)}
-      role={isHidden ? undefined : (role ?? "img")}
-      viewBox="0 0 24 24"
-    >
-      <path d={icon.path} fill="currentColor" />
-    </svg>
-  );
+  return <SimpleIconSvg {...props} icon={icon} />;
 }
