@@ -52,7 +52,7 @@ function createBundleReportPlugin() {
 
 export default defineConfig({
   adapter: cloudflare({
-    imageService: "passthrough",
+    imageService: { build: "compile", runtime: "cloudflare-binding" },
   }),
   fonts: [
     {
