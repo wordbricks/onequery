@@ -24,6 +24,7 @@ import { MixpanelDataSourceForm } from "@/features/data-sources/forms/mixpanel-d
 import { MongoDBDataSourceForm } from "@/features/data-sources/forms/mongodb-data-source-form";
 import { PostHogDataSourceForm } from "@/features/data-sources/forms/posthog-data-source-form";
 import { SentryDataSourceForm } from "@/features/data-sources/forms/sentry-data-source-form";
+import { SnowflakeDataSourceForm } from "@/features/data-sources/forms/snowflake-data-source-form";
 import { sourceProvidersQueryOptions } from "@/queries/data-sources-queries";
 import { Label } from "@/ui/label";
 import {
@@ -103,6 +104,8 @@ function renderConnectionForm(input: {
       break;
     case "mongodb":
       return <MongoDBDataSourceForm key={providerId} {...commonProps} />;
+    case "snowflake":
+      return <SnowflakeDataSourceForm key={providerId} {...commonProps} />;
     case "google_service_account":
       if (isGoogleServiceAccountProvider(providerId)) {
         return (

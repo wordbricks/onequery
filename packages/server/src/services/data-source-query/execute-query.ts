@@ -8,7 +8,16 @@ import type {
   LaminarCredentials,
   MySQLCredentials,
   PostgresCredentials,
+  SnowflakeCredentials,
 } from "@onequery/db/server";
+import snowflake from "snowflake-sdk";
+import type {
+  Connection as SnowflakeConnection,
+  ConnectionOptions as SnowflakeConnectionOptions,
+  FileAndStageBindStatement as SnowflakeFileAndStageBindStatement,
+  RowStatement as SnowflakeRowStatement,
+  SnowflakeError,
+} from "snowflake-sdk";
 
 import {
   ConnectorJobTimeoutError,
@@ -49,6 +58,7 @@ const TRANSIENT_ERROR_CODES = new Set([
   "PROTOCOL_CONNECTION_LOST",
   "PROTOCOL_SEQUENCE_TIMEOUT",
 ]);
+const TRANSIENT_SNOWFLAKE_ERROR_CODES = new Set(["ETIMEDOUT", "ECONNRESET"]);
 const TRANSIENT_BIGQUERY_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 const TRANSIENT_CLOUDFLARE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 
@@ -62,6 +72,9 @@ type BigQueryRestQuery = {
   timeoutMs: number;
   location?: string;
 };
+type SnowflakeStatement =
+  | SnowflakeRowStatement
+  | SnowflakeFileAndStageBindStatement;
 
 function hasControlCharacters(value: string): boolean {
   return Array.from(value).some((character) => {
@@ -223,6 +236,16 @@ async function executeDatabaseQueryInternal(
     if (input.credentials.type === "mysql") {
       return {
         rows: await executeMySQLQuery(
+          input.credentials,
+          normalizedSql,
+          timeoutMs
+        ),
+      };
+    }
+
+    if (input.credentials.type === "snowflake") {
+      return {
+        rows: await executeSnowflakeQuery(
           input.credentials,
           normalizedSql,
           timeoutMs
@@ -626,6 +649,141 @@ export async function executeMySQLQuery(
     } catch (relaxedError) {
       return attemptPlaintext(relaxedError);
     }
+  }
+}
+
+function buildSnowflakeConnectionOptions(
+  creds: SnowflakeCredentials,
+  timeoutMs: number
+): SnowflakeConnectionOptions {
+  const options: SnowflakeConnectionOptions = {
+    account: creds.account,
+    application: "OneQuery",
+    authenticator: "SNOWFLAKE",
+    clientSessionKeepAlive: false,
+    database: creds.database,
+    password: creds.password,
+    queryTag: "onequery",
+    timeout: timeoutMs,
+    username: creds.username,
+    validateDefaultParameters: true,
+    warehouse: creds.warehouse,
+  };
+
+  if (creds.schema) {
+    options.schema = creds.schema;
+  }
+  if (creds.role) {
+    options.role = creds.role;
+  }
+
+  return options;
+}
+
+function connectSnowflake(
+  creds: SnowflakeCredentials,
+  timeoutMs: number
+): Promise<SnowflakeConnection> {
+  const connection = snowflake.createConnection(
+    buildSnowflakeConnectionOptions(creds, timeoutMs)
+  );
+  return connection.connectAsync();
+}
+
+function destroySnowflakeConnection(
+  connection: SnowflakeConnection
+): Promise<void> {
+  return new Promise((resolve) => {
+    connection.destroy(() => {
+      resolve();
+    });
+  });
+}
+
+function executeSnowflakeStatement(
+  connection: SnowflakeConnection,
+  query: string,
+  timeoutMs: number
+): Promise<Record<string, unknown>[]> {
+  return new Promise((resolve, reject) => {
+    let statement: SnowflakeStatement | null = null;
+    let settled = false;
+
+    const finish = (result: {
+      error?: unknown;
+      rows?: Record<string, unknown>[];
+    }) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(timeout);
+      if (result.error) {
+        reject(result.error);
+        return;
+      }
+
+      resolve(result.rows ?? []);
+    };
+
+    const timeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      if (statement) {
+        statement.cancel(() => {});
+      }
+      reject(
+        new DataSourceQueryExecutionError(
+          `Snowflake query timed out after ${timeoutMs}ms`,
+          {
+            retryable: true,
+            timedOut: true,
+          }
+        )
+      );
+    }, timeoutMs);
+
+    try {
+      statement = connection.execute({
+        complete: (
+          error: SnowflakeError | undefined,
+          _statement: SnowflakeStatement,
+          rows?: unknown[]
+        ) => {
+          if (error) {
+            finish({ error });
+            return;
+          }
+
+          try {
+            finish({ rows: normalizeRecordRows("Snowflake", rows) });
+          } catch (normalizationError) {
+            finish({ error: normalizationError });
+          }
+        },
+        rowMode: "object_with_renamed_duplicated_columns",
+        sqlText: query,
+      });
+    } catch (error) {
+      finish({ error });
+    }
+  });
+}
+
+export async function executeSnowflakeQuery(
+  creds: SnowflakeCredentials,
+  query: string,
+  timeoutMs = QUERY_TIMEOUT_MS
+): Promise<Record<string, unknown>[]> {
+  const connection = await connectSnowflake(creds, timeoutMs);
+  try {
+    return await executeSnowflakeStatement(connection, query, timeoutMs);
+  } finally {
+    await destroySnowflakeConnection(connection);
   }
 }
 
@@ -1079,7 +1237,8 @@ function toExecutionError(error: unknown): DataSourceQueryExecutionError {
   const retryable =
     timeout ||
     (errorCode !== null && TRANSIENT_ERROR_CODES.has(errorCode)) ||
-    isRetryableBigQueryError(error);
+    isRetryableBigQueryError(error) ||
+    isRetryableSnowflakeError(error);
 
   return new DataSourceQueryExecutionError(message, {
     retryable,
@@ -1094,6 +1253,22 @@ function isRetryableBigQueryError(error: unknown): boolean {
 
   const code = error.code;
   return typeof code === "number" && TRANSIENT_BIGQUERY_STATUS_CODES.has(code);
+}
+
+function isRetryableSnowflakeError(error: unknown): boolean {
+  if (!isRecord(error)) {
+    return false;
+  }
+
+  const code = error.code;
+  if (typeof code === "string" && TRANSIENT_SNOWFLAKE_ERROR_CODES.has(code)) {
+    return true;
+  }
+
+  const statusCode = error.statusCode;
+  return (
+    typeof statusCode === "number" && (statusCode === 429 || statusCode >= 500)
+  );
 }
 
 function readErrorCode(error: unknown): string | null {

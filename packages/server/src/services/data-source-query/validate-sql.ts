@@ -66,6 +66,7 @@ const DIALECT_MAP = {
   laminar: Dialect.ClickHouse,
   mysql: Dialect.MySQL,
   postgres: Dialect.PostgreSQL,
+  snowflake: Dialect.Snowflake,
 } as const satisfies Record<DatabaseCredentialProviderType, Dialect>;
 
 const SIDE_EFFECTING_EXPRESSION_KINDS = new Set([
@@ -217,6 +218,8 @@ const MYSQL_UNSAFE_FUNCTIONS = new Set([
   "sys_eval",
   "sys_exec",
 ]);
+
+const SNOWFLAKE_UNSAFE_FUNCTIONS = new Set(["system$wait"]);
 
 type ValidationContext = {
   trimmedSql: string;
@@ -661,6 +664,13 @@ function isUnsafeFunctionName(
 
   if (dbType === "mysql") {
     return MYSQL_UNSAFE_FUNCTIONS.has(functionName);
+  }
+
+  if (dbType === "snowflake") {
+    return (
+      SNOWFLAKE_UNSAFE_FUNCTIONS.has(functionName) ||
+      functionName.startsWith("system$")
+    );
   }
 
   return false;

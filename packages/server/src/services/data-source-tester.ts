@@ -24,6 +24,7 @@ import { testMySQLConnection } from "./testers/mysql-tester";
 import { testPostgresConnection } from "./testers/postgres-tester";
 import { testPostHogConnection } from "./testers/posthog-tester";
 import { testSentryConnection } from "./testers/sentry-tester";
+import { testSnowflakeConnection } from "./testers/snowflake-tester";
 
 export type UnsupportedTestReason = "oauth" | "not_implemented";
 
@@ -95,6 +96,11 @@ const DIRECT_CONNECTION_TESTERS: Partial<
   sentry: async (credentials, options): Promise<DataSourceTestOutcome> =>
     testSentryConnection(
       credentials as Extract<Credentials, { type: "sentry" }>,
+      options.timeoutSeconds
+    ),
+  snowflake: async (credentials, options): Promise<DataSourceTestOutcome> =>
+    testSnowflakeConnection(
+      credentials as Extract<Credentials, { type: "snowflake" }>,
       options.timeoutSeconds
     ),
 };
