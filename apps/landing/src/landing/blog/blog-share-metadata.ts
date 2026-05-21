@@ -4,11 +4,12 @@ const ONEQUERY_SITE_URL = "https://onequery.dev";
 const ONEQUERY_SITE_NAME = "OneQuery";
 const BLOG_SHARE_IMAGE_SIZE = 1254;
 
-interface BlogPostShareMetadata {
+export interface BlogPostShareMetadata {
   canonicalUrl: string;
   description: string;
   imageAlt: string;
   imageHeight: number;
+  imageWidth: number;
   imageUrl: string;
   publishedTime: string | undefined;
   title: string;
@@ -50,6 +51,7 @@ export function getBlogPostShareMetadata(
     description: post.description,
     imageAlt: `${post.title} - OneQuery Blog`,
     imageHeight: BLOG_SHARE_IMAGE_SIZE,
+    imageWidth: BLOG_SHARE_IMAGE_SIZE,
     imageUrl,
     publishedTime: toIsoDate(post.date),
     title,

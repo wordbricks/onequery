@@ -1,0 +1,25 @@
+---
+import type { BlogPostSection } from "../../landing/blog/blog-posts";
+import LinkedText from "./LinkedText.astro";
+
+interface Props {
+  paragraph: string;
+  paragraphIndex: number;
+  section: BlogPostSection;
+}
+
+const { paragraph, paragraphIndex, section } = Astro.props;
+const inlineImages =
+  section.inlineImages?.filter(
+    (image) => image.beforeParagraphIndex === paragraphIndex
+  ) ?? [];
+---
+
+{
+  inlineImages.map((image) => (
+    <figure class="blog-post-figure blog-post-figure-inline">
+      <img src={image.src} alt={image.alt} />
+    </figure>
+  ))
+}
+<p><LinkedText text={paragraph} /></p>

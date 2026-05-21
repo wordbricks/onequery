@@ -1,5 +1,5 @@
-import { useActorRef, useSelector } from "@xstate/react";
-import { fromPromise } from "xstate";
+import { useStore } from "@nanostores/react";
+import { useMemo } from "react";
 
 import {
   trackInstallCommandCopied,
@@ -7,14 +7,13 @@ import {
 } from "../analytics/landing-analytics";
 import { INSTALL_COMMANDS } from "../config/landing-config";
 import {
-  createDownloadCommandMachine,
-  readCopiedMethodLabel,
+  createDownloadCommandStore,
   readSelectedInstallMethod,
-} from "./download-command.machine";
+} from "./download-command.store";
 import type {
   DownloadCommandCopyInput,
   DownloadCommandCopyOutput,
-} from "./download-command.machine";
+} from "./download-command.store";
 
 function runBestEffort(action: () => void) {
   try {
@@ -25,48 +24,37 @@ function runBestEffort(action: () => void) {
   }
 }
 
-const downloadCommandMachine = createDownloadCommandMachine().provide({
-  actions: {
-    trackCopySucceeded: (_, params: DownloadCommandCopyOutput) => {
-      runBestEffort(() => trackInstallCommandCopied(params.label));
-    },
-    trackMethodSelected: (
-      _,
-      params: { label: (typeof INSTALL_COMMANDS)[number]["label"] }
-    ) => {
-      runBestEffort(() => trackInstallMethodSelected(params.label));
-    },
-  },
-  actors: {
-    copyCommand: fromPromise<
-      DownloadCommandCopyOutput,
-      DownloadCommandCopyInput
-    >(async ({ input }) => {
+function createDownloadCommandController() {
+  return createDownloadCommandStore({
+    copyCommand: async (input: DownloadCommandCopyInput) => {
       await navigator.clipboard.writeText(input.command);
 
       return {
         label: input.label,
       };
-    }),
-  },
-});
+    },
+    trackCopySucceeded: (params: DownloadCommandCopyOutput) => {
+      runBestEffort(() => trackInstallCommandCopied(params.label));
+    },
+    trackMethodSelected: (params) => {
+      runBestEffort(() => trackInstallMethodSelected(params.label));
+    },
+  });
+}
 
 function useDownloadCommandController() {
-  const actorRef = useActorRef(downloadCommandMachine);
-  const selectedMethod = useSelector(actorRef, readSelectedInstallMethod);
-  const copiedMethodLabel = useSelector(actorRef, readCopiedMethodLabel);
+  const downloadCommandStore = useMemo(createDownloadCommandController, []);
+  const state = useStore(downloadCommandStore.$downloadCommandState);
+  const selectedMethod = readSelectedInstallMethod(state);
 
   return {
-    copiedMethodLabel,
+    copiedMethodLabel: state.copiedMethodLabel,
     selectedMethod,
     copy: () => {
-      actorRef.send({ type: "downloadCommand/copyRequested" });
+      void downloadCommandStore.copy();
     },
     selectMethod: (label: (typeof INSTALL_COMMANDS)[number]["label"]) => {
-      actorRef.send({
-        type: "downloadCommand/methodSelected",
-        label,
-      });
+      downloadCommandStore.selectMethod(label);
     },
   };
 }

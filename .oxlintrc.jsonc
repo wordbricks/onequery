@@ -220,6 +220,7 @@
     "**/dist-worker",
     "**/generated",
     "**/.agents",
+    "**/.astro",
     "**/.claude",
     "**/.codex",
     "**/.opencode",

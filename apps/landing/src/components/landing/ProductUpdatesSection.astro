@@ -1,0 +1,105 @@
+---
+import { actions, isInputError } from "astro:actions";
+
+const DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE =
+  "Failed to subscribe for product updates";
+
+type ProductUpdatesActionResult =
+  | {
+      data?: { email: string };
+      error?: unknown;
+    }
+  | undefined;
+
+interface Props {
+  result?: ProductUpdatesActionResult;
+}
+
+const { result } = Astro.props;
+
+function readActionErrorMessage(error: unknown, fallback: string): string {
+  if (isInputError(error)) {
+    const fieldMessage = Object.values(error.fields)
+      .flat()
+      .find((message): message is string => typeof message === "string");
+
+    if (fieldMessage) {
+      return fieldMessage;
+    }
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.length > 0
+  ) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+const feedback = result?.error
+  ? {
+      className: "marketing-form-feedback marketing-form-feedback-error",
+      message: readActionErrorMessage(
+        result.error,
+        DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
+      ),
+      role: "alert" as const,
+    }
+  : result?.data
+    ? {
+        className: "marketing-form-feedback marketing-form-feedback-success",
+        message: `We'll send product updates to ${result.data.email}.`,
+        role: "status" as const,
+      }
+    : {
+        className: "marketing-form-feedback",
+        message: "We only use this to send product updates.",
+        role: "status" as const,
+      };
+---
+
+<section class="section marketing-updates">
+  <div class="marketing-updates-copy">
+    <p class="eyebrow">Stay in the loop</p>
+    <h2>Get OneQuery updates.</h2>
+  </div>
+
+  <form
+    class="marketing-updates-form"
+    method="POST"
+    action={actions.productUpdates}
+  >
+    <div class="marketing-inline-form">
+      <input
+        type="email"
+        name="email"
+        placeholder="you@company.com"
+        class="marketing-input"
+        aria-label="Email address"
+        required
+      />
+      <button type="submit" class="button button-primary marketing-submit-button">
+        Notify me
+      </button>
+    </div>
+
+    <p class={feedback.className} role={feedback.role}>
+      {feedback.message}
+    </p>
+  </form>
+</section>
+
+{
+  result?.data ? (
+    <script>
+      import { trackProductUpdatesSignup } from "../../landing/analytics/landing-analytics";
+
+      trackProductUpdatesSignup();
+    </script>
+  ) : null
+}

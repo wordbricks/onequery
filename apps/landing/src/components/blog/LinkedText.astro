@@ -1,0 +1,24 @@
+---
+interface Props {
+  text: string;
+}
+
+const { text } = Astro.props;
+const URL_PATTERN = /(https?:\/\/[^\s.]+(?:\.[^\s.]+)*[^\s.,)])/g;
+const segments = text.split(URL_PATTERN).map((part) => ({
+  href: part.match(URL_PATTERN) ? part : null,
+  text: part,
+}));
+---
+
+{
+  segments.map((segment) =>
+    segment.href ? (
+      <a href={segment.href} target="_blank" rel="noreferrer">
+        {segment.text}
+      </a>
+    ) : (
+      segment.text
+    )
+  )
+}

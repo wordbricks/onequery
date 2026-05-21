@@ -1,0 +1,122 @@
+---
+import {
+  blogCategories,
+  blogPostSummaries,
+  comparePostDates,
+} from "../../landing/blog/blog-posts";
+import type { BlogCategory } from "../../landing/blog/blog-posts";
+import SiteFooter from "../landing/SiteFooter.astro";
+import SiteHeader from "../landing/SiteHeader.astro";
+import BlogThumbnail from "./BlogThumbnail.astro";
+
+const blogNavigationItems = [
+  { href: "/", label: "Product" },
+  { href: "/blog", label: "Blog" },
+] as const;
+const blogFooterLinks = [{ href: "https://github.com/wordbricks/onequery", label: "GitHub" }];
+
+const categoryParam = Astro.url.searchParams.get("category");
+const activeCategory = blogCategories.includes(categoryParam as BlogCategory)
+  ? (categoryParam as BlogCategory)
+  : "All";
+const sortDirection =
+  Astro.url.searchParams.get("sort") === "oldest" ? "Oldest" : "Latest";
+
+const filteredPosts = blogPostSummaries
+  .filter(
+    (post) => activeCategory === "All" || post.category === activeCategory
+  )
+  .toSorted((left, right) =>
+    sortDirection === "Latest"
+      ? comparePostDates(left, right)
+      : comparePostDates(right, left)
+  );
+
+function createBlogHref(input: {
+  category?: BlogCategory;
+  sort?: typeof sortDirection;
+}) {
+  const category = input.category ?? activeCategory;
+  const sort = input.sort ?? sortDirection;
+  const params = new URLSearchParams();
+
+  if (category !== "All") {
+    params.set("category", category);
+  }
+
+  if (sort === "Oldest") {
+    params.set("sort", "oldest");
+  }
+
+  const query = params.toString();
+  return query ? `/blog?${query}` : "/blog";
+}
+---
+
+<div class="page-shell blog-shell">
+  <SiteHeader navigationItems={blogNavigationItems} />
+
+  <main class="blog-main">
+    <section class="blog-index-hero">
+      <p class="eyebrow">OneQuery</p>
+      <h1>Blog</h1>
+      <nav aria-label="Blog categories" class="blog-categories">
+        {
+          blogCategories.map((category) => (
+            <a
+              href={createBlogHref({ category })}
+              class={
+                activeCategory === category
+                  ? "blog-category blog-category-active"
+                  : "blog-category"
+              }
+              aria-current={activeCategory === category ? "page" : undefined}
+            >
+              {category}
+            </a>
+          ))
+        }
+      </nav>
+    </section>
+
+    <form class="blog-toolbar" aria-label="Blog filters" method="GET" action="/blog">
+      {activeCategory === "All" ? null : <input type="hidden" name="category" value={activeCategory} />}
+      <span class="blog-toolbar-button">{filteredPosts.length} posts</span>
+      <label class="blog-toolbar-button">
+        <span>Sort</span>
+        <select name="sort">
+          <option value="latest" selected={sortDirection === "Latest"}>Latest</option>
+          <option value="oldest" selected={sortDirection === "Oldest"}>Oldest</option>
+        </select>
+      </label>
+      <button type="submit" class="blog-toolbar-button">Apply</button>
+    </form>
+
+    <section>
+      <div class="blog-grid">
+        {
+          filteredPosts.map((post) => (
+            <article class="blog-card">
+              <a href={`/blog/${post.slug}`}>
+                <BlogThumbnail post={post} />
+                <div class="blog-card-meta">
+                  <span>{post.category}</span>
+                  <span aria-hidden="true">/</span>
+                  <span>{post.date}</span>
+                </div>
+                <h2>{post.title}</h2>
+                <p>{post.description}</p>
+                <span class="blog-card-read-more">
+                  {post.readTime}
+                  <span aria-hidden="true">→</span>
+                </span>
+              </a>
+            </article>
+          ))
+        }
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter links={blogFooterLinks} showContact={false} />
+</div>
