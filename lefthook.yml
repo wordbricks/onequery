@@ -4,6 +4,7 @@ pre-commit:
       run: bunx oxlint --fix --no-error-on-unmatched-pattern {staged_files}
       glob:
         - "*.{js,jsx,ts,tsx,mjs,cjs}"
+        - "*.astro"
         - "*.{json,jsonc,json5}"
         - "*.{yaml,yml,toml}"
         # - "*.{md,mdx}"
@@ -14,6 +15,7 @@ pre-commit:
       run: bunx oxfmt {staged_files}
       glob:
         - "*.{js,jsx,ts,tsx,mjs,cjs}"
+        - "*.astro"
         - "*.{json,jsonc,json5}"
         - "*.{yaml,yml,toml}"
         # - "*.{md,mdx}"

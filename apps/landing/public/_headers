@@ -1,0 +1,5 @@
+/
+  Link: </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json", <https://raw.githubusercontent.com/wordbricks/onequery/main/proto/onequery/cli/v1/cli.proto>; rel="service-desc"; type="text/plain", <https://github.com/wordbricks/onequery/blob/main/README.md#documentation>; rel="service-doc"; type="text/html", <https://github.com/wordbricks/onequery/blob/main/README.md>; rel="describedby"; type="text/html"
+
+/index.html
+  Link: </.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json", <https://raw.githubusercontent.com/wordbricks/onequery/main/proto/onequery/cli/v1/cli.proto>; rel="service-desc"; type="text/plain", <https://github.com/wordbricks/onequery/blob/main/README.md#documentation>; rel="service-doc"; type="text/html", <https://github.com/wordbricks/onequery/blob/main/README.md>; rel="describedby"; type="text/html"

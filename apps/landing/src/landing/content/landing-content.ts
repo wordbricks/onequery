@@ -4,7 +4,7 @@ import {
   INSTALL_SCRIPT_URL,
   REPOSITORY_URL,
 } from "../config/landing-config";
-import type { TerminalLine } from "../terminal/terminal-surface";
+import type { TerminalLine } from "../terminal/terminal-types";
 
 type FooterLink = {
   href: string;

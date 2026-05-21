@@ -1,0 +1,6 @@
+[mcp_servers.astro-docs]
+command = "bunx"
+args = ["-y", "mcp-remote", "https://mcp.docs.astro.build/mcp"]
+
+[mcp_servers.astro-docs.tools.search_astro_docs]
+approval_mode = "approve"

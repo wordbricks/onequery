@@ -157,14 +157,6 @@ code {
   gap: 88px;
 }
 
-.deferred-mount-anchor[data-mounted="false"] {
-  min-height: 1px;
-}
-
-.deferred-mount-anchor[data-mounted="true"] {
-  display: contents;
-}
-
 .hero-section {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -926,6 +918,10 @@ code {
     0 16px 30px rgba(0, 0, 0, 0.06),
     var(--shadow-ring);
   transform: translateY(-1px);
+}
+
+.connector-card[hidden] {
+  display: none;
 }
 
 .connector-glyph {

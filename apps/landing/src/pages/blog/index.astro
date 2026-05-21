@@ -1,0 +1,18 @@
+---
+import BlogIndex from "../../components/blog/BlogIndex.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const title = "OneQuery Blog | Governed Data Access for AI Agents";
+const description =
+  "Notes from the OneQuery team on production data access, AI agent safety, telemetry, and operational workflows.";
+---
+
+<BaseLayout
+  canonicalUrl="https://onequery.dev/blog"
+  description={description}
+  keywords={null}
+  structuredData={null}
+  title={title}
+>
+  <BlogIndex />
+</BaseLayout>

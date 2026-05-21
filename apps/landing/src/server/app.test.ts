@@ -1,12 +1,14 @@
-import { testClient } from "hono/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { landingApp } from "./app";
+import {
+  handleContactRequest,
+  handleProductUpdatesRequest,
+} from "./landing-api";
 import type {
   LandingServiceUnavailableErrorResponse,
   LandingValidationErrorResponse,
   LandingWorkerBindings,
-} from "./app";
+} from "./landing-api";
 import {
   createContactNotification,
   createProductUpdatesNotification,
@@ -23,16 +25,21 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("landingApp", () => {
+describe("landing API handlers", () => {
   it("assigns a request id to successful API responses", async () => {
     const fetchSpy = vi.fn<typeof globalThis.fetch>();
     fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));
     installFetchMock(fetchSpy);
 
-    const response = await testClient(landingApp, {
-      LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
-    } satisfies LandingWorkerBindings).api["product-updates"].$post({
-      json: { email: "team@example.com" },
+    const response = await handleProductUpdatesRequest({
+      bindings: {
+        LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
+      } satisfies LandingWorkerBindings,
+      request: new Request("https://landing.onequery.dev/api/product-updates", {
+        body: JSON.stringify({ email: "team@example.com" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
     });
 
     expect(response.status).toBe(200);
@@ -45,10 +52,15 @@ describe("landingApp", () => {
     fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));
     installFetchMock(fetchSpy);
 
-    const response = await testClient(landingApp, {
-      LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
-    } satisfies LandingWorkerBindings).api["product-updates"].$post({
-      json: { email: " TEST@Example.COM " },
+    const response = await handleProductUpdatesRequest({
+      bindings: {
+        LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
+      },
+      request: new Request("https://landing.onequery.dev/api/product-updates", {
+        body: JSON.stringify({ email: " TEST@Example.COM " }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
     });
 
     expect(response.status).toBe(200);
@@ -69,14 +81,19 @@ describe("landingApp", () => {
     fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));
     installFetchMock(fetchSpy);
 
-    const response = await testClient(landingApp, {
-      LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
-    } satisfies LandingWorkerBindings).api.contact.$post({
-      json: {
-        email: " TEAM@Example.COM ",
-        message: " Need pricing details ",
-        name: " Jane Doe ",
+    const response = await handleContactRequest({
+      bindings: {
+        LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
       },
+      request: new Request("https://landing.onequery.dev/api/contact", {
+        body: JSON.stringify({
+          email: " TEAM@Example.COM ",
+          message: " Need pricing details ",
+          name: " Jane Doe ",
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
     });
 
     expect(response.status).toBe(200);
@@ -98,12 +115,17 @@ describe("landingApp", () => {
     const fetchSpy = vi.fn<typeof globalThis.fetch>();
     installFetchMock(fetchSpy);
 
-    const response = await testClient(landingApp).api.contact.$post({
-      json: {
-        email: "team@example.com",
-        message: "   ",
-        name: "   ",
-      },
+    const response = await handleContactRequest({
+      bindings: {},
+      request: new Request("https://landing.onequery.dev/api/contact", {
+        body: JSON.stringify({
+          email: "team@example.com",
+          message: "   ",
+          name: "   ",
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
     });
 
     expect(response.status).toBe(400);
@@ -123,15 +145,14 @@ describe("landingApp", () => {
     const fetchSpy = vi.fn<typeof globalThis.fetch>();
     installFetchMock(fetchSpy);
 
-    const response = await landingApp.request(
-      "https://landing.onequery.dev/api/product-updates",
-      {
+    const response = await handleProductUpdatesRequest({
+      bindings: {},
+      request: new Request("https://landing.onequery.dev/api/product-updates", {
         body: JSON.stringify({ email: "team@example.com" }),
         headers: { "content-type": "application/json" },
         method: "POST",
-      },
-      {}
-    );
+      }),
+    });
 
     expect(response.status).toBe(503);
     const body =
