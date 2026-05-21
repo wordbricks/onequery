@@ -1,11 +1,10 @@
 import { useActorRef, useSelector } from "@xstate/react";
+import { actions, isInputError } from "astro:actions";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 import type { FormEvent } from "react";
 import { fromPromise } from "xstate";
 
-import { landingApiClient } from "../../app/runtime/landing-api-client";
-import type { LandingApiErrorResponse } from "../../app/runtime/landing-api-client";
 import { trackProductUpdatesSignup } from "../analytics/landing-analytics";
 import {
   DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE,
@@ -29,12 +28,25 @@ type ProductUpdatesSubmissionResult = ResultType<
   ProductUpdatesSubmissionError
 >;
 
-function readLandingApiErrorMessage(
-  response: LandingApiErrorResponse,
-  fallback: string
-): string {
-  if (response.message.length) {
-    return response.message;
+function readActionErrorMessage(error: unknown, fallback: string): string {
+  if (isInputError(error)) {
+    const fieldMessage = Object.values(error.fields)
+      .flat()
+      .find((message): message is string => typeof message === "string");
+
+    if (fieldMessage) {
+      return fieldMessage;
+    }
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.length > 0
+  ) {
+    return error.message;
   }
 
   return fallback;
@@ -54,30 +66,22 @@ async function submitProductUpdatesRequest(
 ): Promise<ProductUpdatesSubmissionResult> {
   const responseResult = await Result.tryPromise({
     try: async () => {
-      const response = await landingApiClient.api["product-updates"].$post(
-        {
-          json: { email: input.email },
-        },
-        {
-          init: { signal: input.signal },
-        }
-      );
+      input.signal.throwIfAborted();
 
-      if (response.ok) {
-        const body = await response.json();
-        return {
-          email: body.email,
-        };
+      const result = await actions.productUpdates({ email: input.email });
+      if (result.error) {
+        throw new ProductUpdatesSubmissionError({
+          cause: result.error,
+          message: readActionErrorMessage(
+            result.error,
+            DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
+          ),
+        });
       }
 
-      const payload: LandingApiErrorResponse = await response.json();
-      throw new ProductUpdatesSubmissionError({
-        cause: response,
-        message: readLandingApiErrorMessage(
-          payload,
-          DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
-        ),
-      });
+      return {
+        email: result.data.email,
+      };
     },
     catch: (cause: unknown) =>
       cause instanceof ProductUpdatesSubmissionError

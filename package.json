@@ -7,6 +7,8 @@
       "packages/*"
     ],
     "catalog": {
+      "@astrojs/cloudflare": "13.5.1",
+      "@astrojs/react": "5.0.5",
       "@bufbuild/protobuf": "2.11.0",
       "@bufbuild/protovalidate": "1.1.1",
       "@connectrpc/connect": "2.1.1",
@@ -27,6 +29,7 @@
       "@types/react": "19.2.7",
       "@types/react-dom": "19.2.3",
       "antiox": "0.1.4",
+      "astro": "6.3.3",
       "better-auth": "1.5.5",
       "better-result": "2.9.0",
       "hono": "4.12.16",
@@ -50,7 +53,9 @@
         "vitest": "4.1.1"
       },
       "tooling": {
+        "@astrojs/check": "0.9.9",
         "@cloudflare/vite-plugin": "1.32.3",
+        "@cloudflare/workers-types": "4.20260405.1",
         "@bufbuild/buf": "1.67.0",
         "@bufbuild/protoc-gen-es": "2.11.0",
         "@rolldown/plugin-babel": "0.2.1",
@@ -64,8 +69,10 @@
         "postcss": "8.5.6",
         "rollup-plugin-visualizer": "7.0.1",
         "tailwindcss": "4.2.2",
+        "typescript": "5.4.5",
         "vite": "8.0.2",
-        "vite-tsconfig-paths": "6.1.1"
+        "vite-tsconfig-paths": "6.1.1",
+        "wrangler": "4.83.0"
       }
     }
   },

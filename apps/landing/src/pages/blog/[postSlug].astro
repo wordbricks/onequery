@@ -1,0 +1,60 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { BlogPostPage } from "../../landing/blog/blog-post-page";
+import {
+  blogPostSummaries,
+  loadBlogPostBySlug,
+} from "../../landing/blog/blog-posts";
+import { getBlogPostShareMetadata } from "../../landing/blog/blog-share-metadata";
+import type { BlogPost } from "../../landing/blog/blog-posts";
+
+export async function getStaticPaths() {
+  const paths = await Promise.all(
+    blogPostSummaries.map(async (summary) => {
+      const post = await loadBlogPostBySlug(summary.slug);
+
+      return {
+        params: { postSlug: summary.slug },
+        props: { post },
+      };
+    })
+  );
+
+  return paths.filter(
+    (
+      path
+    ): path is {
+      params: { postSlug: string };
+      props: { post: BlogPost };
+    } => path.props.post !== undefined
+  );
+}
+
+const { post } = Astro.props;
+const metadata = getBlogPostShareMetadata(post);
+const articleMetaTags = metadata.publishedTime
+  ? [
+      {
+        content: metadata.publishedTime,
+        property: "article:published_time",
+      },
+    ]
+  : [];
+---
+
+<BaseLayout
+  canonicalUrl={metadata.canonicalUrl}
+  description={metadata.description}
+  imageAlt={metadata.imageAlt}
+  imageHeight={metadata.imageHeight}
+  imageUrl={metadata.imageUrl}
+  imageWidth={metadata.imageWidth}
+  keywords={null}
+  metaTags={articleMetaTags}
+  ogType="article"
+  structuredData={null}
+  title={metadata.title}
+  twitterTitle={metadata.twitterTitle}
+>
+  <BlogPostPage post={post} />
+</BaseLayout>

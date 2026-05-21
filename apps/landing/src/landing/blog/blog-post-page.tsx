@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { Fragment } from "react";
 
 import { SiteFooter, SiteHeader } from "./blog-page";
@@ -151,7 +150,7 @@ export function BlogPostPage({ post }: { post: BlogPost }) {
         <article id="top">
           <header className="blog-post-header">
             <div className="blog-breadcrumb">
-              <Link to="/blog">Blog</Link>
+              <a href="/blog">Blog</a>
               <span aria-hidden="true">/</span>
               <span>{post.category}</span>
             </div>
@@ -209,11 +208,7 @@ export function BlogPostPage({ post }: { post: BlogPost }) {
           <h2>Related posts</h2>
           <div className="blog-related-grid">
             {visibleRelatedPosts.map((relatedPost) => (
-              <Link
-                key={relatedPost.slug}
-                to="/blog/$postSlug"
-                params={{ postSlug: relatedPost.slug }}
-              >
+              <a key={relatedPost.slug} href={`/blog/${relatedPost.slug}`}>
                 <span>
                   {relatedPost.date} - {relatedPost.category}
                 </span>
@@ -221,12 +216,12 @@ export function BlogPostPage({ post }: { post: BlogPost }) {
                 <p>
                   {relatedPost.readTime} <span aria-hidden="true">→</span>
                 </p>
-              </Link>
+              </a>
             ))}
           </div>
-          <Link to="/blog" className="blog-more-link">
+          <a href="/blog" className="blog-more-link">
             View more posts <span aria-hidden="true">→</span>
-          </Link>
+          </a>
         </section>
       </main>
 

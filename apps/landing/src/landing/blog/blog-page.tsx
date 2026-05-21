@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { REPOSITORY_URL } from "../config/landing-config";
@@ -14,11 +13,7 @@ import { BlogThumbnail } from "./blog-thumbnail";
 function SiteHeader() {
   return (
     <header className="site-header">
-      <Link
-        to="/"
-        className="brand-mark"
-        aria-label="OneQuery landing homepage"
-      >
+      <a href="/" className="brand-mark" aria-label="OneQuery landing homepage">
         <img
           src="/onequery-icon.png"
           alt=""
@@ -26,11 +21,11 @@ function SiteHeader() {
           className="brand-mark-icon"
         />
         <span>OneQuery</span>
-      </Link>
+      </a>
 
       <nav className="site-nav" aria-label="Primary">
-        <Link to="/">Product</Link>
-        <Link to="/blog">Blog</Link>
+        <a href="/">Product</a>
+        <a href="/blog">Blog</a>
       </nav>
 
       <div className="header-actions">
@@ -132,11 +127,7 @@ export function BlogPage() {
           <div className="blog-grid">
             {filteredPosts.map((post) => (
               <article key={post.slug} className="blog-card">
-                <Link
-                  from="/blog"
-                  to="/blog/$postSlug"
-                  params={{ postSlug: post.slug }}
-                >
+                <a href={`/blog/${post.slug}`}>
                   <BlogThumbnail post={post} />
                   <div className="blog-card-meta">
                     <span>{post.category}</span>
@@ -149,7 +140,7 @@ export function BlogPage() {
                     {post.readTime}
                     <span aria-hidden="true">→</span>
                   </span>
-                </Link>
+                </a>
               </article>
             ))}
           </div>

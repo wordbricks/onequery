@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createInstallScriptAsset,
   shouldServeInstallScriptRequest,
-} from "./vite-install-script";
+} from "./install-script";
 
 describe("createInstallScriptAsset", () => {
   it("emits install.sh from the canonical runtime installer", () => {
@@ -20,28 +20,22 @@ describe("createInstallScriptAsset", () => {
 describe("shouldServeInstallScriptRequest", () => {
   it("matches the explicit install.sh route for GET and HEAD only", () => {
     expect(
-      shouldServeInstallScriptRequest({
-        method: "GET",
-        url: "/install.sh?cache=0",
-      })
+      shouldServeInstallScriptRequest(
+        new Request("https://onequery.dev/install.sh?cache=0")
+      )
     ).toBe(true);
     expect(
-      shouldServeInstallScriptRequest({
-        method: "HEAD",
-        url: "/install.sh",
-      })
+      shouldServeInstallScriptRequest(
+        new Request("https://onequery.dev/install.sh", { method: "HEAD" })
+      )
     ).toBe(true);
     expect(
-      shouldServeInstallScriptRequest({
-        method: "POST",
-        url: "/install.sh",
-      })
+      shouldServeInstallScriptRequest(
+        new Request("https://onequery.dev/install.sh", { method: "POST" })
+      )
     ).toBe(false);
     expect(
-      shouldServeInstallScriptRequest({
-        method: "GET",
-        url: "/",
-      })
+      shouldServeInstallScriptRequest(new Request("https://onequery.dev/"))
     ).toBe(false);
   });
 });

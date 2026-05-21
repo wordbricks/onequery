@@ -1,12 +1,11 @@
 import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { useActorRef, useSelector } from "@xstate/react";
+import { actions, isInputError } from "astro:actions";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 import type { FormEvent } from "react";
 import { fromPromise } from "xstate";
 
-import { landingApiClient } from "../../app/runtime/landing-api-client";
-import type { LandingApiErrorResponse } from "../../app/runtime/landing-api-client";
 import {
   trackContactFormSubmitted,
   trackContactModalOpened,
@@ -43,12 +42,25 @@ type FooterContactButtonProps = {
   autoOpen?: boolean;
 };
 
-function readLandingApiErrorMessage(
-  response: LandingApiErrorResponse,
-  fallback: string
-): string {
-  if (response.message.length) {
-    return response.message;
+function readActionErrorMessage(error: unknown, fallback: string): string {
+  if (isInputError(error)) {
+    const fieldMessage = Object.values(error.fields)
+      .flat()
+      .find((message): message is string => typeof message === "string");
+
+    if (fieldMessage) {
+      return fieldMessage;
+    }
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.length > 0
+  ) {
+    return error.message;
   }
 
   return fallback;
@@ -68,27 +80,18 @@ async function submitContactRequest(
 ): Promise<ContactSubmissionResult> {
   const responseResult = await Result.tryPromise({
     try: async () => {
-      const response = await landingApiClient.api.contact.$post(
-        {
-          json: input.form,
-        },
-        {
-          init: { signal: input.signal },
-        }
-      );
+      input.signal.throwIfAborted();
 
-      if (response.ok) {
-        return undefined;
+      const result = await actions.contact(input.form);
+      if (result.error) {
+        throw new ContactSubmissionError({
+          cause: result.error,
+          message: readActionErrorMessage(
+            result.error,
+            DEFAULT_CONTACT_ERROR_MESSAGE
+          ),
+        });
       }
-
-      const payload: LandingApiErrorResponse = await response.json();
-      throw new ContactSubmissionError({
-        cause: response,
-        message: readLandingApiErrorMessage(
-          payload,
-          DEFAULT_CONTACT_ERROR_MESSAGE
-        ),
-      });
     },
     catch: (cause: unknown) =>
       cause instanceof ContactSubmissionError
