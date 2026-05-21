@@ -116,6 +116,35 @@ const REPO_SCOPED_ENDPOINT_ROOTS = new Set([
   "traffic",
   "zipball",
 ]);
+const GITHUB_TOP_LEVEL_ENDPOINT_ROOTS = new Set([
+  "app",
+  "applications",
+  "emojis",
+  "enterprise",
+  "events",
+  "feeds",
+  "gists",
+  "gitignore",
+  "installation",
+  "installations",
+  "issues",
+  "licenses",
+  "markdown",
+  "marketplace_listing",
+  "meta",
+  "networks",
+  "notifications",
+  "octocat",
+  "organizations",
+  "orgs",
+  "rate_limit",
+  "repos",
+  "repositories",
+  "search",
+  "user",
+  "users",
+  "zen",
+]);
 
 export const DEFAULT_GITHUB_REPOSITORIES_QUERY_PARAMS = {
   affiliation: "owner,collaborator,organization_member",
@@ -304,7 +333,11 @@ export function buildGitHubUrl(input: {
     });
   }
 
-  let normalizedEndpoint = input.endpoint;
+  let normalizedEndpoint =
+    normalizeRepositoryShorthandEndpoint({
+      allowedRepositories: selectedRepositories,
+      endpoint: input.endpoint,
+    }) ?? input.endpoint;
   if (isRepoScopedRelativeEndpoint(input.endpoint)) {
     const resolvedRepository =
       requestedRepository ??
@@ -556,6 +589,45 @@ function normalizeRepositoryFullName(repository: string): string {
     );
   }
   return `${parts[0]}/${parts[1]}`;
+}
+
+function normalizeRepositoryShorthandEndpoint(input: {
+  allowedRepositories: string[];
+  endpoint: string;
+}): string | null {
+  const trimmed = input.endpoint.trim();
+  if (
+    trimmed.length === 0 ||
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("https://")
+  ) {
+    return null;
+  }
+
+  const parts = trimmed.split("/").filter((part) => part.length > 0);
+  if (parts.length < 2) {
+    return null;
+  }
+
+  const repository = `${parts[0]}/${parts[1]}`;
+  const repositoryIsSelected = input.allowedRepositories.some(
+    (allowed) => allowed.toLowerCase() === repository.toLowerCase()
+  );
+  if (
+    !repositoryIsSelected &&
+    GITHUB_TOP_LEVEL_ENDPOINT_ROOTS.has(parts[0]?.toLowerCase() ?? "")
+  ) {
+    return null;
+  }
+
+  const suffix = parts.slice(2).join("/");
+  // Comment: The CLI guide has long advertised `owner/repo[/path]` shorthand.
+  // Keep that promise here instead of letting it fall through to
+  // `https://api.github.com/owner/repo`, which GitHub treats as an invalid API
+  // route.
+  return suffix.length === 0
+    ? `/repos/${repository}`
+    : `/repos/${repository}/${suffix}`;
 }
 
 function normalizedSelectedRepositories(

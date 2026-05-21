@@ -1,4 +1,3 @@
-import { ShieldIcon } from "../blog-icons";
 import type { BlogPost } from "../blog-types";
 
 export const howStartupsCanBuildAnInHouseDataAgentPost: BlogPost = {
@@ -10,7 +9,6 @@ export const howStartupsCanBuildAnInHouseDataAgentPost: BlogPost = {
   date: "Apr 28, 2026",
   description:
     "A practical startup playbook for turning an AI data agent from a risky demo into a safe, contextual, auditable workflow.",
-  icon: ShieldIcon,
   imageSrc:
     "/images/blog/how-startups-can-build-an-in-house-data-agent-icon.png",
   readTime: "10 min read",

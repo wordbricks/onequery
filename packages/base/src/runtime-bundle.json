@@ -38,20 +38,18 @@
       },
       "packagedPath": "runtime/pglite"
     },
-    "sqlParser": {
+    "polyglotSql": {
       "buildOwnerPackage": "@onequery/server",
       "buildSource": {
-        "kind": "resolved-specifier-map",
-        "specifiersByFileRole": {
-          "wasm": "@casual-simulation/sql-parser/pkg/sql_parser_wasm_bg.wasm"
-        }
+        "kind": "package-entrypoint-directory",
+        "packageSpecifier": "@polyglot-sql/sdk"
       },
       "files": {
         "wasm": {
-          "filename": "sql_parser_wasm_bg.wasm"
+          "filename": "polyglot_sql_wasm_bg.wasm"
         }
       },
-      "packagedPath": "runtime/sql-parser"
+      "packagedPath": "server"
     }
   }
 }

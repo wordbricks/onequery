@@ -1,0 +1,154 @@
+---
+import "../app/styles.css";
+
+const DEFAULT_TITLE = "OneQuery | Governed Data Access for AI Agents";
+const DEFAULT_DESCRIPTION =
+  "OneQuery gives AI agents production context without production keys, using approved sources, centralized credentials, enforced limits, and full audit logs.";
+const DEFAULT_KEYWORDS =
+  "OneQuery, AI agent access control, production context, production keys, Claude Code, centralized credentials, audit logs, capability grants, safe production access";
+const DEFAULT_CANONICAL_URL = "https://onequery.dev/";
+const DEFAULT_IMAGE_URL = "https://onequery.dev/og.png";
+const DEFAULT_IMAGE_ALT =
+  "OneQuery - Governed Data Access for AI Agents";
+const DEFAULT_STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "OneQuery",
+  url: "https://onequery.dev/",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Web, CLI, Self-hosted gateway",
+  description: DEFAULT_DESCRIPTION,
+  image: "https://onequery.dev/onequery-icon.png",
+  sameAs: ["https://github.com/wordbricks/onequery"],
+  publisher: {
+    "@type": "Organization",
+    name: "OneQuery",
+    url: "https://onequery.dev/",
+  },
+};
+
+type MetaTag =
+  | {
+      content: string;
+      name: string;
+    }
+  | {
+      content: string;
+      property: string;
+    };
+
+interface Props {
+  canonicalUrl?: string;
+  description?: string;
+  imageAlt?: string;
+  imageHeight?: number;
+  imageUrl?: string;
+  imageWidth?: number;
+  keywords?: string | null;
+  metaTags?: MetaTag[];
+  ogType?: "article" | "website";
+  structuredData?: Record<string, unknown> | null;
+  title?: string;
+  twitterTitle?: string;
+}
+
+const {
+  canonicalUrl = DEFAULT_CANONICAL_URL,
+  description = DEFAULT_DESCRIPTION,
+  imageAlt = DEFAULT_IMAGE_ALT,
+  imageHeight = 630,
+  imageUrl = DEFAULT_IMAGE_URL,
+  imageWidth = 1200,
+  keywords = DEFAULT_KEYWORDS,
+  metaTags = [],
+  ogType = "website",
+  structuredData = DEFAULT_STRUCTURED_DATA,
+  title = DEFAULT_TITLE,
+  twitterTitle = title,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="application-name" content="OneQuery" />
+    <meta name="apple-mobile-web-app-title" content="OneQuery" />
+    <link rel="icon" type="image/png" href="/onequery-icon.png" />
+    <link rel="apple-touch-icon" href="/onequery-icon.png" />
+    <link rel="canonical" href={canonicalUrl} />
+    <meta name="description" content={description} />
+    {keywords ? <meta name="keywords" content={keywords} /> : null}
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content="OneQuery" />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:secure_url" content={imageUrl} />
+    <meta property="og:image:width" content={String(imageWidth)} />
+    <meta property="og:image:height" content={String(imageHeight)} />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={twitterTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content={imageAlt} />
+    {
+      metaTags.map((tag) =>
+        "name" in tag ? (
+          <meta name={tag.name} content={tag.content} />
+        ) : (
+          <meta property={tag.property} content={tag.content} />
+        )
+      )
+    }
+    <title>{title}</title>
+    {
+      structuredData ? (
+        <script
+          is:inline
+          type="application/ld+json"
+          set:html={JSON.stringify(structuredData)}
+        />
+      ) : null
+    }
+    <script>
+      import { trackPageView } from "../landing/analytics/landing-analytics";
+
+      trackPageView();
+    </script>
+    <script>
+      import { trackLandingCtaClick } from "../landing/analytics/landing-analytics";
+
+      document.addEventListener("click", (event) => {
+        if (!(event.target instanceof Element)) {
+          return;
+        }
+
+        const target = event.target.closest("[data-landing-cta]");
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const ctaId = target.dataset.landingCta;
+        const ctaLocation = target.dataset.landingCtaSection;
+        if (!ctaId || !ctaLocation) {
+          return;
+        }
+
+        const destination =
+          target.dataset.landingCtaHref ||
+          (target instanceof HTMLAnchorElement ? target.href : undefined);
+
+        trackLandingCtaClick(ctaId, ctaLocation, destination);
+      });
+    </script>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

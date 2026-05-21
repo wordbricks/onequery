@@ -1,12 +1,12 @@
 import { create, toBinary } from "@bufbuild/protobuf";
 import { organization, workflowJournal } from "@onequery/db/server";
-import { pgliteTestDb } from "@onequery/db/testing/setup";
+import { test as it } from "@onequery/db/testing/setup";
 import {
   QueryActionEventPayloadSchema,
   QueryActionMode,
   QueryActionReceivedEventSchema,
 } from "@onequery/proto-workflow/workflow/v1/query_action_pb";
-import { describe, expect, it } from "vitest";
+import { describe, expect } from "vitest";
 
 import {
   AuditFeedProjectionCorruptPayloadError,
@@ -30,10 +30,10 @@ function encodeQueryActionReceivedEventPayload() {
   );
 }
 
-describe("audit feed projection", () => {
-  it("reports corrupt workflow payloads with scoped projection diagnostics", async () => {
-    const db = pgliteTestDb;
-
+describe("audit feed projection", { timeout: 60_000 }, () => {
+  it("reports corrupt workflow payloads with scoped projection diagnostics", async ({
+    db,
+  }) => {
     const actionId = "query_action_corrupt_payload";
     const commandId = "workflow_command_corrupt_payload";
     const eventId = "query_action_event_corrupt_payload";
@@ -113,9 +113,9 @@ describe("audit feed projection", () => {
     expect(error.message).not.toContain(rawCommandBody);
   });
 
-  it("does not advance unrelated audit families when a family filter is provided", async () => {
-    const db = pgliteTestDb;
-
+  it("does not advance unrelated audit families when a family filter is provided", async ({
+    db,
+  }) => {
     const actionId = "source_api_action_corrupt_payload";
     const commandId = "source_api_command_corrupt_payload";
     const eventId = "source_api_event_corrupt_payload";

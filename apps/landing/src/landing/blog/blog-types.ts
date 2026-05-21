@@ -1,5 +1,3 @@
-import type { ComponentType } from "react";
-
 export type BlogCategory =
   | "All"
   | "Product"
@@ -13,7 +11,6 @@ export interface BlogPost {
   category: Exclude<BlogCategory, "All">;
   date: string;
   description: string;
-  icon: ComponentType<{ className?: string }>;
   imageSrc?: string;
   readTime: string;
   sections?: BlogPostSection[];

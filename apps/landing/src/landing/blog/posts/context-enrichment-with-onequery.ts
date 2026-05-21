@@ -1,4 +1,3 @@
-import { GitBranchIcon } from "../blog-icons";
 import type { BlogPost } from "../blog-types";
 
 export const contextEnrichmentWithOneQueryPost: BlogPost = {
@@ -10,7 +9,6 @@ export const contextEnrichmentWithOneQueryPost: BlogPost = {
   date: "May 1, 2026",
   description:
     "A practical workflow for implementing the context enrichment layer described in OpenAI's in-house data agent writeup with schema facts, bounded SQL evidence, and code references.",
-  icon: GitBranchIcon,
   imageSrc: "/images/blog/context-enrichment-with-onequery-icon.png",
   readTime: "10 min read",
   sections: [

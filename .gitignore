@@ -5,6 +5,7 @@ node_modules/
 
 # Build outputs
 dist/
+.astro/
 # ClawHub validates code plugins from npm-pack contents with lifecycle scripts
 # disabled, so this package must commit its tiny compiled runtime entry.
 !packages/openclaw-plugin/dist/

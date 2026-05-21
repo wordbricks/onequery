@@ -1,4 +1,9 @@
 {
   "extends": "@onequery/tsconfig/base.json",
-  "include": ["src", "vite.config.ts", "worker-configuration.d.ts"]
+  "include": [
+    "src",
+    "astro.config.ts",
+    "vitest.config.ts",
+    "worker-configuration.d.ts"
+  ]
 }

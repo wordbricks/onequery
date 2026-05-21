@@ -65,6 +65,19 @@ export const MySQLCredentialsSchema = z.object({
 
 export type MySQLCredentials = z.infer<typeof MySQLCredentialsSchema>;
 
+export const SnowflakeCredentialsSchema = z.object({
+  account: trimmedString("Account identifier is required"),
+  database: trimmedString("Database name is required"),
+  password: requiredOpaqueString("Password is required"),
+  role: optionalTrimmedString("Role is required"),
+  schema: optionalTrimmedString("Schema is required"),
+  type: z.literal("snowflake"),
+  username: trimmedString("Username is required"),
+  warehouse: trimmedString("Warehouse is required"),
+});
+
+export type SnowflakeCredentials = z.infer<typeof SnowflakeCredentialsSchema>;
+
 export const MongoDBCredentialsSchema = z.object({
   connectionString: MONGODB_CONNECTION_STRING_SCHEMA,
   database: optionalTrimmedString("Database name is required"),
@@ -215,6 +228,18 @@ export const GitHubCredentialsSchema = z.object({
 
 export type GitHubCredentials = z.infer<typeof GitHubCredentialsSchema>;
 
+export const CloudflareD1CredentialsSchema = z.object({
+  accountId: trimmedString("Account ID is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiToken: requiredOpaqueString("API token is required"),
+  databaseId: trimmedString("Database ID is required"),
+  type: z.literal("cloudflare_d1"),
+});
+
+export type CloudflareD1Credentials = z.infer<
+  typeof CloudflareD1CredentialsSchema
+>;
+
 export const CloudflareWorkersObservabilityCredentialsSchema = z.object({
   accountId: trimmedString("Account ID is required"),
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
@@ -259,6 +284,7 @@ export const CredentialsSchema = z.union([
   MongoDBCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
   BigQueryCredentialsSchema,
+  SnowflakeCredentialsSchema,
   LaminarCredentialsSchema,
   ConnectorCredentialsSchema,
   AmplitudeCredentialsSchema,
@@ -266,6 +292,7 @@ export const CredentialsSchema = z.union([
   PostHogCredentialsSchema,
   SentryCredentialsSchema,
   GitHubCredentialsSchema,
+  CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   LinearCredentialsSchema,
 ]);
@@ -276,10 +303,12 @@ export type CredentialProviderType = Credentials["type"];
 
 export const DATABASE_CREDENTIAL_PROVIDER = {
   BIGQUERY: "bigquery",
+  CLOUDFLARE_D1: "cloudflare_d1",
   CONNECTOR: "aws_athena_connector",
   LAMINAR: "laminar",
   MYSQL: "mysql",
   POSTGRES: "postgres",
+  SNOWFLAKE: "snowflake",
 } as const satisfies Record<string, CredentialProviderType>;
 
 export type DatabaseCredentialProviderType =
@@ -288,7 +317,9 @@ export type DatabaseCredentialProviderType =
 export const DATABASE_CREDENTIAL_PROVIDER_TYPES = [
   DATABASE_CREDENTIAL_PROVIDER.POSTGRES,
   DATABASE_CREDENTIAL_PROVIDER.MYSQL,
+  DATABASE_CREDENTIAL_PROVIDER.SNOWFLAKE,
   DATABASE_CREDENTIAL_PROVIDER.BIGQUERY,
+  DATABASE_CREDENTIAL_PROVIDER.CLOUDFLARE_D1,
   DATABASE_CREDENTIAL_PROVIDER.LAMINAR,
   DATABASE_CREDENTIAL_PROVIDER.CONNECTOR,
 ] as const satisfies readonly DatabaseCredentialProviderType[];
@@ -302,6 +333,7 @@ export const credentialSchemaMap = {
   amplitude: AmplitudeCredentialsSchema,
   aws_athena_connector: ConnectorCredentialsSchema,
   bigquery: BigQueryCredentialsSchema,
+  cloudflare_d1: CloudflareD1CredentialsSchema,
   ga: GoogleAnalyticsCredentialsSchema,
   github: GitHubCredentialsSchema,
   cloudflare_workers_observability:
@@ -314,6 +346,7 @@ export const credentialSchemaMap = {
   postgres: PostgresCredentialsSchema,
   posthog: PostHogCredentialsSchema,
   sentry: SentryCredentialsSchema,
+  snowflake: SnowflakeCredentialsSchema,
 } as const;
 
 export function validateCredentials(credentials: unknown): Credentials {

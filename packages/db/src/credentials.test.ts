@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   AmplitudeCredentialsSchema,
   BigQueryCredentialsSchema,
+  CloudflareD1CredentialsSchema,
   ConnectorCredentialsSchema,
   credentialSchemaMap,
   GitHubCredentialsSchema,
@@ -24,12 +25,14 @@ import {
   PostgresCredentialsSchema,
   PostHogCredentialsSchema,
   SentryCredentialsSchema,
+  SnowflakeCredentialsSchema,
   safeValidateCredentials,
   validateCredentials,
 } from "./credentials";
 import type {
   AmplitudeCredentials,
   BigQueryCredentials,
+  CloudflareD1Credentials,
   ConnectorCredentials,
   Credentials,
   GitHubCredentials,
@@ -42,6 +45,7 @@ import type {
   PostgresCredentials,
   PostHogCredentials,
   SentryCredentials,
+  SnowflakeCredentials,
 } from "./credentials";
 
 describe("credentials schemas", () => {
@@ -209,6 +213,49 @@ describe("credentials schemas", () => {
       };
 
       const result = MySQLCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("SnowflakeCredentialsSchema", () => {
+    it("should validate valid snowflake credentials", () => {
+      const credentials: SnowflakeCredentials = {
+        account: "xy12345.us-east-1",
+        database: "ANALYTICS",
+        password: "secret",
+        role: "ONEQUERY_READONLY",
+        schema: "PUBLIC",
+        type: "snowflake",
+        username: "ONEQUERY_READER",
+        warehouse: "ANALYTICS_WH",
+      };
+
+      const result = SnowflakeCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should allow optional schema and role", () => {
+      const result = SnowflakeCredentialsSchema.safeParse({
+        account: "xy12345.us-east-1",
+        database: "ANALYTICS",
+        password: "secret",
+        type: "snowflake",
+        username: "ONEQUERY_READER",
+        warehouse: "ANALYTICS_WH",
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it("should reject missing required fields", () => {
+      const result = SnowflakeCredentialsSchema.safeParse({
+        account: "xy12345.us-east-1",
+        type: "snowflake",
+      });
+
       expect(result.success).toBe(false);
     });
   });
@@ -411,6 +458,66 @@ describe("credentials schemas", () => {
       };
 
       const result = BigQueryCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("CloudflareD1CredentialsSchema", () => {
+    it("should validate valid Cloudflare D1 credentials", () => {
+      const credentials: CloudflareD1Credentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_api_token",
+        databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        type: "cloudflare_d1",
+      };
+
+      const result = CloudflareD1CredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should accept optional apiBaseUrl", () => {
+      const credentials: CloudflareD1Credentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiBaseUrl: "https://api.cloudflare.com/client/v4",
+        apiToken: "cf_api_token",
+        databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        type: "cloudflare_d1",
+      };
+
+      const result = CloudflareD1CredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.apiBaseUrl).toBe(
+          "https://api.cloudflare.com/client/v4"
+        );
+      }
+    });
+
+    it("should treat blank optional apiBaseUrl as undefined", () => {
+      const result = CloudflareD1CredentialsSchema.safeParse({
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiBaseUrl: "   ",
+        apiToken: "cf_api_token",
+        databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        type: "cloudflare_d1",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.apiBaseUrl).toBeUndefined();
+      }
+    });
+
+    it("should reject missing databaseId", () => {
+      const result = CloudflareD1CredentialsSchema.safeParse({
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_api_token",
+        type: "cloudflare_d1",
+      });
+
       expect(result.success).toBe(false);
     });
   });
@@ -1259,6 +1366,10 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.mysql).toBe(MySQLCredentialsSchema);
     });
 
+    it("should map snowflake to SnowflakeCredentialsSchema", () => {
+      expect(credentialSchemaMap.snowflake).toBe(SnowflakeCredentialsSchema);
+    });
+
     it("should map mongodb to MongoDBCredentialsSchema", () => {
       expect(credentialSchemaMap.mongodb).toBe(MongoDBCredentialsSchema);
     });
@@ -1269,6 +1380,12 @@ describe("credentials schemas", () => {
 
     it("should map bigquery to BigQueryCredentialsSchema", () => {
       expect(credentialSchemaMap.bigquery).toBe(BigQueryCredentialsSchema);
+    });
+
+    it("should map cloudflare_d1 to CloudflareD1CredentialsSchema", () => {
+      expect(credentialSchemaMap.cloudflare_d1).toBe(
+        CloudflareD1CredentialsSchema
+      );
     });
 
     it("should map laminar to LaminarCredentialsSchema", () => {
@@ -1418,6 +1535,18 @@ describe("credentials schemas", () => {
       expect(result.type).toBe("aws_athena_connector");
     });
 
+    it("should validate Cloudflare D1 credentials", () => {
+      const credentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_api_token",
+        databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        type: "cloudflare_d1",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("cloudflare_d1");
+    });
+
     it("should validate Sentry credentials", () => {
       const credentials = {
         authToken: "sntrys_123",
@@ -1472,6 +1601,15 @@ describe("credentials schemas", () => {
           username: "user",
         },
         {
+          account: "xy12345.us-east-1",
+          database: "ANALYTICS",
+          password: "secret",
+          schema: "PUBLIC",
+          type: "snowflake",
+          username: "ONEQUERY_READER",
+          warehouse: "ANALYTICS_WH",
+        },
+        {
           connectionString: "mongodb://user:pass@localhost:27017/admin",
           type: "mongodb",
         },
@@ -1488,6 +1626,12 @@ describe("credentials schemas", () => {
           projectId: "proj",
           refreshToken: "refresh",
           type: "bigquery",
+        },
+        {
+          accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+          apiToken: "cf_api_token",
+          databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+          type: "cloudflare_d1",
         },
         {
           apiKey: "lmnr_project_key_123",
@@ -1543,9 +1687,11 @@ describe("credentials schemas", () => {
         [
           "bigquery",
           "aws_athena_connector",
+          "cloudflare_d1",
           "laminar",
           "mysql",
           "postgres",
+          "snowflake",
         ].toSorted()
       );
 

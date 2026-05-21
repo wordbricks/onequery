@@ -3,7 +3,7 @@
   "remoteCache": {
     "signature": true
   },
-  "globalEnv": ["NODE_ENV", "ONEQUERY_PGLITE_DIR"],
+  "globalEnv": ["NODE_ENV", "ONEQUERY_PGLITE_DIR", "VITE_GA_MEASUREMENT_ID"],
   "globalPassThroughEnv": ["npm_config_user_agent", "npm_execpath", "PATH"],
   "tasks": {
     "build": {
@@ -35,10 +35,6 @@
         "DATABASE_URL",
         "ONEQUERY_RUNTIME_ROOT"
       ]
-    },
-    "dev:container": {
-      "cache": false,
-      "persistent": true
     },
     "//#check": {
       "dependsOn": ["//#lint", "//#format"]

@@ -86,6 +86,7 @@ Current provider identifiers:
 - `postgres` for PostgreSQL
 - `supabase` for Supabase Postgres
 - `mysql` for MySQL
+- `snowflake` for Snowflake
 - `mongodb` for MongoDB
 - `bigquery` for BigQuery
 - `laminar` for Laminar

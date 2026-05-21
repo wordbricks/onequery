@@ -1,4 +1,3 @@
-import { FlaskIcon } from "../blog-icons";
 import type { BlogPost } from "../blog-types";
 
 export const usingLlmTelemetryToImprovePromptsWithGepaPost: BlogPost = {
@@ -10,7 +9,6 @@ export const usingLlmTelemetryToImprovePromptsWithGepaPost: BlogPost = {
   date: "Apr 30, 2026",
   description:
     "A practical workflow for using OneQuery to let a GEPA reflection agent inspect Laminar LLM telemetry while improving prompts.",
-  icon: FlaskIcon,
   imageSrc:
     "/images/blog/using-llm-telemetry-to-improve-prompts-with-gepa-icon.png",
   readTime: "9 min read",

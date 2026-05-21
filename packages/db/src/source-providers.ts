@@ -3,6 +3,7 @@ import type { z } from "zod";
 import {
   AmplitudeCredentialsSchema,
   BigQueryCredentialsSchema,
+  CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   ConnectorCredentialsSchema,
   GitHubCredentialsSchema,
@@ -15,6 +16,7 @@ import {
   PostgresCredentialsSchema,
   PostHogCredentialsSchema,
   SentryCredentialsSchema,
+  SnowflakeCredentialsSchema,
 } from "./credentials";
 
 type ProviderCredentialSchema = z.ZodType<{ type: string }>;
@@ -137,6 +139,39 @@ export const SOURCE_PROVIDER_REGISTRY = {
       },
     },
   },
+  snowflake: {
+    label: "Snowflake",
+    credentialSchema: SnowflakeCredentialsSchema,
+    credentialType: "snowflake",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: true,
+    sourceApiInterface: false,
+    testable: true,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "snowflake",
+    guide: {
+      summary:
+        "Connect Snowflake with an account identifier, warehouse, database, and login credentials.",
+      steps: [
+        "Create or choose a Snowflake role with read access to the target database and schemas.",
+        "Grant the role USAGE on the warehouse, database, and schema plus SELECT on the tables or views OneQuery should query.",
+        "Copy the account identifier, username, password, warehouse, database, optional schema, and optional role into the payload.",
+      ],
+      exampleInput: {
+        sourceKey: "snowflake_prod",
+        credentials: {
+          account: "xy12345.us-east-1",
+          warehouse: "ANALYTICS_WH",
+          database: "ANALYTICS",
+          schema: "PUBLIC",
+          username: "ONEQUERY_READER",
+          password: "secret",
+          role: "ONEQUERY_READONLY",
+        },
+      },
+    },
+  },
   mongodb: {
     label: "MongoDB",
     credentialSchema: MongoDBCredentialsSchema,
@@ -194,6 +229,36 @@ export const SOURCE_PROVIDER_REGISTRY = {
             privateKey:
               "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
           },
+        },
+      },
+    },
+  },
+  cloudflare_d1: {
+    label: "Cloudflare D1",
+    credentialSchema: CloudflareD1CredentialsSchema,
+    credentialType: "cloudflare_d1",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: true,
+    sourceApiInterface: false,
+    testable: true,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "cloudflare_d1",
+    guide: {
+      summary:
+        "Connect Cloudflare D1 with an account ID, D1 database ID, and account-scoped API token.",
+      steps: [
+        "Copy the Cloudflare Account ID from the dashboard.",
+        "Copy the D1 database ID from the target database settings.",
+        "Create a Cloudflare API token that can query the target D1 database.",
+        "Only include `apiBaseUrl` when you need a non-default Cloudflare API origin.",
+      ],
+      exampleInput: {
+        sourceKey: "cloudflare_d1_prod",
+        credentials: {
+          accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+          databaseId: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+          apiToken: "cloudflare_api_token",
         },
       },
     },

@@ -63,7 +63,6 @@ export async function runBigQueryQuery(
   input: BigQueryRunnerContext & BigQueryQueryRequest
 ): Promise<BigQueryQueryResult> {
   const initialState = createBigQueryQueryState({
-    maxResults: input.maxResults,
     query: input.query,
     timeoutMs: input.timeoutMs,
     ...(input.location ? { location: input.location } : {}),
@@ -252,10 +251,7 @@ function advanceBigQueryQueryState(input: {
     response: input.response,
   });
 
-  if (
-    input.response.pageToken &&
-    summary.rows.length < input.request.maxResults
-  ) {
+  if (input.response.pageToken) {
     const queryId = summary.queryId;
     if (!queryId) {
       return {
@@ -278,7 +274,7 @@ function advanceBigQueryQueryState(input: {
 
   return {
     kind: "completed",
-    result: finalizeBigQueryQuerySummary(summary, input.request.maxResults),
+    result: finalizeBigQueryQuerySummary(summary),
   };
 }
 
@@ -318,14 +314,13 @@ function mergeBigQueryQuerySummary(input: {
 }
 
 function finalizeBigQueryQuerySummary(
-  summary: BigQueryQuerySummary,
-  maxResults: number
+  summary: BigQueryQuerySummary
 ): BigQueryQueryResult {
   return {
     cacheHit: summary.cacheHit,
     jobId: summary.jobId,
     location: summary.location,
-    rows: summary.rows.slice(0, maxResults),
+    rows: summary.rows,
     totalBytesBilled: summary.totalBytesBilled,
     totalBytesProcessed: summary.totalBytesProcessed,
   };
@@ -352,7 +347,6 @@ function describeBigQueryQueryEffect(
         body: {
           query: state.request.query,
           useLegacySql: false,
-          maxResults: state.request.maxResults,
           timeoutMs,
           formatOptions: {
             useInt64Timestamp: true,
@@ -369,7 +363,6 @@ function describeBigQueryQueryEffect(
         path: `/queries/${state.queryId}`,
         timeoutMs,
         query: {
-          maxResults: String(state.request.maxResults),
           timeoutMs: String(timeoutMs),
           "formatOptions.useInt64Timestamp": "true",
           ...(state.location ? { location: state.location } : {}),
@@ -382,9 +375,6 @@ function describeBigQueryQueryEffect(
         timeoutMs,
         query: {
           pageToken: state.pageToken,
-          maxResults: String(
-            Math.max(0, state.request.maxResults - state.summary.rows.length)
-          ),
           timeoutMs: String(timeoutMs),
           "formatOptions.useInt64Timestamp": "true",
           ...(state.summary.location

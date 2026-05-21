@@ -74,7 +74,7 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
         sourceKey: request.sourceKey,
       });
 
-      return yield* createCliFailureForQueryWorkflowResult(result);
+      return Result.err(createCliFailureForQueryWorkflowResult(result));
     }
 
     const windowedRows = applyQueryResultWindow({

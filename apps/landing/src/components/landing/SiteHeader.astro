@@ -1,0 +1,61 @@
+---
+import { REPOSITORY_URL } from "../../landing/config/landing-config";
+import { BrandIcon } from "../../landing/content/brand-icons";
+import { NAVIGATION_ITEMS } from "../../landing/content/landing-content";
+import TrackedLink from "./TrackedLink.astro";
+
+type NavigationItem = {
+  href: string;
+  label: string;
+};
+
+interface Props {
+  navigationItems?: ReadonlyArray<NavigationItem>;
+}
+
+const { navigationItems = NAVIGATION_ITEMS } = Astro.props;
+---
+
+<header class="site-header">
+  <a href="/" class="brand-mark" aria-label="OneQuery landing homepage">
+    <img
+      src="/onequery-icon.png"
+      alt=""
+      aria-hidden="true"
+      class="brand-mark-icon"
+    />
+    <span>OneQuery</span>
+  </a>
+
+  <nav class="site-nav" aria-label="Primary">
+    {
+      navigationItems.map((item) => (
+        <TrackedLink
+          href={item.href}
+          trackingName="nav_section_link"
+          trackingSection="header_nav"
+        >
+          {item.label}
+        </TrackedLink>
+      ))
+    }
+  </nav>
+
+  <div class="header-actions">
+    <TrackedLink
+      class="header-github-link"
+      href={REPOSITORY_URL}
+      target="_blank"
+      rel="noreferrer"
+      aria-label="Open OneQuery GitHub repository"
+      trackingName="header_github_repository"
+      trackingSection="header"
+    >
+      <BrandIcon
+        aria-hidden="true"
+        className="header-github-link-icon"
+        name="github"
+      />
+    </TrackedLink>
+  </div>
+</header>

@@ -5,7 +5,6 @@ mod config_cmd;
 mod debug;
 mod doctor;
 mod explain;
-mod json_input;
 mod org;
 mod query;
 mod restore;
@@ -265,7 +264,7 @@ where
         )
         .await
         .map(CommandOutput::from),
-        Command::Upgrade => upgrade::execute(context, runtime).await,
+        Command::Upgrade(upgrade_args) => upgrade::execute(&upgrade_args, context, runtime).await,
         Command::Web => web::execute(context, runtime).await,
         Command::GatewaySupervisor(args) => {
             let args = args.into_gateway_args();

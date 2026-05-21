@@ -1,505 +1,291 @@
+use onequery_core::error::CliError;
+use onequery_core::error::ErrorStage;
+use onequery_source_connect_cli::SourceConnectApiSuccess;
+use onequery_source_connect_cli::SourceConnectFailureOutcome;
+use onequery_source_connect_cli::SourceConnectHost;
+use onequery_source_connect_cli::SourceConnectHostFailure;
+use onequery_source_connect_cli::SourceConnectInputError;
+use onequery_source_connect_cli::SourceConnectInvocation;
+use onequery_source_connect_cli::SourceConnectProvider;
+use onequery_source_connect_cli::SourceConnectRenderedData;
+use onequery_source_connect_cli::SourceConnectRenderedOutput;
+use onequery_source_connect_cli::SourceConnectResult;
+use onequery_source_connect_cli::source_connect_input_examples;
 use serde_json::Map;
 use serde_json::Value;
 
 use crate::cli::SourceConnectArgs;
-use crate::identifiers::OrgSlug;
 use crate::output::CommandOutput;
-use crate::output::TerminalOutput;
 use crate::output::serialize_command_data;
 use crate::presentation::api_failure::ApiErrorPresentation;
 use crate::presentation::api_failure::present_api_failure_with_context;
 use crate::recovery::auth_login_try_next;
 use crate::recovery::command_then_retry_try_next;
 use crate::recovery::retry_try_next;
+use crate::transport::api_failure::ApiFailure;
 use crate::transport::source_connect;
 use crate::transport::source_connect::SourceConnectGuide;
-use crate::transport::source_connect::SourceConnectResult;
-use crate::transport::source_connect_provider::SourceConnectProvider;
 use crate::workflows::retry::RetryDirective;
 use crate::workflows::retry::classify_retry_directive;
-use crate::workflows::runner::DEFAULT_MAX_WORKFLOW_STEPS;
-use crate::workflows::runner::Transition;
-use crate::workflows::runner::WorkflowLabel;
-use crate::workflows::runner::WorkflowRunConfig;
-use crate::workflows::runner::run_reducer_workflow;
-use onequery_core::error::CliError;
 
 use super::CommandContext;
 use super::Runtime;
-use super::auth_session::authenticated_api_client;
 use super::auth_session::ensure_authenticated_org;
-use super::json_input::parse_org_scoped_json_input;
 
-#[derive(Debug)]
-enum SourceConnectMode {
-    Guide {
-        source: SourceConnectProvider,
-    },
-    Connect {
-        source: SourceConnectProvider,
-        input: Map<String, Value>,
-    },
-}
-
-#[derive(Debug)]
-enum SourceConnectState {
-    Idle { mode: SourceConnectMode },
-    CheckingAuth { mode: SourceConnectMode },
-    LoadingGuide,
-    Connecting,
-}
-
-#[derive(Debug)]
-enum SourceConnectTerminalState {
-    Completed { output: TerminalOutput },
-    NeedsReauth { error: CliError },
-    Failed { error: CliError },
-}
-
-#[derive(Debug)]
-enum SourceConnectEvent {
-    Start,
-    Authenticated {
-        org: OrgSlug,
-    },
-    AuthFailed {
-        error: CliError,
-    },
-    GuideLoaded {
-        guide: Box<SourceConnectGuide>,
-        request_id: Option<String>,
-    },
-    GuideLoadFailed {
-        error: CliError,
-        outcome: SourceConnectFailureOutcome,
-    },
-    SourceConnected {
-        result: SourceConnectResult,
-        request_id: Option<String>,
-    },
-    SourceConnectFailed {
-        error: CliError,
-        outcome: SourceConnectFailureOutcome,
-    },
-}
-
-#[derive(Debug)]
-enum SourceConnectEffect {
-    EnsureAuthenticatedOrg,
-    FetchGuide {
-        org: OrgSlug,
-        source: SourceConnectProvider,
-    },
-    ConnectSource {
-        org: OrgSlug,
-        source: SourceConnectProvider,
-        input: Map<String, Value>,
-    },
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum SourceConnectFailureOutcome {
-    NeedsReauth,
-    Failed,
-}
+const SOURCE_CONNECT_COMMAND: &str = "onequery source connect";
 
 pub(super) async fn execute<B, T>(
     args: &SourceConnectArgs,
     context: &CommandContext,
     runtime: &mut Runtime<B, T>,
 ) -> Result<CommandOutput, CliError> {
-    let source = args.source.clone();
-
-    let mode = match args.input.as_deref() {
-        Some(raw_input) => SourceConnectMode::Connect {
-            source,
-            input: parse_source_connect_input(raw_input, context)?,
-        },
-        None => SourceConnectMode::Guide { source },
+    let invocation = SourceConnectInvocation {
+        source: args.source.clone(),
+        input: args.input.clone(),
     };
-
-    let final_state = run_reducer_workflow(
-        SourceConnectState::Idle { mode },
-        SourceConnectEvent::Start,
-        WorkflowRunConfig {
-            context,
-            runtime,
-            workflow_name: "source_connect",
-            command_line: &context.command_line,
-            verbose: context.verbose,
-            max_steps: DEFAULT_MAX_WORKFLOW_STEPS,
-        },
-        reduce,
-        |effect, context, runtime| Box::pin(execute_effect(effect, context, runtime)),
-    )
-    .await?;
-
-    match final_state {
-        SourceConnectTerminalState::Completed { output } => Ok(output.into_inner()),
-        SourceConnectTerminalState::NeedsReauth { error }
-        | SourceConnectTerminalState::Failed { error } => Err(error),
-    }
+    let mut host = OneQuerySourceConnectHost { context, runtime };
+    onequery_source_connect_cli::execute(&invocation, &mut host).await
 }
 
-fn reduce(
-    state: SourceConnectState,
-    event: SourceConnectEvent,
-    context: &CommandContext,
-) -> Transition<SourceConnectState, SourceConnectTerminalState, SourceConnectEffect> {
-    match state {
-        SourceConnectState::Idle { mode } => match event {
-            SourceConnectEvent::Start => Transition::continue_with_effect(
-                SourceConnectState::CheckingAuth { mode },
-                SourceConnectEffect::EnsureAuthenticatedOrg,
-            ),
-            SourceConnectEvent::Authenticated { .. }
-            | SourceConnectEvent::AuthFailed { .. }
-            | SourceConnectEvent::GuideLoaded { .. }
-            | SourceConnectEvent::GuideLoadFailed { .. }
-            | SourceConnectEvent::SourceConnected { .. }
-            | SourceConnectEvent::SourceConnectFailed { .. } => {
-                Transition::done(SourceConnectTerminalState::Failed {
-                    error: unexpected_transition_error(
-                        context,
-                        SourceConnectState::Idle { mode },
-                        event,
-                    ),
-                })
-            }
-        },
-        SourceConnectState::CheckingAuth { mode } => match event {
-            SourceConnectEvent::Authenticated { org } => match mode {
-                SourceConnectMode::Guide { source } => Transition::continue_with_effect(
-                    SourceConnectState::LoadingGuide,
-                    SourceConnectEffect::FetchGuide { org, source },
+struct OneQuerySourceConnectHost<'a, B, T> {
+    context: &'a CommandContext,
+    runtime: &'a mut Runtime<B, T>,
+}
+
+#[onequery_source_connect_cli::async_trait(?Send)]
+impl<B, T> SourceConnectHost for OneQuerySourceConnectHost<'_, B, T> {
+    type ApiFailure = ApiFailure;
+    type Error = CliError;
+    type Output = CommandOutput;
+
+    fn binary_name(&self) -> &'static str {
+        "onequery"
+    }
+
+    async fn ensure_authenticated_org(&mut self) -> Result<String, Self::Error> {
+        ensure_authenticated_org(self.context, self.runtime)
+            .await
+            .map(|org| org.to_string())
+    }
+
+    async fn load_source_connect_guide(
+        &mut self,
+        org: &str,
+        source: SourceConnectProvider,
+    ) -> Result<
+        SourceConnectApiSuccess<SourceConnectGuide>,
+        SourceConnectHostFailure<Self::ApiFailure, Self::Error>,
+    > {
+        let client = super::auth_session::authenticated_api_client(self.context, self.runtime)
+            .map_err(SourceConnectHostFailure::Error)?;
+        source_connect::load_source_connect_guide(&client, org, source)
+            .await
+            .map(|response| SourceConnectApiSuccess {
+                payload: response.payload,
+                request_id: response.request_id,
+            })
+            .map_err(SourceConnectHostFailure::Api)
+    }
+
+    async fn connect_source(
+        &mut self,
+        org: &str,
+        source: &SourceConnectProvider,
+        input: Map<String, Value>,
+    ) -> Result<
+        SourceConnectApiSuccess<SourceConnectResult>,
+        SourceConnectHostFailure<Self::ApiFailure, Self::Error>,
+    > {
+        let client = super::auth_session::authenticated_api_client(self.context, self.runtime)
+            .map_err(SourceConnectHostFailure::Error)?;
+        source_connect::connect_source(&client, org, source, input)
+            .await
+            .map(|response| SourceConnectApiSuccess {
+                payload: response.payload,
+                request_id: response.request_id,
+            })
+            .map_err(SourceConnectHostFailure::Api)
+    }
+
+    fn classify_failure(&self, failure: &Self::ApiFailure) -> SourceConnectFailureOutcome {
+        if classify_retry_directive(failure) == RetryDirective::NeedsReauth {
+            SourceConnectFailureOutcome::NeedsReauth
+        } else {
+            SourceConnectFailureOutcome::Failed
+        }
+    }
+
+    fn invalid_input_error(&self, error: SourceConnectInputError) -> Self::Error {
+        CliError::new(
+            "invalid source connect input",
+            self.context.command_line.clone(),
+            ErrorStage::ReadQueryInput,
+            error.why,
+            source_connect_input_examples(self.binary_name()),
+        )
+    }
+
+    fn present_guide_failure(&self, failure: Self::ApiFailure) -> Self::Error {
+        present_api_failure_with_context(
+            failure,
+            self.context,
+            ApiErrorPresentation {
+                command: &self.context.command_line,
+                title: "source connect failed",
+                transport_why_prefix: "failed to reach source connect guide endpoint",
+                decode_why_prefix: "failed to decode source connect guide response",
+                fallback_try_next: retry_try_next(&self.context.command_line),
+                unauthorized_try_next: Some(auth_login_try_next()),
+            },
+        )
+    }
+
+    fn present_connect_failure(
+        &self,
+        source: &SourceConnectProvider,
+        failure: Self::ApiFailure,
+    ) -> Self::Error {
+        present_api_failure_with_context(
+            failure,
+            self.context,
+            ApiErrorPresentation {
+                command: &self.context.command_line,
+                title: "source connect failed",
+                transport_why_prefix: "failed to reach source connect endpoint",
+                decode_why_prefix: "failed to decode source connect response",
+                fallback_try_next: command_then_retry_try_next(
+                    format!("onequery source connect --source {source}"),
+                    &self.context.command_line,
                 ),
-                SourceConnectMode::Connect { source, input } => Transition::continue_with_effect(
-                    SourceConnectState::Connecting,
-                    SourceConnectEffect::ConnectSource { org, source, input },
-                ),
+                unauthorized_try_next: Some(auth_login_try_next()),
             },
-            SourceConnectEvent::AuthFailed { error } => {
-                Transition::done(SourceConnectTerminalState::Failed { error })
+        )
+    }
+
+    fn render_output(
+        &self,
+        output: SourceConnectRenderedOutput,
+        request_id: Option<String>,
+    ) -> Result<Self::Output, Self::Error> {
+        let output = match output.data {
+            SourceConnectRenderedData::Guide(guide) => {
+                let data = serialize_command_data(&guide, SOURCE_CONNECT_COMMAND)?;
+                CommandOutput::structured(output.lines, data)
             }
-            SourceConnectEvent::Start
-            | SourceConnectEvent::GuideLoaded { .. }
-            | SourceConnectEvent::GuideLoadFailed { .. }
-            | SourceConnectEvent::SourceConnected { .. }
-            | SourceConnectEvent::SourceConnectFailed { .. } => {
-                Transition::done(SourceConnectTerminalState::Failed {
-                    error: unexpected_transition_error(
-                        context,
-                        SourceConnectState::CheckingAuth { mode },
-                        event,
-                    ),
+            SourceConnectRenderedData::Result(result) => {
+                CommandOutput::try_deferred(output.lines, move || {
+                    serialize_command_data(&result, SOURCE_CONNECT_COMMAND)
                 })
             }
-        },
-        SourceConnectState::LoadingGuide => match event {
-            SourceConnectEvent::GuideLoaded { guide, request_id } => {
-                match render_source_connect_guide_output(*guide) {
-                    Ok(output) => Transition::done(SourceConnectTerminalState::Completed {
-                        output: TerminalOutput::new(output.with_request_id(request_id)),
-                    }),
-                    Err(error) => Transition::done(SourceConnectTerminalState::Failed { error }),
-                }
-            }
-            SourceConnectEvent::GuideLoadFailed { error, outcome } => match outcome {
-                SourceConnectFailureOutcome::NeedsReauth => {
-                    Transition::done(SourceConnectTerminalState::NeedsReauth { error })
-                }
-                SourceConnectFailureOutcome::Failed => {
-                    Transition::done(SourceConnectTerminalState::Failed { error })
-                }
-            },
-            SourceConnectEvent::Start
-            | SourceConnectEvent::Authenticated { .. }
-            | SourceConnectEvent::AuthFailed { .. }
-            | SourceConnectEvent::SourceConnected { .. }
-            | SourceConnectEvent::SourceConnectFailed { .. } => {
-                Transition::done(SourceConnectTerminalState::Failed {
-                    error: unexpected_transition_error(
-                        context,
-                        SourceConnectState::LoadingGuide,
-                        event,
-                    ),
-                })
-            }
-        },
-        SourceConnectState::Connecting => match event {
-            SourceConnectEvent::SourceConnected { result, request_id } => {
-                match render_source_connect_result_output(result) {
-                    Ok(output) => Transition::done(SourceConnectTerminalState::Completed {
-                        output: TerminalOutput::new(output.with_request_id(request_id)),
-                    }),
-                    Err(error) => Transition::done(SourceConnectTerminalState::Failed { error }),
-                }
-            }
-            SourceConnectEvent::SourceConnectFailed { error, outcome } => match outcome {
-                SourceConnectFailureOutcome::NeedsReauth => {
-                    Transition::done(SourceConnectTerminalState::NeedsReauth { error })
-                }
-                SourceConnectFailureOutcome::Failed => {
-                    Transition::done(SourceConnectTerminalState::Failed { error })
-                }
-            },
-            SourceConnectEvent::Start
-            | SourceConnectEvent::Authenticated { .. }
-            | SourceConnectEvent::AuthFailed { .. }
-            | SourceConnectEvent::GuideLoaded { .. }
-            | SourceConnectEvent::GuideLoadFailed { .. } => {
-                Transition::done(SourceConnectTerminalState::Failed {
-                    error: unexpected_transition_error(
-                        context,
-                        SourceConnectState::Connecting,
-                        event,
-                    ),
-                })
-            }
-        },
+        };
+
+        Ok(output.with_request_id(request_id))
     }
-}
 
-fn unexpected_transition_error(
-    context: &CommandContext,
-    state: SourceConnectState,
-    event: SourceConnectEvent,
-) -> CliError {
-    CliError::internal(
-        context.command_line.clone(),
-        format!(
-            "unexpected source connect workflow transition: state={}, event={}",
-            state.workflow_label(),
-            event.workflow_label()
-        ),
-    )
-}
+    fn unexpected_transition_error(&self, state: &'static str, event: &'static str) -> Self::Error {
+        CliError::internal(
+            self.context.command_line.clone(),
+            format!("unexpected source connect workflow transition: state={state}, event={event}"),
+        )
+    }
 
-async fn execute_effect<B, T>(
-    effect: SourceConnectEffect,
-    context: &CommandContext,
-    runtime: &mut Runtime<B, T>,
-) -> SourceConnectEvent {
-    match effect {
-        SourceConnectEffect::EnsureAuthenticatedOrg => {
-            match ensure_authenticated_org(context, runtime).await {
-                Ok(org) => SourceConnectEvent::Authenticated { org },
-                Err(error) => SourceConnectEvent::AuthFailed { error },
-            }
-        }
-        SourceConnectEffect::FetchGuide { org, source } => {
-            let client = match authenticated_api_client(context, runtime) {
-                Ok(client) => client,
-                Err(error) => {
-                    return SourceConnectEvent::GuideLoadFailed {
-                        error,
-                        outcome: SourceConnectFailureOutcome::Failed,
-                    };
-                }
-            };
-
-            match source_connect::load_source_connect_guide(&client, org.as_str(), source).await {
-                Ok(response) => SourceConnectEvent::GuideLoaded {
-                    guide: Box::new(response.payload),
-                    request_id: response.request_id,
-                },
-                Err(failure) => {
-                    let outcome = source_connect_failure_outcome(&failure);
-                    SourceConnectEvent::GuideLoadFailed {
-                        error: present_api_failure_with_context(
-                            failure,
-                            context,
-                            ApiErrorPresentation {
-                                command: &context.command_line,
-                                title: "source connect failed",
-                                transport_why_prefix: "failed to reach source connect guide endpoint",
-                                decode_why_prefix: "failed to decode source connect guide response",
-                                fallback_try_next: retry_try_next(&context.command_line),
-                                unauthorized_try_next: Some(auth_login_try_next()),
-                            },
-                        ),
-                        outcome,
-                    }
-                }
-            }
-        }
-        SourceConnectEffect::ConnectSource { org, source, input } => {
-            let client = match authenticated_api_client(context, runtime) {
-                Ok(client) => client,
-                Err(error) => {
-                    return SourceConnectEvent::SourceConnectFailed {
-                        error,
-                        outcome: SourceConnectFailureOutcome::Failed,
-                    };
-                }
-            };
-
-            match source_connect::connect_source(&client, org.as_str(), &source, input).await {
-                Ok(response) => SourceConnectEvent::SourceConnected {
-                    result: response.payload,
-                    request_id: response.request_id,
-                },
-                Err(failure) => {
-                    let outcome = source_connect_failure_outcome(&failure);
-                    SourceConnectEvent::SourceConnectFailed {
-                        error: present_api_failure_with_context(
-                            failure,
-                            context,
-                            ApiErrorPresentation {
-                                command: &context.command_line,
-                                title: "source connect failed",
-                                transport_why_prefix: "failed to reach source connect endpoint",
-                                decode_why_prefix: "failed to decode source connect response",
-                                fallback_try_next: command_then_retry_try_next(
-                                    format!("onequery source connect --source {source}"),
-                                    &context.command_line,
-                                ),
-                                unauthorized_try_next: Some(auth_login_try_next()),
-                            },
-                        ),
-                        outcome,
-                    }
-                }
-            }
+    fn record_workflow_reduce(&self, step: usize, state_before: &'static str, event: &'static str) {
+        if self.context.verbose {
+            tracing::info!(
+                workflow = "source_connect",
+                step,
+                state_before,
+                event,
+                "workflow reduce",
+            );
         }
     }
-}
 
-fn source_connect_failure_outcome(
-    failure: &crate::transport::api_failure::ApiFailure,
-) -> SourceConnectFailureOutcome {
-    if classify_retry_directive(failure) == RetryDirective::NeedsReauth {
-        SourceConnectFailureOutcome::NeedsReauth
-    } else {
-        SourceConnectFailureOutcome::Failed
-    }
-}
-
-fn parse_source_connect_input(
-    raw_input: &str,
-    context: &CommandContext,
-) -> Result<Map<String, Value>, CliError> {
-    parse_org_scoped_json_input(
-        raw_input,
-        context,
-        "invalid source connect input",
-        "source connect input",
-        source_connect_input_examples,
-    )
-}
-
-fn source_connect_input_examples() -> Vec<String> {
-    vec![
-        "onequery source connect --source <provider>".to_owned(),
-        "onequery --org <org_slug> source connect --source postgres --input '{\"sourceKey\":\"warehouse\",\"credentials\":{\"host\":\"db.example.com\",\"database\":\"app\",\"username\":\"onequery\",\"password\":\"secret\"}}'".to_owned(),
-    ]
-}
-
-fn render_source_connect_guide_output(
-    guide: SourceConnectGuide,
-) -> Result<CommandOutput, CliError> {
-    let data = serialize_command_data(&guide, "onequery source connect")?;
-    let lines = guide.content.lines().map(ToOwned::to_owned).collect();
-    Ok(CommandOutput::structured(lines, data))
-}
-
-fn render_source_connect_result_output(
-    result: SourceConnectResult,
-) -> Result<CommandOutput, CliError> {
-    let lines = vec![
-        format!("Source connected: {}", &result.source.source_key),
-        format!("Provider: {}", &result.source.provider),
-        format!("Status: {}", &result.source.status),
-        format!(
-            "Interfaces: {}",
-            format_source_interfaces(&result.source.interfaces)
-        ),
-        format!("Next: {}", result.next_command),
-    ];
-    Ok(CommandOutput::try_deferred(lines, move || {
-        serialize_command_data(&result, "onequery source connect")
-    }))
-}
-
-fn format_source_interfaces(interfaces: &[String]) -> String {
-    if interfaces.is_empty() {
-        return "-".to_owned();
-    }
-
-    interfaces.join(",")
-}
-
-impl WorkflowLabel for SourceConnectState {
-    fn workflow_label(&self) -> &'static str {
-        match self {
-            Self::Idle { .. } => "Idle",
-            Self::CheckingAuth { .. } => "CheckingAuth",
-            Self::LoadingGuide => "LoadingGuide",
-            Self::Connecting => "Connecting",
+    fn record_workflow_transition(
+        &self,
+        step: usize,
+        state_after: Option<&'static str>,
+        terminal_state: Option<&'static str>,
+    ) {
+        if self.context.verbose {
+            tracing::info!(
+                workflow = "source_connect",
+                step,
+                state_after = ?state_after,
+                terminal_state = ?terminal_state,
+                "workflow transition",
+            );
         }
     }
-}
 
-impl WorkflowLabel for SourceConnectTerminalState {
-    fn workflow_label(&self) -> &'static str {
-        match self {
-            Self::Completed { .. } => "Completed",
-            Self::NeedsReauth { .. } => "NeedsReauth",
-            Self::Failed { .. } => "Failed",
+    fn record_workflow_effect_dispatch(&self, step: usize, effect: &'static str) {
+        if self.context.verbose {
+            tracing::info!(
+                workflow = "source_connect",
+                step,
+                effect,
+                "workflow effect dispatch",
+            );
         }
     }
-}
 
-impl WorkflowLabel for SourceConnectEvent {
-    fn workflow_label(&self) -> &'static str {
-        match self {
-            Self::Start => "Start",
-            Self::Authenticated { .. } => "Authenticated",
-            Self::AuthFailed { .. } => "AuthFailed",
-            Self::GuideLoaded { .. } => "GuideLoaded",
-            Self::GuideLoadFailed { .. } => "GuideLoadFailed",
-            Self::SourceConnected { .. } => "SourceConnected",
-            Self::SourceConnectFailed { .. } => "SourceConnectFailed",
-        }
-    }
-}
-
-impl WorkflowLabel for SourceConnectEffect {
-    fn workflow_label(&self) -> &'static str {
-        match self {
-            Self::EnsureAuthenticatedOrg => "EnsureAuthenticatedOrg",
-            Self::FetchGuide { .. } => "FetchGuide",
-            Self::ConnectSource { .. } => "ConnectSource",
+    fn record_workflow_effect_emitted_event(&self, step: usize, event: &'static str) {
+        if self.context.verbose {
+            tracing::info!(
+                workflow = "source_connect",
+                step,
+                event,
+                "workflow effect emitted event",
+            );
         }
     }
 }
 
 #[cfg(test)]
+fn render_source_connect_result_output_for_test() -> SourceConnectRenderedOutput {
+    onequery_source_connect_cli::render_source_connect_result_output(SourceConnectResult {
+        source: onequery_source_connect_cli::SourceConnectSourceSummary {
+            source_key: "warehouse".to_owned(),
+            display_name: None,
+            provider: "postgres".to_owned(),
+            status: "active".to_owned(),
+            interfaces: vec!["query".to_owned()],
+        },
+        next_command: "onequery source show warehouse".to_owned(),
+    })
+}
+
+#[cfg(test)]
 mod tests {
     use insta::assert_snapshot;
-    use onequery_core::error::ErrorStage;
     use pretty_assertions::assert_eq;
 
-    use crate::commands::CommandContext;
-    use crate::commands::ResolvedOrgSource;
-    use crate::config::default_base_url;
-    use crate::transport::source::SourceSummary;
+    use super::SOURCE_CONNECT_COMMAND;
+    use super::SourceConnectRenderedData;
+    use super::SourceConnectRenderedOutput;
+    use super::render_source_connect_result_output_for_test;
+    use crate::output::CommandOutput;
     use crate::transport::source_connect::SourceConnectGuide;
-    use crate::transport::source_connect::SourceConnectResult;
-    use crate::transport::source_connect_provider::SourceConnectProvider;
-    use crate::workflows::runner::TransitionProgress;
-    use onequery_core::error::CliError;
+    use onequery_source_connect_cli::SourceConnectResult;
+    use onequery_source_connect_cli::SourceConnectSourceSummary;
+    use onequery_source_connect_cli::render_source_connect_guide_output;
+    use onequery_source_connect_cli::render_source_connect_result_output;
 
-    use super::SourceConnectEffect;
-    use super::SourceConnectEvent;
-    use super::SourceConnectFailureOutcome;
-    use super::SourceConnectMode;
-    use super::SourceConnectState;
-    use super::SourceConnectTerminalState;
-    use super::parse_source_connect_input;
-    use super::reduce;
-    use super::render_source_connect_guide_output;
-    use super::render_source_connect_result_output;
+    fn command_output_from_rendered(
+        output: SourceConnectRenderedOutput,
+    ) -> Result<CommandOutput, onequery_core::error::CliError> {
+        match output.data {
+            SourceConnectRenderedData::Guide(guide) => Ok(CommandOutput::structured(
+                output.lines,
+                crate::output::serialize_command_data(&guide, SOURCE_CONNECT_COMMAND)?,
+            )),
+            SourceConnectRenderedData::Result(result) => {
+                Ok(CommandOutput::try_deferred(output.lines, move || {
+                    crate::output::serialize_command_data(&result, SOURCE_CONNECT_COMMAND)
+                }))
+            }
+        }
+    }
 
     #[test]
     fn render_source_connect_guide_output_snapshot() {
@@ -513,113 +299,42 @@ mod tests {
             command: "onequery source connect --source postgres --input '<json>'".to_owned(),
         };
 
-        let output = render_source_connect_guide_output(guide)
+        let output = command_output_from_rendered(render_source_connect_guide_output(guide))
             .expect("expected source connect guide output");
         assert_snapshot!(output.lines.join("\n"));
     }
 
     #[test]
     fn render_source_connect_result_output_snapshot() {
-        let output = render_source_connect_result_output(SourceConnectResult {
-            source: SourceSummary {
-                source_key: "warehouse".to_owned(),
-                display_name: None,
-                provider: "postgres".to_owned(),
-                status: "active".to_owned(),
-                interfaces: vec!["query".to_owned()],
+        let output = command_output_from_rendered(render_source_connect_result_output(
+            SourceConnectResult {
+                source: SourceConnectSourceSummary {
+                    source_key: "warehouse".to_owned(),
+                    display_name: None,
+                    provider: "postgres".to_owned(),
+                    status: "active".to_owned(),
+                    interfaces: vec!["query".to_owned()],
+                },
+                next_command: "onequery source show warehouse".to_owned(),
             },
-            next_command: "onequery source show warehouse".to_owned(),
-        })
+        ))
         .expect("expected source connect result output");
 
         assert_snapshot!(output.lines.join("\n"));
     }
 
     #[test]
-    fn source_connect_input_rejects_org_fields() {
-        let error = parse_source_connect_input(
-            r#"{"sourceKey":"warehouse","organizationSlug":"acme","credentials":{"host":"db.example.com"}}"#,
-            &CommandContext {
-                command_line: "onequery source connect --source postgres --input <excerpt>"
-                    .to_owned(),
-                base_url: default_base_url(),
-                request_id: None,
-                resolved_org: Some("acme".to_owned()),
-                resolved_org_source: ResolvedOrgSource::Config,
-                verbose: false,
-            },
-        )
-        .expect_err("expected org context fields to be rejected");
-
-        assert_eq!(error.title, "invalid source connect input".to_owned());
-        assert!(error.why.contains("organizationId"));
-    }
-
-    #[test]
-    fn unauthorized_source_connect_failure_transitions_to_explicit_reauth_terminal_state() {
-        let context = CommandContext {
-            command_line: "onequery source connect --source postgres".to_owned(),
-            base_url: default_base_url(),
-            request_id: None,
-            resolved_org: Some("acme".to_owned()),
-            resolved_org_source: ResolvedOrgSource::Config,
-            verbose: false,
-        };
-
-        let transition = reduce(
-            SourceConnectState::LoadingGuide,
-            SourceConnectEvent::GuideLoadFailed {
-                error: CliError::new(
-                    "source connect failed",
-                    context.command_line.clone(),
-                    ErrorStage::Auth,
-                    "stored credentials are no longer authorized",
-                    vec!["onequery auth login".to_owned()],
-                ),
-                outcome: SourceConnectFailureOutcome::NeedsReauth,
-            },
-            &context,
+    fn rendered_result_output_keeps_expected_lines() {
+        let output = render_source_connect_result_output_for_test();
+        assert_eq!(
+            output.lines,
+            vec![
+                "Source connected: warehouse".to_owned(),
+                "Provider: postgres".to_owned(),
+                "Status: active".to_owned(),
+                "Interfaces: query".to_owned(),
+                "Next: onequery source show warehouse".to_owned(),
+            ]
         );
-
-        match transition.into_progress() {
-            TransitionProgress::Done {
-                terminal_state: SourceConnectTerminalState::NeedsReauth { error },
-            } => assert_eq!(error.stage, ErrorStage::Auth),
-            other => panic!("expected needs-reauth terminal transition, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn source_connect_starts_in_guide_mode_without_input() {
-        let context = CommandContext {
-            command_line: "onequery source connect --source postgres".to_owned(),
-            base_url: default_base_url(),
-            request_id: None,
-            resolved_org: Some("acme".to_owned()),
-            resolved_org_source: ResolvedOrgSource::Config,
-            verbose: false,
-        };
-
-        let transition = reduce(
-            SourceConnectState::Idle {
-                mode: SourceConnectMode::Guide {
-                    source: SourceConnectProvider::new_for_test("postgres"),
-                },
-            },
-            SourceConnectEvent::Start,
-            &context,
-        );
-
-        match transition.into_progress() {
-            TransitionProgress::Continue {
-                next_state: SourceConnectState::CheckingAuth { mode },
-                effect: SourceConnectEffect::EnsureAuthenticatedOrg,
-            } => assert!(matches!(
-                mode,
-                SourceConnectMode::Guide { source }
-                    if source == SourceConnectProvider::new_for_test("postgres")
-            )),
-            other => panic!("expected guide-mode transition, got {other:?}"),
-        }
     }
 }
