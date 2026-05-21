@@ -3,7 +3,7 @@ import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createContextValues } from "@connectrpc/connect";
 import { organization } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
-import { pgliteTestDb } from "@onequery/db/testing/setup";
+import { test as it } from "@onequery/db/testing/setup";
 import {
   SourceApiBodyKind,
   SourceApiOperationKind,
@@ -34,7 +34,7 @@ import {
   SourceApiTimeoutError,
 } from "@onequery/server/source-api";
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, vi } from "vitest";
 
 import { storeSourceApiActionCommand } from "../../audit";
 import { cliConnectRequestContextKey } from "../context";
@@ -248,8 +248,7 @@ const executionResponse = {
   status: 200,
 } as const;
 
-async function createHarness() {
-  const db = pgliteTestDb;
+async function createHarness(db: Database) {
   await db.insert(organization).values({
     id: authorizedOrg.org.id,
     name: "Acme",
@@ -719,17 +718,17 @@ function summarizeSourceApiPreview(
     : null;
 }
 
-describe("source api connect service", { timeout: 15_000 }, () => {
+describe("source api connect service", { timeout: 60_000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  async function createTrackedHarness() {
-    return createHarness();
+  async function createTrackedHarness(db: Database) {
+    return createHarness(db);
   }
 
-  it("describes the source API through the Connect handler", async () => {
-    const harness = await createTrackedHarness();
+  it("describes the source API through the Connect handler", async ({ db }) => {
+    const harness = await createTrackedHarness(db);
     const request = create(DescribeSourceApiRequestSchema, {
       orgSlug: "acme",
       sourceKey: "github-prod",
@@ -754,8 +753,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     }).toMatchSnapshot();
   });
 
-  it("maps missing source API adapter registration to source unavailable", async () => {
-    const harness = await createTrackedHarness();
+  it("maps missing source API adapter registration to source unavailable", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.dependencies.describeSourceApi.mockRejectedValueOnce(
       new SourceApiAdapterNotRegisteredError("github")
     );
@@ -785,8 +786,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     });
   });
 
-  it("previews source API execution through the Connect handler", async () => {
-    const harness = await createTrackedHarness();
+  it("previews source API execution through the Connect handler", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     const request = create(PreviewSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
@@ -833,8 +836,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     }).toMatchSnapshot();
   });
 
-  it("maps descriptor version mismatch to failed precondition", async () => {
-    const harness = await createTrackedHarness();
+  it("maps descriptor version mismatch to failed precondition", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.dependencies.prepareSourceApiDraft.mockRejectedValueOnce(
       new SourceApiDescriptorVersionMismatchError({
         expectedDescriptorVersion: "github-v2",
@@ -875,8 +880,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     });
   });
 
-  it("converts protobuf JSON draft bodies into canonical JsonValue once", async () => {
-    const harness = await createTrackedHarness();
+  it("converts protobuf JSON draft bodies into canonical JsonValue once", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     const request = create(PreviewSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
@@ -907,8 +914,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     ).toMatchSnapshot();
   });
 
-  it("executes source API requests through the Connect handler", async () => {
-    const harness = await createTrackedHarness();
+  it("executes source API requests through the Connect handler", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     const request = create(ExecuteSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
@@ -942,8 +951,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     }).toMatchSnapshot();
   });
 
-  it("preserves JSON source API response bodies through the Connect handler", async () => {
-    const harness = await createTrackedHarness();
+  it("preserves JSON source API response bodies through the Connect handler", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.dependencies.executePreparedSourceApi.mockResolvedValueOnce({
       ...executionResponse,
       body: {
@@ -979,8 +990,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     expect(summarizeExecuteSourceApiResponse(response)).toMatchSnapshot();
   });
 
-  it("binds continuation tokens to execution state during resume", async () => {
-    const harness = await createTrackedHarness();
+  it("binds continuation tokens to execution state during resume", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     const seeded = await seedResumableSourceApiAction(
       harness.db,
       "req_cli_resume_seed"
@@ -1034,8 +1047,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     }).toMatchSnapshot();
   });
 
-  it("rejects continuation token resume for operations without continuation support", async () => {
-    const harness = await createTrackedHarness();
+  it("rejects continuation token resume for operations without continuation support", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.dependencies.decodeSourceApiContinuationToken.mockReturnValueOnce({
       ...decodedContinuationToken,
       prepared: {
@@ -1061,8 +1076,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     ).not.toHaveBeenCalled();
   });
 
-  it("maps malformed continuation tokens to invalid arguments", async () => {
-    const harness = await createTrackedHarness();
+  it("maps malformed continuation tokens to invalid arguments", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
       () => {
         throw new SourceApiInvalidRequestError(
@@ -1084,8 +1101,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     );
   });
 
-  it("maps expired continuation tokens to failed precondition", async () => {
-    const harness = await createTrackedHarness();
+  it("maps expired continuation tokens to failed precondition", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.dependencies.decodeSourceApiContinuationToken.mockImplementation(
       () => {
         throw new SourceApiExpiredError(
@@ -1107,8 +1126,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     );
   });
 
-  it("maps descriptor drift to failed precondition during resume", async () => {
-    const harness = await createTrackedHarness();
+  it("maps descriptor drift to failed precondition during resume", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     const seeded = await seedResumableSourceApiAction(
       harness.db,
       "req_cli_resume_drift_seed"
@@ -1136,8 +1157,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     );
   });
 
-  it("maps source api authorization failures to permission denied", async () => {
-    const harness = await createTrackedHarness();
+  it("maps source api authorization failures to permission denied", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.dependencies.executePreparedSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "authorize",
@@ -1171,8 +1194,8 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     );
   });
 
-  it("maps adapter execution failures to connect errors", async () => {
-    const harness = await createTrackedHarness();
+  it("maps adapter execution failures to connect errors", async ({ db }) => {
+    const harness = await createTrackedHarness(db);
     harness.dependencies.executePreparedSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "execute",
@@ -1202,8 +1225,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     );
   });
 
-  it("maps adapter execution timeouts to retryable deadline exceeded errors", async () => {
-    const harness = await createTrackedHarness();
+  it("maps adapter execution timeouts to retryable deadline exceeded errors", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.dependencies.executePreparedSourceApi.mockRejectedValue(
       new SourceApiExecutionStageError(
         "execute",
@@ -1252,8 +1277,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     });
   });
 
-  it("returns not logged in before validating source api execute input", async () => {
-    const harness = await createTrackedHarness();
+  it("returns not logged in before validating source api execute input", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.requestContext.resolveSession.mockResolvedValueOnce(
       Result.err(
         createCliServiceFailure({
@@ -1278,8 +1305,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     expect(harness.dependencies.prepareSourceApiDraft).not.toHaveBeenCalled();
   });
 
-  it("returns not logged in before decoding continuation tokens", async () => {
-    const harness = await createTrackedHarness();
+  it("returns not logged in before decoding continuation tokens", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.requestContext.resolveSession.mockResolvedValueOnce(
       Result.err(
         createCliServiceFailure({
@@ -1313,8 +1342,10 @@ describe("source api connect service", { timeout: 15_000 }, () => {
     ).not.toHaveBeenCalled();
   });
 
-  it("resolves the requested resume source before decoding continuation tokens", async () => {
-    const harness = await createTrackedHarness();
+  it("resolves the requested resume source before decoding continuation tokens", async ({
+    db,
+  }) => {
+    const harness = await createTrackedHarness(db);
     harness.dependencies.runCliLoadOrgAccessWithSource.mockResolvedValueOnce({
       access: {
         kind: "found",

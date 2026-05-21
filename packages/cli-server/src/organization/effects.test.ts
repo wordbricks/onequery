@@ -1,11 +1,12 @@
 import { dataSources, member, organization, user } from "@onequery/db/server";
-import { pgliteTestDb } from "@onequery/db/testing/setup";
-import { describe, expect, it } from "vitest";
+import type { Database } from "@onequery/db/server";
+import { test as it } from "@onequery/db/testing/setup";
+import { describe, expect } from "vitest";
 
 import { runCliLoadOrgAccess, runCliLoadOrgAccessWithSource } from "./effects";
 
-async function insertUser(id: string) {
-  await pgliteTestDb.insert(user).values({
+async function insertUser(db: Database, id: string) {
+  await db.insert(user).values({
     email: `${id}@example.com`,
     emailVerified: true,
     id,
@@ -13,29 +14,38 @@ async function insertUser(id: string) {
   });
 }
 
-async function insertOrganization(input: {
-  id: string;
-  name: string;
-  slug: string | null;
-}) {
-  await pgliteTestDb.insert(organization).values(input);
+async function insertOrganization(
+  db: Database,
+  input: {
+    id: string;
+    name: string;
+    slug: string | null;
+  }
+) {
+  await db.insert(organization).values(input);
 }
 
-async function insertMember(input: {
-  id: string;
-  organizationId: string;
-  role: string;
-  userId: string;
-}) {
-  await pgliteTestDb.insert(member).values(input);
+async function insertMember(
+  db: Database,
+  input: {
+    id: string;
+    organizationId: string;
+    role: string;
+    userId: string;
+  }
+) {
+  await db.insert(member).values(input);
 }
 
-async function insertDataSource(input: {
-  id: string;
-  name: string;
-  organizationId: string;
-}) {
-  await pgliteTestDb.insert(dataSources).values({
+async function insertDataSource(
+  db: Database,
+  input: {
+    id: string;
+    name: string;
+    organizationId: string;
+  }
+) {
+  await db.insert(dataSources).values({
     credentialsEncrypted: `encrypted-${input.id}`,
     credentialsIv: `iv-${input.id}`,
     id: input.id,
@@ -46,25 +56,27 @@ async function insertDataSource(input: {
   });
 }
 
-describe("runCliLoadOrgAccess", () => {
-  it("returns not_found when the organization is missing", async () => {
+describe("runCliLoadOrgAccess", { timeout: 60_000 }, () => {
+  it("returns not_found when the organization is missing", async ({ db }) => {
     await expect(
       runCliLoadOrgAccess({
-        db: pgliteTestDb,
+        db,
         orgSlug: "missing",
         userId: "user-missing",
       })
     ).resolves.toEqual({ kind: "not_found" });
   });
 
-  it("returns not_found when the matched organization slug is blank", async () => {
-    await insertUser("user-blank");
-    await insertOrganization({
+  it("returns not_found when the matched organization slug is blank", async ({
+    db,
+  }) => {
+    await insertUser(db, "user-blank");
+    await insertOrganization(db, {
       id: "org-blank",
       name: "Blank Slug Org",
       slug: " ",
     });
-    await insertMember({
+    await insertMember(db, {
       id: "member-blank",
       organizationId: "org-blank",
       role: "admin",
@@ -73,21 +85,23 @@ describe("runCliLoadOrgAccess", () => {
 
     await expect(
       runCliLoadOrgAccess({
-        db: pgliteTestDb,
+        db,
         orgSlug: " ",
         userId: "user-blank",
       })
     ).resolves.toEqual({ kind: "not_found" });
   });
 
-  it("returns not_found when the organization slug lookup is null at runtime", async () => {
-    await insertUser("user-null");
-    await insertOrganization({
+  it("returns not_found when the organization slug lookup is null at runtime", async ({
+    db,
+  }) => {
+    await insertUser(db, "user-null");
+    await insertOrganization(db, {
       id: "org-null",
       name: "Null Slug Org",
       slug: null,
     });
-    await insertMember({
+    await insertMember(db, {
       id: "member-null",
       organizationId: "org-null",
       role: "admin",
@@ -96,15 +110,17 @@ describe("runCliLoadOrgAccess", () => {
 
     await expect(
       runCliLoadOrgAccess({
-        db: pgliteTestDb,
+        db,
         orgSlug: null as unknown as string,
         userId: "user-null",
       })
     ).resolves.toEqual({ kind: "not_found" });
   });
 
-  it("returns forbidden when the organization exists without membership", async () => {
-    await insertOrganization({
+  it("returns forbidden when the organization exists without membership", async ({
+    db,
+  }) => {
+    await insertOrganization(db, {
       id: "org-forbidden",
       name: "Forbidden Org",
       slug: "forbidden",
@@ -112,21 +128,23 @@ describe("runCliLoadOrgAccess", () => {
 
     await expect(
       runCliLoadOrgAccess({
-        db: pgliteTestDb,
+        db,
         orgSlug: "forbidden",
         userId: "user-without-membership",
       })
     ).resolves.toEqual({ kind: "forbidden" });
   });
 
-  it("returns accessible organization details and membership role", async () => {
-    await insertUser("user-found");
-    await insertOrganization({
+  it("returns accessible organization details and membership role", async ({
+    db,
+  }) => {
+    await insertUser(db, "user-found");
+    await insertOrganization(db, {
       id: "org-found",
       name: " Acme Inc ",
       slug: " acme ",
     });
-    await insertMember({
+    await insertMember(db, {
       id: "member-found",
       organizationId: "org-found",
       role: "admin",
@@ -135,7 +153,7 @@ describe("runCliLoadOrgAccess", () => {
 
     await expect(
       runCliLoadOrgAccess({
-        db: pgliteTestDb,
+        db,
         orgSlug: " acme ",
         userId: "user-found",
       })
@@ -151,21 +169,23 @@ describe("runCliLoadOrgAccess", () => {
   });
 });
 
-describe("runCliLoadOrgAccessWithSource", () => {
-  it("returns org access and the requested source in one lookup", async () => {
-    await insertUser("user-source-found");
-    await insertOrganization({
+describe("runCliLoadOrgAccessWithSource", { timeout: 60_000 }, () => {
+  it("returns org access and the requested source in one lookup", async ({
+    db,
+  }) => {
+    await insertUser(db, "user-source-found");
+    await insertOrganization(db, {
       id: "org-source-found",
       name: "Source Org",
       slug: "source-org",
     });
-    await insertMember({
+    await insertMember(db, {
       id: "member-source-found",
       organizationId: "org-source-found",
       role: "owner",
       userId: "user-source-found",
     });
-    await insertDataSource({
+    await insertDataSource(db, {
       id: "source-found",
       name: "github-prod",
       organizationId: "org-source-found",
@@ -173,7 +193,7 @@ describe("runCliLoadOrgAccessWithSource", () => {
 
     await expect(
       runCliLoadOrgAccessWithSource({
-        db: pgliteTestDb,
+        db,
         orgSlug: "source-org",
         sourceKey: "github-prod",
         userId: "user-source-found",
@@ -205,13 +225,15 @@ describe("runCliLoadOrgAccessWithSource", () => {
     });
   });
 
-  it("keeps source lookup scoped to an authorized org result", async () => {
-    await insertOrganization({
+  it("keeps source lookup scoped to an authorized org result", async ({
+    db,
+  }) => {
+    await insertOrganization(db, {
       id: "org-source-forbidden",
       name: "Forbidden Source Org",
       slug: "source-forbidden",
     });
-    await insertDataSource({
+    await insertDataSource(db, {
       id: "source-forbidden",
       name: "github-prod",
       organizationId: "org-source-forbidden",
@@ -219,7 +241,7 @@ describe("runCliLoadOrgAccessWithSource", () => {
 
     await expect(
       runCliLoadOrgAccessWithSource({
-        db: pgliteTestDb,
+        db,
         orgSlug: "source-forbidden",
         sourceKey: "github-prod",
         userId: "user-without-source-access",
@@ -232,14 +254,16 @@ describe("runCliLoadOrgAccessWithSource", () => {
     });
   });
 
-  it("returns source not_found without losing successful org access", async () => {
-    await insertUser("user-source-missing");
-    await insertOrganization({
+  it("returns source not_found without losing successful org access", async ({
+    db,
+  }) => {
+    await insertUser(db, "user-source-missing");
+    await insertOrganization(db, {
       id: "org-source-missing",
       name: "Missing Source Org",
       slug: "source-missing",
     });
-    await insertMember({
+    await insertMember(db, {
       id: "member-source-missing",
       organizationId: "org-source-missing",
       role: "owner",
@@ -248,7 +272,7 @@ describe("runCliLoadOrgAccessWithSource", () => {
 
     await expect(
       runCliLoadOrgAccessWithSource({
-        db: pgliteTestDb,
+        db,
         orgSlug: "source-missing",
         sourceKey: "github-prod",
         userId: "user-source-missing",
