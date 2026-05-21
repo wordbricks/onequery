@@ -49,6 +49,7 @@ export const server = {
     },
   }),
   productUpdates: defineAction({
+    accept: "form",
     input: ProductUpdatesRequestSchema,
     handler: async (input, { request }) => {
       const result = await submitProductUpdatesLead(input, {

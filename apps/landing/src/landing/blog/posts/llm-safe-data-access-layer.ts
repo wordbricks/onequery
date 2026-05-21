@@ -1,4 +1,3 @@
-import { ShieldIcon } from "../blog-icons";
 import type { BlogPost } from "../blog-types";
 
 export const llmSafeDataAccessLayerPost: BlogPost = {
@@ -10,7 +9,6 @@ export const llmSafeDataAccessLayerPost: BlogPost = {
   date: "Apr 30, 2026",
   description:
     "How OneQuery gives LLMs a safe, auditable data access layer without handing them raw production credentials.",
-  icon: ShieldIcon,
   imageSrc: "/images/blog/llm-safe-data-access-layer-icon.png",
   readTime: "8 min read",
   sections: [

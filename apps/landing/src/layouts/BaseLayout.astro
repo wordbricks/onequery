@@ -121,6 +121,32 @@ const {
 
       trackPageView();
     </script>
+    <script>
+      import { trackLandingCtaClick } from "../landing/analytics/landing-analytics";
+
+      document.addEventListener("click", (event) => {
+        if (!(event.target instanceof Element)) {
+          return;
+        }
+
+        const target = event.target.closest("[data-landing-cta]");
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const ctaId = target.dataset.landingCta;
+        const ctaLocation = target.dataset.landingCtaSection;
+        if (!ctaId || !ctaLocation) {
+          return;
+        }
+
+        const destination =
+          target.dataset.landingCtaHref ||
+          (target instanceof HTMLAnchorElement ? target.href : undefined);
+
+        trackLandingCtaClick(ctaId, ctaLocation, destination);
+      });
+    </script>
   </head>
   <body>
     <slot />

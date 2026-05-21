@@ -51,7 +51,9 @@ function createBundleReportPlugin() {
 }
 
 export default defineConfig({
-  adapter: cloudflare(),
+  adapter: cloudflare({
+    imageService: "passthrough",
+  }),
   integrations: [react()],
   server: {
     host: DEV_SERVER_HOST,
@@ -59,6 +61,9 @@ export default defineConfig({
   },
   site: "https://onequery.dev",
   vite: {
+    optimizeDeps: {
+      exclude: ["@xstate/react"],
+    },
     plugins:
       process.env.ONEQUERY_BUNDLE_REPORT === "1"
         ? [createBundleReportPlugin()]
@@ -66,6 +71,9 @@ export default defineConfig({
     server: {
       allowedHosts: ["localhost", "host.docker.internal"],
       strictPort: true,
+    },
+    ssr: {
+      noExternal: ["@xstate/react"],
     },
   },
 });

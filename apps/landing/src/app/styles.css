@@ -157,14 +157,6 @@ code {
   gap: 88px;
 }
 
-.deferred-mount-anchor[data-mounted="false"] {
-  min-height: 1px;
-}
-
-.deferred-mount-anchor[data-mounted="true"] {
-  display: contents;
-}
-
 .hero-section {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

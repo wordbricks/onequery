@@ -1,6 +1,6 @@
 ---
+import BlogIndex from "../../components/blog/BlogIndex.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { BlogPage } from "../../landing/blog/blog-page";
 
 const title = "OneQuery Blog | Governed Data Access for AI Agents";
 const description =
@@ -14,5 +14,5 @@ const description =
   structuredData={null}
   title={title}
 >
-  <BlogPage client:load />
+  <BlogIndex />
 </BaseLayout>

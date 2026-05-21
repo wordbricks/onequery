@@ -1,4 +1,3 @@
-import { DatabaseIcon } from "../blog-icons";
 import type { BlogPost } from "../blog-types";
 
 export const makingDataSourceSetupBoringPost: BlogPost = {
@@ -10,7 +9,6 @@ export const makingDataSourceSetupBoringPost: BlogPost = {
   date: "Apr 21, 2026",
   description:
     "Replacing one-off connector setup with a predictable path for every database and analytics source.",
-  icon: DatabaseIcon,
   imageSrc: "/images/blog/making-data-source-setup-boring-icon.png",
   readTime: "7 min read",
   sections: [

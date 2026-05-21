@@ -1,4 +1,3 @@
-import { ShieldIcon } from "../blog-icons";
 import type { BlogPost } from "../blog-types";
 
 export const doNotGiveAgentsProductionKeysPost: BlogPost = {
@@ -10,7 +9,6 @@ export const doNotGiveAgentsProductionKeysPost: BlogPost = {
   date: "Apr 29, 2026",
   description:
     "Why autonomous agents should never hold raw production access, and how OneQuery removes that class of risk from data workflows.",
-  icon: ShieldIcon,
   imageSrc: "/images/blog/do-not-give-agents-production-keys-icon.png",
   readTime: "9 min read",
   sections: [

@@ -1,8 +1,208 @@
 ---
+import ControlPlaneDiagram from "../components/landing/ControlPlaneDiagram.astro";
+import OpenClawSection from "../components/landing/OpenClawSection.astro";
+import ProductUpdatesSection from "../components/landing/ProductUpdatesSection.astro";
+import RoadmapSection from "../components/landing/RoadmapSection.astro";
+import SiteFooter from "../components/landing/SiteFooter.astro";
+import SiteHeader from "../components/landing/SiteHeader.astro";
+import TerminalSurface from "../components/landing/TerminalSurface.astro";
+import TrackedLink from "../components/landing/TrackedLink.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { LandingPage } from "../landing/page/landing-page";
+import {
+  INSTALL_SCRIPT_URL,
+  SECTION_IDS,
+  SELF_HOST_DOCS_URL,
+} from "../landing/config/landing-config";
+import {
+  HERO_SIGNALS,
+  INSTALL_STEPS,
+  QUERY_DETAILS_SNIPPET,
+  QUERY_TERMINAL_LINES,
+  QUICKSTART_TERMINAL_LINES,
+} from "../landing/content/landing-content";
+import { DownloadCommand } from "../landing/download-command/download-command";
+import { HeroProductSurface } from "../landing/hero-product/hero-product-surface";
+import { actions } from "astro:actions";
+
+export const prerender = false;
+
+type LandingCtaAction = {
+  className: string;
+  href: string;
+  label: string;
+  rel?: "noreferrer";
+  target?: "_blank";
+  trackingName: string;
+  trackingSection: string;
+};
+
+const heroActions: ReadonlyArray<LandingCtaAction> = [
+  {
+    className: "button button-primary",
+    href: `#${SECTION_IDS.install}`,
+    label: "Install CLI",
+    trackingName: "hero_get_started",
+    trackingSection: "hero",
+  },
+  {
+    className: "button button-secondary",
+    href: "#demo",
+    label: "Watch demo",
+    trackingName: "hero_watch_demo",
+    trackingSection: "hero",
+  },
+] as const;
+
+const finalCtaActions: ReadonlyArray<LandingCtaAction> = [
+  {
+    className: "button button-primary",
+    href: INSTALL_SCRIPT_URL,
+    label: "Install now",
+    rel: "noreferrer",
+    target: "_blank",
+    trackingName: "final_install_now",
+    trackingSection: "final_cta",
+  },
+  {
+    className: "button button-secondary",
+    href: SELF_HOST_DOCS_URL,
+    label: "Read self-host docs",
+    rel: "noreferrer",
+    target: "_blank",
+    trackingName: "final_read_self_host_docs",
+    trackingSection: "final_cta",
+  },
+] as const;
+
+const productUpdatesResult = Astro.getActionResult(actions.productUpdates);
 ---
 
 <BaseLayout>
-  <LandingPage client:load />
+  <div class="page-shell">
+    <SiteHeader />
+
+    <main class="page-main">
+      <section class="hero-section">
+        <div class="hero-copy">
+          <p class="eyebrow">Agent access control plane</p>
+          <h1>Give AI agents production context, not production keys.</h1>
+          <p class="hero-body">
+            OneQuery gives agents a governed path to approved sources while
+            credentials stay centralized and every query leaves an audit trail.
+          </p>
+
+          <DownloadCommand client:load />
+
+          <div class="hero-actions">
+            {
+              heroActions.map((action) => (
+                <TrackedLink
+                  class={action.className}
+                  href={action.href}
+                  target={action.target}
+                  rel={action.rel}
+                  trackingName={action.trackingName}
+                  trackingSection={action.trackingSection}
+                >
+                  {action.label}
+                </TrackedLink>
+              ))
+            }
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <HeroProductSurface client:load />
+        </div>
+
+        <ul class="hero-signals">
+          {HERO_SIGNALS.map((signal) => <li>{signal}</li>)}
+        </ul>
+      </section>
+
+      <section class="section section-summary" id={SECTION_IDS.surface}>
+        <div class="section-intro">
+          <p class="eyebrow">What OneQuery does</p>
+          <h2>Policy between agents and prod.</h2>
+        </div>
+
+        <ControlPlaneDiagram />
+      </section>
+
+      <section class="section utility-grid" id={SECTION_IDS.install}>
+        <article class="utility-panel">
+          <p class="eyebrow">First workflow</p>
+          <h2>Debug production without sharing credentials.</h2>
+          <ol class="step-list">
+            {INSTALL_STEPS.map((step) => <li>{step}</li>)}
+          </ol>
+        </article>
+
+        <article class="utility-panel utility-panel-code">
+          <p class="eyebrow">Grant setup</p>
+          <TerminalSurface
+            title="Terminal session"
+            lines={QUICKSTART_TERMINAL_LINES}
+            footer="ready to debug production without sharing credentials"
+          />
+        </article>
+      </section>
+
+      <section
+        class="section utility-grid utility-grid-offset"
+        id={SECTION_IDS.workflow}
+      >
+        <article class="utility-panel utility-panel-code workflow-panel-example">
+          <p class="eyebrow">Incident loop</p>
+          <TerminalSurface
+            title="Agent run"
+            lines={QUERY_TERMINAL_LINES}
+            footer="inspect evidence, open PRs and issues, audit everything"
+          />
+        </article>
+
+        <article class="utility-panel workflow-panel-details">
+          <p class="eyebrow">Query details</p>
+          <h2>Review the result and guardrails together.</h2>
+          <p>Source, policy, row count, latency, and budget stay visible.</p>
+          <pre class="workflow-block">{QUERY_DETAILS_SNIPPET}</pre>
+        </article>
+      </section>
+
+      <RoadmapSection />
+      <OpenClawSection />
+
+      <section class="section final-cta">
+        <div class="final-cta-copy">
+          <p class="eyebrow">Built for real incidents</p>
+          <h2>Give agents the clues, not the keys.</h2>
+          <p>
+            Agents can inspect errors, logs, and database state without raw
+            credentials or permission to change production.
+          </p>
+        </div>
+
+        <div class="final-cta-actions">
+          {
+            finalCtaActions.map((action) => (
+              <TrackedLink
+                class={action.className}
+                href={action.href}
+                target={action.target}
+                rel={action.rel}
+                trackingName={action.trackingName}
+                trackingSection={action.trackingSection}
+              >
+                {action.label}
+              </TrackedLink>
+            ))
+          }
+        </div>
+      </section>
+
+      <ProductUpdatesSection result={productUpdatesResult} />
+    </main>
+
+    <SiteFooter />
+  </div>
 </BaseLayout>

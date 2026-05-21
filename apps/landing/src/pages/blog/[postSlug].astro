@@ -1,12 +1,12 @@
 ---
+import BlogPostView from "../../components/blog/BlogPost.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { BlogPostPage } from "../../landing/blog/blog-post-page";
 import {
   blogPostSummaries,
   loadBlogPostBySlug,
 } from "../../landing/blog/blog-posts";
 import { getBlogPostShareMetadata } from "../../landing/blog/blog-share-metadata";
-import type { BlogPost } from "../../landing/blog/blog-posts";
+import type { BlogPost as BlogPostData } from "../../landing/blog/blog-posts";
 
 export async function getStaticPaths() {
   const paths = await Promise.all(
@@ -25,7 +25,7 @@ export async function getStaticPaths() {
       path
     ): path is {
       params: { postSlug: string };
-      props: { post: BlogPost };
+      props: { post: BlogPostData };
     } => path.props.post !== undefined
   );
 }
@@ -56,5 +56,5 @@ const articleMetaTags = metadata.publishedTime
   title={metadata.title}
   twitterTitle={metadata.twitterTitle}
 >
-  <BlogPostPage post={post} />
+  <BlogPostView post={post} />
 </BaseLayout>
