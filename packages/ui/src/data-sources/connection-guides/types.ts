@@ -15,6 +15,7 @@ export type DataSourceConnectionGuideProvider =
   | "postgres"
   | "posthog"
   | "sentry"
+  | "snowflake"
   | "supabase";
 
 export interface GuideStep {

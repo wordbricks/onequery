@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { REPOSITORY_URL } from "../config/landing-config";
-import { BRAND_ICON_PATHS } from "../content/brand-icon-paths";
+import { BrandIcon } from "../content/brand-icons";
 import {
   blogCategories,
   blogPostSummaries,
@@ -41,13 +41,11 @@ function SiteHeader() {
           rel="noreferrer"
           aria-label="Open OneQuery GitHub repository"
         >
-          <svg
+          <BrandIcon
             aria-hidden="true"
-            viewBox="0 0 24 24"
             className="header-github-link-icon"
-          >
-            <path d={BRAND_ICON_PATHS.github} fill="currentColor" />
-          </svg>
+            name="github"
+          />
         </a>
       </div>
     </header>

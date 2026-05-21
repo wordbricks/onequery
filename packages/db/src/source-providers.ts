@@ -16,6 +16,7 @@ import {
   PostgresCredentialsSchema,
   PostHogCredentialsSchema,
   SentryCredentialsSchema,
+  SnowflakeCredentialsSchema,
 } from "./credentials";
 
 type ProviderCredentialSchema = z.ZodType<{ type: string }>;
@@ -134,6 +135,39 @@ export const SOURCE_PROVIDER_REGISTRY = {
           username: "onequery",
           password: "secret",
           sslMode: "prefer",
+        },
+      },
+    },
+  },
+  snowflake: {
+    label: "Snowflake",
+    credentialSchema: SnowflakeCredentialsSchema,
+    credentialType: "snowflake",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: true,
+    sourceApiInterface: false,
+    testable: true,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "snowflake",
+    guide: {
+      summary:
+        "Connect Snowflake with an account identifier, warehouse, database, and login credentials.",
+      steps: [
+        "Create or choose a Snowflake role with read access to the target database and schemas.",
+        "Grant the role USAGE on the warehouse, database, and schema plus SELECT on the tables or views OneQuery should query.",
+        "Copy the account identifier, username, password, warehouse, database, optional schema, and optional role into the payload.",
+      ],
+      exampleInput: {
+        sourceKey: "snowflake_prod",
+        credentials: {
+          account: "xy12345.us-east-1",
+          warehouse: "ANALYTICS_WH",
+          database: "ANALYTICS",
+          schema: "PUBLIC",
+          username: "ONEQUERY_READER",
+          password: "secret",
+          role: "ONEQUERY_READONLY",
         },
       },
     },

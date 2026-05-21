@@ -178,6 +178,8 @@
     "no-inline-comments": "off",
     "no-plusplus": "off",
 
+    "onequery/no-db-fixture-concurrent": "error",
+    "onequery/no-db-fixture-create-db": "error",
     "onequery/no-typescript-file-imports": "error",
     "onequery/no-vi-mock": "error",
 
