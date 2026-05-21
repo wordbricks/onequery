@@ -28,6 +28,11 @@ export const GET: APIRoute = ({ site }) => {
       loc: `${siteUrl}/blog`,
       priority: "0.8",
     },
+    {
+      changefreq: "monthly",
+      loc: `${siteUrl}/connectors`,
+      priority: "0.7",
+    },
     ...blogPostSummaries.map((post) => ({
       changefreq: "monthly" as const,
       lastmod: toIsoDateTime(post.publishedAt)?.slice(0, 10),

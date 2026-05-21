@@ -680,6 +680,321 @@ code {
   font-weight: 500;
 }
 
+.connectors-shell {
+  --connector-line: var(--line);
+  --connector-line-strong: var(--line-strong);
+  --connector-ink: var(--ink);
+  --connector-muted: var(--text-muted);
+  --connector-soft: var(--text-soft);
+  --connector-accent: var(--ink);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--page-bg);
+  color: var(--connector-ink);
+}
+
+.connectors-shell .site-header {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.connectors-shell .brand-mark,
+.connectors-shell .header-github-link,
+.connectors-shell .site-nav a:hover,
+.connectors-shell .footer-links a:hover,
+.connectors-shell .contact-link-button:hover {
+  color: var(--connector-ink);
+}
+
+.connectors-shell .site-nav a,
+.connectors-shell .footer-links a,
+.connectors-shell .site-footer p,
+.connectors-shell .contact-link-button {
+  color: var(--connector-soft);
+}
+
+.connectors-shell .site-footer {
+  border-top-color: var(--connector-line);
+}
+
+.connectors-main {
+  width: min(100%, 1560px);
+  margin: 0 auto;
+  flex: 1;
+}
+
+.connectors-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 42px 0 28px;
+}
+
+.connectors-header h1 {
+  margin: 10px 0 0;
+  color: var(--connector-ink);
+  font-size: clamp(2.9rem, 7vw, 5rem);
+  font-weight: 650;
+  line-height: 0.94;
+  letter-spacing: 0;
+}
+
+.connectors-header p:not(.eyebrow) {
+  max-width: 360px;
+  margin: 0;
+  color: var(--connector-muted);
+  font-size: 16px;
+  line-height: 1.55;
+  text-align: right;
+}
+
+.connectors-browser {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 34px;
+  align-items: start;
+}
+
+.connectors-filter-panel {
+  position: sticky;
+  top: 86px;
+  display: grid;
+  gap: 28px;
+  padding-bottom: 24px;
+}
+
+.connectors-filter-title {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.connectors-filter-title h2,
+.connector-filter-group h2 {
+  color: var(--connector-ink);
+  font-size: 21px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.connectors-filter-title h2,
+.connectors-filter-title p,
+.connector-filter-group,
+.connector-filter-group h2 {
+  margin: 0;
+}
+
+.connectors-filter-title p {
+  margin-top: 8px;
+  color: var(--connector-soft);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.connectors-filter-title button {
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: #b8abff;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.connectors-search {
+  display: grid;
+  gap: 10px;
+}
+
+.connectors-search span {
+  color: var(--connector-soft);
+  font-size: 12px;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.connectors-search input {
+  width: 100%;
+  min-height: 60px;
+  padding: 0 22px;
+  border: 1px solid var(--connector-line);
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--connector-ink);
+  outline: none;
+  font-size: 18px;
+  box-shadow: var(--shadow-ring);
+}
+
+.connectors-search input::placeholder {
+  color: var(--connector-soft);
+}
+
+.connectors-search input:focus {
+  border-color: var(--connector-line-strong);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.05),
+    var(--shadow-ring);
+}
+
+.connector-filter-group {
+  display: grid;
+  gap: 12px;
+}
+
+.connector-filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.connector-filter-option {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--connector-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.connector-filter-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.connector-filter-option:has(input:checked) {
+  border-color: var(--connector-line);
+  background: var(--wash);
+  color: var(--connector-ink);
+}
+
+.connector-filter-option:has(input:focus-visible) {
+  outline: 2px solid var(--connector-line-strong);
+  outline-offset: 2px;
+}
+
+.connector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  gap: 20px;
+  padding-bottom: 54px;
+}
+
+.connector-card {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  min-height: 126px;
+  padding: 12px 18px 12px 12px;
+  border: 1px solid var(--connector-line);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow-ring);
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.connector-card:hover {
+  border-color: var(--connector-line-strong);
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.06),
+    var(--shadow-ring);
+  transform: translateY(-1px);
+}
+
+.connector-card[hidden] {
+  display: none;
+}
+
+.connector-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+  background: var(--surface-muted);
+  color: var(--connector-ink);
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.connector-icon {
+  width: 34px;
+  height: 34px;
+  color: currentColor;
+}
+
+.connector-icon-fallback {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.connector-card-copy {
+  min-width: 0;
+}
+
+.connector-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.connector-tags span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--wash);
+  color: var(--connector-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.connector-card h2 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--connector-ink);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.18;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connector-card p {
+  margin: 6px 0 0;
+  overflow: hidden;
+  color: var(--connector-muted);
+  font-size: 18px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .install-selector {
   display: grid;
   gap: 12px;
@@ -2384,6 +2699,21 @@ code {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .connectors-browser {
+    grid-template-columns: 1fr;
+  }
+
+  .connectors-filter-panel {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  .connectors-filter-title,
+  .connectors-search {
+    grid-column: 1 / -1;
+  }
+
   .hero-section {
     grid-template-columns: 1fr;
   }
@@ -2607,6 +2937,20 @@ code {
     padding-top: 64px;
   }
 
+  .connectors-header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .connectors-header p:not(.eyebrow) {
+    max-width: 620px;
+    text-align: left;
+  }
+
+  .connector-grid {
+    grid-template-columns: repeat(2, minmax(260px, 1fr));
+  }
+
   .blog-post-layout {
     grid-template-columns: 1fr;
     gap: 28px;
@@ -2641,6 +2985,25 @@ code {
 
   .blog-index-hero h1 {
     font-size: clamp(3.2rem, 18vw, 4.5rem);
+  }
+
+  .connectors-header {
+    padding-top: 32px;
+    padding-bottom: 24px;
+  }
+
+  .connectors-header h1 {
+    font-size: clamp(2.7rem, 15vw, 4.15rem);
+  }
+
+  .connectors-filter-panel,
+  .connector-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .connector-card {
+    min-height: 112px;
+    border-radius: 22px;
   }
 
   .blog-categories {
@@ -2883,6 +3246,7 @@ code {
   .hero-copy .install-selector,
   .hero-actions,
   .hero-signals,
+  .connector-card,
   .hero-product-surface,
   .control-plane-line,
   .control-plane-node,

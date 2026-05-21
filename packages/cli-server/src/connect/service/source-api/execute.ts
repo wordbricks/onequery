@@ -200,13 +200,15 @@ async function handleExecuteSourceApiCommand(
     );
     const result = response.result;
     if (result === undefined) {
-      return yield* createSourceApiFailure({
-        error: new Error(
-          "source_api_action execute completed without an execution result"
-        ),
-        phase: "execute",
-        renderError: dependencies.toCliErrorMessage,
-      });
+      return Result.err(
+        createSourceApiFailure({
+          error: new Error(
+            "source_api_action execute completed without an execution result"
+          ),
+          phase: "execute",
+          renderError: dependencies.toCliErrorMessage,
+        })
+      );
     }
 
     logResolvedSourceApiExecution(
@@ -279,13 +281,15 @@ async function handleResumeSourceApiCommand(
     );
     const result = response.result;
     if (result === undefined) {
-      return yield* createSourceApiFailure({
-        error: new Error(
-          "source_api_action resume completed without an execution result"
-        ),
-        phase: "execute",
-        renderError: dependencies.toCliErrorMessage,
-      });
+      return Result.err(
+        createSourceApiFailure({
+          error: new Error(
+            "source_api_action resume completed without an execution result"
+          ),
+          phase: "execute",
+          renderError: dependencies.toCliErrorMessage,
+        })
+      );
     }
 
     logResolvedSourceApiExecution(
