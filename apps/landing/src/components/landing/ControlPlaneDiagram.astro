@@ -1,6 +1,6 @@
 ---
-import { BRAND_ICON_PATHS } from "../../landing/content/brand-icon-paths";
-import type { BrandIconName } from "../../landing/content/brand-icon-paths";
+import { BrandIcon } from "../../landing/content/brand-icons";
+import type { BrandIconName } from "../../landing/content/brand-icons";
 
 type ControlPlaneInput = {
   key: string;
@@ -206,14 +206,7 @@ const controlPlanePolicies = [
           <span class="control-plane-node-label">{node.label}</span>
           <div class="control-plane-node-icons">
             {node.icons.map((icon) => (
-              <svg
-                class="brand-icon"
-                viewBox="0 0 24 24"
-                aria-label={icon}
-                role="img"
-              >
-                <path d={BRAND_ICON_PATHS[icon]} fill="currentColor"></path>
-              </svg>
+              <BrandIcon className="brand-icon" name={icon} />
             ))}
           </div>
         </article>

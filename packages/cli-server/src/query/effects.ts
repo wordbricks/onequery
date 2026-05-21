@@ -2,9 +2,11 @@ import { dataSources, eq, isDatabaseCredentials } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
 import { prepareDataSourceCredentials } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
 import {
-  DataSourceQueryExecutionError,
+  getQueryFailureFlags,
   executeValidatedDatabaseQuery,
+  toErrorMessage,
 } from "@onequery/server/services/data-source-query/execute-query";
+import type { DataSourceQueryFailure } from "@onequery/server/services/data-source-query/execute-query";
 import { Result } from "better-result";
 
 import type {
@@ -79,15 +81,13 @@ export async function runCliExecuteSqlEffect(input: {
   effect: CliExecuteSqlEffect;
 }): Promise<CliExecuteSqlEffectResult> {
   const startedAtMs = Date.now();
-  const execution = await Result.tryPromise(async () =>
-    executeValidatedDatabaseQuery({
-      credentials: input.effect.credentials,
-      db: input.db,
-      normalizedSql: input.effect.normalizedSql,
-      organizationId: input.effect.source.organizationId,
-      timeoutMs: input.effect.clientTimeoutMs,
-    })
-  );
+  const execution = await executeValidatedDatabaseQuery({
+    credentials: input.effect.credentials,
+    db: input.db,
+    normalizedSql: input.effect.normalizedSql,
+    organizationId: input.effect.source.organizationId,
+    timeoutMs: input.effect.clientTimeoutMs,
+  });
 
   if (execution.isErr()) {
     return toCliQueryExecutionFailure(execution.error);
@@ -125,21 +125,18 @@ export async function runCliPersistQueryUsageEffect(input: {
 }
 
 function toCliQueryExecutionFailure(
-  error: unknown
+  failure: DataSourceQueryFailure
 ): Exclude<CliExecuteSqlEffectResult, { kind: "succeeded" }> {
-  const failure =
-    error instanceof DataSourceQueryExecutionError
-      ? error
-      : new DataSourceQueryExecutionError(toErrorMessage(error));
+  const flags = getQueryFailureFlags(failure);
 
-  if (failure.timedOut) {
+  if (flags.timedOut) {
     return {
       detail: failure.message,
       kind: "query_timed_out",
     };
   }
 
-  if (failure.retryable) {
+  if (flags.retryable) {
     return {
       detail: failure.message,
       kind: "query_unavailable",
@@ -150,12 +147,4 @@ function toCliQueryExecutionFailure(
     detail: failure.message,
     kind: "query_execution_failed",
   };
-}
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
 }

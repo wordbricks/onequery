@@ -25,6 +25,7 @@ import {
   PostgresCredentialsSchema,
   PostHogCredentialsSchema,
   SentryCredentialsSchema,
+  SnowflakeCredentialsSchema,
   safeValidateCredentials,
   validateCredentials,
 } from "./credentials";
@@ -44,6 +45,7 @@ import type {
   PostgresCredentials,
   PostHogCredentials,
   SentryCredentials,
+  SnowflakeCredentials,
 } from "./credentials";
 
 describe("credentials schemas", () => {
@@ -211,6 +213,49 @@ describe("credentials schemas", () => {
       };
 
       const result = MySQLCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("SnowflakeCredentialsSchema", () => {
+    it("should validate valid snowflake credentials", () => {
+      const credentials: SnowflakeCredentials = {
+        account: "xy12345.us-east-1",
+        database: "ANALYTICS",
+        password: "secret",
+        role: "ONEQUERY_READONLY",
+        schema: "PUBLIC",
+        type: "snowflake",
+        username: "ONEQUERY_READER",
+        warehouse: "ANALYTICS_WH",
+      };
+
+      const result = SnowflakeCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should allow optional schema and role", () => {
+      const result = SnowflakeCredentialsSchema.safeParse({
+        account: "xy12345.us-east-1",
+        database: "ANALYTICS",
+        password: "secret",
+        type: "snowflake",
+        username: "ONEQUERY_READER",
+        warehouse: "ANALYTICS_WH",
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it("should reject missing required fields", () => {
+      const result = SnowflakeCredentialsSchema.safeParse({
+        account: "xy12345.us-east-1",
+        type: "snowflake",
+      });
+
       expect(result.success).toBe(false);
     });
   });
@@ -1321,6 +1366,10 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.mysql).toBe(MySQLCredentialsSchema);
     });
 
+    it("should map snowflake to SnowflakeCredentialsSchema", () => {
+      expect(credentialSchemaMap.snowflake).toBe(SnowflakeCredentialsSchema);
+    });
+
     it("should map mongodb to MongoDBCredentialsSchema", () => {
       expect(credentialSchemaMap.mongodb).toBe(MongoDBCredentialsSchema);
     });
@@ -1552,6 +1601,15 @@ describe("credentials schemas", () => {
           username: "user",
         },
         {
+          account: "xy12345.us-east-1",
+          database: "ANALYTICS",
+          password: "secret",
+          schema: "PUBLIC",
+          type: "snowflake",
+          username: "ONEQUERY_READER",
+          warehouse: "ANALYTICS_WH",
+        },
+        {
           connectionString: "mongodb://user:pass@localhost:27017/admin",
           type: "mongodb",
         },
@@ -1633,6 +1691,7 @@ describe("credentials schemas", () => {
           "laminar",
           "mysql",
           "postgres",
+          "snowflake",
         ].toSorted()
       );
 

@@ -29,6 +29,7 @@
     "nanostores": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "simple-icons": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

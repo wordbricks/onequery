@@ -12,6 +12,7 @@ import { mysqlGuideContent } from "./mysql";
 import { postgresGuideContent } from "./postgres";
 import { posthogGuideContent } from "./posthog";
 import { sentryGuideContent } from "./sentry";
+import { snowflakeGuideContent } from "./snowflake";
 import { supabaseGuideContent } from "./supabase";
 import type { DataSourceConnectionGuideProvider, GuideContent } from "./types";
 import { CONNECTOR_BASE_URL_TOKEN } from "./types";
@@ -42,5 +43,6 @@ export const GUIDE_CONTENT: Record<
   postgres: postgresGuideContent,
   posthog: posthogGuideContent,
   sentry: sentryGuideContent,
+  snowflake: snowflakeGuideContent,
   supabase: supabaseGuideContent,
 };

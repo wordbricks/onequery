@@ -1,6 +1,6 @@
 ---
 import { REPOSITORY_URL } from "../../landing/config/landing-config";
-import { BRAND_ICON_PATHS } from "../../landing/content/brand-icon-paths";
+import { BrandIcon } from "../../landing/content/brand-icons";
 import { NAVIGATION_ITEMS } from "../../landing/content/landing-content";
 import TrackedLink from "./TrackedLink.astro";
 
@@ -51,13 +51,11 @@ const { navigationItems = NAVIGATION_ITEMS } = Astro.props;
       trackingName="header_github_repository"
       trackingSection="header"
     >
-      <svg
+      <BrandIcon
         aria-hidden="true"
-        viewBox="0 0 24 24"
-        class="header-github-link-icon"
-      >
-        <path d={BRAND_ICON_PATHS.github} fill="currentColor"></path>
-      </svg>
+        className="header-github-link-icon"
+        name="github"
+      />
     </TrackedLink>
   </div>
 </header>

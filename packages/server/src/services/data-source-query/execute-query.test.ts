@@ -1,13 +1,21 @@
+import type {
+  Connection as SnowflakeConnection,
+  ConnectionOptions as SnowflakeConnectionOptions,
+  RowStatement as SnowflakeRowStatement,
+  StatementOption as SnowflakeStatementOption,
+} from "snowflake-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   executeBigQueryQuery,
   executeCloudflareD1Query,
   executeDatabaseQuery,
+  executeSnowflakeQuery,
   executeValidatedDatabaseQuery,
   executeLaminarQuery,
   executePostgresQuery,
 } from "./execute-query";
+import type { DatabaseQueryResult } from "./execute-query";
 import type { PostgresClientConfig } from "./postgres-transport";
 
 const originalFetch = globalThis.fetch;
@@ -17,6 +25,14 @@ const postgresCredentials = {
   password: "secret",
   port: 5432,
   username: "app",
+} as const;
+const snowflakeCredentials = {
+  account: "xy12345.us-east-1",
+  database: "analytics",
+  password: "secret",
+  type: "snowflake",
+  username: "app",
+  warehouse: "compute_wh",
 } as const;
 
 type PostgresPlan = {
@@ -50,15 +66,27 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function expectPreflightRejection(
-  invoke: () => Promise<unknown>,
+async function expectPreflightFailure(
+  invoke: () => Promise<DatabaseQueryResult<unknown>>,
   message: string
 ) {
   const fetchSpy = vi.fn();
   globalThis.fetch = fetchSpy as unknown as typeof fetch;
 
-  await expect(invoke()).rejects.toThrow(message);
+  const result = await invoke();
+  expect(result.isErr()).toBe(true);
+  if (result.isErr()) {
+    expect(result.error.message).toContain(message);
+  }
   expect(fetchSpy).not.toHaveBeenCalled();
+}
+
+function unwrapQueryResult<T>(result: DatabaseQueryResult<T>): T {
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  return result.value;
 }
 
 describe("data source query execution", () => {
@@ -110,9 +138,9 @@ describe("data source query execution", () => {
       "Laminar API base URL must not include a path",
     ],
   ])(
-    "rejects %s before attempting execution",
+    "returns %s failures before attempting execution",
     async (_label, invoke, message) => {
-      await expectPreflightRejection(invoke, message);
+      await expectPreflightFailure(invoke, message);
     }
   );
 
@@ -125,14 +153,16 @@ describe("data source query execution", () => {
     }));
     globalThis.fetch = fetchSpy as unknown as typeof fetch;
 
-    const rows = await executeValidatedDatabaseQuery({
-      credentials: {
-        apiKey: "laminar-api-key",
-        type: "laminar",
-      },
-      // This trusted API is only for callers that already validated SQL.
-      normalizedSql: "DELETE FROM users",
-    });
+    const rows = unwrapQueryResult(
+      await executeValidatedDatabaseQuery({
+        credentials: {
+          apiKey: "laminar-api-key",
+          type: "laminar",
+        },
+        // This trusted API is only for callers that already validated SQL.
+        normalizedSql: "DELETE FROM users",
+      })
+    );
 
     expect(rows).toEqual([{ ok: true }]);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -161,14 +191,16 @@ describe("data source query execution", () => {
     }));
     globalThis.fetch = fetchSpy as unknown as typeof fetch;
 
-    const rows = await executeCloudflareD1Query(
-      {
-        accountId: "acct_123",
-        apiToken: "cf-token",
-        databaseId: "db_123",
-        type: "cloudflare_d1",
-      },
-      "SELECT 1"
+    const rows = unwrapQueryResult(
+      await executeCloudflareD1Query(
+        {
+          accountId: "acct_123",
+          apiToken: "cf-token",
+          databaseId: "db_123",
+          type: "cloudflare_d1",
+        },
+        "SELECT 1"
+      )
     );
 
     expect(rows).toEqual([{ one: 1 }]);
@@ -194,33 +226,84 @@ describe("data source query execution", () => {
     }));
     globalThis.fetch = fetchSpy as unknown as typeof fetch;
 
-    await expect(
-      executeCloudflareD1Query(
-        {
-          accountId: "acct_123",
-          apiToken: "cf-token",
-          databaseId: "db_123",
-          type: "cloudflare_d1",
-        },
-        "SELECT 1"
-      )
-    ).rejects.toThrow(
-      "Cloudflare D1 query failed: 403 Bearer [REDACTED] cannot access ***"
+    const result = await executeCloudflareD1Query(
+      {
+        accountId: "acct_123",
+        apiToken: "cf-token",
+        databaseId: "db_123",
+        type: "cloudflare_d1",
+      },
+      "SELECT 1"
     );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "Cloudflare D1 query failed: 403 Bearer [REDACTED] cannot access ***"
+      );
+    }
+  });
+
+  it("executes Snowflake queries with the created connection", async () => {
+    const statement = {
+      cancel: vi.fn(),
+    } as unknown as SnowflakeRowStatement;
+    const connection = {
+      connectAsync: vi.fn(
+        async () => undefined as unknown as SnowflakeConnection
+      ),
+      destroy: vi.fn((callback: () => void) => {
+        callback();
+      }),
+      execute: vi.fn((options: SnowflakeStatementOption) => {
+        options.complete?.(undefined, statement, [{ one: 1 }]);
+        return statement;
+      }),
+    } as unknown as SnowflakeConnection;
+    const createConnection = vi.fn(
+      (_options: SnowflakeConnectionOptions) => connection
+    );
+
+    const rows = unwrapQueryResult(
+      await executeSnowflakeQuery(snowflakeCredentials, "SELECT 1", 1000, {
+        createConnection,
+      })
+    );
+
+    expect(rows).toEqual([{ one: 1 }]);
+    expect(createConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: snowflakeCredentials.account,
+        application: "OneQuery",
+        database: snowflakeCredentials.database,
+        timeout: 1000,
+        username: snowflakeCredentials.username,
+        warehouse: snowflakeCredentials.warehouse,
+      })
+    );
+    expect(connection.connectAsync).toHaveBeenCalledTimes(1);
+    expect(connection.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rowMode: "object_with_renamed_duplicated_columns",
+        sqlText: "SELECT 1",
+      })
+    );
+    expect(connection.destroy).toHaveBeenCalledTimes(1);
   });
 
   it("uses TLS without certificate verification for postgres sslmode=require", async () => {
     const { receivedConfigs, runner } = createPostgresRunner([]);
 
-    const rows = await executePostgresQuery(
-      {
-        ...postgresCredentials,
-        sslMode: "require",
-        type: "postgres",
-      },
-      "SELECT 1",
-      undefined,
-      runner
+    const rows = unwrapQueryResult(
+      await executePostgresQuery(
+        {
+          ...postgresCredentials,
+          sslMode: "require",
+          type: "postgres",
+        },
+        "SELECT 1",
+        undefined,
+        runner
+      )
     );
 
     expect(rows).toEqual([{ result: 1 }]);
@@ -241,15 +324,17 @@ describe("data source query execution", () => {
       },
     ]);
 
-    const rows = await executePostgresQuery(
-      {
-        ...postgresCredentials,
-        sslMode: "prefer",
-        type: "postgres",
-      },
-      "SELECT 1",
-      undefined,
-      runner
+    const rows = unwrapQueryResult(
+      await executePostgresQuery(
+        {
+          ...postgresCredentials,
+          sslMode: "prefer",
+          type: "postgres",
+        },
+        "SELECT 1",
+        undefined,
+        runner
+      )
     );
 
     expect(rows).toEqual([{ result: 1 }]);
@@ -273,18 +358,20 @@ describe("data source query execution", () => {
       },
     ]);
 
-    await expect(
-      executePostgresQuery(
-        {
-          ...postgresCredentials,
-          sslMode: "prefer",
-          type: "postgres",
-        },
-        "SELECT 1",
-        undefined,
-        runner
-      )
-    ).rejects.toThrow(initialError.message);
+    const result = await executePostgresQuery(
+      {
+        ...postgresCredentials,
+        sslMode: "prefer",
+        type: "postgres",
+      },
+      "SELECT 1",
+      undefined,
+      runner
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(initialError.message);
+    }
 
     expect(receivedConfigs).toHaveLength(2);
     expect(receivedConfigs[0]).toMatchObject({

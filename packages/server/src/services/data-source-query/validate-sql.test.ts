@@ -87,6 +87,22 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
     );
   });
 
+  it("validates Snowflake queries with the Snowflake dialect", async () => {
+    await expectValidQuery(
+      "SELECT id FROM events QUALIFY ROW_NUMBER() OVER (ORDER BY created_at DESC) <= 10",
+      {
+        sql: "SELECT id FROM events QUALIFY ROW_NUMBER() OVER (ORDER BY created_at DESC) <= 10",
+      },
+      "snowflake"
+    );
+
+    await expectValidationError(
+      "PUT file:///tmp/users.csv @analytics_stage",
+      "Only SELECT queries are allowed. Got: put",
+      "snowflake"
+    );
+  });
+
   it("preserves set operations without adding or changing limits", async () => {
     let bounded = "SELECT id FROM users UNION SELECT id FROM archived_users";
     await expectValidQuery(bounded, {
@@ -204,6 +220,11 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
       "SELECT @x := 1",
       "Only SELECT queries are allowed. Got: property_e_q",
       "mysql"
+    );
+    await expectValidationError(
+      "SELECT SYSTEM$WAIT(1)",
+      "Side-effecting SQL functions are not allowed: system$wait",
+      "snowflake"
     );
   });
 

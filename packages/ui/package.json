@@ -9,7 +9,8 @@
     "./data-source-connection-guide-dialog": "./src/data-sources/data-source-connection-guide-dialog.tsx",
     "./data-source-connection-guides": "./src/data-sources/connection-guides/index.ts",
     "./components/*": "./src/components/ui/*.tsx",
-    "./hooks/*": "./src/hooks/*.ts"
+    "./hooks/*": "./src/hooks/*.ts",
+    "./icons/svg-icon": "./src/icons/svg-icon.tsx"
   },
   "scripts": {
     "ui:add": "bunx --bun shadcn@latest add",
