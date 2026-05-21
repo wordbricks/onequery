@@ -11,7 +11,8 @@ object.
 
 Use the shipped raster asset for the primary mark:
 
-- Primary app icon: `public/onequery-icon.png`
+- Primary landing app icon: `src/assets/onequery-icon.png`
+- Landing favicon and schema icon URL: `public/onequery-icon.png`
 - Marketing video icon: `../landing-video/public/onequery-icon.png`
 - OpenClaw variant: `public/onequery-openclaw-icon.png`
 - Dashboard favicon: `../dashboard/public/favicon.ico`
@@ -156,7 +157,7 @@ Avoid:
 
 ## Do
 
-- Use `public/onequery-icon.png` for the primary web mark.
+- Use `src/assets/onequery-icon.png` for the primary landing web mark.
 - Pair the icon with the text `OneQuery` for most brand introductions.
 - Keep the icon small and deliberate in navigation.
 - Preserve the PNG's internal lighting, silhouette, and rounded tile.

@@ -1,4 +1,7 @@
 ---
+import { Image } from "astro:assets";
+
+import onequeryIcon from "../../assets/onequery-icon.png";
 import { REPOSITORY_URL } from "../../landing/config/landing-config";
 import { BrandIcon } from "../../landing/content/brand-icons";
 import { NAVIGATION_ITEMS } from "../../landing/content/landing-content";
@@ -18,11 +21,14 @@ const { navigationItems = NAVIGATION_ITEMS } = Astro.props;
 
 <header class="site-header">
   <a href="/" class="brand-mark" aria-label="OneQuery landing homepage">
-    <img
-      src="/onequery-icon.png"
+    <Image
+      src={onequeryIcon}
       alt=""
       aria-hidden="true"
       class="brand-mark-icon"
+      width={60}
+      height={60}
+      loading="eager"
     />
     <span>OneQuery</span>
   </a>

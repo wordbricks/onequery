@@ -1,0 +1,50 @@
+---
+import { Picture } from "astro:assets";
+
+import { getBlogImageAsset } from "../../landing/blog/blog-image-assets";
+
+interface Props {
+  alt: string;
+  class?: string;
+  loading?: "eager" | "lazy";
+  priority?: boolean;
+  sizes: string;
+  src: string;
+  widths: number[];
+}
+
+const {
+  alt,
+  class: className,
+  loading = "lazy",
+  priority = false,
+  sizes,
+  src,
+  widths,
+} = Astro.props;
+
+const image = getBlogImageAsset(src);
+
+if (!image) {
+  throw new Error(`Missing optimized blog image asset for ${src}`);
+}
+
+const loadingAttributes = priority
+  ? {}
+  : {
+      decoding: "async" as const,
+      loading,
+    };
+---
+
+<Picture
+  src={image}
+  alt={alt}
+  class={className}
+  fallbackFormat="webp"
+  formats={["avif"]}
+  priority={priority}
+  sizes={sizes}
+  widths={widths}
+  {...loadingAttributes}
+/>

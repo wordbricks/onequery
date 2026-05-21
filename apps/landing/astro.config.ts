@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 
 import cloudflare from "@astrojs/cloudflare";
 import react from "@astrojs/react";
-import { defineConfig } from "astro/config";
+import { defineConfig, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
 import {
@@ -52,8 +52,18 @@ function createBundleReportPlugin() {
 
 export default defineConfig({
   adapter: cloudflare({
-    imageService: "passthrough",
+    imageService: { build: "compile", runtime: "cloudflare-binding" },
   }),
+  fonts: [
+    {
+      cssVariable: "--font-geist",
+      name: "Geist",
+      provider: fontProviders.google(),
+      styles: ["normal"],
+      subsets: ["latin"],
+      weights: ["400 700"],
+    },
+  ],
   integrations: [react()],
   server: {
     host: DEV_SERVER_HOST,

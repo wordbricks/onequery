@@ -10,6 +10,7 @@ export const contextEnrichmentWithOneQueryPost: BlogPost = {
   description:
     "A practical workflow for implementing the context enrichment layer described in OpenAI's in-house data agent writeup with schema facts, bounded SQL evidence, and code references.",
   imageSrc: "/images/blog/context-enrichment-with-onequery-icon.png",
+  publishedAt: "2026-05-01",
   readTime: "10 min read",
   sections: [
     {

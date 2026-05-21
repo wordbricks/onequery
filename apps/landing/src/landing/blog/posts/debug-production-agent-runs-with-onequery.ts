@@ -10,6 +10,7 @@ export const debugProductionAgentRunsWithOneQueryPost: BlogPost = {
   description:
     "How Codex can use OneQuery-connected Cloudflare logs to inspect production failures, separate evidence from guesses, and make targeted code changes.",
   imageSrc: "/images/blog/debug-production-agent-runs-with-onequery-icon.png",
+  publishedAt: "2026-05-06",
   readTime: "7 min read",
   sections: [
     {

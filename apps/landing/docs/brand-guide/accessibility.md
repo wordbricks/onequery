@@ -65,7 +65,7 @@ Examples:
 Use empty alt text only for decorative images:
 
 ```html
-<img src="public/onequery-icon.png" alt="" aria-hidden="true" />
+<img src="/onequery-icon.png" alt="" aria-hidden="true" />
 ```
 
 If the surrounding text already names the brand and the icon is decorative, hide

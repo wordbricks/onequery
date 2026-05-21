@@ -10,6 +10,7 @@ export const doNotGiveAgentsProductionKeysPost: BlogPost = {
   description:
     "Why autonomous agents should never hold raw production access, and how OneQuery removes that class of risk from data workflows.",
   imageSrc: "/images/blog/do-not-give-agents-production-keys-icon.png",
+  publishedAt: "2026-04-29",
   readTime: "9 min read",
   sections: [
     {

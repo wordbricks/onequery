@@ -10,6 +10,7 @@ export const llmSafeDataAccessLayerPost: BlogPost = {
   description:
     "How OneQuery gives LLMs a safe, auditable data access layer without handing them raw production credentials.",
   imageSrc: "/images/blog/llm-safe-data-access-layer-icon.png",
+  publishedAt: "2026-04-30",
   readTime: "8 min read",
   sections: [
     {

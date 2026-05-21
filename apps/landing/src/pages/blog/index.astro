@@ -1,17 +1,36 @@
 ---
 import BlogIndex from "../../components/blog/BlogIndex.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/blog.css";
+import { getBlogShareImageMetadataBySlug } from "../../landing/blog/blog-image-assets";
+import { blogPostSummaries } from "../../landing/blog/blog-posts";
+import {
+  createBlogIndexStructuredData,
+  normalizeSiteUrl,
+} from "../../landing/seo/structured-data";
 
 const title = "OneQuery Blog | Governed Data Access for AI Agents";
 const description =
   "Notes from the OneQuery team on production data access, AI agent safety, telemetry, and operational workflows.";
+const canonicalUrl = `${normalizeSiteUrl(Astro.site)}/blog`;
+const postImages = await getBlogShareImageMetadataBySlug(
+  blogPostSummaries,
+  Astro.site
+);
+const structuredData = createBlogIndexStructuredData({
+  description,
+  postImages,
+  posts: blogPostSummaries,
+  site: Astro.site,
+  title,
+});
 ---
 
 <BaseLayout
-  canonicalUrl="https://onequery.dev/blog"
+  canonicalUrl={canonicalUrl}
   description={description}
-  keywords={null}
-  structuredData={null}
+  keywords="OneQuery blog, AI agent safety, governed data access, production data access, LLM telemetry, data agent workflows"
+  structuredData={structuredData}
   title={title}
 >
   <BlogIndex />

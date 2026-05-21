@@ -35,19 +35,6 @@
         "required_approving_review_count": 0,
         "required_review_thread_resolution": true
       }
-    },
-    {
-      "type": "required_status_checks",
-      "parameters": {
-        "do_not_enforce_on_create": false,
-        "strict_required_status_checks_policy": true,
-        "required_status_checks": [
-          {
-            "context": "CI results (required)",
-            "integration_slug": "github-actions"
-          }
-        ]
-      }
     }
   ]
 }

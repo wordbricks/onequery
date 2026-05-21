@@ -10,6 +10,7 @@ export const makingDataSourceSetupBoringPost: BlogPost = {
   description:
     "Replacing one-off connector setup with a predictable path for every database and analytics source.",
   imageSrc: "/images/blog/making-data-source-setup-boring-icon.png",
+  publishedAt: "2026-04-21",
   readTime: "7 min read",
   sections: [
     {
