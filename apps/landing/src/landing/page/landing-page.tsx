@@ -159,7 +159,7 @@ function TrackedLink({
   );
 }
 
-function SiteHeader() {
+export function SiteHeader() {
   return (
     <header className="site-header">
       <a href="/" className="brand-mark" aria-label="OneQuery landing homepage">
@@ -368,7 +368,7 @@ function FinalCtaSection() {
   );
 }
 
-function SiteFooter() {
+export function SiteFooter() {
   const [isContactRequested, setIsContactRequested] = useState(false);
 
   return (
