@@ -75,6 +75,12 @@ type BigQueryRestQuery = {
 type SnowflakeStatement =
   | SnowflakeRowStatement
   | SnowflakeFileAndStageBindStatement;
+type SnowflakeConnectionFactory = (
+  options: SnowflakeConnectionOptions
+) => SnowflakeConnection;
+type SnowflakeQueryDependencies = {
+  createConnection?: SnowflakeConnectionFactory;
+};
 
 function hasControlCharacters(value: string): boolean {
   return Array.from(value).some((character) => {
@@ -680,14 +686,18 @@ function buildSnowflakeConnectionOptions(
   return options;
 }
 
-function connectSnowflake(
+async function connectSnowflake(
   creds: SnowflakeCredentials,
-  timeoutMs: number
+  timeoutMs: number,
+  dependencies?: SnowflakeQueryDependencies
 ): Promise<SnowflakeConnection> {
-  const connection = snowflake.createConnection(
+  const createConnection =
+    dependencies?.createConnection ?? snowflake.createConnection;
+  const connection = createConnection(
     buildSnowflakeConnectionOptions(creds, timeoutMs)
   );
-  return connection.connectAsync();
+  await connection.connectAsync();
+  return connection;
 }
 
 function destroySnowflakeConnection(
@@ -777,9 +787,10 @@ function executeSnowflakeStatement(
 export async function executeSnowflakeQuery(
   creds: SnowflakeCredentials,
   query: string,
-  timeoutMs = QUERY_TIMEOUT_MS
+  timeoutMs = QUERY_TIMEOUT_MS,
+  dependencies?: SnowflakeQueryDependencies
 ): Promise<Record<string, unknown>[]> {
-  const connection = await connectSnowflake(creds, timeoutMs);
+  const connection = await connectSnowflake(creds, timeoutMs, dependencies);
   try {
     return await executeSnowflakeStatement(connection, query, timeoutMs);
   } finally {

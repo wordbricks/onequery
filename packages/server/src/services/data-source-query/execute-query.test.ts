@@ -1,9 +1,16 @@
+import type {
+  Connection as SnowflakeConnection,
+  ConnectionOptions as SnowflakeConnectionOptions,
+  RowStatement as SnowflakeRowStatement,
+  StatementOption as SnowflakeStatementOption,
+} from "snowflake-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   executeBigQueryQuery,
   executeCloudflareD1Query,
   executeDatabaseQuery,
+  executeSnowflakeQuery,
   executeValidatedDatabaseQuery,
   executeLaminarQuery,
   executePostgresQuery,
@@ -17,6 +24,14 @@ const postgresCredentials = {
   password: "secret",
   port: 5432,
   username: "app",
+} as const;
+const snowflakeCredentials = {
+  account: "xy12345.us-east-1",
+  database: "analytics",
+  password: "secret",
+  type: "snowflake",
+  username: "app",
+  warehouse: "compute_wh",
 } as const;
 
 type PostgresPlan = {
@@ -207,6 +222,56 @@ describe("data source query execution", () => {
     ).rejects.toThrow(
       "Cloudflare D1 query failed: 403 Bearer [REDACTED] cannot access ***"
     );
+  });
+
+  it("executes Snowflake queries with the created connection", async () => {
+    const statement = {
+      cancel: vi.fn(),
+    } as unknown as SnowflakeRowStatement;
+    const connection = {
+      connectAsync: vi.fn(
+        async () => undefined as unknown as SnowflakeConnection
+      ),
+      destroy: vi.fn((callback: () => void) => {
+        callback();
+      }),
+      execute: vi.fn((options: SnowflakeStatementOption) => {
+        options.complete?.(undefined, statement, [{ one: 1 }]);
+        return statement;
+      }),
+    } as unknown as SnowflakeConnection;
+    const createConnection = vi.fn(
+      (_options: SnowflakeConnectionOptions) => connection
+    );
+
+    const rows = await executeSnowflakeQuery(
+      snowflakeCredentials,
+      "SELECT 1",
+      1000,
+      {
+        createConnection,
+      }
+    );
+
+    expect(rows).toEqual([{ one: 1 }]);
+    expect(createConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: snowflakeCredentials.account,
+        application: "OneQuery",
+        database: snowflakeCredentials.database,
+        timeout: 1000,
+        username: snowflakeCredentials.username,
+        warehouse: snowflakeCredentials.warehouse,
+      })
+    );
+    expect(connection.connectAsync).toHaveBeenCalledTimes(1);
+    expect(connection.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rowMode: "object_with_renamed_duplicated_columns",
+        sqlText: "SELECT 1",
+      })
+    );
+    expect(connection.destroy).toHaveBeenCalledTimes(1);
   });
 
   it("uses TLS without certificate verification for postgres sslmode=require", async () => {
