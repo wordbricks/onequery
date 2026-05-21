@@ -46,7 +46,7 @@ const handleValidateQueryImpl: CliResultServiceMethod<"validateQuery"> = async (
 
     if (result.kind !== "ready") {
       logCliQueryValidationFailure(resolved.c, request.sourceKey, result);
-      return yield* createCliFailureForQueryPlanResult(result);
+      return Result.err(createCliFailureForQueryPlanResult(result));
     }
 
     logCliQueryValidationAccepted({
