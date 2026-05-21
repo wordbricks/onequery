@@ -28,6 +28,7 @@
     "**/.claude",
     "**/.codex",
     "**/.opencode",
+    "**/.reports",
     "**/.turbo",
     "**/.wrangler",
     "**/bun.lock",

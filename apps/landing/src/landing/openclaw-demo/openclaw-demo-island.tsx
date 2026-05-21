@@ -38,6 +38,10 @@ function OpenClawDemoFallback() {
 }
 
 export function OpenClawDemoIsland() {
+  if (typeof window === "undefined") {
+    return <OpenClawDemoFallback />;
+  }
+
   return (
     <Suspense fallback={<OpenClawDemoFallback />}>
       <LazyOpenClawDemoPlayer />
