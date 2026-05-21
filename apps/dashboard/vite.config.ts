@@ -43,7 +43,7 @@ export default defineConfig(async ({ command }) => {
   return {
     ...config,
     server: {
-      host: "0.0.0.0",
+      host: "localhost",
       // Comment: Keep the browser on the workspace-dev browser origin and proxy only
       // `/api` in dev so auth/cookie behavior stays same-origin while the Bun
       // server can restart independently under Vite HMR.
