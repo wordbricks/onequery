@@ -1,5 +1,6 @@
 ---
 import "../app/styles.css";
+import { Font } from "astro:assets";
 import {
   createLandingPageStructuredData,
   normalizeSiteUrl,
@@ -86,6 +87,7 @@ const structuredDataItems =
     <link rel="apple-touch-icon" href="/onequery-icon.png" />
     <link rel="canonical" href={canonicalUrl} />
     <link rel="sitemap" href="/sitemap.xml" />
+    <Font cssVariable="--font-geist" preload />
     <meta name="description" content={description} />
     {keywords ? <meta name="keywords" content={keywords} /> : null}
     <meta property="og:title" content={title} />

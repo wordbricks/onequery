@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap");
-
 :root {
   --page-bg: #ffffff;
   --surface: #ffffff;
@@ -19,7 +17,7 @@
   --shadow-ring: 0 0 0 1px rgba(0, 0, 0, 0.06);
   --container: 1200px;
   color-scheme: light;
-  font-family: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-geist), "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
