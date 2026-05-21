@@ -52,8 +52,6 @@ export default defineConfig(async ({ command }) => {
         "/api": apiProxyTarget,
       },
       strictPort: true,
-      // Allow requests from Docker containers
-      allowedHosts: ["localhost", "host.docker.internal"],
     },
   };
 });
