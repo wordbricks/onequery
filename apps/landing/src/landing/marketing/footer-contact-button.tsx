@@ -1,50 +1,52 @@
+import { withState } from "@astrojs/react/actions";
 import { useStore } from "@nanostores/react";
 import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { actions, isInputError } from "astro:actions";
-import { Result, TaggedError } from "better-result";
-import type { Result as ResultType } from "better-result";
-import type { FormEvent } from "react";
-import { useMemo } from "react";
+import type { SafeResult } from "astro:actions";
+import { useActionState, useMemo } from "react";
+import { useFormStatus } from "react-dom";
 
+import { INITIAL_CONTACT_ACTION_STATE } from "../../actions/contact-action-state";
+import type { ContactActionState } from "../../actions/contact-action-state";
 import {
   trackContactFormSubmitted,
   trackContactModalOpened,
 } from "../analytics/landing-analytics";
 import {
-  DEFAULT_CONTACT_ERROR_MESSAGE,
   createContactModalStore,
   isContactModalOpen,
-  isContactModalSubmitting,
-  readContactModalErrorMessage,
-} from "./contact-modal.store";
-import type {
-  ContactForm,
-  ContactModalSubmitRequest,
 } from "./contact-modal.store";
 
-class ContactSubmissionError extends TaggedError("ContactSubmissionError")<{
-  cause: unknown;
-  message: string;
-}>() {}
+const DEFAULT_CONTACT_ERROR_MESSAGE = "Failed to send message";
 
-type ContactSubmissionResult = ResultType<void, ContactSubmissionError>;
+type ContactActionResult = SafeResult<
+  Record<string, unknown>,
+  ContactActionState
+>;
+
+const INITIAL_CONTACT_ACTION_RESULT: ContactActionResult = {
+  data: INITIAL_CONTACT_ACTION_STATE,
+  error: undefined,
+};
 
 type ContactModalController = {
-  errorMessage: string | null;
-  form: ContactForm;
   isOpen: boolean;
-  isSubmitting: boolean;
   close: () => void;
   open: () => void;
-  setField: (field: keyof ContactForm, value: string) => void;
-  submit: () => void;
 };
 
 type FooterContactButtonProps = {
   autoOpen?: boolean;
 };
 
-function readActionErrorMessage(error: unknown, fallback: string): string {
+function readActionErrorMessage(
+  error: unknown,
+  fallback: string
+): string | null {
+  if (!error) {
+    return null;
+  }
+
   if (isInputError(error)) {
     const fieldMessage = Object.values(error.fields)
       .flat()
@@ -72,56 +74,15 @@ function runBestEffort(action: () => void) {
   try {
     action();
   } catch {
-    // Comment: landing analytics is best-effort and should never block form
-    // state transitions or RPC result handling.
+    // Comment: landing analytics is best-effort and should never block modal
+    // state transitions or Astro action result handling.
   }
-}
-
-async function submitContactRequest({
-  form,
-  signal,
-}: ContactModalSubmitRequest): Promise<ContactSubmissionResult> {
-  const responseResult = await Result.tryPromise({
-    try: async () => {
-      signal.throwIfAborted();
-
-      const result = await actions.contact(form);
-      if (result.error) {
-        throw new ContactSubmissionError({
-          cause: result.error,
-          message: readActionErrorMessage(
-            result.error,
-            DEFAULT_CONTACT_ERROR_MESSAGE
-          ),
-        });
-      }
-    },
-    catch: (cause: unknown) =>
-      cause instanceof ContactSubmissionError
-        ? cause
-        : new ContactSubmissionError({
-            cause,
-            message: DEFAULT_CONTACT_ERROR_MESSAGE,
-          }),
-  });
-
-  return responseResult;
 }
 
 function createContactModalControllerStore() {
   return createContactModalStore({
-    submitContact: async (input) => {
-      const result = await submitContactRequest(input);
-
-      if (result.isErr()) {
-        throw result.error;
-      }
-    },
     trackOpenRequested: () => {
       runBestEffort(trackContactModalOpened);
-    },
-    trackSubmitSucceeded: () => {
-      runBestEffort(trackContactFormSubmitted);
     },
   });
 }
@@ -131,21 +92,12 @@ function useContactModalController(): ContactModalController {
   const state = useStore(contactModalStore.$contactModalState);
 
   return {
-    errorMessage: readContactModalErrorMessage(state),
-    form: state.form,
     isOpen: isContactModalOpen(state),
-    isSubmitting: isContactModalSubmitting(state),
     close: () => {
       contactModalStore.close();
     },
     open: () => {
       contactModalStore.open();
-    },
-    setField: (field, value) => {
-      contactModalStore.setField(field, value);
-    },
-    submit: () => {
-      void contactModalStore.submit();
     },
   };
 }
@@ -179,10 +131,14 @@ function ContactModalAutoOpen({ open }: { open: () => void }) {
 }
 
 function ContactModal({ controller }: { controller: ContactModalController }) {
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    controller.submit();
-  }
+  const [actionResult, contactAction] = useActionState(
+    withState(actions.contact),
+    INITIAL_CONTACT_ACTION_RESULT
+  );
+  const errorMessage = readActionErrorMessage(
+    actionResult.error,
+    DEFAULT_CONTACT_ERROR_MESSAGE
+  );
 
   return (
     <div
@@ -216,71 +172,98 @@ function ContactModal({ controller }: { controller: ContactModalController }) {
           </p>
         </div>
 
-        <form className="contact-modal-form" onSubmit={handleSubmit}>
-          <div className="contact-modal-field-grid">
-            <label className="contact-modal-field">
-              <span className="contact-modal-label">Name</span>
-              <input
-                type="text"
-                placeholder="Jane Doe"
-                className="contact-modal-input"
-                disabled={controller.isSubmitting}
-                value={controller.form.name}
-                onChange={(event) =>
-                  controller.setField("name", event.currentTarget.value)
-                }
-              />
-            </label>
-
-            <label className="contact-modal-field">
-              <span className="contact-modal-label">Email</span>
-              <input
-                type="email"
-                placeholder="you@company.com"
-                className="contact-modal-input"
-                disabled={controller.isSubmitting}
-                value={controller.form.email}
-                onChange={(event) =>
-                  controller.setField("email", event.currentTarget.value)
-                }
-              />
-            </label>
-          </div>
-
-          <label className="contact-modal-field">
-            <span className="contact-modal-label">Message</span>
-            <textarea
-              placeholder="Share your agent workflow, production systems, or timeline."
-              className="contact-modal-textarea"
-              disabled={controller.isSubmitting}
-              value={controller.form.message}
-              onChange={(event) =>
-                controller.setField("message", event.currentTarget.value)
-              }
-            />
-          </label>
-
-          <div className="contact-modal-actions">
-            <p className="contact-modal-note">
-              We use this only to follow up on your request.
-            </p>
-            <button
-              type="submit"
-              className="button button-primary contact-modal-submit"
-              disabled={controller.isSubmitting}
-            >
-              {controller.isSubmitting ? "Sending..." : "Send message"}
-            </button>
-            {controller.errorMessage ? (
-              <p className="marketing-form-feedback marketing-form-feedback-error">
-                {controller.errorMessage}
-              </p>
-            ) : null}
-          </div>
+        {actionResult.data?.status === "sent" ? (
+          <ContactSubmitSuccessLifecycle onSuccess={controller.close} />
+        ) : null}
+        <form className="contact-modal-form" action={contactAction}>
+          <ContactModalFormFields errorMessage={errorMessage} />
         </form>
       </div>
     </div>
   );
+}
+
+function ContactModalFormFields({
+  errorMessage,
+}: {
+  errorMessage: string | null;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <>
+      <div className="contact-modal-field-grid">
+        <label className="contact-modal-field">
+          <span className="contact-modal-label">Name</span>
+          <input
+            type="text"
+            name="name"
+            placeholder="Jane Doe"
+            className="contact-modal-input"
+            disabled={pending}
+            maxLength={200}
+            required
+          />
+        </label>
+
+        <label className="contact-modal-field">
+          <span className="contact-modal-label">Email</span>
+          <input
+            type="email"
+            name="email"
+            placeholder="you@company.com"
+            className="contact-modal-input"
+            disabled={pending}
+            maxLength={320}
+            required
+          />
+        </label>
+      </div>
+
+      <label className="contact-modal-field">
+        <span className="contact-modal-label">Message</span>
+        <textarea
+          name="message"
+          placeholder="Share your agent workflow, production systems, or timeline."
+          className="contact-modal-textarea"
+          disabled={pending}
+          maxLength={4000}
+          required
+        />
+      </label>
+
+      <div className="contact-modal-actions">
+        <p className="contact-modal-note">
+          We use this only to follow up on your request.
+        </p>
+        <button
+          type="submit"
+          className="button button-primary contact-modal-submit"
+          disabled={pending}
+        >
+          {pending ? "Sending..." : "Send message"}
+        </button>
+        {errorMessage ? (
+          <p className="marketing-form-feedback marketing-form-feedback-error">
+            {errorMessage}
+          </p>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+function ContactSubmitSuccessLifecycle({
+  onSuccess,
+}: {
+  onSuccess: () => void;
+}) {
+  useMountEffect(() => {
+    runBestEffort(trackContactFormSubmitted);
+    onSuccess();
+  });
+
+  return null;
 }
 
 function ContactModalLifecycle({ onClose }: { onClose: () => void }) {

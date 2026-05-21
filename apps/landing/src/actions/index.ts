@@ -11,6 +11,8 @@ import {
 } from "../server/landing-schemas";
 import { LandingNotificationConfigurationError } from "../server/landing/landing-notifications";
 import type { LandingNotificationError } from "../server/landing/landing-notifications";
+import { SENT_CONTACT_ACTION_STATE } from "./contact-action-state";
+import type { ContactActionState } from "./contact-action-state";
 
 function readLandingWorkerBindings() {
   return {
@@ -34,8 +36,9 @@ function createLandingActionError(error: LandingNotificationError) {
 
 export const server = {
   contact: defineAction({
+    accept: "form",
     input: ContactRequestSchema,
-    handler: async (input, { request }) => {
+    handler: async (input, { request }): Promise<ContactActionState> => {
       const result = await submitContactLead(input, {
         bindings: readLandingWorkerBindings(),
         request,
@@ -45,7 +48,7 @@ export const server = {
         throw createLandingActionError(result.error);
       }
 
-      return result.value;
+      return SENT_CONTACT_ACTION_STATE;
     },
   }),
   productUpdates: defineAction({

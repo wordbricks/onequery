@@ -9,6 +9,33 @@ import { OpenClawDemoIsland } from "../../landing/openclaw-demo/openclaw-demo-is
   </div>
 
   <div class="openclaw-demo-frame">
-    <OpenClawDemoIsland client:visible={{ rootMargin: "700px 0px" }} />
+    <OpenClawDemoIsland client:only="react">
+      <div slot="fallback" class="openclaw-demo-loading" aria-hidden="true">
+        <div class="openclaw-demo-poster">
+          <aside class="openclaw-demo-poster-sidebar">
+            <span class="openclaw-demo-poster-avatar">OC</span>
+            <span class="openclaw-demo-poster-channel"># prod-debug</span>
+            <span class="openclaw-demo-poster-channel"># github-prs</span>
+            <span class="openclaw-demo-poster-channel"># incidents</span>
+          </aside>
+
+          <div class="openclaw-demo-poster-main">
+            <div class="openclaw-demo-poster-message">
+              <span class="openclaw-demo-poster-dot"></span>
+              <p>Sentry error ISSUE-7421</p>
+            </div>
+            <div class="openclaw-demo-poster-message">
+              <span class="openclaw-demo-poster-dot"></span>
+              <p>Postgres read limited to 100 rows</p>
+            </div>
+            <div class="openclaw-demo-poster-message">
+              <span class="openclaw-demo-poster-dot"></span>
+              <p>GitHub PR opened, Linear issue linked</p>
+            </div>
+            <div class="openclaw-demo-poster-audit">audit trail recorded</div>
+          </div>
+        </div>
+      </div>
+    </OpenClawDemoIsland>
   </div>
 </section>
