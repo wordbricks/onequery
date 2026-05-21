@@ -62,7 +62,7 @@ export default defineConfig({
   site: "https://onequery.dev",
   vite: {
     optimizeDeps: {
-      exclude: ["@xstate/react"],
+      exclude: ["@nanostores/react"],
     },
     plugins:
       process.env.ONEQUERY_BUNDLE_REPORT === "1"
@@ -73,7 +73,7 @@ export default defineConfig({
       strictPort: true,
     },
     ssr: {
-      noExternal: ["@xstate/react"],
+      noExternal: ["@nanostores/react"],
     },
   },
 });

@@ -20,15 +20,15 @@
   "dependencies": {
     "@astrojs/cloudflare": "catalog:",
     "@astrojs/react": "catalog:",
+    "@nanostores/react": "catalog:",
     "@onequery/landing-video": "workspace:*",
     "@onequery/ui": "workspace:*",
     "@remotion/player": "4.0.448",
-    "@xstate/react": "catalog:",
     "astro": "catalog:",
     "better-result": "catalog:",
+    "nanostores": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "xstate": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

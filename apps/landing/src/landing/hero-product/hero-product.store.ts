@@ -1,5 +1,4 @@
-import { assign, setup } from "xstate";
-import type { SnapshotFrom } from "xstate";
+import { atom, onMount } from "nanostores";
 
 export const HERO_PRODUCT_TAB_ORDER = [
   "integrations",
@@ -12,10 +11,15 @@ type SafeQueryCheckId = "nonDestructive" | "budgetLimit" | "accessPermission";
 type SafeQueryCheckStatus = "pending" | "success" | "failure";
 type SafeQueryResult = "pending" | "pass" | "blocked";
 
-type SafeQueryAnimationState = {
+export type SafeQueryAnimationState = {
   cycleIndex: number;
   result: SafeQueryResult;
   statuses: Record<SafeQueryCheckId, SafeQueryCheckStatus>;
+};
+
+export type HeroProductState = {
+  activeTab: HeroProductTab;
+  safeQuery: SafeQueryAnimationState;
 };
 
 type SafeQueryScenario =
@@ -24,15 +28,6 @@ type SafeQueryScenario =
       result: "blocked";
       failingStepId: SafeQueryCheckId;
     };
-
-type HeroProductContext = {
-  safeQuery: SafeQueryAnimationState;
-};
-
-type HeroProductEvent = {
-  type: "heroProduct/tabSelected";
-  tab: HeroProductTab;
-};
 
 type HeroProductAuditEntry = {
   detail: string;
@@ -127,6 +122,13 @@ function createInitialSafeQueryState(): SafeQueryAnimationState {
   };
 }
 
+function createInitialHeroProductState(): HeroProductState {
+  return {
+    activeTab: "integrations",
+    safeQuery: createInitialSafeQueryState(),
+  };
+}
+
 function advanceSafeQuery(
   state: SafeQueryAnimationState
 ): SafeQueryAnimationState {
@@ -177,144 +179,150 @@ function advanceSafeQuery(
   };
 }
 
-export const heroProductMachine = setup({
-  types: {
-    context: {} as HeroProductContext,
-    events: {} as HeroProductEvent,
-  },
-  actions: {
-    advanceSafeQuery: assign(({ context }) => ({
-      safeQuery: advanceSafeQuery(context.safeQuery),
-    })),
-    resetSafeQuery: assign({
-      safeQuery: () => createInitialSafeQueryState(),
-    }),
-    restartSafeQuery: assign(({ context }) => ({
-      safeQuery: {
-        cycleIndex: context.safeQuery.cycleIndex + 1,
-        result: "pending" as const,
-        statuses: createSafeQueryStatuses(),
-      },
-    })),
-  },
-  delays: {
-    auditDwell: HERO_TAB_DWELL_MS.audit,
-    integrationsDwell: HERO_TAB_DWELL_MS.integrations,
-    queryDwell: HERO_TAB_DWELL_MS.query,
-    safeQueryInitialDelay: SAFE_QUERY_INITIAL_DELAY_MS,
-    safeQueryResultHold: SAFE_QUERY_RESULT_HOLD_MS,
-    safeQueryStepDelay: SAFE_QUERY_STEP_DELAY_MS,
-  },
-  guards: {
-    selectedAuditTab: ({ event }) => event.tab === "audit",
-    selectedIntegrationsTab: ({ event }) => event.tab === "integrations",
-    selectedQueryTab: ({ event }) => event.tab === "query",
-    safeQueryBlocked: ({ context }) => context.safeQuery.result === "blocked",
-    safeQueryPassed: ({ context }) => context.safeQuery.result === "pass",
-  },
-}).createMachine({
-  id: "heroProduct",
-  initial: "integrations",
-  context: () => ({
-    safeQuery: createInitialSafeQueryState(),
-  }),
-  on: {
-    "heroProduct/tabSelected": [
-      {
-        guard: "selectedIntegrationsTab",
-        target: ".integrations",
-      },
-      {
-        guard: "selectedQueryTab",
-        target: ".query",
-      },
-      {
-        guard: "selectedAuditTab",
-        target: ".audit",
-      },
-    ],
-  },
-  states: {
-    integrations: {
-      after: {
-        integrationsDwell: "query",
-      },
-    },
-    query: {
-      entry: "resetSafeQuery",
-      initial: "initialDelay",
-      after: {
-        queryDwell: "#heroProduct.audit",
-      },
-      states: {
-        initialDelay: {
-          after: {
-            safeQueryInitialDelay: "advancing",
-          },
-        },
-        advancing: {
-          entry: "advanceSafeQuery",
-          always: [
-            {
-              guard: "safeQueryBlocked",
-              target: "blocked",
-            },
-            {
-              guard: "safeQueryPassed",
-              target: "passed",
-            },
-            {
-              target: "waitingForNextCheck",
-            },
-          ],
-        },
-        waitingForNextCheck: {
-          after: {
-            safeQueryStepDelay: "advancing",
-          },
-        },
-        passed: {
-          after: {
-            safeQueryResultHold: {
-              actions: "restartSafeQuery",
-              target: "initialDelay",
-            },
-          },
-        },
-        blocked: {
-          after: {
-            safeQueryResultHold: {
-              actions: "restartSafeQuery",
-              target: "initialDelay",
-            },
-          },
-        },
-      },
-    },
-    audit: {
-      after: {
-        auditDwell: "integrations",
-      },
-    },
-  },
-});
+function restartSafeQuery(state: SafeQueryAnimationState) {
+  return {
+    cycleIndex: state.cycleIndex + 1,
+    result: "pending" as const,
+    statuses: createSafeQueryStatuses(),
+  };
+}
+
+function getNextHeroProductTab(tab: HeroProductTab): HeroProductTab {
+  const tabIndex = HERO_PRODUCT_TAB_ORDER.indexOf(tab);
+  return (
+    HERO_PRODUCT_TAB_ORDER[(tabIndex + 1) % HERO_PRODUCT_TAB_ORDER.length] ??
+    "integrations"
+  );
+}
+
+function getSafeQueryDelay(state: SafeQueryAnimationState) {
+  if (state.result !== "pending") {
+    return SAFE_QUERY_RESULT_HOLD_MS;
+  }
+
+  const hasStarted = heroSafeQueryChecks.some(
+    (check) => state.statuses[check.id] !== "pending"
+  );
+
+  return hasStarted ? SAFE_QUERY_STEP_DELAY_MS : SAFE_QUERY_INITIAL_DELAY_MS;
+}
+
+export function createHeroProductStore() {
+  const $heroProductState = atom<HeroProductState>(
+    createInitialHeroProductState()
+  );
+  let isMounted = false;
+  let safeQueryTimeout: ReturnType<typeof setTimeout> | undefined;
+  let tabTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  function clearSafeQueryTimeout() {
+    if (safeQueryTimeout !== undefined) {
+      clearTimeout(safeQueryTimeout);
+      safeQueryTimeout = undefined;
+    }
+  }
+
+  function clearTabTimeout() {
+    if (tabTimeout !== undefined) {
+      clearTimeout(tabTimeout);
+      tabTimeout = undefined;
+    }
+  }
+
+  function scheduleSafeQuery() {
+    clearSafeQueryTimeout();
+
+    if (!isMounted) {
+      return;
+    }
+
+    const state = $heroProductState.get();
+    if (state.activeTab !== "query") {
+      return;
+    }
+
+    safeQueryTimeout = setTimeout(() => {
+      const current = $heroProductState.get();
+
+      if (current.activeTab !== "query") {
+        return;
+      }
+
+      $heroProductState.set({
+        ...current,
+        safeQuery:
+          current.safeQuery.result === "pending"
+            ? advanceSafeQuery(current.safeQuery)
+            : restartSafeQuery(current.safeQuery),
+      });
+      scheduleSafeQuery();
+    }, getSafeQueryDelay(state.safeQuery));
+  }
+
+  function scheduleActiveTab() {
+    clearTabTimeout();
+
+    if (!isMounted) {
+      return;
+    }
+
+    const { activeTab } = $heroProductState.get();
+    tabTimeout = setTimeout(() => {
+      setActiveTab(getNextHeroProductTab(activeTab));
+    }, HERO_TAB_DWELL_MS[activeTab]);
+  }
+
+  function syncTimersForActiveTab() {
+    scheduleActiveTab();
+
+    if ($heroProductState.get().activeTab === "query") {
+      scheduleSafeQuery();
+      return;
+    }
+
+    clearSafeQueryTimeout();
+  }
+
+  function setActiveTab(tab: HeroProductTab) {
+    const current = $heroProductState.get();
+
+    if (current.activeTab === tab) {
+      return;
+    }
+
+    $heroProductState.set({
+      activeTab: tab,
+      safeQuery:
+        tab === "query" ? createInitialSafeQueryState() : current.safeQuery,
+    });
+    syncTimersForActiveTab();
+  }
+
+  onMount($heroProductState, () => {
+    isMounted = true;
+    syncTimersForActiveTab();
+
+    return () => {
+      isMounted = false;
+      clearSafeQueryTimeout();
+      clearTabTimeout();
+    };
+  });
+
+  return {
+    $heroProductState,
+    selectTab: setActiveTab,
+  };
+}
 
 export function readActiveHeroProductTab(
-  snapshot: SnapshotFrom<typeof heroProductMachine>
+  state: HeroProductState
 ): HeroProductTab {
-  if (snapshot.matches("integrations")) {
-    return "integrations";
-  }
-
-  if (snapshot.matches("query")) {
-    return "query";
-  }
-
-  return "audit";
+  return state.activeTab;
 }
 
 export function readSafeQueryAnimationState(
-  snapshot: SnapshotFrom<typeof heroProductMachine>
+  state: HeroProductState
 ): SafeQueryAnimationState {
-  return snapshot.context.safeQuery;
+  return state.safeQuery;
 }

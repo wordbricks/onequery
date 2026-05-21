@@ -1,7 +1,8 @@
-import { useActorRef, useSelector } from "@xstate/react";
+import { useStore } from "@nanostores/react";
+import { useMemo } from "react";
 
 import {
-  heroProductMachine,
+  createHeroProductStore,
   heroProductAuditEntries,
   heroProductIntegrationRows,
   heroProductTabMeta,
@@ -9,8 +10,8 @@ import {
   heroSafeQueryChecks,
   readActiveHeroProductTab,
   readSafeQueryAnimationState,
-} from "./hero-product.machine";
-import type { HeroProductTab } from "./hero-product.machine";
+} from "./hero-product.store";
+import type { HeroProductTab } from "./hero-product.store";
 
 function SafeQueryPanel({
   result,
@@ -102,18 +103,16 @@ function renderHeroProductPanel(activeTab: HeroProductTab) {
 }
 
 function useHeroProductController() {
-  const actorRef = useActorRef(heroProductMachine);
-  const activeTab = useSelector(actorRef, readActiveHeroProductTab);
-  const safeQuery = useSelector(actorRef, readSafeQueryAnimationState);
+  const heroProductStore = useMemo(() => createHeroProductStore(), []);
+  const state = useStore(heroProductStore.$heroProductState);
+  const activeTab = readActiveHeroProductTab(state);
+  const safeQuery = readSafeQueryAnimationState(state);
 
   return {
     activeTab,
     safeQuery,
     selectTab: (tab: HeroProductTab) => {
-      actorRef.send({
-        type: "heroProduct/tabSelected",
-        tab,
-      });
+      heroProductStore.selectTab(tab);
     },
   };
 }

@@ -1,10 +1,10 @@
+import { useStore } from "@nanostores/react";
 import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
-import { useActorRef, useSelector } from "@xstate/react";
 import { actions, isInputError } from "astro:actions";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 import type { FormEvent } from "react";
-import { fromPromise } from "xstate";
+import { useMemo } from "react";
 
 import {
   trackContactFormSubmitted,
@@ -12,13 +12,15 @@ import {
 } from "../analytics/landing-analytics";
 import {
   DEFAULT_CONTACT_ERROR_MESSAGE,
-  createContactModalMachine,
+  createContactModalStore,
+  isContactModalOpen,
+  isContactModalSubmitting,
   readContactModalErrorMessage,
-} from "./contact-modal.machine";
+} from "./contact-modal.store";
 import type {
   ContactForm,
-  ContactModalSubmissionInput,
-} from "./contact-modal.machine";
+  ContactModalSubmitRequest,
+} from "./contact-modal.store";
 
 class ContactSubmissionError extends TaggedError("ContactSubmissionError")<{
   cause: unknown;
@@ -75,14 +77,15 @@ function runBestEffort(action: () => void) {
   }
 }
 
-async function submitContactRequest(
-  input: ContactModalSubmissionInput & { signal: AbortSignal }
-): Promise<ContactSubmissionResult> {
+async function submitContactRequest({
+  form,
+  signal,
+}: ContactModalSubmitRequest): Promise<ContactSubmissionResult> {
   const responseResult = await Result.tryPromise({
     try: async () => {
-      input.signal.throwIfAborted();
+      signal.throwIfAborted();
 
-      const result = await actions.contact(input.form);
+      const result = await actions.contact(form);
       if (result.error) {
         throw new ContactSubmissionError({
           cause: result.error,
@@ -105,60 +108,44 @@ async function submitContactRequest(
   return responseResult;
 }
 
-const contactModalMachine = createContactModalMachine().provide({
-  actions: {
+function createContactModalControllerStore() {
+  return createContactModalStore({
+    submitContact: async (input) => {
+      const result = await submitContactRequest(input);
+
+      if (result.isErr()) {
+        throw result.error;
+      }
+    },
     trackOpenRequested: () => {
       runBestEffort(trackContactModalOpened);
     },
     trackSubmitSucceeded: () => {
       runBestEffort(trackContactFormSubmitted);
     },
-  },
-  actors: {
-    submitContact: fromPromise<void, ContactModalSubmissionInput>(
-      async ({ input, signal }) => {
-        const result = await submitContactRequest({
-          ...input,
-          signal,
-        });
-
-        if (result.isErr()) {
-          throw result.error;
-        }
-      }
-    ),
-  },
-});
+  });
+}
 
 function useContactModalController(): ContactModalController {
-  const actorRef = useActorRef(contactModalMachine);
-  const form = useSelector(actorRef, (snapshot) => snapshot.context.form);
-  const errorMessage = useSelector(actorRef, readContactModalErrorMessage);
-  const isOpen = useSelector(actorRef, (snapshot) => snapshot.matches("open"));
-  const isSubmitting = useSelector(actorRef, (snapshot) =>
-    snapshot.matches({ open: "submitting" })
-  );
+  const contactModalStore = useMemo(createContactModalControllerStore, []);
+  const state = useStore(contactModalStore.$contactModalState);
 
   return {
-    errorMessage,
-    form,
-    isOpen,
-    isSubmitting,
+    errorMessage: readContactModalErrorMessage(state),
+    form: state.form,
+    isOpen: isContactModalOpen(state),
+    isSubmitting: isContactModalSubmitting(state),
     close: () => {
-      actorRef.send({ type: "contactModal/closeRequested" });
+      contactModalStore.close();
     },
     open: () => {
-      actorRef.send({ type: "contactModal/openRequested" });
+      contactModalStore.open();
     },
     setField: (field, value) => {
-      actorRef.send({
-        type: "contactModal/fieldChanged",
-        field,
-        value,
-      });
+      contactModalStore.setField(field, value);
     },
     submit: () => {
-      actorRef.send({ type: "contactModal/submit" });
+      void contactModalStore.submit();
     },
   };
 }
