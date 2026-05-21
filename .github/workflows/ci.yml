@@ -45,10 +45,11 @@ jobs:
             esac
 
             case "$f" in
-              .github/rulesets/*|scripts/*|package.json|packages/tsconfig/*)
+              .bun-version|.node-version|.github/rulesets/*|scripts/*|package.json|packages/tsconfig/*)
                 # Comment: Root automation scripts are outside Turbo's package
                 # affected graph, so CI must track them explicitly or script-only
-                # changes bypass validation.
+                # changes bypass validation. Runtime pins affect every JS task
+                # even when Turbo does not associate them with one package.
                 root_code=true
                 ;;
             esac
@@ -104,6 +105,11 @@ jobs:
           # CONTEXT: Turbo's source-control filters need the full git history
           # so PR-scoped runs compare the correct base and head revisions.
           fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".node-version"
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -197,6 +203,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".node-version"
 
       - uses: oven-sh/setup-bun@v2
         with:
