@@ -1,10 +1,13 @@
 import type { MySQLCredentials } from "@onequery/db/server";
+import { Result } from "better-result";
 
 import { runProviderConnectionTest } from "../../core/connection-test";
 import type { ProviderQueryDriver } from "../../core/driver";
+import { toQueryFailure } from "../../core/errors";
 import { normalizeRecordRows } from "../../core/rows";
 import { QUERY_TIMEOUT_MS, createQueryDeadline } from "../../core/timeout";
 import type { QueryDeadline } from "../../core/timeout";
+import type { DatabaseQueryResult } from "../../core/types";
 import { validateReadOnlySql } from "../../core/validation";
 import { isTlsVerificationError } from "../../postgres-transport";
 import { classifyMySQLError, sanitizeMySQLErrorMessage } from "./errors";
@@ -73,7 +76,15 @@ async function runMySQLQuery(
     await connection.query("ROLLBACK").catch(() => {});
     throw error;
   } finally {
-    await connection.end().catch(() => {});
+    // Decision: row delivery and the original provider error are the primary
+    // outcome; cleanup failures are secondary operational signals and must not
+    // mask a successful query or the original failure.
+    await connection.end().catch((cleanupError: unknown) => {
+      console.warn("[query-database] MySQL cleanup failed", {
+        error:
+          cleanupError instanceof Error ? cleanupError.message : cleanupError,
+      });
+    });
   }
 }
 
@@ -81,6 +92,22 @@ export async function executeMySQLQuery(
   creds: MySQLCredentials,
   query: string,
   timeoutMs = QUERY_TIMEOUT_MS
+): Promise<DatabaseQueryResult<Record<string, unknown>[]>> {
+  return Result.tryPromise({
+    try: () => executeMySQLQueryUnsafe(creds, query, timeoutMs),
+    catch: (error) =>
+      toQueryFailure({
+        classifier: classifyMySQLError,
+        error,
+        provider: "mysql",
+      }),
+  });
+}
+
+async function executeMySQLQueryUnsafe(
+  creds: MySQLCredentials,
+  query: string,
+  timeoutMs: number
 ): Promise<Record<string, unknown>[]> {
   const mysql = await import("mysql2/promise");
   const sslMode = creds.sslMode;
@@ -154,9 +181,10 @@ export const mysqlQueryDriver = {
       provider: "mysql",
       sql,
     }),
-  execute: async ({ credentials, deadline, sql }) => ({
-    rows: await executeMySQLQuery(credentials, sql, deadline.timeoutMs),
-  }),
+  execute: async ({ credentials, deadline, sql }) =>
+    (await executeMySQLQuery(credentials, sql, deadline.timeoutMs)).map(
+      (rows) => ({ rows })
+    ),
   classifyError: classifyMySQLError,
   testConnection: async ({ credentials, deadline }) =>
     runMySQLConnectionTest(credentials, deadline),
@@ -168,7 +196,7 @@ export async function runMySQLConnectionTest(
 ) {
   return runProviderConnectionTest({
     deadline,
-    execute: async () =>
+    execute: () =>
       executeMySQLQuery(credentials, CONNECTION_TEST_QUERY, deadline.timeoutMs),
     sanitizeError: sanitizeMySQLErrorMessage,
   });

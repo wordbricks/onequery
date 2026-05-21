@@ -1,24 +1,27 @@
 import { isRecord } from "@onequery/base";
 import type { CloudflareD1Credentials } from "@onequery/db/server";
+import { Result } from "better-result";
 
 import {
   createFailedConnectionTest,
   runProviderConnectionTest,
 } from "../../core/connection-test";
 import type { ProviderQueryDriver } from "../../core/driver";
-import { DataSourceQueryExecutionError } from "../../core/errors";
 import type { QueryErrorClassification } from "../../core/errors";
+import {
+  ProviderResponseFailure,
+  QueryInputFailure,
+  toErrorMessage,
+  toQueryFailure,
+} from "../../core/errors";
 import { normalizeRecordRows } from "../../core/rows";
 import {
   hasControlCharacters,
   sanitizeProviderErrorText,
 } from "../../core/security";
-import {
-  QUERY_TIMEOUT_MS,
-  createQueryDeadline,
-  createTimeoutSignal,
-} from "../../core/timeout";
+import { QUERY_TIMEOUT_MS, createQueryDeadline } from "../../core/timeout";
 import type { QueryDeadline } from "../../core/timeout";
+import type { DatabaseQueryResult } from "../../core/types";
 import { validateReadOnlySql } from "../../core/validation";
 
 const DEFAULT_CLOUDFLARE_API_BASE_URL = "https://api.cloudflare.com/client/v4";
@@ -29,45 +32,58 @@ export async function executeCloudflareD1Query(
   creds: CloudflareD1Credentials,
   query: string,
   timeoutMs = QUERY_TIMEOUT_MS
-): Promise<Record<string, unknown>[]> {
-  const responseOutcome = await fetch(resolveCloudflareD1QueryUrl(creds), {
-    body: JSON.stringify({ sql: query }),
-    headers: {
-      Authorization: `Bearer ${normalizeCloudflareApiToken(creds.apiToken)}`,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-    signal: createTimeoutSignal(timeoutMs),
-  })
-    .then((response) => ({ response }))
-    .catch((error: unknown) => ({ error }));
-
-  if ("error" in responseOutcome) {
-    throw responseOutcome.error;
-  }
-
-  const response = responseOutcome.response;
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "Unknown error");
-    throw new DataSourceQueryExecutionError(
-      `Cloudflare D1 query failed: ${response.status} ${sanitizeCloudflareErrorText(errorText, creds.apiToken)}`,
-      {
-        retryable: TRANSIENT_CLOUDFLARE_STATUS_CODES.has(response.status),
-        timedOut: response.status === 504,
-      }
+): Promise<DatabaseQueryResult<Record<string, unknown>[]>> {
+  return Result.gen(async function* executeCloudflareD1QueryFlow() {
+    const apiToken = yield* normalizeCloudflareApiToken(creds.apiToken);
+    const response = yield* Result.await(
+      Result.tryPromise({
+        try: () =>
+          fetch(resolveCloudflareD1QueryUrl(creds), {
+            body: JSON.stringify({ sql: query }),
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              "Content-Type": "application/json",
+            },
+            method: "POST",
+            signal: createQueryDeadline(timeoutMs).createAbortSignal(),
+          }),
+        catch: (error) =>
+          toQueryFailure({
+            classifier: classifyCloudflareD1Error,
+            error,
+            provider: "cloudflare_d1",
+          }),
+      })
     );
-  }
 
-  const jsonOutcome = await response
-    .json()
-    .then((data) => ({ data }))
-    .catch((error: unknown) => ({ error }));
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "Unknown error");
+      return Result.err(
+        new ProviderResponseFailure({
+          message: `Cloudflare D1 query failed: ${response.status} ${sanitizeCloudflareErrorText(errorText, apiToken)}`,
+          provider: "cloudflare_d1",
+          retryable: TRANSIENT_CLOUDFLARE_STATUS_CODES.has(response.status),
+          timedOut: response.status === 504,
+        })
+      );
+    }
 
-  if ("error" in jsonOutcome) {
-    throw jsonOutcome.error;
-  }
-
-  return extractCloudflareD1Rows(jsonOutcome.data, creds.apiToken);
+    const payload = yield* Result.await(
+      Result.tryPromise({
+        try: () => response.json(),
+        catch: (cause) =>
+          new ProviderResponseFailure({
+            cause,
+            message: `Cloudflare D1 query returned invalid JSON: ${toErrorMessage(cause)}`,
+            provider: "cloudflare_d1",
+            retryable: false,
+            timedOut: false,
+          }),
+      })
+    );
+    const rows = yield* extractCloudflareD1Rows(payload, apiToken);
+    return Result.ok(rows);
+  });
 }
 
 export const cloudflareD1QueryDriver = {
@@ -83,9 +99,10 @@ export const cloudflareD1QueryDriver = {
       provider: "cloudflare_d1",
       sql,
     }),
-  execute: async ({ credentials, deadline, sql }) => ({
-    rows: await executeCloudflareD1Query(credentials, sql, deadline.timeoutMs),
-  }),
+  execute: async ({ credentials, deadline, sql }) =>
+    (await executeCloudflareD1Query(credentials, sql, deadline.timeoutMs)).map(
+      (rows) => ({ rows })
+    ),
   classifyError: classifyCloudflareD1Error,
   testConnection: async ({ credentials, deadline }) =>
     runCloudflareD1ConnectionTest(credentials, deadline),
@@ -104,29 +121,44 @@ function resolveCloudflareD1QueryUrl(credentials: CloudflareD1Credentials) {
   return `${baseUrl}/accounts/${accountId}/d1/database/${databaseId}/query`;
 }
 
-function normalizeCloudflareApiToken(apiToken: string): string {
+function normalizeCloudflareApiToken(
+  apiToken: string
+): DatabaseQueryResult<string> {
   const normalized = apiToken.trim();
   if (normalized.length === 0 || hasControlCharacters(normalized)) {
-    throw new DataSourceQueryExecutionError("Cloudflare API token is required");
+    return Result.err(
+      new QueryInputFailure({
+        message: "Cloudflare API token is required",
+        provider: "cloudflare_d1",
+      })
+    );
   }
-  return normalized;
+  return Result.ok(normalized);
 }
 
 function extractCloudflareD1Rows(
   payload: unknown,
   apiToken: string
-): Record<string, unknown>[] {
+): DatabaseQueryResult<Record<string, unknown>[]> {
   if (!isRecord(payload)) {
-    throw new Error("Cloudflare D1 query response was not an object.");
+    return Result.err(
+      new ProviderResponseFailure({
+        message: "Cloudflare D1 query response was not an object.",
+        provider: "cloudflare_d1",
+        retryable: false,
+        timedOut: false,
+      })
+    );
   }
 
   if (payload.success === false) {
-    throw new DataSourceQueryExecutionError(
-      `Cloudflare D1 query failed: ${sanitizeCloudflareErrorText(readCloudflareErrorText(payload), apiToken)}`,
-      {
+    return Result.err(
+      new ProviderResponseFailure({
+        message: `Cloudflare D1 query failed: ${sanitizeCloudflareErrorText(readCloudflareErrorText(payload), apiToken)}`,
+        provider: "cloudflare_d1",
         retryable: false,
         timedOut: false,
-      }
+      })
     );
   }
 
@@ -135,20 +167,38 @@ function extractCloudflareD1Rows(
     : payload.result;
 
   if (!isRecord(result)) {
-    throw new Error("Cloudflare D1 query response did not include a result.");
-  }
-
-  if (result.success === false) {
-    throw new DataSourceQueryExecutionError(
-      `Cloudflare D1 query failed: ${sanitizeCloudflareErrorText(readCloudflareErrorText(result), apiToken)}`,
-      {
+    return Result.err(
+      new ProviderResponseFailure({
+        message: "Cloudflare D1 query response did not include a result.",
+        provider: "cloudflare_d1",
         retryable: false,
         timedOut: false,
-      }
+      })
     );
   }
 
-  return normalizeRecordRows("Cloudflare D1", result.results);
+  if (result.success === false) {
+    return Result.err(
+      new ProviderResponseFailure({
+        message: `Cloudflare D1 query failed: ${sanitizeCloudflareErrorText(readCloudflareErrorText(result), apiToken)}`,
+        provider: "cloudflare_d1",
+        retryable: false,
+        timedOut: false,
+      })
+    );
+  }
+
+  return Result.try({
+    try: () => normalizeRecordRows("Cloudflare D1", result.results),
+    catch: (cause) =>
+      new ProviderResponseFailure({
+        cause,
+        message: toErrorMessage(cause),
+        provider: "cloudflare_d1",
+        retryable: false,
+        timedOut: false,
+      }),
+  });
 }
 
 function readCloudflareErrorText(payload: Record<string, unknown>): string {
@@ -188,13 +238,12 @@ async function runCloudflareD1ConnectionTest(
 ) {
   return runProviderConnectionTest({
     deadline,
-    execute: async () => {
-      await executeCloudflareD1Query(
+    execute: () =>
+      executeCloudflareD1Query(
         credentials,
         CONNECTION_TEST_QUERY,
         deadline.timeoutMs
-      );
-    },
+      ),
     mapError: (error, latencyMs) => {
       const statusCode = readCloudflareD1StatusCode(error);
       if (statusCode === 401) {

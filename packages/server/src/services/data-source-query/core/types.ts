@@ -4,9 +4,11 @@ import type {
   Database,
   DatabaseCredentials,
 } from "@onequery/db/server";
+import type { Result as ResultType } from "better-result";
 
 import type { AthenaPricingModel } from "../athena-pricing";
 import type { BigQueryPricingModel } from "../bigquery-pricing";
+import type { DataSourceQueryFailure } from "./errors";
 
 export type ValidatedSql = string & { readonly __validatedSql: unique symbol };
 
@@ -47,6 +49,8 @@ export type DatabaseQueryExecution = {
   rows: Record<string, unknown>[];
   stats?: DatabaseQueryExecutionStats;
 };
+
+export type DatabaseQueryResult<T> = ResultType<T, DataSourceQueryFailure>;
 
 export type DatabaseQueryInputBase = {
   credentials: DatabaseCredentials;

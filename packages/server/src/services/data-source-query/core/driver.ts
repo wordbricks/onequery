@@ -5,6 +5,7 @@ import type { QueryErrorClassifier } from "./errors";
 import type { QueryDeadline } from "./timeout";
 import type {
   DatabaseQueryExecution,
+  DatabaseQueryResult,
   QueryExecutionContext,
   QueryExecutionMode,
   ValidatedSql,
@@ -22,14 +23,17 @@ export type ProviderQueryDriver<
 > = {
   readonly provider: C["type"];
   readonly capabilities: ProviderQueryCapabilities;
-  validateSql(input: { credentials: C; sql: string }): Promise<ValidatedSql>;
+  validateSql(input: {
+    credentials: C;
+    sql: string;
+  }): Promise<DatabaseQueryResult<ValidatedSql>>;
   execute(input: {
     credentials: C;
     sql: ValidatedSql;
     deadline: QueryDeadline;
     context: QueryExecutionContext;
     mode: QueryExecutionMode;
-  }): Promise<DatabaseQueryExecution>;
+  }): Promise<DatabaseQueryResult<DatabaseQueryExecution>>;
   classifyError?: QueryErrorClassifier;
   testConnection(input: {
     credentials: C;

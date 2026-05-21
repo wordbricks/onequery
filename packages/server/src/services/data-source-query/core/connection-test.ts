@@ -1,7 +1,8 @@
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 
-import { DataSourceQueryExecutionError } from "./errors";
+import { getQueryFailureFlags, toErrorMessage } from "./errors";
+import type { DataSourceQueryFailure } from "./errors";
 import type { QueryDeadline } from "./timeout";
 
 export type ConnectionTestSuccess = {
@@ -87,25 +88,22 @@ export function createUnsupportedConnectionTest(
 
 export async function runProviderConnectionTest(input: {
   deadline: QueryDeadline;
-  execute: () => Promise<unknown>;
+  execute: () => Promise<ResultType<unknown, DataSourceQueryFailure>>;
   mapError?: (
-    error: unknown,
+    error: DataSourceQueryFailure,
     latencyMs: number
   ) => ConnectionTestFailure | null;
   sanitizeError?: (message: string) => string;
 }): Promise<ConnectionTestOutcome> {
   const startTime = Date.now();
-  const execution = await Result.tryPromise(input.execute);
+  const execution = await input.execute();
   const latencyMs = Date.now() - startTime;
 
   if (execution.isOk()) {
     return Result.ok(createSuccessfulConnectionTest(latencyMs));
   }
 
-  if (
-    execution.error instanceof DataSourceQueryExecutionError &&
-    execution.error.timedOut
-  ) {
+  if (getQueryFailureFlags(execution.error).timedOut) {
     return Result.err(
       createTimedOutConnectionTest(input.deadline.timeoutMs, latencyMs)
     );
@@ -116,14 +114,11 @@ export async function runProviderConnectionTest(input: {
     return Result.err(mappedResult);
   }
 
-  const message =
-    execution.error instanceof Error
-      ? execution.error.message
-      : String(execution.error);
-
   return Result.err(
     createFailedConnectionTest({
-      detail: input.sanitizeError?.(message) ?? message,
+      detail:
+        input.sanitizeError?.(toErrorMessage(execution.error)) ??
+        toErrorMessage(execution.error),
       latencyMs,
     })
   );

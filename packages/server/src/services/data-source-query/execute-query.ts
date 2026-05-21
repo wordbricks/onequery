@@ -1,8 +1,21 @@
 export {
-  DataSourceQueryExecutionError,
+  ProviderResponseFailure,
+  ProviderTransportFailure,
+  QueryCancelledFailure,
+  QueryInputFailure,
+  QueryTimeoutFailure,
+  QueryValidationFailure,
+  UnsupportedProviderFailure,
+  getQueryFailureFlags,
+  isDataSourceQueryFailure,
   readErrorCode,
+  readHttpStatusCode,
   toErrorMessage,
-  toExecutionError,
+  toQueryFailure,
+} from "./core/errors";
+export type {
+  DataSourceQueryFailure,
+  QueryFailureProvider,
 } from "./core/errors";
 export {
   QUERY_TIMEOUT_MS,
@@ -16,6 +29,7 @@ export type {
   BigQueryQueryOptions,
   DatabaseQueryExecution,
   DatabaseQueryExecutionStats,
+  DatabaseQueryResult,
   RawDatabaseQueryInput,
   ValidatedDatabaseQueryInput,
   ValidatedSql,

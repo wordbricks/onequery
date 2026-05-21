@@ -1,10 +1,10 @@
-import type { DatabaseCredentials } from "@onequery/db/server";
+import { Result } from "better-result";
 
-import { toExecutionError } from "./errors";
 import { getQueryDriver } from "./registry";
 import { createQueryDeadline } from "./timeout";
 import type {
   DatabaseQueryExecution,
+  DatabaseQueryResult,
   RawDatabaseQueryInput,
   ValidatedDatabaseQueryInput,
   ValidatedSql,
@@ -12,27 +12,27 @@ import type {
 
 export async function executeDatabaseQuery(
   input: RawDatabaseQueryInput
-): Promise<Record<string, unknown>[]> {
+): Promise<DatabaseQueryResult<Record<string, unknown>[]>> {
   const result = await executeDatabaseQueryInternal(input, {
     includeStats: false,
     validate: true,
   });
-  return result.rows;
+  return result.map((execution) => execution.rows);
 }
 
 export async function executeValidatedDatabaseQuery(
   input: ValidatedDatabaseQueryInput
-): Promise<Record<string, unknown>[]> {
+): Promise<DatabaseQueryResult<Record<string, unknown>[]>> {
   const result = await executeDatabaseQueryInternal(input, {
     includeStats: false,
     validate: false,
   });
-  return result.rows;
+  return result.map((execution) => execution.rows);
 }
 
 export async function executeDatabaseQueryWithStats(
   input: RawDatabaseQueryInput
-): Promise<DatabaseQueryExecution> {
+): Promise<DatabaseQueryResult<DatabaseQueryExecution>> {
   return executeDatabaseQueryInternal(input, {
     includeStats: true,
     validate: true,
@@ -45,43 +45,32 @@ async function executeDatabaseQueryInternal(
     includeStats: boolean;
     validate: boolean;
   }
-): Promise<DatabaseQueryExecution> {
+): Promise<DatabaseQueryResult<DatabaseQueryExecution>> {
   const driver = getQueryDriver(input.credentials.type);
   const deadline = createQueryDeadline(input.timeoutMs);
 
-  try {
+  return Result.gen(async function* executeDatabaseQueryFlow() {
     const sql = options.validate
-      ? await driver.validateSql({
-          credentials: input.credentials as never,
-          sql: (input as RawDatabaseQueryInput).sql,
-        })
+      ? yield* Result.await(
+          driver.validateSql({
+            credentials: input.credentials as never,
+            sql: (input as RawDatabaseQueryInput).sql,
+          })
+        )
       : ((input as ValidatedDatabaseQueryInput).normalizedSql as ValidatedSql);
 
-    return await driver.execute({
-      context: {
-        db: input.db,
-        organizationId: input.organizationId,
-      },
-      credentials: input.credentials as never,
-      deadline,
-      mode: options.includeStats ? "rows_with_stats" : "rows",
-      sql,
-    });
-  } catch (error) {
-    throw toExecutionError(error, driver.classifyError);
-  }
-}
-
-export function assertProviderCredentials<
-  Provider extends DatabaseCredentials["type"],
->(
-  credentials: DatabaseCredentials,
-  provider: Provider
-): Extract<DatabaseCredentials, { type: Provider }> {
-  if (credentials.type !== provider) {
-    throw new TypeError(
-      `Expected ${provider} credentials but received ${credentials.type}.`
+    const execution = yield* Result.await(
+      driver.execute({
+        context: {
+          db: input.db,
+          organizationId: input.organizationId,
+        },
+        credentials: input.credentials as never,
+        deadline,
+        mode: options.includeStats ? "rows_with_stats" : "rows",
+        sql,
+      })
     );
-  }
-  return credentials as Extract<DatabaseCredentials, { type: Provider }>;
+    return Result.ok(execution);
+  });
 }

@@ -7,7 +7,6 @@ import type {
 } from "snowflake-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { DataSourceQueryExecutionError } from "../../core/errors";
 import { executeSnowflakeQuery } from "./driver";
 
 const snowflakeCredentials = {
@@ -45,7 +44,7 @@ describe("snowflake query driver", () => {
       (_options: SnowflakeConnectionOptions) => connection
     );
 
-    const rows = await executeSnowflakeQuery(
+    const result = await executeSnowflakeQuery(
       snowflakeCredentials,
       "SELECT 1",
       1000,
@@ -54,7 +53,10 @@ describe("snowflake query driver", () => {
       }
     );
 
-    expect(rows).toEqual([{ one: 1 }]);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual([{ one: 1 }]);
+    }
     expect(connection.connectAsync).toHaveBeenCalledTimes(1);
     expect(connection.execute).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -92,15 +94,19 @@ describe("snowflake query driver", () => {
         createConnection,
       }
     );
-    const expectation = expect(query).rejects.toMatchObject({
-      message: "Snowflake query timed out after 1000ms",
-      retryable: true,
-      timedOut: true,
-    } satisfies Partial<DataSourceQueryExecutionError>);
 
     await vi.advanceTimersByTimeAsync(1000);
 
-    await expectation;
+    const result = await query;
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toMatchObject({
+        _tag: "QueryTimeoutFailure",
+        message: "Snowflake query timed out after 1000ms",
+        retryable: true,
+        timedOut: true,
+      });
+    }
     expect(statement.cancel).toHaveBeenCalledTimes(1);
     expect(connection.destroy).toHaveBeenCalledTimes(1);
   });
@@ -123,11 +129,18 @@ describe("snowflake query driver", () => {
       }),
     } as unknown as SnowflakeConnection;
 
-    await expect(
-      executeSnowflakeQuery(snowflakeCredentials, "SELECT 1", 1000, {
+    const result = await executeSnowflakeQuery(
+      snowflakeCredentials,
+      "SELECT 1",
+      1000,
+      {
         createConnection: () => connection,
-      })
-    ).rejects.toThrow("warehouse is suspended");
+      }
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("warehouse is suspended");
+    }
 
     expect(connection.destroy).toHaveBeenCalledTimes(1);
   });

@@ -15,13 +15,19 @@ import {
   runProviderConnectionTest,
 } from "../../core/connection-test";
 import type { ProviderQueryDriver } from "../../core/driver";
-import { DataSourceQueryExecutionError } from "../../core/errors";
+import {
+  ProviderResponseFailure,
+  ProviderTransportFailure,
+  QueryInputFailure,
+  QueryTimeoutFailure,
+} from "../../core/errors";
 import { normalizeColumnRows, parseIntegerString } from "../../core/rows";
 import { QUERY_TIMEOUT_MS, createQueryDeadline } from "../../core/timeout";
 import type { QueryDeadline } from "../../core/timeout";
 import type {
   AthenaConnectorQueryExecutionStats,
   DatabaseQueryExecution,
+  DatabaseQueryResult,
   QueryExecutionContext,
 } from "../../core/types";
 import { validateReadOnlySql } from "../../core/validation";
@@ -61,13 +67,18 @@ async function executeConnectorAthenaJob(
     context: QueryExecutionContext;
     timeoutMs?: number;
   }
-): Promise<Extract<ConnectorAthenaJobOutcome, { status: "success" }>> {
+): Promise<
+  DatabaseQueryResult<Extract<ConnectorAthenaJobOutcome, { status: "success" }>>
+> {
   const timeoutMs = input.timeoutMs ?? QUERY_TIMEOUT_MS;
   const organizationId = input.context.organizationId;
 
   if (!organizationId) {
-    throw new DataSourceQueryExecutionError(
-      "Organization ID is required for connector queries."
+    return Result.err(
+      new QueryInputFailure({
+        message: "Organization ID is required for connector queries.",
+        provider: "aws_athena_connector",
+      })
     );
   }
 
@@ -84,29 +95,50 @@ async function executeConnectorAthenaJob(
   });
   if (outcome.isOk()) {
     if (outcome.value.status === "error") {
-      throw new DataSourceQueryExecutionError(
-        `Connector query failed (${outcome.value.error.code}): ${outcome.value.error.message}`,
-        {
+      if (outcome.value.error.code === "QUERY_TIMEOUT") {
+        return Result.err(
+          new QueryTimeoutFailure({
+            message: `Connector query failed (${outcome.value.error.code}): ${outcome.value.error.message}`,
+            provider: "aws_athena_connector",
+            retryable: true,
+            timedOut: true,
+          })
+        );
+      }
+
+      return Result.err(
+        new ProviderResponseFailure({
+          message: `Connector query failed (${outcome.value.error.code}): ${outcome.value.error.message}`,
+          provider: "aws_athena_connector",
           retryable: outcome.value.error.code === "QUERY_TIMEOUT",
           timedOut: outcome.value.error.code === "QUERY_TIMEOUT",
-        }
+        })
       );
     }
 
-    return outcome.value;
+    return Result.ok(outcome.value);
   }
 
   if (outcome.error instanceof ConnectorJobTimeoutError) {
-    throw new DataSourceQueryExecutionError(outcome.error.message, {
-      retryable: true,
-      timedOut: true,
-    });
+    return Result.err(
+      new QueryTimeoutFailure({
+        cause: outcome.error,
+        message: outcome.error.message,
+        provider: "aws_athena_connector",
+        retryable: true,
+        timedOut: true,
+      })
+    );
   }
 
-  throw new DataSourceQueryExecutionError(outcome.error.message, {
-    retryable: outcome.error.status >= 500,
-    timedOut: false,
-  });
+  return Result.err(
+    new ProviderTransportFailure({
+      cause: outcome.error,
+      message: outcome.error.message,
+      provider: "aws_athena_connector",
+      retryable: outcome.error.status >= 500,
+    })
+  );
 }
 
 export async function executeConnectorQuery(
@@ -117,7 +149,7 @@ export async function executeConnectorQuery(
     timeoutMs?: number;
     organizationId: string;
   }
-): Promise<Record<string, unknown>[]> {
+): Promise<DatabaseQueryResult<Record<string, unknown>[]>> {
   const outcome = await executeConnectorAthenaJob(creds, query, {
     context: {
       db: input.db,
@@ -125,7 +157,7 @@ export async function executeConnectorQuery(
     },
     timeoutMs: input.timeoutMs,
   });
-  return normalizeColumnRows(outcome.columns, outcome.rows);
+  return outcome.map((value) => normalizeColumnRows(value.columns, value.rows));
 }
 
 export async function executeConnectorQueryWithStats(
@@ -136,7 +168,7 @@ export async function executeConnectorQueryWithStats(
     timeoutMs?: number;
     organizationId: string;
   }
-): Promise<DatabaseQueryExecution> {
+): Promise<DatabaseQueryResult<DatabaseQueryExecution>> {
   const outcome = await executeConnectorAthenaJob(creds, query, {
     context: {
       db: input.db,
@@ -144,13 +176,13 @@ export async function executeConnectorQueryWithStats(
     },
     timeoutMs: input.timeoutMs,
   });
-  return {
-    rows: normalizeColumnRows(outcome.columns, outcome.rows),
+  return outcome.map((value) => ({
+    rows: normalizeColumnRows(value.columns, value.rows),
     stats: buildAthenaConnectorStats({
       creds,
-      outcome,
+      outcome: value,
     }),
-  };
+  }));
 }
 
 export const athenaConnectorQueryDriver = {
@@ -167,23 +199,30 @@ export const athenaConnectorQueryDriver = {
       sql,
     }),
   execute: async ({ context, credentials, deadline, mode, sql }) => {
+    if (!context.organizationId) {
+      return Result.err(
+        new QueryInputFailure({
+          message: "Organization ID is required for connector queries.",
+          provider: "aws_athena_connector",
+        })
+      );
+    }
+
     if (mode === "rows_with_stats") {
-      const organizationId = requireOrganizationId(context, "queries");
       return executeConnectorQueryWithStats(credentials, sql, {
         db: context.db,
-        organizationId,
+        organizationId: context.organizationId,
         timeoutMs: deadline.timeoutMs,
       });
     }
 
-    const organizationId = requireOrganizationId(context, "queries");
-    return {
-      rows: await executeConnectorQuery(credentials, sql, {
+    return (
+      await executeConnectorQuery(credentials, sql, {
         db: context.db,
-        organizationId,
+        organizationId: context.organizationId,
         timeoutMs: deadline.timeoutMs,
-      }),
-    };
+      })
+    ).map((rows) => ({ rows }));
   },
   testConnection: async ({ context, credentials, deadline }) =>
     runAthenaConnectorConnectionTest(credentials, context, deadline),
@@ -205,24 +244,11 @@ async function runAthenaConnectorConnectionTest(
 
   return runProviderConnectionTest({
     deadline,
-    execute: async () =>
+    execute: () =>
       executeConnectorQuery(credentials, CONNECTION_TEST_QUERY, {
         db: context.db,
         organizationId: context.organizationId as string,
         timeoutMs: deadline.timeoutMs,
       }),
   });
-}
-
-function requireOrganizationId(
-  context: QueryExecutionContext,
-  subject: "queries" | "tests"
-): string {
-  if (!context.organizationId) {
-    throw new DataSourceQueryExecutionError(
-      `Organization ID is required for connector ${subject}.`
-    );
-  }
-
-  return context.organizationId;
 }

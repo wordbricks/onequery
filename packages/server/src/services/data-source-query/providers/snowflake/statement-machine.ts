@@ -5,7 +5,11 @@ import type {
   SnowflakeError,
 } from "snowflake-sdk";
 
-import { DataSourceQueryExecutionError } from "../../core/errors";
+import {
+  ProviderResponseFailure,
+  QueryTimeoutFailure,
+  toErrorMessage,
+} from "../../core/errors";
 import { normalizeRecordRows } from "../../core/rows";
 import type { QueryDeadline } from "../../core/timeout";
 import type { ValidatedSql } from "../../core/types";
@@ -67,13 +71,12 @@ export function executeSnowflakeStatement(input: {
       }
 
       settle({
-        error: new DataSourceQueryExecutionError(
-          `Snowflake query timed out after ${input.deadline.timeoutMs}ms`,
-          {
-            retryable: true,
-            timedOut: true,
-          }
-        ),
+        error: new QueryTimeoutFailure({
+          message: `Snowflake query timed out after ${input.deadline.timeoutMs}ms`,
+          provider: "snowflake",
+          retryable: true,
+          timedOut: true,
+        }),
       });
     }, input.deadline.remainingMs());
 
@@ -92,7 +95,15 @@ export function executeSnowflakeStatement(input: {
           try {
             settle({ rows: normalizeRecordRows("Snowflake", rows) });
           } catch (normalizationError) {
-            settle({ error: normalizationError });
+            settle({
+              error: new ProviderResponseFailure({
+                cause: normalizationError,
+                message: toErrorMessage(normalizationError),
+                provider: "snowflake",
+                retryable: false,
+                timedOut: false,
+              }),
+            });
           }
         },
         rowMode: "object_with_renamed_duplicated_columns",

@@ -1,10 +1,13 @@
 import type { PostgresCredentials } from "@onequery/db/server";
+import { Result } from "better-result";
 
 import { runProviderConnectionTest } from "../../core/connection-test";
 import type { ProviderQueryDriver } from "../../core/driver";
+import { toQueryFailure } from "../../core/errors";
 import { normalizeRecordRows } from "../../core/rows";
 import { QUERY_TIMEOUT_MS, createQueryDeadline } from "../../core/timeout";
 import type { QueryDeadline as Deadline } from "../../core/timeout";
+import type { DatabaseQueryResult } from "../../core/types";
 import { validateReadOnlySql } from "../../core/validation";
 import {
   buildPostgresClientConfig,
@@ -38,7 +41,15 @@ async function runPostgresQuery(
     await client.query("ROLLBACK").catch(() => {});
     throw error;
   } finally {
-    await client.end();
+    // Decision: row delivery and the original provider error are the primary
+    // outcome; cleanup failures are secondary operational signals and must not
+    // mask a successful query or the original failure.
+    await client.end().catch((cleanupError: unknown) => {
+      console.warn("[query-database] PostgreSQL cleanup failed", {
+        error:
+          cleanupError instanceof Error ? cleanupError.message : cleanupError,
+      });
+    });
   }
 }
 
@@ -51,6 +62,23 @@ export async function executePostgresQuery(
   creds: PostgresCredentials,
   query: string,
   timeoutMs = QUERY_TIMEOUT_MS,
+  runner?: PostgresQueryRunner
+): Promise<DatabaseQueryResult<Record<string, unknown>[]>> {
+  return Result.tryPromise({
+    try: () => executePostgresQueryUnsafe(creds, query, timeoutMs, runner),
+    catch: (error) =>
+      toQueryFailure({
+        classifier: classifyPostgresError,
+        error,
+        provider: "postgres",
+      }),
+  });
+}
+
+async function executePostgresQueryUnsafe(
+  creds: PostgresCredentials,
+  query: string,
+  timeoutMs: number,
   runner?: PostgresQueryRunner
 ): Promise<Record<string, unknown>[]> {
   const queryRunner = runner ?? (await resolvePostgresQueryRunner());
@@ -99,9 +127,10 @@ export const postgresQueryDriver = {
       provider: "postgres",
       sql,
     }),
-  execute: async ({ credentials, deadline, sql }) => ({
-    rows: await executePostgresQuery(credentials, sql, deadline.timeoutMs),
-  }),
+  execute: async ({ credentials, deadline, sql }) =>
+    (await executePostgresQuery(credentials, sql, deadline.timeoutMs)).map(
+      (rows) => ({ rows })
+    ),
   classifyError: classifyPostgresError,
   testConnection: async ({ credentials, deadline }) =>
     runPostgresConnectionTest(credentials, deadline),
@@ -113,7 +142,7 @@ export async function runPostgresConnectionTest(
 ) {
   return runProviderConnectionTest({
     deadline,
-    execute: async () =>
+    execute: () =>
       executePostgresQuery(
         credentials,
         CONNECTION_TEST_QUERY,
