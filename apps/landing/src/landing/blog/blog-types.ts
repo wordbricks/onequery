@@ -6,12 +6,15 @@ export type BlogCategory =
   | "Usecase"
   | "Research";
 
+export type BlogPostPublishedAt = `${number}-${number}-${number}`;
+
 export interface BlogPost {
   body: string[];
   category: Exclude<BlogCategory, "All">;
   date: string;
   description: string;
   imageSrc?: string;
+  publishedAt: BlogPostPublishedAt;
   readTime: string;
   sections?: BlogPostSection[];
   slug: string;

@@ -1,31 +1,29 @@
 ---
 import "../app/styles.css";
+import {
+  createLandingPageStructuredData,
+  normalizeSiteUrl,
+  ONEQUERY_DEFAULT_DESCRIPTION,
+  toAbsoluteSiteUrl,
+} from "../landing/seo/structured-data";
+import type { StructuredData } from "../landing/seo/structured-data";
 
 const DEFAULT_TITLE = "OneQuery | Governed Data Access for AI Agents";
-const DEFAULT_DESCRIPTION =
-  "OneQuery gives AI agents production context without production keys, using approved sources, centralized credentials, enforced limits, and full audit logs.";
+const DEFAULT_DESCRIPTION = ONEQUERY_DEFAULT_DESCRIPTION;
 const DEFAULT_KEYWORDS =
   "OneQuery, AI agent access control, production context, production keys, Claude Code, centralized credentials, audit logs, capability grants, safe production access";
-const DEFAULT_CANONICAL_URL = "https://onequery.dev/";
-const DEFAULT_IMAGE_URL = "https://onequery.dev/og.png";
 const DEFAULT_IMAGE_ALT =
   "OneQuery - Governed Data Access for AI Agents";
-const DEFAULT_STRUCTURED_DATA = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "OneQuery",
-  url: "https://onequery.dev/",
-  applicationCategory: "DeveloperApplication",
-  operatingSystem: "Web, CLI, Self-hosted gateway",
+const siteUrl = normalizeSiteUrl(Astro.site);
+const DEFAULT_CANONICAL_URL = `${siteUrl}/`;
+const DEFAULT_IMAGE_URL = toAbsoluteSiteUrl("/og.png", siteUrl);
+const DEFAULT_STRUCTURED_DATA = createLandingPageStructuredData({
   description: DEFAULT_DESCRIPTION,
-  image: "https://onequery.dev/onequery-icon.png",
-  sameAs: ["https://github.com/wordbricks/onequery"],
-  publisher: {
-    "@type": "Organization",
-    name: "OneQuery",
-    url: "https://onequery.dev/",
-  },
-};
+  imageAlt: DEFAULT_IMAGE_ALT,
+  imageUrl: DEFAULT_IMAGE_URL,
+  site: siteUrl,
+  title: DEFAULT_TITLE,
+});
 
 type MetaTag =
   | {
@@ -47,7 +45,7 @@ interface Props {
   keywords?: string | null;
   metaTags?: MetaTag[];
   ogType?: "article" | "website";
-  structuredData?: Record<string, unknown> | null;
+  structuredData?: StructuredData | StructuredData[] | null;
   title?: string;
   twitterTitle?: string;
 }
@@ -66,6 +64,12 @@ const {
   title = DEFAULT_TITLE,
   twitterTitle = title,
 } = Astro.props;
+const structuredDataItems =
+  structuredData === null
+    ? []
+    : Array.isArray(structuredData)
+      ? structuredData
+      : [structuredData];
 ---
 
 <!doctype html>
@@ -75,11 +79,13 @@ const {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="author" content="OneQuery Maintainers" />
     <meta name="application-name" content="OneQuery" />
     <meta name="apple-mobile-web-app-title" content="OneQuery" />
     <link rel="icon" type="image/png" href="/onequery-icon.png" />
     <link rel="apple-touch-icon" href="/onequery-icon.png" />
     <link rel="canonical" href={canonicalUrl} />
+    <link rel="sitemap" href="/sitemap.xml" />
     <meta name="description" content={description} />
     {keywords ? <meta name="keywords" content={keywords} /> : null}
     <meta property="og:title" content={title} />
@@ -87,6 +93,7 @@ const {
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:site_name" content="OneQuery" />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:image" content={imageUrl} />
     <meta property="og:image:secure_url" content={imageUrl} />
     <meta property="og:image:width" content={String(imageWidth)} />
@@ -108,13 +115,13 @@ const {
     }
     <title>{title}</title>
     {
-      structuredData ? (
+      structuredDataItems.map((item) => (
         <script
           is:inline
           type="application/ld+json"
-          set:html={JSON.stringify(structuredData)}
+          set:html={JSON.stringify(item)}
         />
-      ) : null
+      ))
     }
     <script>
       import { trackPageView } from "../landing/analytics/landing-analytics";

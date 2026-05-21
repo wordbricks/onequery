@@ -1,7 +1,11 @@
+import {
+  normalizeSiteUrl,
+  ONEQUERY_SITE_NAME,
+  toAbsoluteSiteUrl,
+  toIsoDateTime,
+} from "../seo/structured-data";
 import type { BlogPost } from "./blog-types";
 
-const ONEQUERY_SITE_URL = "https://onequery.dev";
-const ONEQUERY_SITE_NAME = "OneQuery";
 const BLOG_SHARE_IMAGE_SIZE = 1254;
 
 export interface BlogPostShareMetadata {
@@ -22,38 +26,25 @@ type BlogPostHeadMeta = (
   | { property: string; content: string }
 )[];
 
-function toAbsoluteOneQueryUrl(pathOrUrl: string) {
-  if (/^https?:\/\//u.test(pathOrUrl)) {
-    return pathOrUrl;
-  }
-
-  return `${ONEQUERY_SITE_URL}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
-}
-
-function toIsoDate(date: string) {
-  const timestamp = Date.parse(date);
-
-  if (Number.isNaN(timestamp)) {
-    return undefined;
-  }
-
-  return new Date(timestamp).toISOString();
-}
-
 export function getBlogPostShareMetadata(
-  post: Pick<BlogPost, "description" | "imageSrc" | "slug" | "title" | "date">
+  post: Pick<
+    BlogPost,
+    "description" | "imageSrc" | "slug" | "title" | "publishedAt"
+  >,
+  site?: string | URL | null
 ): BlogPostShareMetadata {
+  const siteUrl = normalizeSiteUrl(site);
   const title = `${post.title} | OneQuery Blog`;
-  const imageUrl = toAbsoluteOneQueryUrl(post.imageSrc ?? "/og.png");
+  const imageUrl = toAbsoluteSiteUrl(post.imageSrc ?? "/og.png", siteUrl);
 
   return {
-    canonicalUrl: `${ONEQUERY_SITE_URL}/blog/${post.slug}`,
+    canonicalUrl: `${siteUrl}/blog/${post.slug}`,
     description: post.description,
     imageAlt: `${post.title} - OneQuery Blog`,
     imageHeight: BLOG_SHARE_IMAGE_SIZE,
     imageWidth: BLOG_SHARE_IMAGE_SIZE,
     imageUrl,
-    publishedTime: toIsoDate(post.date),
+    publishedTime: toIsoDateTime(post.publishedAt),
     title,
     twitterTitle: post.title,
   };

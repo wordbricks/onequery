@@ -6,6 +6,10 @@ import {
   loadBlogPostBySlug,
 } from "../../landing/blog/blog-posts";
 import { getBlogPostShareMetadata } from "../../landing/blog/blog-share-metadata";
+import {
+  createBlogPostStructuredData,
+  getBlogPostKeywords,
+} from "../../landing/seo/structured-data";
 import type { BlogPost as BlogPostData } from "../../landing/blog/blog-posts";
 
 export async function getStaticPaths() {
@@ -31,15 +35,26 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const metadata = getBlogPostShareMetadata(post);
-const articleMetaTags = metadata.publishedTime
-  ? [
-      {
-        content: metadata.publishedTime,
-        property: "article:published_time",
-      },
-    ]
-  : [];
+const metadata = getBlogPostShareMetadata(post, Astro.site);
+const structuredData = createBlogPostStructuredData(post, Astro.site);
+const articleMetaTags = [
+  ...(metadata.publishedTime
+    ? [
+        {
+          content: metadata.publishedTime,
+          property: "article:published_time",
+        },
+      ]
+    : []),
+  {
+    content: post.category,
+    property: "article:section",
+  },
+  {
+    content: "OneQuery Maintainers",
+    name: "author",
+  },
+];
 ---
 
 <BaseLayout
@@ -49,10 +64,10 @@ const articleMetaTags = metadata.publishedTime
   imageHeight={metadata.imageHeight}
   imageUrl={metadata.imageUrl}
   imageWidth={metadata.imageWidth}
-  keywords={null}
+  keywords={getBlogPostKeywords(post)}
   metaTags={articleMetaTags}
   ogType="article"
-  structuredData={null}
+  structuredData={structuredData}
   title={metadata.title}
   twitterTitle={metadata.twitterTitle}
 >
