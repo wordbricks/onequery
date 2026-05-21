@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: ".node-version"
 
       - name: Validate tag matches OpenClaw plugin release version
         id: validate
@@ -78,7 +78,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: ".node-version"
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -194,7 +194,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: ".node-version"
           registry-url: "https://registry.npmjs.org"
 
       - name: Update npm
