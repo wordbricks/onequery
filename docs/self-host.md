@@ -89,6 +89,7 @@ Current provider identifiers:
 - `snowflake` for Snowflake
 - `mongodb` for MongoDB
 - `bigquery` for BigQuery
+- `motherduck` for MotherDuck through its PostgreSQL wire protocol endpoint
 - `laminar` for Laminar
 - `aws_athena_connector` for an AWS Athena connector already registered in OneQuery
 - `ga` for Google Analytics

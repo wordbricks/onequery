@@ -4,7 +4,7 @@ import {
   resolveSvgIconAccessibility,
 } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
-import { IconHelpCircle } from "@tabler/icons-react";
+import { IconDatabase, IconHelpCircle } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import {
   siCloudflareworkers,
@@ -142,6 +142,36 @@ function UnknownProviderIcon({
   );
 }
 
+function MotherDuckIcon({
+  "aria-hidden": ariaHidden,
+  "aria-label": ariaLabel,
+  role,
+  size = 24,
+  title,
+  ...props
+}: ProviderIconProps) {
+  const accessibility = resolveSvgIconAccessibility({
+    ariaHidden,
+    ariaLabel,
+    ariaLabelledBy: props["aria-labelledby"],
+    defaultLabel: "MotherDuck",
+    role,
+    title,
+  });
+
+  return (
+    <IconDatabase
+      {...props}
+      aria-hidden={accessibility.hidden ? true : undefined}
+      aria-label={accessibility.label}
+      aria-labelledby={accessibility.labelledBy}
+      role={accessibility.role}
+      size={size}
+      stroke={2}
+    />
+  );
+}
+
 export const GitHubIcon = createSimpleProviderIcon(siGithub);
 
 export const ProviderIcons = {
@@ -157,6 +187,7 @@ export const ProviderIcons = {
   laminar: LaminarIcon,
   linear: createSimpleProviderIcon(siLinear),
   mixpanel: createSimpleProviderIcon(siMixpanel),
+  motherduck: MotherDuckIcon,
   mongodb: createSimpleProviderIcon(siMongodb),
   mysql: createSimpleProviderIcon(siMysql),
   postgres: createSimpleProviderIcon(siPostgresql),

@@ -7,6 +7,7 @@ import { githubGuideContent } from "./github";
 import { laminarGuideContent } from "./laminar";
 import { mixpanelGuideContent } from "./mixpanel";
 import { mongodbGuideContent } from "./mongodb";
+import { motherduckGuideContent } from "./motherduck";
 import { mysqlGuideContent } from "./mysql";
 import { postgresGuideContent } from "./postgres";
 import { posthogGuideContent } from "./posthog";
@@ -27,6 +28,7 @@ export const GUIDE_CONTENT: Partial<Record<string, GuideContent>> = {
   github: githubGuideContent,
   laminar: laminarGuideContent,
   mixpanel: mixpanelGuideContent,
+  motherduck: motherduckGuideContent,
   mongodb: mongodbGuideContent,
   mysql: mysqlGuideContent,
   postgres: postgresGuideContent,
