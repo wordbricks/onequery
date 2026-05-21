@@ -1,5 +1,7 @@
-import { BRAND_ICON_PATHS } from "../content/brand-icon-paths";
-import type { BrandIconName } from "../content/brand-icon-paths";
+import { IconRobot, IconUser } from "@tabler/icons-react";
+
+import { BrandIcon } from "../content/brand-icons";
+import type { BrandIconName } from "../content/brand-icons";
 
 type ControlPlaneInput = {
   key: string;
@@ -50,49 +52,15 @@ const controlPlanePolicies = [
   "Permission control",
 ] as const;
 
-function BrandIcon({ name }: { name: BrandIconName }) {
-  return (
-    <svg
-      className="brand-icon"
-      viewBox="0 0 24 24"
-      aria-label={name}
-      role="img"
-    >
-      <path d={BRAND_ICON_PATHS[name]} fill="currentColor" />
-    </svg>
-  );
-}
-
 function ControlPlaneInputIcon({ kind }: { kind: ControlPlaneInput["kind"] }) {
-  if (kind === "human") {
-    return (
-      <svg
-        className="control-plane-member-icon"
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden="true"
-      >
-        <circle cx="12" cy="8" r="3.25" />
-        <path d="M5.5 18.25C6.5 14.95 8.82 13.3 12 13.3C15.18 13.3 17.5 14.95 18.5 18.25" />
-      </svg>
-    );
-  }
+  const Icon = kind === "human" ? IconUser : IconRobot;
 
   return (
-    <svg
-      className="control-plane-member-icon"
-      viewBox="0 0 24 24"
-      fill="none"
+    <Icon
       aria-hidden="true"
-    >
-      <rect x="6" y="7" width="12" height="9" rx="2.5" />
-      <path d="M12 7V4.75" />
-      <path d="M8.75 16V18.75" />
-      <path d="M15.25 16V18.75" />
-      <circle cx="10" cy="11.5" r="0.85" fill="currentColor" stroke="none" />
-      <circle cx="14" cy="11.5" r="0.85" fill="currentColor" stroke="none" />
-      <path d="M10 14H14" />
-    </svg>
+      className="control-plane-member-icon"
+      stroke={1.8}
+    />
   );
 }
 
@@ -215,7 +183,7 @@ export function ControlPlaneDiagram() {
             <span className="control-plane-node-label">{node.label}</span>
             <div className="control-plane-node-icons">
               {node.icons.map((icon) => (
-                <BrandIcon key={icon} name={icon} />
+                <BrandIcon key={icon} className="brand-icon" name={icon} />
               ))}
             </div>
           </article>

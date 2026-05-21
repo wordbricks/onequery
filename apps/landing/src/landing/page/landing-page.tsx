@@ -8,7 +8,7 @@ import {
   SECTION_IDS,
   SELF_HOST_DOCS_URL,
 } from "../config/landing-config";
-import { BRAND_ICON_PATHS } from "../content/brand-icon-paths";
+import { BrandIcon } from "../content/brand-icons";
 import {
   FOOTER_LINKS,
   HERO_SIGNALS,
@@ -195,13 +195,11 @@ function SiteHeader() {
           trackingName="header_github_repository"
           trackingSection="header"
         >
-          <svg
+          <BrandIcon
             aria-hidden="true"
-            viewBox="0 0 24 24"
             className="header-github-link-icon"
-          >
-            <path d={BRAND_ICON_PATHS.github} fill="currentColor" />
-          </svg>
+            name="github"
+          />
         </TrackedLink>
       </div>
     </header>
