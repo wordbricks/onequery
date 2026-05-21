@@ -27,6 +27,7 @@ When a CLI feature needs retries, polling, or multi-step orchestration, model it
 
 ## Ownership Boundaries
 
+- Profile selection: the `profile` module resolves `--profile` and `ONEQUERY_PROFILE` before runtime state is loaded. The selected profile only namespaces CLI auth/config storage; self-host runtime paths remain rooted in `ONEQUERY_HOME`, and workflow reducers remain profile-agnostic.
 - Config loading: the `config/` module group owns on-disk config paths, file I/O, parsing, validation, and persistence for user configuration.
 - Self-host runtime bootstrap: the `config/` module group also owns `self-host/config.toml`, `self-host/secrets.toml`, platform-standard config/data directory resolution, and the derived runtime paths for PGlite, logs, backups, pid, and lock files.
 - Gateway lifecycle command surface: `commands/gateway/mod.rs` owns the public local `onequery gateway*` surface, including the foreground `onequery gateway` launcher, the background `onequery gateway start` launcher, the packaged runtime asset resolution path, and the shared local runtime-state inspection used by `gateway status`, `gateway logs`, and the remaining lifecycle subcommands.

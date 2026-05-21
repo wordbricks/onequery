@@ -23,16 +23,32 @@ use self::layers::materialize_runtime_config;
 use self::layers::origins_for_layer_stack;
 use self::layers::raw_cli_overrides_layer;
 pub(crate) use onequery_core::app_paths::config_dir;
-use onequery_core::app_paths::config_path;
 pub(crate) use onequery_core::app_paths::state_dir;
 use onequery_core::error::CliError;
 use onequery_core::error::ErrorStage;
 use onequery_core::private_files;
 use onequery_gateway::self_host::default_public_origin;
 
+use crate::profile::SelectedProfile;
+
 pub(crate) const DEFAULT_REQUEST_TIMEOUT_SEC: u64 = 60;
 pub(crate) type RawCliConfigOverrides = Vec<(String, TomlValue)>;
 const WORKSPACE_DEV_BASE_URL: &str = "http://localhost:4545";
+
+pub(crate) fn config_dir_for_profile(
+    command_line: &str,
+    profile: &SelectedProfile,
+) -> Result<PathBuf, CliError> {
+    let base = config_dir(command_line)?;
+    Ok(profile.config_dir_from_base(base))
+}
+
+fn config_path_for_profile(
+    command_line: &str,
+    profile: &SelectedProfile,
+) -> Result<PathBuf, CliError> {
+    Ok(config_dir_for_profile(command_line, profile)?.join("config.toml"))
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum ServerUrlValidationFailure {
@@ -231,8 +247,9 @@ impl ConfigStore {
         startup_command: &str,
         raw_cli_overrides: RawCliConfigOverrides,
         typed_overrides: TypedConfigOverrides,
+        profile: &SelectedProfile,
     ) -> Result<Self, CliError> {
-        let path = config_path(startup_command)?;
+        let path = config_path_for_profile(startup_command, profile)?;
         Self::load_from_path_with_all_overrides(
             path,
             raw_cli_overrides,

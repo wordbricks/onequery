@@ -13,6 +13,7 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use self::backends::load_auth_session_store;
+use crate::profile::SelectedProfile;
 use crate::transport::auth::LoginCompletion;
 use onequery_core::error::CliError;
 use onequery_core::error::ErrorStage;
@@ -291,8 +292,8 @@ pub(crate) struct AuthSessionStore {
 }
 
 impl AuthSessionStore {
-    pub(crate) fn load(startup_command: &str) -> Result<Self, CliError> {
-        load_auth_session_store(startup_command)
+    pub(crate) fn load(startup_command: &str, profile: &SelectedProfile) -> Result<Self, CliError> {
+        load_auth_session_store(startup_command, profile)
     }
 
     pub(crate) fn access_token(&self) -> Option<&str> {
