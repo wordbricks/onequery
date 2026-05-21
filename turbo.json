@@ -36,10 +36,6 @@
         "ONEQUERY_RUNTIME_ROOT"
       ]
     },
-    "dev:container": {
-      "cache": false,
-      "persistent": true
-    },
     "//#check": {
       "dependsOn": ["//#lint", "//#format"]
     },
