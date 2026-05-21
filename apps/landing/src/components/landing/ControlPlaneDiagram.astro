@@ -1,4 +1,7 @@
 ---
+import { Image } from "astro:assets";
+
+import onequeryIcon from "../../assets/onequery-icon.png";
 import { BrandIcon } from "../../landing/content/brand-icons";
 import type { BrandIconName } from "../../landing/content/brand-icons";
 
@@ -176,11 +179,13 @@ const controlPlanePolicies = [
     <div class="control-plane-core-shell">
       <p class="control-plane-core-kicker">Unified control plane</p>
       <div class="control-plane-core-brand">
-        <img
-          src="/onequery-icon.png"
+        <Image
+          src={onequeryIcon}
           alt=""
           aria-hidden="true"
           class="control-plane-core-logo"
+          width={96}
+          height={96}
         />
         <h3>OneQuery</h3>
       </div>

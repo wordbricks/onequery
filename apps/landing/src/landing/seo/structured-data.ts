@@ -6,13 +6,17 @@ import {
 } from "../config/landing-config";
 
 export type StructuredData = Record<string, unknown>;
+export type StructuredImageMetadata = {
+  height: number;
+  url: string;
+  width: number;
+};
 
 export const ONEQUERY_SITE_NAME = "OneQuery";
 export const ONEQUERY_SITE_URL = "https://onequery.dev";
 export const ONEQUERY_DEFAULT_DESCRIPTION =
   "OneQuery gives AI agents production context without production keys, using approved sources, centralized credentials, enforced limits, and full audit logs.";
 
-const BLOG_SHARE_IMAGE_SIZE = 1254;
 const DEFAULT_IMAGE_WIDTH = 1200;
 const DEFAULT_IMAGE_HEIGHT = 630;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
@@ -40,6 +44,7 @@ type LandingPageStructuredDataInput = {
 
 type BlogIndexStructuredDataInput = {
   description: string;
+  postImages?: Partial<Record<string, StructuredImageMetadata>>;
   posts: readonly BlogPostSummary[];
   site?: SiteInput;
   title: string;
@@ -305,7 +310,11 @@ export function createBlogIndexStructuredData(
       itemListElement: input.posts.map((post, index) => ({
         "@type": "ListItem",
         position: index + 1,
-        item: createBlogPostSummaryStructuredData(post, siteUrl),
+        item: createBlogPostSummaryStructuredData(
+          post,
+          siteUrl,
+          input.postImages?.[post.slug]
+        ),
       })),
     },
     {
@@ -331,7 +340,12 @@ export function createBlogIndexStructuredData(
 
 export function createBlogPostStructuredData(
   post: BlogPost,
-  site?: SiteInput
+  site?: SiteInput,
+  image: StructuredImageMetadata = {
+    height: DEFAULT_IMAGE_HEIGHT,
+    url: "/og.png",
+    width: DEFAULT_IMAGE_WIDTH,
+  }
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(site);
   const postUrl = `${siteUrl}/blog/${post.slug}`;
@@ -359,10 +373,10 @@ export function createBlogPostStructuredData(
       description: post.description,
       image: createImageObject({
         alt: `${post.title} - OneQuery Blog`,
-        height: BLOG_SHARE_IMAGE_SIZE,
+        height: image.height,
         site: siteUrl,
-        url: post.imageSrc ?? "/og.png",
-        width: BLOG_SHARE_IMAGE_SIZE,
+        url: image.url,
+        width: image.width,
       }),
       ...(publishedTime
         ? {
@@ -440,7 +454,12 @@ export function createBlogPostStructuredData(
 
 function createBlogPostSummaryStructuredData(
   post: BlogPostSummary,
-  site: SiteInput
+  site: SiteInput,
+  image: StructuredImageMetadata = {
+    height: DEFAULT_IMAGE_HEIGHT,
+    url: "/og.png",
+    width: DEFAULT_IMAGE_WIDTH,
+  }
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(site);
   const postUrl = `${siteUrl}/blog/${post.slug}`;
@@ -454,10 +473,10 @@ function createBlogPostSummaryStructuredData(
     description: post.description,
     image: createImageObject({
       alt: `${post.title} - OneQuery Blog`,
-      height: BLOG_SHARE_IMAGE_SIZE,
+      height: image.height,
       site: siteUrl,
-      url: post.imageSrc ?? "/og.png",
-      width: BLOG_SHARE_IMAGE_SIZE,
+      url: image.url,
+      width: image.width,
     }),
     ...(publishedTime ? { datePublished: publishedTime } : {}),
     author: {

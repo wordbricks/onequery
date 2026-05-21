@@ -1,23 +1,31 @@
 ---
 import { thumbnailCells } from "../../landing/blog/blog-constants";
 import type { BlogPostSummary } from "../../landing/blog/blog-posts";
+import {
+  BLOG_THUMBNAIL_IMAGE_SIZES,
+  BLOG_THUMBNAIL_IMAGE_WIDTHS,
+} from "./blog-image-presets";
+import OptimizedBlogImage from "./OptimizedBlogImage.astro";
 
 interface Props {
   post: BlogPostSummary;
+  priority?: boolean;
   variant?: "card" | "hero";
 }
 
-const { post, variant = "card" } = Astro.props;
+const { post, priority = false, variant = "card" } = Astro.props;
 ---
 
 {
   post.imageSrc ? (
     <div class={`blog-image blog-image-${variant}`}>
-      <img
+      <OptimizedBlogImage
         src={post.imageSrc}
         alt=""
         class="blog-image-media"
-        loading={variant === "hero" ? "eager" : "lazy"}
+        priority={priority || variant === "hero"}
+        sizes={BLOG_THUMBNAIL_IMAGE_SIZES}
+        widths={BLOG_THUMBNAIL_IMAGE_WIDTHS}
       />
     </div>
   ) : (

@@ -3,8 +3,13 @@ import type { BlogPost, BlogPostSection } from "../../landing/blog/blog-posts";
 import { blogPostSummaries } from "../../landing/blog/blog-posts";
 import SiteFooter from "../landing/SiteFooter.astro";
 import SiteHeader from "../landing/SiteHeader.astro";
+import {
+  BLOG_POST_IMAGE_SIZES,
+  BLOG_POST_IMAGE_WIDTHS,
+} from "./blog-image-presets";
 import BlogPostParagraph from "./BlogPostParagraph.astro";
 import LinkedText from "./LinkedText.astro";
+import OptimizedBlogImage from "./OptimizedBlogImage.astro";
 
 interface Props {
   post: BlogPost;
@@ -104,7 +109,12 @@ const blogFooterLinks = [{ href: "https://github.com/wordbricks/onequery", label
                 <h2>{section.title}</h2>
                 {section.imagePlacement === "after-title" && section.imageSrc ? (
                   <figure class={getFigureClass(section)}>
-                    <img src={section.imageSrc} alt={section.imageAlt ?? ""} />
+                    <OptimizedBlogImage
+                      src={section.imageSrc}
+                      alt={section.imageAlt ?? ""}
+                      sizes={BLOG_POST_IMAGE_SIZES}
+                      widths={BLOG_POST_IMAGE_WIDTHS}
+                    />
                   </figure>
                 ) : null}
                 {section.paragraphs.map((paragraph, paragraphIndex) => (
@@ -138,12 +148,22 @@ const blogFooterLinks = [{ href: "https://github.com/wordbricks/onequery", label
                 ) : null}
                 {section.images?.map((image) => (
                   <figure class="blog-post-figure">
-                    <img src={image.src} alt={image.alt} />
+                    <OptimizedBlogImage
+                      src={image.src}
+                      alt={image.alt}
+                      sizes={BLOG_POST_IMAGE_SIZES}
+                      widths={BLOG_POST_IMAGE_WIDTHS}
+                    />
                   </figure>
                 ))}
                 {section.imagePlacement !== "after-title" && section.imageSrc ? (
                   <figure class={getFigureClass(section)}>
-                    <img src={section.imageSrc} alt={section.imageAlt ?? ""} />
+                    <OptimizedBlogImage
+                      src={section.imageSrc}
+                      alt={section.imageAlt ?? ""}
+                      sizes={BLOG_POST_IMAGE_SIZES}
+                      widths={BLOG_POST_IMAGE_WIDTHS}
+                    />
                   </figure>
                 ) : null}
               </section>

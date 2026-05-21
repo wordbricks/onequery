@@ -1,6 +1,11 @@
 ---
 import type { BlogPostSection } from "../../landing/blog/blog-posts";
+import {
+  BLOG_POST_IMAGE_SIZES,
+  BLOG_POST_IMAGE_WIDTHS,
+} from "./blog-image-presets";
 import LinkedText from "./LinkedText.astro";
+import OptimizedBlogImage from "./OptimizedBlogImage.astro";
 
 interface Props {
   paragraph: string;
@@ -18,7 +23,12 @@ const inlineImages =
 {
   inlineImages.map((image) => (
     <figure class="blog-post-figure blog-post-figure-inline">
-      <img src={image.src} alt={image.alt} />
+      <OptimizedBlogImage
+        src={image.src}
+        alt={image.alt}
+        sizes={BLOG_POST_IMAGE_SIZES}
+        widths={BLOG_POST_IMAGE_WIDTHS}
+      />
     </figure>
   ))
 }

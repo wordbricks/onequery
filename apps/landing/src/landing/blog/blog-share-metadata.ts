@@ -4,9 +4,14 @@ import {
   toAbsoluteSiteUrl,
   toIsoDateTime,
 } from "../seo/structured-data";
+import type { StructuredImageMetadata } from "../seo/structured-data";
 import type { BlogPost } from "./blog-types";
 
-const BLOG_SHARE_IMAGE_SIZE = 1254;
+const DEFAULT_BLOG_SHARE_IMAGE = {
+  height: 630,
+  url: "/og.png",
+  width: 1200,
+} satisfies StructuredImageMetadata;
 
 export interface BlogPostShareMetadata {
   canonicalUrl: string;
@@ -27,22 +32,20 @@ type BlogPostHeadMeta = (
 )[];
 
 export function getBlogPostShareMetadata(
-  post: Pick<
-    BlogPost,
-    "description" | "imageSrc" | "slug" | "title" | "publishedAt"
-  >,
-  site?: string | URL | null
+  post: Pick<BlogPost, "description" | "slug" | "title" | "publishedAt">,
+  site?: string | URL | null,
+  image: StructuredImageMetadata = DEFAULT_BLOG_SHARE_IMAGE
 ): BlogPostShareMetadata {
   const siteUrl = normalizeSiteUrl(site);
   const title = `${post.title} | OneQuery Blog`;
-  const imageUrl = toAbsoluteSiteUrl(post.imageSrc ?? "/og.png", siteUrl);
+  const imageUrl = toAbsoluteSiteUrl(image.url, siteUrl);
 
   return {
     canonicalUrl: `${siteUrl}/blog/${post.slug}`,
     description: post.description,
     imageAlt: `${post.title} - OneQuery Blog`,
-    imageHeight: BLOG_SHARE_IMAGE_SIZE,
-    imageWidth: BLOG_SHARE_IMAGE_SIZE,
+    imageHeight: image.height,
+    imageWidth: image.width,
     imageUrl,
     publishedTime: toIsoDateTime(post.publishedAt),
     title,
@@ -63,7 +66,7 @@ export function getBlogPostHeadMeta(post: BlogPost): BlogPostHeadMeta {
     { property: "og:url", content: metadata.canonicalUrl },
     { property: "og:image", content: metadata.imageUrl },
     { property: "og:image:secure_url", content: metadata.imageUrl },
-    { property: "og:image:width", content: String(BLOG_SHARE_IMAGE_SIZE) },
+    { property: "og:image:width", content: String(metadata.imageWidth) },
     { property: "og:image:height", content: String(metadata.imageHeight) },
     { property: "og:image:alt", content: metadata.imageAlt },
     {
@@ -111,7 +114,7 @@ export function renderBlogPostShareTags(metadata: BlogPostShareMetadata) {
     renderMetaTag("property", "og:url", metadata.canonicalUrl),
     renderMetaTag("property", "og:image", metadata.imageUrl),
     renderMetaTag("property", "og:image:secure_url", metadata.imageUrl),
-    renderMetaTag("property", "og:image:width", String(BLOG_SHARE_IMAGE_SIZE)),
+    renderMetaTag("property", "og:image:width", String(metadata.imageWidth)),
     renderMetaTag("property", "og:image:height", String(metadata.imageHeight)),
     renderMetaTag("property", "og:image:alt", metadata.imageAlt),
     ...(metadata.publishedTime

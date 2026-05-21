@@ -95,10 +95,10 @@ function createBlogHref(input: {
     <section>
       <div class="blog-grid">
         {
-          filteredPosts.map((post) => (
+          filteredPosts.map((post, postIndex) => (
             <article class="blog-card">
               <a href={`/blog/${post.slug}`}>
-                <BlogThumbnail post={post} />
+                <BlogThumbnail post={post} priority={postIndex === 0} />
                 <div class="blog-card-meta">
                   <span>{post.category}</span>
                   <span aria-hidden="true">/</span>

@@ -16,7 +16,7 @@ This guide is based on:
 - `DESIGN.md`
 - `src/styles/base.css`
 - `../landing-video/src/compositions/open-claw-demo/tokens.ts`
-- `public/onequery-icon.png`
+- `src/assets/onequery-icon.png`
 
 Use the implemented CSS tokens and shipped icon before introducing new color
 values.

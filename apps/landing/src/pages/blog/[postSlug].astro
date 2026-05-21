@@ -6,6 +6,7 @@ import {
   blogPostSummaries,
   loadBlogPostBySlug,
 } from "../../landing/blog/blog-posts";
+import { getBlogPostShareImageMetadata } from "../../landing/blog/blog-image-assets";
 import { getBlogPostShareMetadata } from "../../landing/blog/blog-share-metadata";
 import {
   createBlogPostStructuredData,
@@ -36,8 +37,13 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const metadata = getBlogPostShareMetadata(post, Astro.site);
-const structuredData = createBlogPostStructuredData(post, Astro.site);
+const imageMetadata = await getBlogPostShareImageMetadata(post, Astro.site);
+const metadata = getBlogPostShareMetadata(post, Astro.site, imageMetadata);
+const structuredData = createBlogPostStructuredData(
+  post,
+  Astro.site,
+  imageMetadata
+);
 const articleMetaTags = [
   ...(metadata.publishedTime
     ? [

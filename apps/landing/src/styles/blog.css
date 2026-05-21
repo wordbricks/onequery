@@ -153,6 +153,12 @@
   display: block;
 }
 
+.blog-image picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .blog-thumbnail-slate {
   background: #050917;
 }
@@ -366,6 +372,10 @@
   height: auto;
   border: 1px solid var(--line);
   border-radius: 12px;
+}
+
+.blog-post-figure picture {
+  display: block;
 }
 
 .blog-post-table-wrap {
