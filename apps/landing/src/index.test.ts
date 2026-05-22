@@ -36,11 +36,11 @@ describe("landing discovery resources", () => {
           anchor: "https://onequery.dev/.well-known/api-catalog",
           item: [
             {
-              href: "https://onequery.dev/api/product-updates",
+              href: "https://onequery.dev/api/product-updates/",
               title: "Landing product updates API",
             },
             {
-              href: "https://onequery.dev/api/contact",
+              href: "https://onequery.dev/api/contact/",
               title: "Landing contact API",
             },
           ],
@@ -68,11 +68,11 @@ describe("landing discovery resources", () => {
             anchor: "https://preview.onequery.dev/.well-known/api-catalog",
             item: [
               {
-                href: "https://preview.onequery.dev/api/product-updates",
+                href: "https://preview.onequery.dev/api/product-updates/",
                 title: "Landing product updates API",
               },
               {
-                href: "https://preview.onequery.dev/api/contact",
+                href: "https://preview.onequery.dev/api/contact/",
                 title: "Landing contact API",
               },
             ],
