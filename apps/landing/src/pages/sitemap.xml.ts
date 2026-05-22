@@ -30,7 +30,7 @@ export const GET: APIRoute = async ({ site }) => {
     },
     {
       changefreq: "weekly",
-      loc: `${siteUrl}/blog`,
+      loc: `${siteUrl}/blog/`,
       priority: "0.8",
     },
     ...getPopulatedBlogPostCategories(posts).map((category) => ({
@@ -40,13 +40,13 @@ export const GET: APIRoute = async ({ site }) => {
     })),
     {
       changefreq: "monthly",
-      loc: `${siteUrl}/connectors`,
+      loc: `${siteUrl}/connectors/`,
       priority: "0.7",
     },
     ...posts.map((post) => ({
       changefreq: "monthly" as const,
       lastmod: toIsoDateTime(post.publishedAt)?.slice(0, 10),
-      loc: `${siteUrl}/blog/${post.slug}`,
+      loc: `${siteUrl}/blog/${post.slug}/`,
       priority: "0.7",
     })),
   ];

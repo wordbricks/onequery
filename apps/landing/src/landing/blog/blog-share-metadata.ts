@@ -1,4 +1,5 @@
 import {
+  createCanonicalUrl,
   normalizeSiteUrl,
   toAbsoluteSiteUrl,
   toIsoDateTime,
@@ -34,7 +35,7 @@ export function getBlogPostShareMetadata(
   const imageUrl = toAbsoluteSiteUrl(image.url, siteUrl);
 
   return {
-    canonicalUrl: `${siteUrl}/blog/${post.slug}`,
+    canonicalUrl: createCanonicalUrl(`/blog/${post.slug}`, siteUrl),
     description: post.description,
     imageAlt: `${post.title} - OneQuery Blog`,
     imageHeight: image.height,

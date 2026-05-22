@@ -70,7 +70,9 @@ export default defineConfig({
     port: DEFAULT_DEV_PORT,
   },
   site: "https://onequery.dev",
-  trailingSlash: "never",
+  // Cloudflare normalizes extensionless page URLs with trailing slashes in
+  // production, so keep Astro's generated route shape aligned with the edge.
+  trailingSlash: "always",
   vite: {
     optimizeDeps: {
       exclude: ["@nanostores/react"],

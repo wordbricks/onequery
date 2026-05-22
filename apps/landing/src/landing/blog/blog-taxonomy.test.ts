@@ -32,9 +32,9 @@ describe("blog taxonomy", () => {
   });
 
   it("returns only canonical blog index paths", () => {
-    expect(getBlogIndexPath({ category: "All" })).toBe("/blog");
+    expect(getBlogIndexPath({ category: "All" })).toBe("/blog/");
     expect(getBlogIndexPath({ category: "Product" })).toBe(
-      "/blog/category/product"
+      "/blog/category/product/"
     );
   });
 });

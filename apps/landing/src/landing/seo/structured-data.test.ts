@@ -2,7 +2,11 @@ import type { ImageMetadata } from "astro";
 import { describe, expect, it } from "vitest";
 
 import type { BlogPost } from "../blog/blog-types";
-import { createBlogPostStructuredData, toIsoDateTime } from "./structured-data";
+import {
+  createBlogPostStructuredData,
+  createCanonicalUrl,
+  toIsoDateTime,
+} from "./structured-data";
 
 describe("toIsoDateTime", () => {
   it("converts canonical publication dates to UTC date-time output", () => {
@@ -16,6 +20,21 @@ describe("toIsoDateTime", () => {
 
   it("rejects invalid calendar dates", () => {
     expect(toIsoDateTime("2026-02-31")).toBeUndefined();
+  });
+});
+
+describe("createCanonicalUrl", () => {
+  it("matches Cloudflare trailing-slash page URLs", () => {
+    expect(createCanonicalUrl("/blog")).toBe("https://onequery.dev/blog/");
+    expect(createCanonicalUrl("/blog/category/product/")).toBe(
+      "https://onequery.dev/blog/category/product/"
+    );
+  });
+
+  it("keeps file endpoint URLs extension-first", () => {
+    expect(createCanonicalUrl("/sitemap.xml")).toBe(
+      "https://onequery.dev/sitemap.xml"
+    );
   });
 });
 
@@ -64,7 +83,7 @@ describe("createBlogPostStructuredData", () => {
           hasPart: [
             expect.objectContaining({
               "@id":
-                "https://onequery.dev/blog/debug-production-agent-runs-with-onequery#evidence-loop",
+                "https://onequery.dev/blog/debug-production-agent-runs-with-onequery/#evidence-loop",
               name: "Evidence loop",
             }),
           ],

@@ -43,7 +43,7 @@ const visibleRelatedPosts =
     <article id="top">
       <header class="blog-post-header">
         <div class="blog-breadcrumb">
-          <a href="/blog">Blog</a>
+          <a href="/blog/">Blog</a>
           <span aria-hidden="true">/</span>
           <span>{post.category}</span>
         </div>
@@ -145,7 +145,7 @@ const visibleRelatedPosts =
       <div class="blog-related-grid">
         {
           visibleRelatedPosts.map((relatedPost) => (
-            <a href={`/blog/${relatedPost.slug}`}>
+            <a href={`/blog/${relatedPost.slug}/`}>
               <span>
                 {relatedPost.date} - {relatedPost.category}
               </span>
@@ -157,7 +157,7 @@ const visibleRelatedPosts =
           ))
         }
       </div>
-      <a href="/blog" class="blog-more-link">
+      <a href="/blog/" class="blog-more-link">
         View more posts <span aria-hidden="true">→</span>
       </a>
     </section>

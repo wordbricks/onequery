@@ -74,7 +74,9 @@ export function toAbsoluteSiteUrl(pathOrUrl: string, site?: SiteInput) {
 export function createCanonicalUrl(pathname: string, site?: SiteInput) {
   const siteUrl = normalizeSiteUrl(site);
   const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
-  const normalizedPath = path === "/" ? "/" : path.replace(/\/+$/u, "");
+  const hasFileExtension = /\/[^/]+\.[^/]+$/u.test(path);
+  const normalizedPath =
+    path === "/" || path.endsWith("/") || hasFileExtension ? path : `${path}/`;
 
   return `${siteUrl}${normalizedPath}`;
 }
@@ -253,7 +255,7 @@ export function createLandingPageStructuredData(
         "@id": `${siteUrl}/#breadcrumb`,
       },
       significantLink: [
-        `${siteUrl}/blog`,
+        createCanonicalUrl("/blog", siteUrl),
         INSTALL_SCRIPT_URL,
         SELF_HOST_DOCS_URL,
       ],
@@ -277,7 +279,7 @@ export function createBlogIndexStructuredData(
   input: BlogIndexStructuredDataInput
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(input.site);
-  const blogUrl = `${siteUrl}/blog`;
+  const blogUrl = createCanonicalUrl("/blog", siteUrl);
   const pageUrl = createCanonicalUrl(input.pathname ?? "/blog", siteUrl);
   const breadcrumbItems = [
     {
@@ -316,7 +318,7 @@ export function createBlogIndexStructuredData(
         "@id": getOrganizationId(siteUrl),
       },
       blogPost: input.posts.map((post) => ({
-        "@id": `${blogUrl}/${post.slug}#article`,
+        "@id": `${createCanonicalUrl(`/blog/${post.slug}`, siteUrl)}#article`,
       })),
     },
     {
@@ -370,7 +372,8 @@ export function createBlogPostStructuredData(
   }
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(site);
-  const postUrl = `${siteUrl}/blog/${post.slug}`;
+  const blogUrl = createCanonicalUrl("/blog", siteUrl);
+  const postUrl = createCanonicalUrl(`/blog/${post.slug}`, siteUrl);
   const publishedTime = toIsoDateTime(post.publishedAt);
   const postSections = post.sections;
 
@@ -378,9 +381,9 @@ export function createBlogPostStructuredData(
     ...createSiteGraph(siteUrl),
     {
       "@type": "Blog",
-      "@id": `${siteUrl}/blog#blog`,
+      "@id": `${blogUrl}#blog`,
       name: "OneQuery Blog",
-      url: `${siteUrl}/blog`,
+      url: blogUrl,
       publisher: {
         "@id": getOrganizationId(siteUrl),
       },
@@ -414,7 +417,7 @@ export function createBlogPostStructuredData(
         "@id": getOrganizationId(siteUrl),
       },
       isPartOf: {
-        "@id": `${siteUrl}/blog#blog`,
+        "@id": `${blogUrl}#blog`,
       },
       articleSection: post.category,
       keywords: getBlogPostKeywords(post),
@@ -461,7 +464,7 @@ export function createBlogPostStructuredData(
           "@type": "ListItem",
           position: 2,
           name: "Blog",
-          item: `${siteUrl}/blog`,
+          item: blogUrl,
         },
         {
           "@type": "ListItem",
@@ -484,7 +487,7 @@ function createBlogPostSummaryStructuredData(
   }
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(site);
-  const postUrl = `${siteUrl}/blog/${post.slug}`;
+  const postUrl = createCanonicalUrl(`/blog/${post.slug}`, siteUrl);
   const publishedTime = toIsoDateTime(post.publishedAt);
 
   return {

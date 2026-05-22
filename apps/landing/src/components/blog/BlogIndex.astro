@@ -47,7 +47,7 @@ const { activeCategory, categories, posts } = Astro.props;
         {
           posts.map((post, postIndex) => (
             <article class="blog-card">
-              <a href={`/blog/${post.slug}`}>
+              <a href={`/blog/${post.slug}/`}>
                 <BlogThumbnail post={post} priority={postIndex === 0} />
                 <div class="blog-card-meta">
                   <span>{post.category}</span>

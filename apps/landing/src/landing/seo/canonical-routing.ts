@@ -6,49 +6,58 @@ type CanonicalPathRedirect = {
 
 const INDEX_HTML_PATH_SUFFIX = "/index.html";
 const BLOG_CATEGORY_ARCHIVE_PATTERN =
-  /^\/blog\/category\/(?<categorySlug>[^/]+)\/archive$/u;
+  /^\/blog\/category\/(?<categorySlug>[^/]+)\/archive\/?$/u;
 
-function stripTrailingSlashes(pathname: string) {
-  return pathname.length > 1 ? pathname.replace(/\/+$/u, "") || "/" : pathname;
+function toTrailingSlashPagePath(pathname: string) {
+  if (pathname === "/" || pathname.endsWith("/")) {
+    return pathname;
+  }
+
+  return `${pathname}/`;
 }
 
 export function getCanonicalPathRedirect(
   pathname: string
 ): CanonicalPathRedirect | undefined {
-  let canonicalPathname = pathname;
+  const canonicalPathname =
+    redirectIndexHtmlPath(pathname) ?? redirectBlogArchivePath(pathname);
 
-  if (canonicalPathname === INDEX_HTML_PATH_SUFFIX) {
-    canonicalPathname = "/";
-  } else if (canonicalPathname.endsWith(INDEX_HTML_PATH_SUFFIX)) {
-    canonicalPathname = canonicalPathname.slice(
-      0,
-      -INDEX_HTML_PATH_SUFFIX.length
-    );
-  }
-
-  canonicalPathname = stripTrailingSlashes(canonicalPathname);
-  canonicalPathname = redirectBlogArchivePath(canonicalPathname);
-
-  if (canonicalPathname === pathname) {
+  if (!canonicalPathname || canonicalPathname === pathname) {
     return undefined;
   }
 
   return { pathname: canonicalPathname };
 }
 
+function redirectIndexHtmlPath(pathname: string) {
+  if (pathname === INDEX_HTML_PATH_SUFFIX) {
+    return "/";
+  }
+
+  if (!pathname.endsWith(INDEX_HTML_PATH_SUFFIX)) {
+    return undefined;
+  }
+
+  return toTrailingSlashPagePath(
+    pathname.slice(0, -INDEX_HTML_PATH_SUFFIX.length)
+  );
+}
+
 function redirectBlogArchivePath(pathname: string) {
-  if (pathname === "/blog/archive") {
-    return "/blog";
+  // Cloudflare owns trailing-slash redirects for live page URLs. This middleware
+  // only redirects removed inventory aliases that Cloudflare cannot infer.
+  if (pathname === "/blog/archive" || pathname === "/blog/archive/") {
+    return "/blog/";
   }
 
   const categoryArchiveMatch = BLOG_CATEGORY_ARCHIVE_PATTERN.exec(pathname);
   const categorySlug = categoryArchiveMatch?.groups?.categorySlug;
 
   if (categorySlug) {
-    return `/blog/category/${categorySlug}`;
+    return `/blog/category/${categorySlug}/`;
   }
 
-  return pathname;
+  return undefined;
 }
 
 export function createCanonicalRedirectUrl(requestUrl: string | URL) {

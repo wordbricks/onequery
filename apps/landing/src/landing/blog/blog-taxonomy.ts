@@ -25,10 +25,10 @@ export function getBlogCategorySlug(category: BlogPostCategory) {
 
 export function getBlogIndexPath(input: { category: BlogCategoryFilter }) {
   if (input.category === "All") {
-    return "/blog";
+    return "/blog/";
   }
 
-  return `/blog/category/${getBlogCategorySlug(input.category)}`;
+  return `/blog/category/${getBlogCategorySlug(input.category)}/`;
 }
 
 export function getPopulatedBlogPostCategories(
