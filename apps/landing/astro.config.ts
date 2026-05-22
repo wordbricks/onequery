@@ -74,10 +74,15 @@ export default defineConfig({
     optimizeDeps: {
       exclude: ["@nanostores/react"],
     },
-    plugins:
-      process.env.ONEQUERY_BUNDLE_REPORT === "1"
+    plugins: [
+      visualizer({
+        emitFile: true,
+        filename: "stats.html",
+      }) as never,
+      ...(process.env.ONEQUERY_BUNDLE_REPORT === "1"
         ? [createBundleReportPlugin()]
-        : [],
+        : []),
+    ],
     resolve: {
       dedupe: ["react", "react-dom", "remotion"],
     },
