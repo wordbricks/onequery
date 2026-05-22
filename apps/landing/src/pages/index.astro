@@ -1,5 +1,7 @@
 ---
 import ControlPlaneDiagram from "../components/landing/ControlPlaneDiagram.astro";
+import DownloadCommand from "../components/landing/DownloadCommand.astro";
+import HeroProductSurface from "../components/landing/HeroProductSurface.astro";
 import OpenClawSection from "../components/landing/OpenClawSection.astro";
 import ProductUpdatesSection from "../components/landing/ProductUpdatesSection.astro";
 import RoadmapSection from "../components/landing/RoadmapSection.astro";
@@ -19,8 +21,6 @@ import {
   QUERY_TERMINAL_LINES,
   QUICKSTART_TERMINAL_LINES,
 } from "../data/home";
-import { DownloadCommand } from "../landing/download-command/download-command";
-import { HeroProductSurface } from "../landing/hero-product/hero-product-surface";
 import { actions } from "astro:actions";
 
 // ProductUpdatesSection uses Astro Actions with server-rendered form feedback.
@@ -90,7 +90,7 @@ const productUpdatesResult = Astro.getActionResult(actions.productUpdates);
             credentials stay centralized and every query leaves an audit trail.
           </p>
 
-          <DownloadCommand client:load />
+          <DownloadCommand />
 
           <div class="hero-actions">
             {
@@ -111,7 +111,7 @@ const productUpdatesResult = Astro.getActionResult(actions.productUpdates);
         </div>
 
         <div class="hero-visual">
-          <HeroProductSurface client:load />
+          <HeroProductSurface />
         </div>
 
         <ul class="hero-signals">

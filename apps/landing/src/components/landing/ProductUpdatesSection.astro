@@ -96,10 +96,13 @@ const feedback = result?.error
 
 {
   result?.data ? (
-    <script>
-      import { trackProductUpdatesSignup } from "../../landing/analytics/landing-analytics";
-
-      trackProductUpdatesSignup();
+    <script is:inline>
+      if (Array.isArray(window.dataLayer)) {
+        window.dataLayer.push({
+          event: "sign_up",
+          method: "product_updates",
+        });
+      }
     </script>
   ) : null
 }
