@@ -35,13 +35,13 @@ type RuntimeAssetFamilyConfig<FileRole extends string> = {
 export type RuntimeBundleDirectoryId = "cli" | "server";
 export type RuntimeBundleEntryId = "migrations" | "webDist";
 type PgliteRuntimeAssetFileRole = "fsBundle" | "initdbWasm" | "pgliteWasm";
-type PolyglotSqlRuntimeAssetFileRole = "wasm";
-export type RuntimeAssetFamilyId = "pglite" | "polyglotSql";
+type SqlParserRuntimeAssetFileRole = "wasm";
+export type RuntimeAssetFamilyId = "pglite" | "sqlParser";
 export type RuntimeAssetEnvironment = Record<string, string | undefined>;
 export type RuntimeAssetFileRole<Family extends RuntimeAssetFamilyId> =
   Family extends "pglite"
     ? PgliteRuntimeAssetFileRole
-    : PolyglotSqlRuntimeAssetFileRole;
+    : SqlParserRuntimeAssetFileRole;
 
 type RuntimeBundleLayout = {
   directories: Record<RuntimeBundleDirectoryId, RuntimeBundlePathConfig>;
@@ -55,7 +55,7 @@ type RuntimeBundleLayout = {
   runtimeRootEnvVar: string;
   runtimeAssetFamilies: {
     pglite: RuntimeAssetFamilyConfig<PgliteRuntimeAssetFileRole>;
-    polyglotSql: RuntimeAssetFamilyConfig<PolyglotSqlRuntimeAssetFileRole>;
+    sqlParser: RuntimeAssetFamilyConfig<SqlParserRuntimeAssetFileRole>;
   };
 };
 

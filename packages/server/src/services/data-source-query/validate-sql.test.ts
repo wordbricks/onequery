@@ -152,7 +152,7 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
     );
     await expectValidationError(
       "SELECT * FROM (CREATE TABLE new_users AS SELECT * FROM users) x",
-      "Only SELECT queries are allowed. Got: create_table"
+      "Failed to parse SQL: Parse error: sql parser error: Expected: joined table, found: new_users at Line: 1, Column: 29"
     );
     await expectValidationError(
       "SELECT * FROM (SELECT * INTO new_users FROM users) x",
@@ -218,7 +218,7 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
     );
     await expectValidationError(
       "SELECT @x := 1",
-      "Only SELECT queries are allowed. Got: property_e_q",
+      "Only SELECT queries are allowed. Got: assignment",
       "mysql"
     );
   });
@@ -238,7 +238,7 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
   it("uses strict syntax validation before parsing", async () => {
     await expectValidationError(
       "SELECT name, FROM employees",
-      "Failed to parse SQL: Trailing comma before FROM is not allowed in strict syntax mode"
+      "Failed to parse SQL: Parse error: sql parser error: Expected an expression, found: FROM at Line: 1, Column: 19"
     );
   });
 });

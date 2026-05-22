@@ -1,29 +1,17 @@
 import type { DatabaseCredentialProviderType } from "@onequery/db/server";
-import {
-  Dialect,
-  ast as polyglotAst,
-  init as initPolyglot,
-  parse,
-  tokenize,
-  validate as validateSqlSyntax,
-} from "@polyglot-sql/sdk";
-import type * as PolyglotSdk from "@polyglot-sql/sdk";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
+
+import { ensureSqlParserInit, parseSqlStatements } from "./sql-parser-wasm";
 
 const OUTFILE_ERROR = "SELECT INTO OUTFILE/DUMPFILE is not allowed";
 const ERRORS = {
   cteSelectOnly: "CTEs must only contain SELECT statements",
-  unsafeFunction: (name: string) =>
-    `Side-effecting SQL functions are not allowed: ${name}`,
   locking: "SELECT locking clauses are not allowed",
   selectInto: "SELECT INTO is not allowed",
+  unsafeFunction: (name: string) =>
+    `Side-effecting SQL functions are not allowed: ${name}`,
 } as const;
-
-type Violation =
-  | Exclude<(typeof ERRORS)[keyof typeof ERRORS], (name: string) => string>
-  | typeof OUTFILE_ERROR
-  | ReturnType<typeof ERRORS.unsafeFunction>;
 
 type ValidationValue = {
   sql: string;
@@ -48,113 +36,51 @@ type SqlValidationErrorReason =
   | "non_select_query"
   | "parse_failed"
   | "parser_init_failed"
-  | "unsafe_function"
-  | "select_into_not_allowed";
+  | "select_into_not_allowed"
+  | "unsafe_function";
 
 class SqlValidationError extends TaggedError("SqlValidationError")<{
-  reason: SqlValidationErrorReason;
-  message: string;
   cause?: unknown;
+  message: string;
+  reason: SqlValidationErrorReason;
 }>() {}
 
 type ValidationResult = ResultType<ValidationValue, SqlValidationError>;
 
 const DIALECT_MAP = {
-  aws_athena_connector: Dialect.Athena,
-  bigquery: Dialect.BigQuery,
-  cloudflare_d1: Dialect.SQLite,
-  laminar: Dialect.ClickHouse,
-  // MotherDuck executes DuckDB SQL through a PostgreSQL wire endpoint. DuckDB's
-  // dialect intentionally follows PostgreSQL closely enough for our read-only
-  // validator until Polyglot exposes a DuckDB dialect.
-  motherduck: Dialect.PostgreSQL,
-  mysql: Dialect.MySQL,
-  postgres: Dialect.PostgreSQL,
-} as const satisfies Record<DatabaseCredentialProviderType, Dialect>;
+  aws_athena_connector: "hive",
+  bigquery: "bigquery",
+  cloudflare_d1: "sqlite",
+  laminar: "clickhouse",
+  motherduck: "postgres",
+  mysql: "mysql",
+  postgres: "postgres",
+} as const satisfies Record<DatabaseCredentialProviderType, string>;
 
-const SIDE_EFFECTING_EXPRESSION_KINDS = new Set([
-  "add_partition",
-  "alter_column",
-  "alter_index",
-  "alter_sequence",
-  "alter_session",
-  "alter_set",
-  "alter_sort_key",
-  "alter_table",
-  "alter_view",
-  "analyze",
-  "analyze_delete",
-  "analyze_histogram",
-  "analyze_list_chained_rows",
-  "analyze_sample",
-  "analyze_statistics",
-  "analyze_validate",
-  "analyze_with",
-  "attach",
-  "cache",
-  "command",
-  "comment",
-  "commit",
-  "conditional_insert",
-  "copy",
-  "create_database",
-  "create_function",
-  "create_index",
-  "create_procedure",
-  "create_schema",
-  "create_sequence",
-  "create_synonym",
-  "create_table",
-  "create_task",
-  "create_trigger",
-  "create_type",
-  "create_view",
-  "declare",
-  "delete",
-  "detach",
-  "drop_database",
-  "drop_function",
-  "drop_index",
-  "drop_namespace",
-  "drop_partition",
-  "drop_procedure",
-  "drop_schema",
-  "drop_sequence",
-  "drop_table",
-  "drop_trigger",
-  "drop_type",
-  "drop_view",
-  "execute",
-  "export",
-  "grant",
-  "install",
-  "insert",
-  "kill",
-  "load_data",
-  "lock",
-  "locking_statement",
-  "merge",
-  "multitable_inserts",
-  "next_value_for",
-  "pragma",
-  "property_e_q",
-  "put",
-  "raw",
-  "refresh",
-  "rename_column",
-  "replace_partition",
-  "return_stmt",
-  "revoke",
-  "rollback",
-  "set",
-  "set_statement",
-  "transaction",
-  "truncate",
-  "truncate_table",
-  "uncache",
-  "undrop",
-  "update",
-  "use",
+const MUTATING_STATEMENT_KEYS = new Set([
+  "AlterTable",
+  "Analyze",
+  "AttachDatabase",
+  "CreateFunction",
+  "CreateIndex",
+  "CreateTable",
+  "CreateTrigger",
+  "CreateView",
+  "Delete",
+  "DetachDatabase",
+  "Drop",
+  "DropFunction",
+  "DropIndex",
+  "DropTable",
+  "DropTrigger",
+  "DropView",
+  "Insert",
+  "Pragma",
+  "Reindex",
+  "Replace",
+  "Truncate",
+  "Update",
+  "Vacuum",
 ]);
 
 const POSTGRES_UNSAFE_FUNCTIONS = new Set([
@@ -223,58 +149,10 @@ const MYSQL_UNSAFE_FUNCTIONS = new Set([
 ]);
 
 type ValidationContext = {
-  trimmedSql: string;
   dbType: DatabaseCredentialProviderType;
-  dialect: (typeof DIALECT_MAP)[DatabaseCredentialProviderType];
+  dialect: string;
+  trimmedSql: string;
 };
-
-type ParsedQuery = {
-  statement: Expression;
-};
-
-type Expression = PolyglotSdk.ast.Expression;
-type ExpressionRecord = Record<string, unknown>;
-type TokenInfo = PolyglotSdk.TokenInfo & {
-  token_type?: string;
-};
-
-type SelectData = ExpressionRecord & {
-  into?: unknown;
-  locks?: unknown[];
-  with?: WithData | null;
-};
-
-type SetOperationData = ExpressionRecord & {
-  with?: WithData | null;
-};
-
-type SubqueryData = ExpressionRecord & {
-  this?: Expression;
-};
-
-type FunctionData = ExpressionRecord & {
-  name?: unknown;
-};
-
-type MethodCallData = ExpressionRecord & {
-  method?: unknown;
-};
-
-type IdentifierLike = {
-  name?: unknown;
-};
-
-type WithData = ExpressionRecord & {
-  ctes?: CteData[];
-};
-
-type CteData = ExpressionRecord & {
-  this?: Expression;
-};
-
-function getSelectIntoError(dbType: DatabaseCredentialProviderType): Violation {
-  return dbType === "mysql" ? OUTFILE_ERROR : ERRORS.selectInto;
-}
 
 function buildContext(
   sql: string,
@@ -295,7 +173,7 @@ function buildContext(
 async function initSqlParser(): Promise<ResultType<null, SqlValidationError>> {
   return Result.tryPromise({
     try: async () => {
-      await initPolyglot();
+      await ensureSqlParserInit();
       return null;
     },
     catch: (cause) =>
@@ -307,11 +185,11 @@ async function initSqlParser(): Promise<ResultType<null, SqlValidationError>> {
   });
 }
 
-function validateStrictSyntax(
+async function parseStatements(
   context: ValidationContext
-): ResultType<null, SqlValidationError> {
-  return Result.try({
-    try: () => {
+): Promise<ResultType<unknown[], SqlValidationError>> {
+  return Result.tryPromise({
+    try: async () => {
       const outfileViolation = findMysqlOutfileClause(context);
       if (outfileViolation) {
         throw new SqlValidationError({
@@ -320,22 +198,17 @@ function validateStrictSyntax(
         });
       }
 
-      const validation = validateSqlSyntax(
-        context.trimmedSql,
-        context.dialect,
-        {
-          strictSyntax: true,
-        }
-      );
-
-      const firstError = validation.errors.find(
-        (error) => error.severity === "error"
-      );
-      if (!validation.valid || firstError) {
-        throw new Error(firstError?.message ?? "unknown syntax error");
+      if (findLockingClauseText(context)) {
+        throw new SqlValidationError({
+          message: ERRORS.locking,
+          reason: "locking_not_allowed",
+        });
       }
 
-      return null;
+      return parseSqlStatements(
+        normalizeSqlForParser(context.trimmedSql),
+        context.dialect
+      );
     },
     catch: (cause) =>
       cause instanceof SqlValidationError
@@ -348,65 +221,16 @@ function validateStrictSyntax(
   });
 }
 
-function findMysqlOutfileClause(context: ValidationContext): Violation | null {
-  if (context.dbType !== "mysql") {
-    return null;
-  }
-
-  const tokenization = tokenize(context.trimmedSql, context.dialect);
-  if (!tokenization.success || !Array.isArray(tokenization.tokens)) {
-    return null;
-  }
-
-  const tokens = tokenization.tokens as TokenInfo[];
-  for (let index = 0; index < tokens.length - 1; index += 1) {
-    const currentToken = tokens[index];
-    const nextToken = tokens[index + 1];
-    const current = normalizeTokenText(currentToken);
-    const next = normalizeTokenText(nextToken);
-
-    if (current === "into" && (next === "outfile" || next === "dumpfile")) {
-      return OUTFILE_ERROR;
-    }
-  }
-
-  return null;
+function normalizeSqlForParser(sql: string): string {
+  return sql
+    .replace(/\blimit\s+\?/giu, "LIMIT 1")
+    .replace(/\blimit\s+(\d+)\s+percent\b/giu, "LIMIT $1");
 }
 
-function normalizeTokenText(token: TokenInfo | undefined): string {
-  return (token?.text ?? token?.tokenType ?? token?.token_type ?? "")
-    .trim()
-    .toLowerCase();
-}
-
-async function parseStatements(
-  context: ValidationContext
-): Promise<ResultType<Expression[], SqlValidationError>> {
-  return Result.tryPromise({
-    try: async () => {
-      const parsed = parse(context.trimmedSql, context.dialect);
-      if (!parsed.success) {
-        throw new Error(parsed.error ?? "unknown parser error");
-      }
-
-      if (!Array.isArray(parsed.ast)) {
-        throw new TypeError("Failed to parse SQL: invalid AST");
-      }
-
-      return parsed.ast as Expression[];
-    },
-    catch: (cause) =>
-      new SqlValidationError({
-        cause,
-        message: `Failed to parse SQL: ${toErrorMessage(cause)}`,
-        reason: "parse_failed",
-      }),
-  });
-}
-
-function extractParsedQuery(
-  statements: Expression[]
-): ResultType<ParsedQuery, SqlValidationError> {
+function validateParsedStatements(
+  statements: unknown[],
+  dbType: DatabaseCredentialProviderType
+): ResultType<null, SqlValidationError> {
   if (statements.length !== 1) {
     return invalid(
       "multiple_statements",
@@ -415,57 +239,43 @@ function extractParsedQuery(
   }
 
   const statement = statements[0];
-  if (!isExpression(statement)) {
-    return invalid("parse_failed", "Failed to parse SQL: invalid AST");
-  }
-
-  const query = unwrapParenthesizedQuery(statement);
-  if (!query || !isTopLevelQueryExpression(query)) {
-    const kind = getDeepestExpressionKind(statement);
+  if (!isTopLevelReadOnlyStatement(statement)) {
     return invalid(
       "non_select_query",
-      `Only SELECT queries are allowed. Got: ${kind ?? "unknown"}`
+      `Only SELECT queries are allowed. Got: ${getStatementKind(statement)}`
     );
   }
 
-  return Result.ok({ statement });
-}
-
-function validateReadOnlyQuery(
-  parsedQuery: ParsedQuery,
-  dbType: DatabaseCredentialProviderType
-): ResultType<null, SqlValidationError> {
-  const cteViolation = findCteViolation(parsedQuery.statement);
-  if (cteViolation) {
-    return invalid("cte_must_select", cteViolation);
+  if (containsCteMutation(statement)) {
+    return invalid("cte_must_select", ERRORS.cteSelectOnly);
   }
 
-  const selectIntoViolation = findSelectIntoViolationInQuery(
-    parsedQuery.statement,
-    dbType
-  );
+  const selectIntoViolation = findSelectIntoViolation(statement, dbType);
   if (selectIntoViolation) {
     return invalid("select_into_not_allowed", selectIntoViolation);
   }
 
-  const lockingViolation = findLockingViolation(parsedQuery.statement);
-  if (lockingViolation) {
-    return invalid("locking_not_allowed", lockingViolation);
+  if (containsLockingClause(statement)) {
+    return invalid("locking_not_allowed", ERRORS.locking);
   }
 
-  const unsafeFunctionViolation = findUnsafeFunctionViolation(
-    parsedQuery.statement,
-    dbType
-  );
-  if (unsafeFunctionViolation) {
-    return invalid("unsafe_function", unsafeFunctionViolation);
+  const unsafeFunction = findUnsafeFunction(statement, dbType);
+  if (unsafeFunction) {
+    return invalid("unsafe_function", ERRORS.unsafeFunction(unsafeFunction));
   }
 
-  const mutableKind = findSideEffectingExpressionKind(parsedQuery.statement);
-  if (mutableKind) {
+  const mutatingStatementKind = findMutatingStatementKind(statement);
+  if (mutatingStatementKind) {
     return invalid(
       "non_select_query",
-      `Only SELECT queries are allowed. Got: ${mutableKind}`
+      `Only SELECT queries are allowed. Got: ${mutatingStatementKind}`
+    );
+  }
+
+  if (containsAssignmentOperator(statement)) {
+    return invalid(
+      "non_select_query",
+      "Only SELECT queries are allowed. Got: assignment"
     );
   }
 
@@ -476,178 +286,269 @@ function finalizeSql(context: ValidationContext): ValidationResult {
   return Result.ok({ sql: context.trimmedSql });
 }
 
-function isExpression(value: unknown): value is Expression {
-  return polyglotAst.isExpressionValue(value);
-}
-
-function getExpressionKind(expr: Expression | undefined): string {
-  return expr && isExpression(expr) ? polyglotAst.getExprType(expr) : "unknown";
-}
-
-function getDeepestExpressionKind(expr: Expression | undefined): string | null {
-  if (!expr || !isExpression(expr)) {
+function findMysqlOutfileClause(
+  context: ValidationContext
+): typeof OUTFILE_ERROR | null {
+  if (context.dbType !== "mysql") {
     return null;
   }
 
-  const subquery = getExpressionData<SubqueryData>(expr, "subquery");
-  if (subquery?.this && isExpression(subquery.this)) {
-    return getDeepestExpressionKind(subquery.this);
-  }
-
-  return getExpressionKind(expr);
-}
-
-function getExpressionData<T extends ExpressionRecord>(
-  expr: Expression | undefined,
-  kind: string
-): T | null {
-  if (!expr || !isExpression(expr) || getExpressionKind(expr) !== kind) {
-    return null;
-  }
-
-  const data = polyglotAst.getExprData(expr);
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
-    return null;
-  }
-
-  return data as T;
-}
-
-function getSetOperationData(expr: Expression): SetOperationData | null {
-  if (!polyglotAst.isSetOperation(expr)) {
-    return null;
-  }
-
-  const kind = getExpressionKind(expr);
-  return getExpressionData<SetOperationData>(expr, kind);
-}
-
-function unwrapParenthesizedQuery(expr: Expression): Expression | null {
-  if (isTopLevelQueryExpression(expr)) {
-    return expr;
-  }
-
-  if (!polyglotAst.isSubquery(expr)) {
-    return null;
-  }
-
-  const subquery = getExpressionData<SubqueryData>(expr, "subquery");
-  if (!subquery?.this || !isExpression(subquery.this)) {
-    return null;
-  }
-  return unwrapParenthesizedQuery(subquery.this);
-}
-
-function isTopLevelQueryExpression(expr: Expression): boolean {
-  return polyglotAst.isSelect(expr) || polyglotAst.isSetOperation(expr);
-}
-
-function isCteQueryExpression(expr: Expression): boolean {
-  const unwrapped = unwrapParenthesizedQuery(expr);
-  return Boolean(unwrapped && isTopLevelQueryExpression(unwrapped));
-}
-
-function findCteViolation(query: Expression): Violation | null {
-  const violatingCte = polyglotAst.findFirst(query, (expr) => {
-    const withClause = getWithClause(expr);
-    const ctes = Array.isArray(withClause?.ctes) ? withClause.ctes : [];
-    for (const cte of ctes) {
-      if (
-        !cte.this ||
-        !isExpression(cte.this) ||
-        !isCteQueryExpression(cte.this)
-      ) {
-        return true;
-      }
+  const tokens = tokenizeSqlWithoutCommentsOrStrings(context.trimmedSql);
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    const current = tokens[index]?.toLowerCase();
+    const next = tokens[index + 1]?.toLowerCase();
+    if (current === "into" && (next === "outfile" || next === "dumpfile")) {
+      return OUTFILE_ERROR;
     }
-
-    return false;
-  });
-
-  return violatingCte ? ERRORS.cteSelectOnly : null;
-}
-
-function getWithClause(expr: Expression): WithData | null {
-  const select = getExpressionData<SelectData>(expr, "select");
-  if (select?.with) {
-    return select.with;
-  }
-
-  const setOperation = getSetOperationData(expr);
-  return setOperation?.with ?? null;
-}
-
-function findSelectIntoViolationInQuery(
-  query: Expression,
-  dbType: DatabaseCredentialProviderType
-): Violation | null {
-  const selectInto = polyglotAst.findFirst(query, (expr) => {
-    const select = getExpressionData<SelectData>(expr, "select");
-    return Boolean(select?.into);
-  });
-
-  return selectInto ? getSelectIntoError(dbType) : null;
-}
-
-function findLockingViolation(query: Expression): Violation | null {
-  const lockingSelect = polyglotAst.findFirst(query, (expr) => {
-    const select = getExpressionData<SelectData>(expr, "select");
-    return Array.isArray(select?.locks) && select.locks.length > 0;
-  });
-
-  return lockingSelect ? ERRORS.locking : null;
-}
-
-function findUnsafeFunctionViolation(
-  query: Expression,
-  dbType: DatabaseCredentialProviderType
-): Violation | null {
-  const unsafeFunctionCall = polyglotAst.findFirst(query, (expr) => {
-    const functionName = getCalledFunctionName(expr);
-    if (!functionName || !isUnsafeFunctionName(functionName, dbType)) {
-      return false;
-    }
-
-    return true;
-  });
-
-  const functionName = unsafeFunctionCall
-    ? getCalledFunctionName(unsafeFunctionCall)
-    : null;
-  return functionName ? ERRORS.unsafeFunction(functionName) : null;
-}
-
-function getCalledFunctionName(expr: Expression): string | null {
-  const functionData = getExpressionData<FunctionData>(expr, "function");
-  if (functionData) {
-    return normalizeIdentifierName(functionData.name);
-  }
-
-  const methodCallData = getExpressionData<MethodCallData>(expr, "method_call");
-  if (methodCallData) {
-    return normalizeIdentifierName(methodCallData.method);
   }
 
   return null;
 }
 
-function normalizeIdentifierName(value: unknown): string | null {
-  const rawName =
-    typeof value === "string"
-      ? value
-      : value && typeof value === "object" && !Array.isArray(value)
-        ? (value as IdentifierLike).name
-        : null;
-  if (typeof rawName !== "string") {
+function findLockingClauseText(context: ValidationContext): boolean {
+  if (context.dbType !== "mysql") {
+    return false;
+  }
+
+  const tokens = tokenizeSqlWithoutCommentsOrStrings(context.trimmedSql).map(
+    (token) => token.toLowerCase()
+  );
+  for (let index = 0; index < tokens.length - 3; index += 1) {
+    if (
+      tokens[index] === "lock" &&
+      tokens[index + 1] === "in" &&
+      tokens[index + 2] === "share" &&
+      tokens[index + 3] === "mode"
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function tokenizeSqlWithoutCommentsOrStrings(sql: string): string[] {
+  const tokens: string[] = [];
+  let token = "";
+  let index = 0;
+
+  const flush = () => {
+    if (token.length > 0) {
+      tokens.push(token);
+      token = "";
+    }
+  };
+
+  while (index < sql.length) {
+    const current = sql[index];
+    const next = sql[index + 1];
+
+    if (current === "-" && next === "-") {
+      flush();
+      index += 2;
+      while (index < sql.length && sql[index] !== "\n") {
+        index += 1;
+      }
+      continue;
+    }
+
+    if (current === "/" && next === "*") {
+      flush();
+      index += 2;
+      while (
+        index < sql.length &&
+        !(sql[index] === "*" && sql[index + 1] === "/")
+      ) {
+        index += 1;
+      }
+      index += 2;
+      continue;
+    }
+
+    if (current === "'" || current === '"' || current === "`") {
+      flush();
+      const quote = current;
+      index += 1;
+      while (index < sql.length) {
+        if (sql[index] === quote) {
+          if (sql[index + 1] === quote) {
+            index += 2;
+            continue;
+          }
+          index += 1;
+          break;
+        }
+        index += 1;
+      }
+      continue;
+    }
+
+    if (/[A-Za-z_]/u.test(current ?? "")) {
+      token += current;
+      index += 1;
+      continue;
+    }
+
+    flush();
+    index += 1;
+  }
+
+  flush();
+  return tokens;
+}
+
+function isTopLevelReadOnlyStatement(statement: unknown): boolean {
+  return (
+    isQueryStatement(statement) && isReadOnlyQueryBody(getQueryBody(statement))
+  );
+}
+
+function isReadOnlyQueryBody(body: unknown): boolean {
+  if (!isRecord(body)) {
+    return false;
+  }
+
+  if ("Select" in body) {
+    return true;
+  }
+
+  if ("Query" in body) {
+    return isReadOnlyQueryBody(body.Query);
+  }
+
+  if ("body" in body) {
+    return isReadOnlyQueryBody(body.body);
+  }
+
+  if ("SetOperation" in body) {
+    const operation = body.SetOperation;
+    return (
+      isRecord(operation) &&
+      isReadOnlyQueryBody(operation.left) &&
+      isReadOnlyQueryBody(operation.right)
+    );
+  }
+
+  return false;
+}
+
+function containsCteMutation(value: unknown): boolean {
+  if (!isQueryStatement(value)) {
+    return false;
+  }
+
+  const cteTables = value.Query.with;
+  if (!isRecord(cteTables) || !Array.isArray(cteTables.cte_tables)) {
+    return false;
+  }
+
+  return cteTables.cte_tables.some((cteTable) => {
+    if (!isRecord(cteTable)) {
+      return true;
+    }
+
+    return !isReadOnlyQueryBody(getQueryBody(cteTable.query));
+  });
+}
+
+function findSelectIntoViolation(
+  value: unknown,
+  dbType: DatabaseCredentialProviderType
+): string | null {
+  if (containsSelectInto(value)) {
+    return dbType === "mysql" ? OUTFILE_ERROR : ERRORS.selectInto;
+  }
+
+  return null;
+}
+
+function containsSelectInto(value: unknown): boolean {
+  if (!isRecord(value)) {
+    if (Array.isArray(value)) {
+      return value.some(containsSelectInto);
+    }
+    return false;
+  }
+
+  const select = value.Select;
+  if (isRecord(select) && select.into !== undefined && select.into !== null) {
+    return true;
+  }
+
+  return Object.values(value).some(containsSelectInto);
+}
+
+function containsLockingClause(value: unknown): boolean {
+  if (!isRecord(value)) {
+    if (Array.isArray(value)) {
+      return value.some(containsLockingClause);
+    }
+    return false;
+  }
+
+  if (Array.isArray(value.locks) && value.locks.length > 0) {
+    return true;
+  }
+
+  for (const child of Object.values(value)) {
+    if (containsLockingClause(child)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function findUnsafeFunction(
+  value: unknown,
+  dbType: DatabaseCredentialProviderType
+): string | null {
+  if (!isRecord(value)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const unsafe = findUnsafeFunction(item, dbType);
+        if (unsafe) {
+          return unsafe;
+        }
+      }
+    }
     return null;
   }
 
-  const normalized = rawName
-    .trim()
-    .replace(/^[`"[]|[`"\]]$/gu, "")
-    .toLowerCase();
-  const parts = normalized.split(".");
-  const functionName = parts.at(-1)?.trim() ?? "";
+  if (isRecord(value.Function)) {
+    const functionName = normalizeFunctionName(value.Function.name);
+    if (functionName && isUnsafeFunctionName(functionName, dbType)) {
+      return functionName;
+    }
+  }
+
+  for (const child of Object.values(value)) {
+    const unsafe = findUnsafeFunction(child, dbType);
+    if (unsafe) {
+      return unsafe;
+    }
+  }
+
+  return null;
+}
+
+function normalizeFunctionName(value: unknown): string | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const parts = value
+    .map((part) => {
+      if (!isRecord(part) || !isRecord(part.Identifier)) {
+        return null;
+      }
+      return typeof part.Identifier.value === "string"
+        ? part.Identifier.value
+        : null;
+    })
+    .filter((part): part is string => part !== null);
+
+  const functionName = parts.at(-1)?.trim().toLowerCase() ?? "";
   return functionName.length > 0 ? functionName : null;
 }
 
@@ -655,7 +556,7 @@ function isUnsafeFunctionName(
   functionName: string,
   dbType: DatabaseCredentialProviderType
 ): boolean {
-  if (dbType === "postgres") {
+  if (dbType === "postgres" || dbType === "motherduck") {
     return (
       POSTGRES_UNSAFE_FUNCTIONS.has(functionName) ||
       functionName.startsWith("dblink_") ||
@@ -670,22 +571,95 @@ function isUnsafeFunctionName(
   return false;
 }
 
-function findSideEffectingExpressionKind(query: Expression): string | null {
-  const mutableExpression = polyglotAst.findFirst(query, (expr) =>
-    isSideEffectingExpression(expr)
-  );
+function findMutatingStatementKind(value: unknown): string | null {
+  if (!isRecord(value)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const kind = findMutatingStatementKind(item);
+        if (kind) {
+          return kind;
+        }
+      }
+    }
+    return null;
+  }
 
-  return mutableExpression ? getExpressionKind(mutableExpression) : null;
+  for (const [key, child] of Object.entries(value)) {
+    if (MUTATING_STATEMENT_KEYS.has(key)) {
+      return normalizeStatementKind(key);
+    }
+
+    const nested = findMutatingStatementKind(child);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return null;
 }
 
-function isSideEffectingExpression(expr: Expression): boolean {
-  return (
-    polyglotAst.isInsert(expr) ||
-    polyglotAst.isUpdate(expr) ||
-    polyglotAst.isDelete(expr) ||
-    polyglotAst.isDDL(expr) ||
-    SIDE_EFFECTING_EXPRESSION_KINDS.has(getExpressionKind(expr))
+function containsAssignmentOperator(value: unknown): boolean {
+  if (!isRecord(value)) {
+    if (Array.isArray(value)) {
+      return value.some(containsAssignmentOperator);
+    }
+    return false;
+  }
+
+  if (value.op === "Assignment") {
+    return true;
+  }
+
+  return Object.values(value).some(containsAssignmentOperator);
+}
+
+function isQueryStatement(
+  value: unknown
+): value is { Query: Record<string, unknown> } {
+  return isRecord(value) && isRecord(value.Query);
+}
+
+function getQueryBody(value: unknown): unknown {
+  if (isQueryStatement(value)) {
+    return value.Query.body;
+  }
+
+  if (isRecord(value) && "body" in value) {
+    return value.body;
+  }
+
+  return undefined;
+}
+
+function getStatementKind(statement: unknown): string {
+  if (!isRecord(statement)) {
+    return "unknown";
+  }
+
+  return normalizeStatementKind(Object.keys(statement)[0] ?? "unknown");
+}
+
+function normalizeStatementKind(kind: string): string {
+  return kind
+    .replace(/([a-z0-9])([A-Z])/gu, "$1_$2")
+    .replace(/([A-Z])([A-Z][a-z])/gu, "$1_$2")
+    .toLowerCase();
+}
+
+function invalid(
+  reason: SqlValidationErrorReason,
+  message: string
+): ResultType<never, SqlValidationError> {
+  return Result.err(
+    new SqlValidationError({
+      message,
+      reason,
+    })
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function toErrorMessage(error: unknown): string {
@@ -719,18 +693,6 @@ export function classifyCliQueryValidationFailure(
   };
 }
 
-function invalid(
-  reason: SqlValidationErrorReason,
-  message: string
-): ResultType<never, SqlValidationError> {
-  return Result.err(
-    new SqlValidationError({
-      message,
-      reason,
-    })
-  );
-}
-
 export async function validateAndNormalizeReadOnlyQuery(
   sql: string,
   dbType: DatabaseCredentialProviderType
@@ -738,10 +700,8 @@ export async function validateAndNormalizeReadOnlyQuery(
   return Result.gen(async function* validateReadOnlyQueryFlow() {
     const context = yield* buildContext(sql, dbType);
     yield* Result.await(initSqlParser());
-    yield* validateStrictSyntax(context);
     const statements = yield* Result.await(parseStatements(context));
-    const parsedQuery = yield* extractParsedQuery(statements);
-    yield* validateReadOnlyQuery(parsedQuery, context.dbType);
+    yield* validateParsedStatements(statements, context.dbType);
     return finalizeSql(context);
   });
 }

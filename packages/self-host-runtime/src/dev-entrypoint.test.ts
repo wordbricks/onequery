@@ -28,10 +28,10 @@ const selfHostRuntimeDir = resolve(
   dirname(fileURLToPath(import.meta.url)),
   ".."
 );
-const workspaceDevBundleAdjacentPolyglotWasmPath = join(
+const workspaceDevBundleAdjacentSqlParserWasmPath = join(
   selfHostRuntimeDir,
   "dist",
-  "polyglot_sql_wasm_bg.wasm"
+  "sql_parser_wasm_bg.wasm"
 );
 const stagedRoots = new Set<string>();
 
@@ -109,10 +109,10 @@ describe("self-host runtime dev entrypoint", () => {
     );
     expect(
       existsSync(
-        resolvePackagedRuntimeAssetPath(runtimeRoot, "polyglotSql", "wasm")
+        resolvePackagedRuntimeAssetPath(runtimeRoot, "sqlParser", "wasm")
       )
     ).toBe(true);
-    expect(existsSync(workspaceDevBundleAdjacentPolyglotWasmPath)).toBe(true);
+    expect(existsSync(workspaceDevBundleAdjacentSqlParserWasmPath)).toBe(true);
     expect(
       existsSync(
         resolvePackagedRuntimeAssetPath(runtimeRoot, "pglite", "pgliteWasm")
