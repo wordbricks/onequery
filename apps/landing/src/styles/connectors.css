@@ -31,6 +31,12 @@
   color: var(--connector-soft);
 }
 
+.connectors-shell .site-nav a[aria-current="page"] {
+  background: var(--wash);
+  box-shadow: inset 0 0 0 1px var(--connector-line);
+  color: var(--connector-ink);
+}
+
 .connectors-shell .site-footer {
   border-top-color: var(--connector-line);
 }

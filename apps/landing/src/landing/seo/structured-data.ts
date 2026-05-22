@@ -43,7 +43,10 @@ type LandingPageStructuredDataInput = {
 };
 
 type BlogIndexStructuredDataInput = {
+  breadcrumbName?: string;
   description: string;
+  itemListName?: string;
+  pathname?: string;
   postImages?: Partial<Record<string, StructuredImageMetadata>>;
   posts: readonly BlogPostSummary[];
   site?: SiteInput;
@@ -66,6 +69,14 @@ export function toAbsoluteSiteUrl(pathOrUrl: string, site?: SiteInput) {
   const path = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
 
   return `${siteUrl}${path}`;
+}
+
+export function createCanonicalUrl(pathname: string, site?: SiteInput) {
+  const siteUrl = normalizeSiteUrl(site);
+  const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const normalizedPath = path === "/" ? "/" : path.replace(/\/+$/u, "");
+
+  return `${siteUrl}${normalizedPath}`;
 }
 
 export function toIsoDateTime(date: string) {
@@ -267,6 +278,30 @@ export function createBlogIndexStructuredData(
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(input.site);
   const blogUrl = `${siteUrl}/blog`;
+  const pageUrl = createCanonicalUrl(input.pathname ?? "/blog", siteUrl);
+  const breadcrumbItems = [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: ONEQUERY_SITE_NAME,
+      item: `${siteUrl}/`,
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Blog",
+      item: blogUrl,
+    },
+  ];
+
+  if (pageUrl !== blogUrl) {
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      position: 3,
+      name: input.breadcrumbName ?? input.title,
+      item: pageUrl,
+    });
+  }
 
   return createGraph([
     ...createSiteGraph(siteUrl),
@@ -286,8 +321,8 @@ export function createBlogIndexStructuredData(
     },
     {
       "@type": "CollectionPage",
-      "@id": `${blogUrl}#webpage`,
-      url: blogUrl,
+      "@id": `${pageUrl}#webpage`,
+      url: pageUrl,
       name: input.title,
       description: input.description,
       inLanguage: "en",
@@ -303,8 +338,8 @@ export function createBlogIndexStructuredData(
     },
     {
       "@type": "ItemList",
-      "@id": `${blogUrl}#posts`,
-      name: "OneQuery Blog posts",
+      "@id": `${pageUrl}#posts`,
+      name: input.itemListName ?? "OneQuery Blog posts",
       itemListOrder: "https://schema.org/ItemListOrderDescending",
       numberOfItems: input.posts.length,
       itemListElement: input.posts.map((post, index) => ({
@@ -319,21 +354,8 @@ export function createBlogIndexStructuredData(
     },
     {
       "@type": "BreadcrumbList",
-      "@id": `${blogUrl}#breadcrumb`,
-      itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: ONEQUERY_SITE_NAME,
-          item: `${siteUrl}/`,
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: "Blog",
-          item: blogUrl,
-        },
-      ],
+      "@id": `${pageUrl}#breadcrumb`,
+      itemListElement: breadcrumbItems,
     },
   ]);
 }
@@ -350,7 +372,7 @@ export function createBlogPostStructuredData(
   const siteUrl = normalizeSiteUrl(site);
   const postUrl = `${siteUrl}/blog/${post.slug}`;
   const publishedTime = toIsoDateTime(post.publishedAt);
-  const postSections = post.sections ?? [];
+  const postSections = post.sections;
 
   return createGraph([
     ...createSiteGraph(siteUrl),
@@ -493,19 +515,15 @@ function createBlogPostSummaryStructuredData(
 }
 
 function getPostText(post: BlogPost) {
-  const sectionText =
-    post.sections?.flatMap((section) => [
-      section.title,
-      ...section.paragraphs,
-      ...(section.table
-        ? [
-            ...section.table.headers,
-            ...section.table.rows.flatMap((row) => row),
-          ]
-        : []),
-    ]) ?? [];
+  const sectionText = post.sections.flatMap((section) => [
+    section.title,
+    ...section.paragraphs,
+    ...(section.table
+      ? [...section.table.headers, ...section.table.rows.flatMap((row) => row)]
+      : []),
+  ]);
 
-  return [post.title, post.description, ...post.body, ...sectionText].join(" ");
+  return [post.title, post.description, ...sectionText].join(" ");
 }
 
 function countWords(text: string) {

@@ -6,7 +6,7 @@ import { getBlogIndexPage } from "../../landing/blog/blog-index-page";
 const page = await getBlogIndexPage({
   category: "All",
   site: Astro.site,
-  sortDirection: "Latest",
+  sortDirection: "Oldest",
 });
 ---
 
@@ -14,6 +14,7 @@ const page = await getBlogIndexPage({
   canonicalUrl={page.canonicalUrl}
   description={page.description}
   keywords={page.keywords}
+  robots={page.robots}
   structuredData={page.structuredData}
   title={page.title}
 >

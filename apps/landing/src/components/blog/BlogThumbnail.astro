@@ -1,6 +1,5 @@
 ---
-import { thumbnailCells } from "../../landing/blog/blog-constants";
-import type { BlogPostSummary } from "../../landing/blog/blog-posts";
+import type { BlogPostSummary } from "../../landing/blog/blog-types";
 import {
   BLOG_THUMBNAIL_IMAGE_SIZES,
   BLOG_THUMBNAIL_IMAGE_WIDTHS,
@@ -10,47 +9,18 @@ import OptimizedBlogImage from "./OptimizedBlogImage.astro";
 interface Props {
   post: BlogPostSummary;
   priority?: boolean;
-  variant?: "card" | "hero";
 }
 
-const { post, priority = false, variant = "card" } = Astro.props;
+const { post, priority = false } = Astro.props;
 ---
 
-{
-  post.imageSrc ? (
-    <div class={`blog-image blog-image-${variant}`}>
-      <OptimizedBlogImage
-        src={post.imageSrc}
-        alt=""
-        class="blog-image-media"
-        priority={priority || variant === "hero"}
-        sizes={BLOG_THUMBNAIL_IMAGE_SIZES}
-        widths={BLOG_THUMBNAIL_IMAGE_WIDTHS}
-      />
-    </div>
-  ) : (
-    <div class={`blog-image blog-image-${variant} ${post.thumbnail}`}>
-      <div class="blog-image-inner">
-        <div class="blog-image-bars">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-        <div class="blog-image-symbols">
-          <svg class="blog-image-icon" aria-hidden="true" viewBox="0 0 24 24">
-            <path
-              d="M5 5.5h14M5 12h14M5 18.5h9"
-              fill="none"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-width="1.8"
-            ></path>
-          </svg>
-          <div class="blog-image-cells">
-            {thumbnailCells.map(() => <span></span>)}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+<div class="blog-image blog-image-card">
+  <OptimizedBlogImage
+    src={post.coverImage.src}
+    alt={post.coverImage.alt}
+    class="blog-image-media"
+    priority={priority}
+    sizes={BLOG_THUMBNAIL_IMAGE_SIZES}
+    widths={BLOG_THUMBNAIL_IMAGE_WIDTHS}
+  />
+</div>

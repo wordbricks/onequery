@@ -1,8 +1,9 @@
 ---
-import type { BlogPost, BlogPostSection } from "../../landing/blog/blog-posts";
-import { blogPostSummaries } from "../../landing/blog/blog-posts";
-import SiteFooter from "../landing/SiteFooter.astro";
-import SiteHeader from "../landing/SiteHeader.astro";
+import type {
+  BlogPost,
+  BlogPostSection,
+  BlogPostSummary,
+} from "../../landing/blog/blog-types";
 import {
   BLOG_POST_IMAGE_SIZES,
   BLOG_POST_IMAGE_WIDTHS,
@@ -13,35 +14,10 @@ import OptimizedBlogImage from "./OptimizedBlogImage.astro";
 
 interface Props {
   post: BlogPost;
+  postSummaries: readonly BlogPostSummary[];
 }
 
-const { post } = Astro.props;
-
-function getPostSections(input: BlogPost): BlogPostSection[] {
-  if (input.sections) {
-    return input.sections;
-  }
-
-  return [
-    {
-      id: "why-it-matters",
-      paragraphs: [input.body[0] ?? ""],
-      title: "Why it matters",
-    },
-    {
-      id: "how-it-works",
-      paragraphs: [input.body[1] ?? ""],
-      title: "How it works",
-    },
-    {
-      id: "what-comes-next",
-      paragraphs: [
-        "The next step is making these workflows easier to inspect while they are running. Teams should be able to see the current state, the pending decision, and the artifact that will be reviewed before anything changes.",
-      ],
-      title: "What comes next",
-    },
-  ];
-}
+const { post, postSummaries } = Astro.props;
 
 function getFigureClass(section: BlogPostSection) {
   return section.imagePlacement === "after-title"
@@ -49,30 +25,21 @@ function getFigureClass(section: BlogPostSection) {
     : "blog-post-figure";
 }
 
-const sections = getPostSections(post);
-const relatedPosts = blogPostSummaries
+const sections = post.sections;
+const relatedPosts = postSummaries
   .filter(
     (relatedPost) =>
       relatedPost.slug !== post.slug && relatedPost.category === post.category
   )
   .slice(0, 3);
-const fallbackRelatedPosts = blogPostSummaries
+const fallbackRelatedPosts = postSummaries
   .filter((relatedPost) => relatedPost.slug !== post.slug)
   .slice(0, 3);
 const visibleRelatedPosts =
   relatedPosts.length > 0 ? relatedPosts : fallbackRelatedPosts;
-
-const blogNavigationItems = [
-  { href: "/", label: "Product" },
-  { href: "/blog", label: "Blog" },
-] as const;
-const blogFooterLinks = [{ href: "https://github.com/wordbricks/onequery", label: "GitHub" }];
 ---
 
-<div class="page-shell blog-shell">
-  <SiteHeader navigationItems={blogNavigationItems} />
-
-  <main class="blog-post-main">
+<main class="blog-post-main">
     <article id="top">
       <header class="blog-post-header">
         <div class="blog-breadcrumb">
@@ -107,11 +74,11 @@ const blogFooterLinks = [{ href: "https://github.com/wordbricks/onequery", label
             sections.map((section) => (
               <section id={section.id}>
                 <h2>{section.title}</h2>
-                {section.imagePlacement === "after-title" && section.imageSrc ? (
+                {section.imagePlacement === "after-title" && section.image ? (
                   <figure class={getFigureClass(section)}>
                     <OptimizedBlogImage
-                      src={section.imageSrc}
-                      alt={section.imageAlt ?? ""}
+                      src={section.image.src}
+                      alt={section.image.alt}
                       sizes={BLOG_POST_IMAGE_SIZES}
                       widths={BLOG_POST_IMAGE_WIDTHS}
                     />
@@ -146,7 +113,7 @@ const blogFooterLinks = [{ href: "https://github.com/wordbricks/onequery", label
                     </table>
                   </div>
                 ) : null}
-                {section.images?.map((image) => (
+                {section.images.map((image) => (
                   <figure class="blog-post-figure">
                     <OptimizedBlogImage
                       src={image.src}
@@ -156,11 +123,11 @@ const blogFooterLinks = [{ href: "https://github.com/wordbricks/onequery", label
                     />
                   </figure>
                 ))}
-                {section.imagePlacement !== "after-title" && section.imageSrc ? (
+                {section.imagePlacement !== "after-title" && section.image ? (
                   <figure class={getFigureClass(section)}>
                     <OptimizedBlogImage
-                      src={section.imageSrc}
-                      alt={section.imageAlt ?? ""}
+                      src={section.image.src}
+                      alt={section.image.alt}
                       sizes={BLOG_POST_IMAGE_SIZES}
                       widths={BLOG_POST_IMAGE_WIDTHS}
                     />
@@ -194,7 +161,4 @@ const blogFooterLinks = [{ href: "https://github.com/wordbricks/onequery", label
         View more posts <span aria-hidden="true">→</span>
       </a>
     </section>
-  </main>
-
-  <SiteFooter links={blogFooterLinks} showContact={false} />
-</div>
+</main>

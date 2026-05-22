@@ -1,6 +1,10 @@
 import type { APIRoute } from "astro";
 
-import { blogPostSummaries } from "../landing/blog/blog-posts";
+import { getBlogPostSummaries } from "../landing/blog/blog-collection";
+import {
+  BLOG_POST_CATEGORIES,
+  getBlogIndexPath,
+} from "../landing/blog/blog-taxonomy";
 import {
   normalizeSiteUrl,
   toIsoDateTime,
@@ -15,8 +19,9 @@ type SitemapEntry = {
   priority?: string;
 };
 
-export const GET: APIRoute = ({ site }) => {
+export const GET: APIRoute = async ({ site }) => {
   const siteUrl = normalizeSiteUrl(site);
+  const posts = await getBlogPostSummaries();
   const entries: SitemapEntry[] = [
     {
       changefreq: "weekly",
@@ -28,12 +33,17 @@ export const GET: APIRoute = ({ site }) => {
       loc: `${siteUrl}/blog`,
       priority: "0.8",
     },
+    ...BLOG_POST_CATEGORIES.map((category) => ({
+      changefreq: "weekly" as const,
+      loc: `${siteUrl}${getBlogIndexPath({ category })}`,
+      priority: "0.7",
+    })),
     {
       changefreq: "monthly",
       loc: `${siteUrl}/connectors`,
       priority: "0.7",
     },
-    ...blogPostSummaries.map((post) => ({
+    ...posts.map((post) => ({
       changefreq: "monthly" as const,
       lastmod: toIsoDateTime(post.publishedAt)?.slice(0, 10),
       loc: `${siteUrl}/blog/${post.slug}`,

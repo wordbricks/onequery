@@ -1,13 +1,8 @@
 ---
-import { FOOTER_LINKS } from "../../landing/content/landing-content";
+import { FOOTER_LINKS } from "../../data/footer";
+import type { FooterLink } from "../../data/footer";
 import { FooterContactButton } from "../../landing/marketing/footer-contact-button";
 import TrackedLink from "./TrackedLink.astro";
-
-type FooterLink = {
-  href: string;
-  label: string;
-  trackingName?: string;
-};
 
 interface Props {
   links?: ReadonlyArray<FooterLink>;
