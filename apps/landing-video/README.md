@@ -25,7 +25,7 @@ bun run typecheck
 
 `render` writes the main landing video to `out/openclaw-demo-video.mp4`.
 
-`render:webm` writes the VP9 WebM landing video to
+`render:webm` writes the VP8 WebM landing video to
 `out/openclaw-demo-video.webm`.
 
 `render:still` writes the landing still frame to `out/openclaw-demo.png`.
