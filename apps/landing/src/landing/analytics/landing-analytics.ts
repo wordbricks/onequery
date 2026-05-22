@@ -1,109 +1,47 @@
-import { Result } from "better-result";
+import { readGoogleTagManagerConfig } from "./google-tag-manager-config";
+import { landingAnalyticsEnv } from "./landing-analytics-env";
 
 type AnalyticsEventValue = boolean | number | string | undefined;
 
 type AnalyticsEventParams = Record<string, AnalyticsEventValue>;
+type DataLayerEvent = Record<string, boolean | number | string>;
+type DataLayerEntry = DataLayerEvent | unknown[];
 
 declare global {
   interface Window {
-    dataLayer?: unknown[][];
-    gtag?: (...args: unknown[]) => void;
+    dataLayer?: DataLayerEntry[];
   }
-}
-
-const GOOGLE_TAG_MANAGER_URL = "https://www.googletagmanager.com/gtag/js";
-const DEFAULT_GA_MEASUREMENT_ID = "G-TVPWK9V4TE";
-
-const configuredMeasurementIds = new Set<string>();
-
-function getMeasurementId() {
-  const configuredMeasurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
-  if (configuredMeasurementId === undefined) {
-    return DEFAULT_GA_MEASUREMENT_ID;
-  }
-
-  return configuredMeasurementId.trim();
 }
 
 function getPagePath() {
   return `${window.location.pathname}${window.location.search}`;
 }
 
-function getGtag() {
+function getDefinedEventParams(params: AnalyticsEventParams) {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined)
+  ) as Record<string, boolean | number | string>;
+}
+
+function pushDataLayerEvent(name: string, params: AnalyticsEventParams) {
   if (typeof window === "undefined") {
-    return null;
+    return false;
   }
 
   window.dataLayer ??= [];
-  window.gtag ??= (...args: unknown[]) => {
-    window.dataLayer?.push(args);
-  };
-  return window.gtag;
-}
-
-function loadGoogleTagManager(measurementId: string) {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  const existingScript = document.querySelector<HTMLScriptElement>(
-    `script[data-ga-measurement-id="${measurementId}"]`
-  );
-  if (existingScript) {
-    return;
-  }
-
-  const script = document.createElement("script");
-  script.async = true;
-  script.src = `${GOOGLE_TAG_MANAGER_URL}?id=${measurementId}`;
-  script.dataset.gaMeasurementId = measurementId;
-
-  const appendScriptResult = Result.try(() =>
-    document.head.appendChild(script)
-  );
-  if (appendScriptResult.isErr()) {
-    // Comment: external analytics scripts should never break the landing page
-    // if a browser, test DOM, or CSP blocks the load.
-    // Comment: best-effort only; leave the app interactive without GA4.
-  }
-}
-
-function initializeAnalytics() {
-  const measurementId = getMeasurementId();
-  if (!measurementId) {
-    return false;
-  }
-
-  const gtag = getGtag();
-  if (!gtag) {
-    return false;
-  }
-
-  loadGoogleTagManager(measurementId);
-
-  if (configuredMeasurementIds.has(measurementId)) {
-    return true;
-  }
-
-  gtag("js", new Date());
-  gtag("config", measurementId, {
-    send_page_view: false,
+  window.dataLayer.push({
+    event: name,
+    ...getDefinedEventParams(params),
   });
-  configuredMeasurementIds.add(measurementId);
   return true;
 }
 
 function trackEvent(name: string, params: AnalyticsEventParams = {}) {
-  if (!initializeAnalytics()) {
+  if (!readGoogleTagManagerConfig(landingAnalyticsEnv)) {
     return;
   }
 
-  const gtag = getGtag();
-  if (!gtag) {
-    return;
-  }
-
-  gtag("event", name, params);
+  pushDataLayerEvent(name, params);
 }
 
 export function trackPageView() {

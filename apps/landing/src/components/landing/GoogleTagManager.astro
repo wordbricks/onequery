@@ -1,0 +1,10 @@
+---
+import { createGoogleTagManagerScript } from "../../landing/analytics/google-tag-manager-script";
+import type { GoogleTagManagerConfig } from "../../landing/analytics/google-tag-manager-config";
+
+type Props = GoogleTagManagerConfig;
+
+const script = createGoogleTagManagerScript(Astro.props);
+---
+
+<script is:inline set:html={script} />
