@@ -1,9 +1,16 @@
 import { withState } from "@astrojs/react/actions";
-import { useStore } from "@nanostores/react";
 import { useMountEffect } from "@onequery/ui/hooks/use-mount-effect";
 import { actions, isInputError } from "astro:actions";
 import type { SafeResult } from "astro:actions";
-import { useActionState, useMemo } from "react";
+import {
+  ViewTransition,
+  startTransition,
+  useActionState,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useFormStatus } from "react-dom";
 
 import { INITIAL_CONTACT_ACTION_STATE } from "../../actions/contact-action-state";
@@ -12,8 +19,11 @@ import {
   trackContactFormSubmitted,
   trackContactModalOpened,
 } from "../analytics/landing-analytics";
+import { readRootCssTimeMs } from "../transitions/use-text-swap-controller";
+import { useTransitionedStoreState } from "../transitions/use-transitioned-store-state";
 import {
   createContactModalStore,
+  isContactModalClosing,
   isContactModalOpen,
 } from "./contact-modal.store";
 
@@ -24,12 +34,22 @@ type ContactActionResult = SafeResult<
   ContactActionState
 >;
 
+type ContactActionWithState = {
+  (
+    state: ContactActionResult,
+    formData: FormData
+  ): Promise<ContactActionResult>;
+  $$FORM_ACTION: unknown;
+  $$IS_SIGNATURE_EQUAL: (incomingActionName: string) => boolean;
+};
+
 const INITIAL_CONTACT_ACTION_RESULT: ContactActionResult = {
   data: INITIAL_CONTACT_ACTION_STATE,
   error: undefined,
 };
 
 type ContactModalController = {
+  isClosing: boolean;
   isOpen: boolean;
   close: () => void;
   open: () => void;
@@ -87,17 +107,188 @@ function createContactModalControllerStore() {
   });
 }
 
-function useContactModalController(): ContactModalController {
-  const contactModalStore = useMemo(createContactModalControllerStore, []);
-  const state = useStore(contactModalStore.$contactModalState);
+function readContactShakeMs() {
+  return (
+    readRootCssTimeMs("--shake-dur-a", 80) * 2 +
+    readRootCssTimeMs("--shake-dur-b", 60) * 2
+  );
+}
+
+function readContactModalCloseMs() {
+  if (typeof document === "undefined") {
+    return 150;
+  }
+
+  const closeMs = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue(
+      "--modal-close-dur"
+    )
+  );
+
+  return Number.isFinite(closeMs) ? closeMs : 150;
+}
+
+function useContactErrorShakeController() {
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const shakeTimerRef = useRef<number | null>(null);
+  const revertTimerRef = useRef<number | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+
+    if (shakeTimerRef.current !== null) {
+      window.clearTimeout(shakeTimerRef.current);
+      shakeTimerRef.current = null;
+    }
+
+    if (revertTimerRef.current !== null) {
+      window.clearTimeout(revertTimerRef.current);
+      revertTimerRef.current = null;
+    }
+  }, []);
+
+  const clearError = useCallback(() => {
+    const form = formRef.current;
+    clearTimers();
+
+    if (!form) {
+      return;
+    }
+
+    form.classList.remove("is-error");
+    form.querySelectorAll<HTMLElement>(".t-input").forEach((input) => {
+      input.classList.remove("is-error", "is-shaking");
+    });
+  }, [clearTimers]);
+
+  const showError = useCallback(() => {
+    const form = formRef.current;
+    clearTimers();
+
+    if (!form) {
+      return;
+    }
+
+    const inputs = Array.from(form.querySelectorAll<HTMLElement>(".t-input"));
+    form.classList.add("is-error");
+    inputs.forEach((input) => {
+      input.classList.add("is-error");
+      input.classList.remove("is-shaking");
+    });
+
+    void form.offsetWidth;
+    inputs.forEach((input) => {
+      input.classList.add("is-shaking");
+    });
+
+    const shakeMs = readContactShakeMs();
+    shakeTimerRef.current = window.setTimeout(() => {
+      inputs.forEach((input) => {
+        input.classList.remove("is-shaking");
+      });
+      shakeTimerRef.current = null;
+    }, shakeMs + 20);
+
+    revertTimerRef.current = window.setTimeout(
+      () => {
+        clearError();
+      },
+      shakeMs + readRootCssTimeMs("--revert-hold", 3000)
+    );
+  }, [clearError, clearTimers]);
+
+  const scheduleError = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+    }
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null;
+      showError();
+    });
+  }, [showError]);
+
+  useMountEffect(() => clearError);
 
   return {
+    clearError,
+    formRef,
+    scheduleError,
+  };
+}
+
+function useContactActionWithErrorShake(scheduleError: () => void) {
+  const contactActionWithState = useMemo(
+    () => withState(actions.contact) as ContactActionWithState,
+    []
+  );
+
+  return useMemo(() => {
+    const enhancedContactAction = (async (
+      state: ContactActionResult,
+      formData: FormData
+    ) => {
+      const result = await contactActionWithState(state, formData);
+
+      if (result.error) {
+        scheduleError();
+      }
+
+      return result;
+    }) as ContactActionWithState;
+
+    enhancedContactAction.$$FORM_ACTION = contactActionWithState.$$FORM_ACTION;
+    enhancedContactAction.$$IS_SIGNATURE_EQUAL =
+      contactActionWithState.$$IS_SIGNATURE_EQUAL;
+
+    return enhancedContactAction;
+  }, [contactActionWithState, scheduleError]);
+}
+
+function useContactModalController(): ContactModalController {
+  const contactModalStore = useMemo(createContactModalControllerStore, []);
+  const state = useTransitionedStoreState(contactModalStore.$contactModalState);
+  const closeTimerRef = useRef<number | null>(null);
+
+  function clearCloseTimer() {
+    if (closeTimerRef.current === null) {
+      return;
+    }
+
+    window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  }
+
+  useMountEffect(() => clearCloseTimer);
+
+  return {
+    isClosing: isContactModalClosing(state),
     isOpen: isContactModalOpen(state),
     close: () => {
-      contactModalStore.close();
+      clearCloseTimer();
+      startTransition(() => {
+        contactModalStore.close();
+      });
+      closeTimerRef.current = window.setTimeout(() => {
+        startTransition(() => {
+          contactModalStore.finishClose();
+        });
+        closeTimerRef.current = null;
+      }, readContactModalCloseMs());
     },
     open: () => {
-      contactModalStore.open();
+      clearCloseTimer();
+      startTransition(() => {
+        contactModalStore.open();
+      });
     },
   };
 }
@@ -117,7 +308,11 @@ export function FooterContactButton({
       >
         Contact
       </button>
-      {controller.isOpen ? <ContactModal controller={controller} /> : null}
+      {controller.isOpen ? (
+        <ViewTransition enter="scale-in" exit="scale-out" default="none">
+          <ContactModal controller={controller} />
+        </ViewTransition>
+      ) : null}
     </>
   );
 }
@@ -131,24 +326,44 @@ function ContactModalAutoOpen({ open }: { open: () => void }) {
 }
 
 function ContactModal({ controller }: { controller: ContactModalController }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const errorShake = useContactErrorShakeController();
+  const contactActionWithErrorShake = useContactActionWithErrorShake(
+    errorShake.scheduleError
+  );
   const [actionResult, contactAction] = useActionState(
-    withState(actions.contact),
+    contactActionWithErrorShake,
     INITIAL_CONTACT_ACTION_RESULT
   );
   const errorMessage = readActionErrorMessage(
     actionResult.error,
     DEFAULT_CONTACT_ERROR_MESSAGE
   );
+  const contactModalStateClass = controller.isClosing
+    ? "is-closing"
+    : isVisible
+      ? "is-open"
+      : "";
+
+  useMountEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setIsVisible(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  });
 
   return (
     <div
-      className="contact-modal-backdrop"
+      className={`contact-modal-backdrop ${contactModalStateClass}`.trim()}
       role="presentation"
       onMouseDown={controller.close}
     >
       <ContactModalLifecycle onClose={controller.close} />
       <div
-        className="contact-modal"
+        className={`contact-modal t-modal ${contactModalStateClass}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="contact-modal-title"
@@ -175,7 +390,13 @@ function ContactModal({ controller }: { controller: ContactModalController }) {
         {actionResult.data?.status === "sent" ? (
           <ContactSubmitSuccessLifecycle onSuccess={controller.close} />
         ) : null}
-        <form className="contact-modal-form" action={contactAction}>
+        <form
+          ref={errorShake.formRef}
+          className="contact-modal-form t-input-wrap"
+          action={contactAction}
+          onInput={errorShake.clearError}
+          onInvalid={errorShake.scheduleError}
+        >
           <ContactModalFormFields errorMessage={errorMessage} />
         </form>
       </div>
@@ -199,7 +420,7 @@ function ContactModalFormFields({
             type="text"
             name="name"
             placeholder="Jane Doe"
-            className="contact-modal-input"
+            className="contact-modal-input t-input"
             disabled={pending}
             maxLength={200}
             required
@@ -212,7 +433,7 @@ function ContactModalFormFields({
             type="email"
             name="email"
             placeholder="you@company.com"
-            className="contact-modal-input"
+            className="contact-modal-input t-input"
             disabled={pending}
             maxLength={320}
             required
@@ -225,7 +446,7 @@ function ContactModalFormFields({
         <textarea
           name="message"
           placeholder="Share your agent workflow, production systems, or timeline."
-          className="contact-modal-textarea"
+          className="contact-modal-textarea t-input"
           disabled={pending}
           maxLength={4000}
           required
@@ -244,7 +465,7 @@ function ContactModalFormFields({
           {pending ? "Sending..." : "Send message"}
         </button>
         {errorMessage ? (
-          <p className="marketing-form-feedback marketing-form-feedback-error">
+          <p className="marketing-form-feedback marketing-form-feedback-error t-error-msg">
             {errorMessage}
           </p>
         ) : null}

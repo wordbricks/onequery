@@ -78,6 +78,9 @@ export default defineConfig({
       process.env.ONEQUERY_BUNDLE_REPORT === "1"
         ? [createBundleReportPlugin()]
         : [],
+    resolve: {
+      dedupe: ["react", "react-dom", "remotion"],
+    },
     server: {
       allowedHosts: ["localhost", "host.docker.internal"],
       strictPort: true,

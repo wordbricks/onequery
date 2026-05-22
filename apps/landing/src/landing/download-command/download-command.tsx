@@ -1,16 +1,18 @@
-import { useStore } from "@nanostores/react";
-import { useMemo } from "react";
+import { ViewTransition, startTransition, useMemo } from "react";
 
 import {
   trackInstallCommandCopied,
   trackInstallMethodSelected,
 } from "../analytics/landing-analytics";
 import { INSTALL_COMMANDS } from "../config/landing-config";
+import { useTextSwapController } from "../transitions/use-text-swap-controller";
+import { useTransitionedStoreState } from "../transitions/use-transitioned-store-state";
 import {
   createDownloadCommandStore,
   readSelectedInstallMethod,
 } from "./download-command.store";
 import type {
+  DownloadCommandState,
   DownloadCommandCopyInput,
   DownloadCommandCopyOutput,
 } from "./download-command.store";
@@ -42,26 +44,42 @@ function createDownloadCommandController() {
   });
 }
 
-function useDownloadCommandController() {
+function readCopyButtonLabel(state: DownloadCommandState) {
+  return state.copiedMethodLabel === state.selectedMethodLabel
+    ? "Copied"
+    : "Copy";
+}
+
+function useDownloadCommandController(
+  onCopyButtonLabelChange: (label: string) => void
+) {
   const downloadCommandStore = useMemo(createDownloadCommandController, []);
-  const state = useStore(downloadCommandStore.$downloadCommandState);
+  const state = useTransitionedStoreState(
+    downloadCommandStore.$downloadCommandState,
+    (nextState) => {
+      onCopyButtonLabelChange(readCopyButtonLabel(nextState));
+    }
+  );
   const selectedMethod = readSelectedInstallMethod(state);
 
   return {
-    copiedMethodLabel: state.copiedMethodLabel,
+    copyButtonLabel: readCopyButtonLabel(state),
     selectedMethod,
     copy: () => {
       void downloadCommandStore.copy();
     },
     selectMethod: (label: (typeof INSTALL_COMMANDS)[number]["label"]) => {
-      downloadCommandStore.selectMethod(label);
+      startTransition(() => {
+        downloadCommandStore.selectMethod(label);
+      });
     },
   };
 }
 
 export function DownloadCommand() {
-  const { copiedMethodLabel, copy, selectMethod, selectedMethod } =
-    useDownloadCommandController();
+  const copyButtonText = useTextSwapController("Copy");
+  const { copy, copyButtonLabel, selectMethod, selectedMethod } =
+    useDownloadCommandController(copyButtonText.swapText);
 
   return (
     <div className="install-selector">
@@ -92,15 +110,39 @@ export function DownloadCommand() {
         role="tabpanel"
         aria-labelledby={`install-tab-${selectedMethod.label}`}
       >
-        <span className="download-command-label">{selectedMethod.label}</span>
-        <code>{selectedMethod.command}</code>
+        <ViewTransition
+          key={`install-label-${selectedMethod.label}`}
+          enter="fade-in"
+          exit="fade-out"
+          default="none"
+        >
+          <span className="download-command-label">{selectedMethod.label}</span>
+        </ViewTransition>
+        <ViewTransition
+          key={`install-command-${selectedMethod.label}`}
+          enter="fade-in"
+          exit="fade-out"
+          default="none"
+        >
+          <code>{selectedMethod.command}</code>
+        </ViewTransition>
         <button
           type="button"
           className="install-method-copy"
-          aria-label={`Copy ${selectedMethod.label} install command`}
+          aria-label={
+            copyButtonLabel === "Copied"
+              ? `${selectedMethod.label} install command copied`
+              : `Copy ${selectedMethod.label} install command`
+          }
           onClick={copy}
         >
-          {copiedMethodLabel === selectedMethod.label ? "Copied" : "Copy"}
+          <span
+            ref={copyButtonText.textRef}
+            className="t-text-swap"
+            aria-live="polite"
+          >
+            {copyButtonText.currentTextRef.current}
+          </span>
         </button>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { Suspense, ViewTransition, lazy } from "react";
 
 const LazyOpenClawDemoPlayer = lazy(() =>
   import("./openclaw-demo-player").then((module) => ({
@@ -39,12 +39,24 @@ function OpenClawDemoFallback() {
 
 export function OpenClawDemoIsland() {
   if (typeof window === "undefined") {
-    return <OpenClawDemoFallback />;
+    return (
+      <ViewTransition exit="slide-down">
+        <OpenClawDemoFallback />
+      </ViewTransition>
+    );
   }
 
   return (
-    <Suspense fallback={<OpenClawDemoFallback />}>
-      <LazyOpenClawDemoPlayer />
+    <Suspense
+      fallback={
+        <ViewTransition exit="slide-down">
+          <OpenClawDemoFallback />
+        </ViewTransition>
+      }
+    >
+      <ViewTransition enter="slide-up" default="none">
+        <LazyOpenClawDemoPlayer />
+      </ViewTransition>
     </Suspense>
   );
 }

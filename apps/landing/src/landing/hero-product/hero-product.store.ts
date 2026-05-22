@@ -40,6 +40,10 @@ type HeroProductIntegrationRow = {
   status: string;
 };
 
+type HeroProductStoreOptions = {
+  runTransition?: (update: () => void) => void;
+};
+
 export const heroProductTabs = [
   { id: "integrations", label: "Grant" },
   { id: "query", label: "Policy check" },
@@ -207,10 +211,15 @@ function getSafeQueryDelay(state: SafeQueryAnimationState) {
   return hasStarted ? SAFE_QUERY_STEP_DELAY_MS : SAFE_QUERY_INITIAL_DELAY_MS;
 }
 
-export function createHeroProductStore() {
+export function createHeroProductStore(options: HeroProductStoreOptions = {}) {
   const $heroProductState = atom<HeroProductState>(
     createInitialHeroProductState()
   );
+  const runTransition =
+    options.runTransition ??
+    ((update: () => void) => {
+      update();
+    });
   let isMounted = false;
   let safeQueryTimeout: ReturnType<typeof setTimeout> | undefined;
   let tabTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -248,12 +257,14 @@ export function createHeroProductStore() {
         return;
       }
 
-      $heroProductState.set({
-        ...current,
-        safeQuery:
-          current.safeQuery.result === "pending"
-            ? advanceSafeQuery(current.safeQuery)
-            : restartSafeQuery(current.safeQuery),
+      runTransition(() => {
+        $heroProductState.set({
+          ...current,
+          safeQuery:
+            current.safeQuery.result === "pending"
+              ? advanceSafeQuery(current.safeQuery)
+              : restartSafeQuery(current.safeQuery),
+        });
       });
       scheduleSafeQuery();
     }, getSafeQueryDelay(state.safeQuery));
@@ -290,10 +301,12 @@ export function createHeroProductStore() {
       return;
     }
 
-    $heroProductState.set({
-      activeTab: tab,
-      safeQuery:
-        tab === "query" ? createInitialSafeQueryState() : current.safeQuery,
+    runTransition(() => {
+      $heroProductState.set({
+        activeTab: tab,
+        safeQuery:
+          tab === "query" ? createInitialSafeQueryState() : current.safeQuery,
+      });
     });
     syncTimersForActiveTab();
   }
