@@ -1,23 +1,22 @@
 ---
-import BaseLayout from "../layouts/BaseLayout.astro";
-import "../styles/blog.css";
+import BlogLayout from "../layouts/BlogLayout.astro";
+import { createCanonicalUrl } from "../landing/seo/structured-data";
 ---
 
-<BaseLayout
-  canonicalUrl="https://onequery.dev/404"
+<BlogLayout
+  canonicalUrl={createCanonicalUrl("/404", Astro.site)}
   description="The requested OneQuery page could not be found."
   keywords={null}
+  robots="noindex, follow"
   structuredData={null}
   title="Page not found | OneQuery"
 >
-  <div class="page-shell blog-shell">
-    <main class="blog-main">
-      <section class="blog-index-hero">
-        <p class="eyebrow">OneQuery</p>
-        <h1>Page not found</h1>
-        <p>The page you requested is not available.</p>
-        <a href="/" class="button button-primary">Go home</a>
-      </section>
-    </main>
-  </div>
-</BaseLayout>
+  <main class="blog-main">
+    <section class="blog-index-hero">
+      <p class="eyebrow">OneQuery</p>
+      <h1>Page not found</h1>
+      <p>The page you requested is not available.</p>
+      <a href="/" class="button button-primary">Go home</a>
+    </section>
+  </main>
+</BlogLayout>

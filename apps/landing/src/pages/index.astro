@@ -3,11 +3,9 @@ import ControlPlaneDiagram from "../components/landing/ControlPlaneDiagram.astro
 import OpenClawSection from "../components/landing/OpenClawSection.astro";
 import ProductUpdatesSection from "../components/landing/ProductUpdatesSection.astro";
 import RoadmapSection from "../components/landing/RoadmapSection.astro";
-import SiteFooter from "../components/landing/SiteFooter.astro";
-import SiteHeader from "../components/landing/SiteHeader.astro";
 import TerminalSurface from "../components/landing/TerminalSurface.astro";
 import TrackedLink from "../components/landing/TrackedLink.astro";
-import BaseLayout from "../layouts/BaseLayout.astro";
+import MarketingLayout from "../layouts/MarketingLayout.astro";
 import "../styles/landing.css";
 import {
   INSTALL_SCRIPT_URL,
@@ -20,11 +18,14 @@ import {
   QUERY_DETAILS_SNIPPET,
   QUERY_TERMINAL_LINES,
   QUICKSTART_TERMINAL_LINES,
-} from "../landing/content/landing-content";
+} from "../data/home";
 import { DownloadCommand } from "../landing/download-command/download-command";
 import { HeroProductSurface } from "../landing/hero-product/hero-product-surface";
 import { actions } from "astro:actions";
 
+// ProductUpdatesSection uses Astro Actions with server-rendered form feedback.
+// The Remotion demo stays isolated in a client-visible island and is not the
+// reason this SEO landing page opts out of prerendering.
 export const prerender = false;
 
 type LandingCtaAction = {
@@ -78,11 +79,8 @@ const finalCtaActions: ReadonlyArray<LandingCtaAction> = [
 const productUpdatesResult = Astro.getActionResult(actions.productUpdates);
 ---
 
-<BaseLayout>
-  <div class="page-shell">
-    <SiteHeader />
-
-    <main class="page-main">
+<MarketingLayout>
+  <main class="page-main">
       <section class="hero-section">
         <div class="hero-copy">
           <p class="eyebrow">Agent access control plane</p>
@@ -202,8 +200,5 @@ const productUpdatesResult = Astro.getActionResult(actions.productUpdates);
       </section>
 
       <ProductUpdatesSection result={productUpdatesResult} />
-    </main>
-
-    <SiteFooter />
-  </div>
-</BaseLayout>
+  </main>
+</MarketingLayout>

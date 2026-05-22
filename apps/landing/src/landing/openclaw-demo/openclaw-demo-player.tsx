@@ -34,6 +34,7 @@ export function OpenClawDemoPlayer() {
       fps={openClawDemoFps}
       autoPlay
       loop
+      initiallyMuted
       clickToPlay
       controls
       showVolumeControls={false}

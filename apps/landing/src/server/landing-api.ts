@@ -149,6 +149,7 @@ function createJsonResponse<T>(
   return new Response(JSON.stringify(body), {
     headers: {
       "content-type": "application/json",
+      "x-robots-tag": "noindex",
       "x-request-id": input.requestId,
     },
     status: input.status,

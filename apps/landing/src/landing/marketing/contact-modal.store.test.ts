@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createContactModalStore,
+  isContactModalClosing,
   isContactModalOpen,
 } from "./contact-modal.store";
 
@@ -22,6 +23,15 @@ describe("createContactModalStore", () => {
     contactModalStore.close();
 
     expect(isContactModalOpen(contactModalStore.$contactModalState.get())).toBe(
+      true
+    );
+    expect(
+      isContactModalClosing(contactModalStore.$contactModalState.get())
+    ).toBe(true);
+
+    contactModalStore.finishClose();
+
+    expect(isContactModalOpen(contactModalStore.$contactModalState.get())).toBe(
       false
     );
   });
@@ -40,6 +50,7 @@ describe("createContactModalStore", () => {
     expect(openRequestCount).toBe(1);
 
     contactModalStore.close();
+    contactModalStore.finishClose();
     contactModalStore.open();
 
     expect(openRequestCount).toBe(2);

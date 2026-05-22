@@ -1,5 +1,5 @@
 ---
-import type { BlogPostSection } from "../../landing/blog/blog-posts";
+import type { BlogPostSection } from "../../landing/blog/blog-types";
 import {
   BLOG_POST_IMAGE_SIZES,
   BLOG_POST_IMAGE_WIDTHS,
@@ -14,10 +14,9 @@ interface Props {
 }
 
 const { paragraph, paragraphIndex, section } = Astro.props;
-const inlineImages =
-  section.inlineImages?.filter(
-    (image) => image.beforeParagraphIndex === paragraphIndex
-  ) ?? [];
+const inlineImages = section.inlineImages.filter(
+  (image) => image.beforeParagraphIndex === paragraphIndex
+);
 ---
 
 {

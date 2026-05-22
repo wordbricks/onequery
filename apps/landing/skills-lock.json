@@ -10,6 +10,16 @@
       "source": "resciencelab/opc-skills",
       "sourceType": "github",
       "computedHash": "56f90ba46b36563bb5461feb8462aed9283e74dfc4cdac2a98c42c4bc86a95be"
+    },
+    "transitions-dev": {
+      "source": "Jakubantalik/transitions.dev",
+      "sourceType": "github",
+      "computedHash": "0ced212c5844b13010410e4d81627cc46d44ea5094d374aa9e0783de181a8822"
+    },
+    "vercel-react-view-transitions": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "c8952fc9127fa0564d0cb71dccb4215a5608ac933b5831104f09173a97a46f85"
     }
   }
 }

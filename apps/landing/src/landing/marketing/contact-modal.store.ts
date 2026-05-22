@@ -1,6 +1,6 @@
 import { atom } from "nanostores";
 
-type ContactModalStatus = "closed" | "open";
+type ContactModalStatus = "closed" | "closing" | "open";
 
 export type ContactModalState = {
   status: ContactModalStatus;
@@ -22,6 +22,18 @@ export function createContactModalStore(
   const $contactModalState = atom<ContactModalState>(createInitialState());
 
   function close() {
+    const state = $contactModalState.get();
+
+    if (state.status !== "open") {
+      return;
+    }
+
+    $contactModalState.set({
+      status: "closing",
+    });
+  }
+
+  function finishClose() {
     $contactModalState.set(createInitialState());
   }
 
@@ -41,10 +53,15 @@ export function createContactModalStore(
   return {
     $contactModalState,
     close,
+    finishClose,
     open,
   };
 }
 
 export function isContactModalOpen(state: ContactModalState) {
   return state.status !== "closed";
+}
+
+export function isContactModalClosing(state: ContactModalState) {
+  return state.status === "closing";
 }

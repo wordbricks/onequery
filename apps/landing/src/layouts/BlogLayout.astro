@@ -1,0 +1,19 @@
+---
+import { BLOG_FOOTER_LINKS } from "../data/footer";
+import "../styles/blog.css";
+import MarketingLayout from "./MarketingLayout.astro";
+import type { PageMetadata } from "./layout-types";
+
+type Props = PageMetadata;
+
+const layoutProps = Astro.props;
+---
+
+<MarketingLayout
+  {...layoutProps}
+  footerLinks={BLOG_FOOTER_LINKS}
+  shellClass="page-shell blog-shell"
+  showContact={false}
+>
+  <slot />
+</MarketingLayout>

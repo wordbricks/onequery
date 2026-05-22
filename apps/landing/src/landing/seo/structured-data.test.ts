@@ -1,8 +1,12 @@
+import type { ImageMetadata } from "astro";
 import { describe, expect, it } from "vitest";
 
-import { blogPostSummaries } from "../blog/blog-post-summaries";
 import type { BlogPost } from "../blog/blog-types";
-import { createBlogPostStructuredData, toIsoDateTime } from "./structured-data";
+import {
+  createBlogPostStructuredData,
+  createCanonicalUrl,
+  toIsoDateTime,
+} from "./structured-data";
 
 describe("toIsoDateTime", () => {
   it("converts canonical publication dates to UTC date-time output", () => {
@@ -19,24 +23,51 @@ describe("toIsoDateTime", () => {
   });
 });
 
+describe("createCanonicalUrl", () => {
+  it("matches Cloudflare trailing-slash page URLs", () => {
+    expect(createCanonicalUrl("/blog")).toBe("https://onequery.dev/blog/");
+    expect(createCanonicalUrl("/blog/category/product/")).toBe(
+      "https://onequery.dev/blog/category/product/"
+    );
+  });
+
+  it("keeps file endpoint URLs extension-first", () => {
+    expect(createCanonicalUrl("/sitemap.xml")).toBe(
+      "https://onequery.dev/sitemap.xml"
+    );
+  });
+});
+
 describe("createBlogPostStructuredData", () => {
   it("emits BlogPosting schema from existing post fields", () => {
-    const summary = blogPostSummaries[0];
-
-    if (!summary) {
-      throw new Error("Expected at least one blog post summary");
-    }
-
+    const coverImage = {
+      format: "png",
+      height: 630,
+      src: "/_astro/debug-production-agent-runs-with-onequery-icon.png",
+      width: 1200,
+    } as ImageMetadata;
     const post: BlogPost = {
-      ...summary,
-      body: ["Body paragraph"],
+      category: "Engineering",
+      coverImage: {
+        alt: "Debugging production on Cloudflare with Codex cover image.",
+        src: coverImage,
+      },
+      date: "May 6, 2026",
+      description:
+        "How Codex can use OneQuery-connected Cloudflare logs to inspect production failures, separate evidence from guesses, and make targeted code changes.",
+      publishedAt: "2026-05-06",
+      readTime: "7 min read",
       sections: [
         {
           id: "evidence-loop",
+          images: [],
+          inlineImages: [],
           paragraphs: ["Evidence paragraph"],
           title: "Evidence loop",
         },
       ],
+      slug: "debug-production-agent-runs-with-onequery",
+      title: "Debugging production on Cloudflare with Codex.",
     };
     const schema = createBlogPostStructuredData(post);
     const graph = schema["@graph"];
@@ -52,7 +83,7 @@ describe("createBlogPostStructuredData", () => {
           hasPart: [
             expect.objectContaining({
               "@id":
-                "https://onequery.dev/blog/debug-production-agent-runs-with-onequery#evidence-loop",
+                "https://onequery.dev/blog/debug-production-agent-runs-with-onequery/#evidence-loop",
               name: "Evidence loop",
             }),
           ],

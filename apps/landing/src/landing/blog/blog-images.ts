@@ -14,44 +14,21 @@ const MIN_SHARE_IMAGE_WIDTH = 1200;
 const MIN_SHARE_IMAGE_RATIO = 1.45;
 const MAX_SHARE_IMAGE_RATIO = 2.2;
 
-const blogImageModules = import.meta.glob<ImageMetadata>(
-  "../../assets/blog/*.{avif,jpeg,jpg,png,webp}",
-  { eager: true, import: "default" }
-);
-
-const blogImagesByContentPath = new Map(
-  Object.entries(blogImageModules).map(([path, image]) => {
-    const filename = path.split("/").at(-1);
-    return [`/images/blog/${filename}`, image];
-  })
-);
-
-export function getBlogImageAsset(src: string | undefined) {
-  return src ? blogImagesByContentPath.get(src) : undefined;
-}
-
 function getBlogPostImageSources(
-  post: Pick<BlogPost, "imageSrc" | "sections">
+  post: Pick<BlogPost, "coverImage" | "sections">
 ) {
-  const sectionSources =
-    post.sections?.flatMap((section) => [
-      section.imageSrc,
-      ...(section.inlineImages?.map((image) => image.src) ?? []),
-      ...(section.images?.map((image) => image.src) ?? []),
-    ]) ?? [];
+  const sectionSources = post.sections.flatMap((section) => [
+    section.image?.src,
+    ...section.inlineImages.map((image) => image.src),
+    ...section.images.map((image) => image.src),
+  ]);
 
-  return [...sectionSources, post.imageSrc].filter(
-    (src): src is string => typeof src === "string" && src.length > 0
+  return [...sectionSources, post.coverImage.src].filter(
+    (image): image is ImageMetadata => Boolean(image)
   );
 }
 
-function isPreferredShareImage(src: string) {
-  const image = getBlogImageAsset(src);
-
-  if (!image) {
-    return false;
-  }
-
+function isPreferredShareImage(image: ImageMetadata) {
   const ratio = image.width / image.height;
 
   return (
@@ -61,18 +38,16 @@ function isPreferredShareImage(src: string) {
   );
 }
 
-export function getPreferredBlogShareImageSrc(
-  post: Pick<BlogPost, "imageSrc" | "sections">
+export function getPreferredBlogShareImage(
+  post: Pick<BlogPost, "coverImage" | "sections">
 ) {
   return getBlogPostImageSources(post).find(isPreferredShareImage);
 }
 
 export async function getBlogShareImageMetadata(
-  src: string | undefined,
+  image: ImageMetadata | undefined,
   site?: string | URL | null
 ): Promise<StructuredImageMetadata> {
-  const image = getBlogImageAsset(src);
-
   if (!image) {
     return {
       ...DEFAULT_SHARE_IMAGE,
@@ -93,21 +68,21 @@ export async function getBlogShareImageMetadata(
 }
 
 export function getBlogPostShareImageMetadata(
-  post: Pick<BlogPost, "imageSrc" | "sections">,
+  post: Pick<BlogPost, "coverImage" | "sections">,
   site?: string | URL | null
 ) {
-  return getBlogShareImageMetadata(getPreferredBlogShareImageSrc(post), site);
+  return getBlogShareImageMetadata(getPreferredBlogShareImage(post), site);
 }
 
 export async function getBlogShareImageMetadataBySlug(
-  posts: readonly Pick<BlogPostSummary, "imageSrc" | "slug">[],
+  posts: readonly Pick<BlogPostSummary, "coverImage" | "slug">[],
   site?: string | URL | null
 ) {
   return Object.fromEntries(
     await Promise.all(
       posts.map(async (post) => [
         post.slug,
-        await getBlogShareImageMetadata(post.imageSrc, site),
+        await getBlogShareImageMetadata(post.coverImage.src, site),
       ])
     )
   );

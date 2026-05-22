@@ -1,0 +1,28 @@
+---
+import type { FooterLink } from "../data/footer";
+import SiteFooter from "../components/landing/SiteFooter.astro";
+import SiteHeader from "../components/landing/SiteHeader.astro";
+import BaseLayout from "./BaseLayout.astro";
+import type { PageMetadata } from "./layout-types";
+
+interface Props extends PageMetadata {
+  footerLinks?: ReadonlyArray<FooterLink>;
+  shellClass?: string;
+  showContact?: boolean;
+}
+
+const {
+  footerLinks,
+  shellClass = "page-shell",
+  showContact = true,
+  ...layoutProps
+} = Astro.props;
+---
+
+<BaseLayout {...layoutProps}>
+  <div class={shellClass}>
+    <SiteHeader />
+    <slot />
+    <SiteFooter links={footerLinks} showContact={showContact} />
+  </div>
+</BaseLayout>

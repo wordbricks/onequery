@@ -163,6 +163,7 @@
 }
 
 .install-method-copy {
+  min-width: 72px;
   min-height: 36px;
   padding: 0 10px;
   border: 0;
@@ -178,6 +179,35 @@
 .install-method-copy:hover {
   opacity: 0.92;
   transform: translateY(-1px);
+}
+
+.t-text-swap {
+  display: inline-block;
+  transform: translateY(0);
+  filter: blur(0);
+  opacity: 1;
+  transition:
+    transform var(--text-swap-dur) var(--text-swap-ease),
+    filter var(--text-swap-dur) var(--text-swap-ease),
+    opacity var(--text-swap-dur) var(--text-swap-ease);
+  will-change: transform, filter, opacity;
+}
+.t-text-swap.is-exit {
+  transform: translateY(calc(var(--text-swap-translate-y) * -1));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+}
+.t-text-swap.is-enter-start {
+  transform: translateY(var(--text-swap-translate-y));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-text-swap {
+    transition: none !important;
+  }
 }
 
 .hero-actions {
@@ -407,8 +437,120 @@
   overflow: hidden;
 }
 
+.t-panel-slide {
+  transform: translateY(var(--panel-translate-y));
+  opacity: 0;
+  filter: blur(var(--panel-blur));
+  pointer-events: none;
+  transition:
+    transform var(--panel-close-dur) var(--panel-ease),
+    opacity var(--panel-close-dur) var(--panel-ease),
+    filter var(--panel-close-dur) var(--panel-ease);
+  will-change: transform, opacity, filter;
+}
+.t-panel-slide[data-open="true"] {
+  transform: translateY(0);
+  opacity: 1;
+  filter: blur(0);
+  pointer-events: auto;
+  transition:
+    transform var(--panel-open-dur) var(--panel-ease),
+    opacity var(--panel-open-dur) var(--panel-ease),
+    filter var(--panel-open-dur) var(--panel-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-panel-slide {
+    transition: none !important;
+  }
+}
+
+/* Wrapper drives the appear animation; it doesn't own any
+   sizing or color so you can drop in any icon. */
+.t-success-check {
+  display: inline-block;
+  transform-origin: center;
+  opacity: 0;
+  will-change: transform, opacity, filter;
+}
+/* overflow: visible keeps the stroke from clipping while it
+   draws; display: block kills the inline whitespace under SVGs. */
+.t-success-check svg {
+  display: block;
+  overflow: visible;
+}
+/* Stroke-draw setup. Replace 20 with the result of
+   path.getTotalLength() for your path; round caps mean any
+   sub-pixel overshoot is invisible. */
+.t-success-check svg path {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+}
+
+.t-success-check[data-state="in"] {
+  animation:
+    t-check-fade var(--check-opacity-dur) var(--check-ease-opacity) forwards,
+    t-check-rotate var(--check-rotate-dur) var(--check-ease-rotate) forwards,
+    t-check-blur var(--check-blur-dur) var(--check-ease-out) forwards,
+    t-check-bob var(--check-bob-dur) var(--check-ease-bob) forwards;
+}
+.t-success-check[data-state="in"] svg path {
+  animation: t-check-draw var(--check-path-dur) var(--check-ease-path)
+    var(--check-path-delay, 0ms) forwards;
+}
+
+@keyframes t-check-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes t-check-rotate {
+  from {
+    transform: rotate(var(--check-rotate-from));
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+@keyframes t-check-blur {
+  from {
+    filter: blur(var(--check-blur-from));
+  }
+  to {
+    filter: blur(0);
+  }
+}
+@keyframes t-check-bob {
+  from {
+    translate: 0 var(--check-y-amount);
+  }
+  to {
+    translate: 0 0;
+  }
+}
+@keyframes t-check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-success-check {
+    animation: none !important;
+    opacity: 1;
+  }
+  .t-success-check svg path {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
+
 .hero-product-panel {
-  animation: hero-panel-enter 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  --panel-translate-y: 10px;
+  min-height: 100%;
 }
 
 .hero-product-list,
@@ -531,6 +673,23 @@
     box-shadow 180ms ease;
 }
 
+.hero-safe-query-status-check {
+  --check-blur-from: 2px;
+  --check-rotate-from: 28deg;
+  --check-y-amount: 5px;
+  color: var(--success);
+}
+
+.hero-safe-query-status-check svg {
+  width: 14px;
+  height: 14px;
+}
+
+.hero-safe-query-status-check svg path {
+  stroke-dasharray: 15;
+  stroke-dashoffset: 15;
+}
+
 .hero-safe-query-check[data-status="success"] .hero-safe-query-check-box {
   border-color: rgba(15, 118, 110, 0.55);
   background: var(--success-soft);
@@ -574,6 +733,11 @@
     border-color 200ms ease,
     transform 200ms ease,
     box-shadow 200ms ease;
+}
+
+.hero-safe-query-result-text {
+  min-width: 92px;
+  text-align: center;
 }
 
 .hero-safe-query-result[data-result="pending"] {
@@ -745,18 +909,6 @@
   from {
     opacity: 0;
     transform: translateY(12px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes hero-panel-enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
   }
 
   to {
