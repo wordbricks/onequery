@@ -212,9 +212,7 @@ function createBodyValidationError(
 }
 
 function readFormDataBody(formData: FormData) {
-  return Object.fromEntries(
-    Array.from(formData.entries()).map(([key, value]) => [key, String(value)])
-  );
+  return Object.fromEntries(formData.entries());
 }
 
 async function readRequestBody(request: Request) {
