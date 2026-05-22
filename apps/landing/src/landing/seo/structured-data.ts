@@ -40,6 +40,20 @@ type LandingPageStructuredDataInput = {
   imageWidth?: number;
   site?: SiteInput;
   title: string;
+  video?: LandingVideoStructuredDataInput;
+};
+
+type LandingVideoStructuredDataInput = {
+  contentUrl: string;
+  description: string;
+  duration?: string;
+  embedUrl?: string;
+  name: string;
+  pageUrl: string;
+  thumbnailHeight?: number;
+  thumbnailUrl: string;
+  thumbnailWidth?: number;
+  uploadDate: string;
 };
 
 type BlogIndexStructuredDataInput = {
@@ -125,6 +139,10 @@ function getWebsiteId(site: SiteInput) {
 
 function getSoftwareApplicationId(site: SiteInput) {
   return `${normalizeSiteUrl(site)}/#software`;
+}
+
+function getLandingDemoVideoId(site: SiteInput) {
+  return `${normalizeSiteUrl(site)}/#demo-video`;
 }
 
 function createImageObject(input: {
@@ -216,6 +234,45 @@ function createOneQuerySoftwareApplication(input: {
   };
 }
 
+function createLandingDemoVideoStructuredData(
+  input: LandingVideoStructuredDataInput & { site?: SiteInput }
+): StructuredData {
+  const siteUrl = normalizeSiteUrl(input.site);
+  const thumbnailUrl = toAbsoluteSiteUrl(input.thumbnailUrl, siteUrl);
+  const pageUrl = toAbsoluteSiteUrl(input.pageUrl, siteUrl);
+
+  return {
+    "@type": "VideoObject",
+    "@id": getLandingDemoVideoId(siteUrl),
+    name: input.name,
+    description: input.description,
+    thumbnailUrl: [thumbnailUrl],
+    uploadDate: input.uploadDate,
+    ...(input.duration ? { duration: input.duration } : {}),
+    contentUrl: toAbsoluteSiteUrl(input.contentUrl, siteUrl),
+    ...(input.embedUrl
+      ? { embedUrl: toAbsoluteSiteUrl(input.embedUrl, siteUrl) }
+      : {}),
+    url: pageUrl,
+    inLanguage: "en",
+    publisher: {
+      "@id": getOrganizationId(siteUrl),
+    },
+    isPartOf: {
+      "@id": `${siteUrl}/#webpage`,
+    },
+    mainEntityOfPage: {
+      "@id": `${siteUrl}/#webpage`,
+    },
+    thumbnail: createImageObject({
+      height: input.thumbnailHeight,
+      site: siteUrl,
+      url: thumbnailUrl,
+      width: input.thumbnailWidth,
+    }),
+  };
+}
+
 function createSiteGraph(site: SiteInput): StructuredData[] {
   return [createOneQueryOrganization(site), createOneQueryWebsite(site)];
 }
@@ -224,6 +281,11 @@ export function createLandingPageStructuredData(
   input: LandingPageStructuredDataInput
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(input.site);
+  const videoReference = input.video
+    ? {
+        "@id": getLandingDemoVideoId(siteUrl),
+      }
+    : undefined;
 
   return createGraph([
     ...createSiteGraph(siteUrl),
@@ -231,6 +293,14 @@ export function createLandingPageStructuredData(
       description: input.description,
       site: siteUrl,
     }),
+    ...(input.video
+      ? [
+          createLandingDemoVideoStructuredData({
+            ...input.video,
+            site: siteUrl,
+          }),
+        ]
+      : []),
     {
       "@type": "WebPage",
       "@id": `${siteUrl}/#webpage`,
@@ -244,6 +314,12 @@ export function createLandingPageStructuredData(
       about: {
         "@id": getSoftwareApplicationId(siteUrl),
       },
+      ...(videoReference
+        ? {
+            hasPart: videoReference,
+            video: videoReference,
+          }
+        : {}),
       primaryImageOfPage: createImageObject({
         alt: input.imageAlt,
         height: input.imageHeight ?? DEFAULT_IMAGE_HEIGHT,

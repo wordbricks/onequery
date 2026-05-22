@@ -1,27 +1,44 @@
 ---
-import openClawDemoPosterSrc from "../../assets/openclaw-demo-poster.png?url";
-import openClawDemoVideoSrc from "../../assets/openclaw-demo-video.mp4?url";
+import {
+  getOpenClawDemoPosterImage,
+  OPEN_CLAW_DEMO_VIDEO,
+} from "../../landing/openclaw-demo-video";
+
+const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
 ---
 
-<section class="section openclaw-demo-section" id="demo">
+<section
+  aria-labelledby="openclaw-demo-title"
+  class="section openclaw-demo-section"
+  id="demo"
+>
   <div class="section-intro">
     <p class="eyebrow">Agent-native access</p>
-    <h2>One grant. Any agent.</h2>
+    <h2 id="openclaw-demo-title">One grant. Any agent.</h2>
+    <p id="openclaw-demo-description">
+      Watch OneQuery grant an AI agent governed access to approved production
+      context while credentials stay centralized and every query remains
+      auditable.
+    </p>
   </div>
 
   <div class="openclaw-demo-frame" data-openclaw-demo-frame>
     <video
-      aria-label="OneQuery OpenClaw agent access demo"
+      aria-describedby="openclaw-demo-description"
+      aria-label={OPEN_CLAW_DEMO_VIDEO.name}
       class="openclaw-demo-video"
       controls
-      data-openclaw-demo-poster={openClawDemoPosterSrc}
+      data-openclaw-demo-poster={openClawDemoPosterImage.src}
       data-openclaw-demo-video
+      height={OPEN_CLAW_DEMO_VIDEO.height}
       loop
       muted
       playsinline
       preload="none"
+      width={OPEN_CLAW_DEMO_VIDEO.width}
     >
-      <source src={openClawDemoVideoSrc} type="video/mp4" />
+      <source src={OPEN_CLAW_DEMO_VIDEO.webmSrc} type="video/webm" />
+      <source src={OPEN_CLAW_DEMO_VIDEO.mp4Src} type="video/mp4" />
     </video>
   </div>
 </section>

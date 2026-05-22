@@ -126,7 +126,7 @@ export default defineConfig({
         : []),
     ],
     resolve: {
-      dedupe: ["react", "react-dom", "remotion"],
+      dedupe: ["react", "react-dom"],
     },
     server: {
       allowedHosts: ["localhost", "host.docker.internal"],

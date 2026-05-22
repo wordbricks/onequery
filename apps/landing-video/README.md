@@ -14,6 +14,7 @@ cd apps/landing-video
 bun run dev
 bun run build
 bun run render
+bun run render:webm
 bun run render:still
 bun run typecheck
 ```
@@ -23,6 +24,9 @@ bun run typecheck
 `build` creates the Remotion bundle in `build/`.
 
 `render` writes the main landing video to `out/openclaw-demo-video.mp4`.
+
+`render:webm` writes the VP9 WebM landing video to
+`out/openclaw-demo-video.webm`.
 
 `render:still` writes the landing still frame to `out/openclaw-demo.png`.
 
