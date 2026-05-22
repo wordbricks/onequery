@@ -136,6 +136,10 @@ export default defineConfig({
   adapter: cloudflare({
     imageService: { build: "compile", runtime: "cloudflare-binding" },
   }),
+  build: {
+    // Keep page CSS out of a separate render-blocking request for first-load LCP.
+    inlineStylesheets: "always",
+  },
   env: {
     schema: {
       PUBLIC_GOOGLE_TAG_MANAGER_ID: envField.string({

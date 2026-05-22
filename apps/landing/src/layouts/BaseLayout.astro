@@ -67,9 +67,7 @@ const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
       googleTagManagerConfig ? (
         <>
           <GoogleTagManager {...googleTagManagerConfig} />
-          <script>
-            import { trackLandingCtaClick } from "../landing/analytics/landing-analytics";
-
+          <script is:inline>
             document.addEventListener("click", (event) => {
               if (!(event.target instanceof Element)) {
                 return;
@@ -90,7 +88,16 @@ const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
                 target.dataset.landingCtaHref ||
                 (target instanceof HTMLAnchorElement ? target.href : undefined);
 
-              trackLandingCtaClick(ctaId, ctaLocation, destination);
+              if (!Array.isArray(window.dataLayer)) {
+                return;
+              }
+
+              window.dataLayer.push({
+                event: "landing_cta_click",
+                cta_id: ctaId,
+                destination,
+                location: ctaLocation,
+              });
             });
           </script>
         </>

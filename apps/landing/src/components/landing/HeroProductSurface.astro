@@ -1,0 +1,484 @@
+---
+import {
+  HERO_PRODUCT_TAB_ORDER,
+  HERO_TAB_DWELL_MS,
+  SAFE_QUERY_INITIAL_DELAY_MS,
+  SAFE_QUERY_RESULT_HOLD_MS,
+  SAFE_QUERY_STEP_DELAY_MS,
+  heroProductAuditEntries,
+  heroProductIntegrationRows,
+  heroProductTabMeta,
+  heroProductTabs,
+  heroSafeQueryChecks,
+} from "../../landing/hero-product/hero-product.store";
+import type { HeroProductTab } from "../../landing/hero-product/hero-product.store";
+
+const initialTab: HeroProductTab = "integrations";
+const initialTabMeta = heroProductTabMeta[initialTab];
+---
+
+<div
+  class="hero-product-surface"
+  aria-label="OneQuery product overview"
+  data-hero-product-surface
+  data-hero-initial-tab={initialTab}
+  data-hero-tab-order={HERO_PRODUCT_TAB_ORDER.join(",")}
+  data-hero-dwell-integrations={HERO_TAB_DWELL_MS.integrations}
+  data-hero-dwell-query={HERO_TAB_DWELL_MS.query}
+  data-hero-dwell-audit={HERO_TAB_DWELL_MS.audit}
+  data-hero-safe-initial-delay={SAFE_QUERY_INITIAL_DELAY_MS}
+  data-hero-safe-step-delay={SAFE_QUERY_STEP_DELAY_MS}
+  data-hero-safe-result-hold={SAFE_QUERY_RESULT_HOLD_MS}
+>
+  <aside class="hero-product-sidebar">
+    <div class="hero-product-brand">
+      <span class="hero-product-brand-mark" aria-hidden="true"></span>
+      <div>
+        <p>OneQuery</p>
+        <span>acme-org</span>
+      </div>
+    </div>
+
+    <div class="hero-product-nav">
+      {
+        heroProductTabs.map((tab) => (
+          <button
+            type="button"
+            class:list={[
+              "hero-product-nav-button",
+              tab.id === initialTab && "hero-product-nav-active",
+            ]}
+            aria-pressed={tab.id === initialTab ? "true" : "false"}
+            data-hero-product-tab={tab.id}
+          >
+            {tab.label}
+          </button>
+        ))
+      }
+    </div>
+
+    <div class="hero-product-sidebar-footer">audited</div>
+  </aside>
+
+  <div class="hero-product-main">
+    <div class="hero-product-header">
+      <div>
+        <h3>prod-debug-readonly</h3>
+        <p>Context without secrets.</p>
+      </div>
+      <div class="hero-product-header-meta">
+        <span>4 sources</span>
+        <span>keys hidden</span>
+      </div>
+    </div>
+
+    <section class="hero-product-focus">
+      <div class="hero-product-section-header">
+        <h4 data-hero-product-title>{initialTabMeta.title}</h4>
+        <span data-hero-product-tag>{initialTabMeta.tag}</span>
+      </div>
+      <div class="hero-product-panel-body" data-hero-product-panel-body>
+        <div
+          class="hero-product-panel t-panel-slide"
+          data-open="true"
+          data-tab="integrations"
+        >
+          <div class="hero-product-list">
+            {
+              heroProductIntegrationRows.map((row) => (
+                <div class="hero-product-row">
+                  <span>{row.source}</span>
+                  <span>{row.provider}</span>
+                  <span>{row.status}</span>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <template
+    data-hero-product-panel-template="integrations"
+    data-hero-product-title={heroProductTabMeta.integrations.title}
+    data-hero-product-tag={heroProductTabMeta.integrations.tag}
+  >
+    <div
+      class="hero-product-panel t-panel-slide"
+      data-open="false"
+      data-tab="integrations"
+    >
+      <div class="hero-product-list">
+        {
+          heroProductIntegrationRows.map((row) => (
+            <div class="hero-product-row">
+              <span>{row.source}</span>
+              <span>{row.provider}</span>
+              <span>{row.status}</span>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </template>
+
+  <template
+    data-hero-product-panel-template="query"
+    data-hero-product-title={heroProductTabMeta.query.title}
+    data-hero-product-tag={heroProductTabMeta.query.tag}
+  >
+    <div
+      class="hero-product-panel t-panel-slide"
+      data-open="false"
+      data-tab="query"
+    >
+      <div
+        class="hero-safe-query"
+        data-result="pending"
+        aria-label="Capability grant policy checks"
+      >
+        <div class="hero-safe-query-preview">
+          <span
+            class="hero-safe-query-preview-line hero-safe-query-preview-line-primary"
+          >
+            read sentry
+          </span>
+          <span class="hero-safe-query-preview-line">select orders</span>
+          <span class="hero-safe-query-preview-line">write PR</span>
+        </div>
+
+        <div class="hero-safe-query-sidebar">
+          <div class="hero-safe-query-checklist" aria-live="polite">
+            {
+              heroSafeQueryChecks.map((check) => (
+                <div
+                  class="hero-safe-query-check"
+                  data-status="pending"
+                  data-hero-safe-query-check={check.id}
+                >
+                  <span
+                    class="hero-safe-query-check-box"
+                    aria-hidden="true"
+                    data-hero-safe-query-check-box
+                  >
+                  </span>
+                  <span>{check.label}</span>
+                </div>
+              ))
+            }
+          </div>
+
+          <div class="hero-safe-query-result-wrap">
+            <div
+              class="hero-safe-query-result"
+              data-result="pending"
+              data-hero-safe-query-result
+            >
+              <span
+                class="hero-safe-query-result-text t-text-swap"
+                aria-live="polite"
+                data-hero-safe-query-result-text
+              >
+                CHECKING
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template
+    data-hero-product-panel-template="audit"
+    data-hero-product-title={heroProductTabMeta.audit.title}
+    data-hero-product-tag={heroProductTabMeta.audit.tag}
+  >
+    <div
+      class="hero-product-panel t-panel-slide"
+      data-open="false"
+      data-tab="audit"
+    >
+      <div class="hero-product-audit">
+        {
+          heroProductAuditEntries.map((entry) => (
+            <div class="hero-product-audit-item">
+              <span class="hero-product-audit-dot" aria-hidden="true"></span>
+              <div>
+                <p>{entry.text}</p>
+                <span>{entry.detail}</span>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </template>
+</div>
+
+<script is:inline>
+  (() => {
+    const successIcon = `<span class="hero-safe-query-status-check t-success-check" data-state="in" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>`;
+    const scenarios = [
+      { result: "pass" },
+      { result: "blocked", failingStepId: "budgetLimit" },
+    ];
+
+    function swapText(element, nextText) {
+      if (!element || element.textContent === nextText) {
+        return;
+      }
+
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        element.textContent = nextText;
+        return;
+      }
+
+      element.classList.add("is-exit");
+      window.setTimeout(() => {
+        element.textContent = nextText;
+        element.classList.remove("is-exit");
+        element.classList.add("is-enter-start");
+
+        window.requestAnimationFrame(() => {
+          element.classList.remove("is-enter-start");
+        });
+      }, 120);
+    }
+
+    for (const surface of document.querySelectorAll(
+      "[data-hero-product-surface]"
+    )) {
+      const tabOrder = (
+        surface.getAttribute("data-hero-tab-order") || "integrations,query,audit"
+      ).split(",");
+      const dwell = {
+        audit: Number(surface.getAttribute("data-hero-dwell-audit")) || 5000,
+        integrations:
+          Number(surface.getAttribute("data-hero-dwell-integrations")) || 5000,
+        query: Number(surface.getAttribute("data-hero-dwell-query")) || 6500,
+      };
+      const delays = {
+        initial:
+          Number(surface.getAttribute("data-hero-safe-initial-delay")) || 360,
+        resultHold:
+          Number(surface.getAttribute("data-hero-safe-result-hold")) || 900,
+        step: Number(surface.getAttribute("data-hero-safe-step-delay")) || 520,
+      };
+      const buttons = Array.from(
+        surface.querySelectorAll("[data-hero-product-tab]")
+      );
+      const templates = new Map(
+        Array.from(
+          surface.querySelectorAll("[data-hero-product-panel-template]")
+        ).map((template) => [
+          template.getAttribute("data-hero-product-panel-template"),
+          template,
+        ])
+      );
+      const panelBody = surface.querySelector("[data-hero-product-panel-body]");
+      const title = surface.querySelector("[data-hero-product-title]");
+      const tag = surface.querySelector("[data-hero-product-tag]");
+      let activeTab =
+        surface.getAttribute("data-hero-initial-tab") || tabOrder[0];
+      let safeQueryCycleIndex = 0;
+      let safeQueryTimer;
+      let tabTimer;
+
+      const clearSafeQueryTimer = () => {
+        if (safeQueryTimer !== undefined) {
+          window.clearTimeout(safeQueryTimer);
+          safeQueryTimer = undefined;
+        }
+      };
+
+      const clearTabTimer = () => {
+        if (tabTimer !== undefined) {
+          window.clearTimeout(tabTimer);
+          tabTimer = undefined;
+        }
+      };
+
+      const scheduleTabAdvance = () => {
+        clearTabTimer();
+        tabTimer = window.setTimeout(() => {
+          const tabIndex = tabOrder.indexOf(activeTab);
+          const nextTab = tabOrder[(tabIndex + 1) % tabOrder.length];
+          setActiveTab(nextTab || tabOrder[0]);
+        }, dwell[activeTab] || 5000);
+      };
+
+      const setPanelOpen = () => {
+        const panel = panelBody?.querySelector(".hero-product-panel");
+
+        if (!panel) {
+          return;
+        }
+
+        window.requestAnimationFrame(() => {
+          panel.setAttribute("data-open", "true");
+        });
+      };
+
+      const updateSafeQueryResult = (result) => {
+        const query = panelBody?.querySelector(".hero-safe-query");
+        const resultElement = panelBody?.querySelector(
+          "[data-hero-safe-query-result]"
+        );
+        const text = panelBody?.querySelector(
+          "[data-hero-safe-query-result-text]"
+        );
+        const label =
+          result === "blocked"
+            ? "BLOCKED"
+            : result === "pass"
+              ? "PASS"
+              : "CHECKING";
+
+        query?.setAttribute("data-result", result);
+        resultElement?.setAttribute("data-result", result);
+        swapText(text, label);
+      };
+
+      const updateSafeQueryCheck = (checkId, status) => {
+        const check = panelBody?.querySelector(
+          `[data-hero-safe-query-check="${checkId}"]`
+        );
+        const box = check?.querySelector("[data-hero-safe-query-check-box]");
+
+        check?.setAttribute("data-status", status);
+
+        if (!box) {
+          return;
+        }
+
+        if (status === "success") {
+          box.innerHTML = successIcon;
+          return;
+        }
+
+        if (status === "failure") {
+          box.innerHTML = `<span aria-hidden="true">x</span>`;
+          return;
+        }
+
+        box.textContent = "";
+      };
+
+      const runSafeQueryCycle = () => {
+        clearSafeQueryTimer();
+
+        if (activeTab !== "query") {
+          return;
+        }
+
+        const checkIds = Array.from(
+          panelBody?.querySelectorAll("[data-hero-safe-query-check]") || []
+        ).map((check) => check.getAttribute("data-hero-safe-query-check"));
+        const scenario = scenarios[safeQueryCycleIndex % scenarios.length];
+        let checkIndex = 0;
+
+        safeQueryCycleIndex += 1;
+        updateSafeQueryResult("pending");
+
+        for (const checkId of checkIds) {
+          updateSafeQueryCheck(checkId, "pending");
+        }
+
+        function step() {
+          if (activeTab !== "query") {
+            return;
+          }
+
+          const checkId = checkIds[checkIndex];
+
+          if (!checkId) {
+            updateSafeQueryResult("pass");
+            safeQueryTimer = window.setTimeout(
+              runSafeQueryCycle,
+              delays.resultHold
+            );
+            return;
+          }
+
+          const status =
+            scenario.result === "blocked" &&
+            scenario.failingStepId === checkId
+              ? "failure"
+              : "success";
+
+          updateSafeQueryCheck(checkId, status);
+          checkIndex += 1;
+
+          if (status === "failure") {
+            updateSafeQueryResult("blocked");
+            safeQueryTimer = window.setTimeout(
+              runSafeQueryCycle,
+              delays.resultHold
+            );
+            return;
+          }
+
+          if (checkIndex >= checkIds.length) {
+            updateSafeQueryResult("pass");
+            safeQueryTimer = window.setTimeout(
+              runSafeQueryCycle,
+              delays.resultHold
+            );
+            return;
+          }
+
+          safeQueryTimer = window.setTimeout(step, delays.step);
+        }
+
+        safeQueryTimer = window.setTimeout(step, delays.initial);
+      };
+
+      const renderTab = (tab) => {
+        const template = templates.get(tab);
+
+        if (!template || !panelBody) {
+          return;
+        }
+
+        activeTab = tab;
+        panelBody.innerHTML = template.innerHTML;
+        title.textContent =
+          template.getAttribute("data-hero-product-title") || "";
+        tag.textContent = template.getAttribute("data-hero-product-tag") || "";
+
+        for (const button of buttons) {
+          const isActive =
+            button.getAttribute("data-hero-product-tab") === activeTab;
+          button.classList.toggle("hero-product-nav-active", isActive);
+          button.setAttribute("aria-pressed", String(isActive));
+        }
+
+        setPanelOpen();
+      };
+
+      const setActiveTab = (tab) => {
+        clearSafeQueryTimer();
+        renderTab(tab);
+
+        if (activeTab === "query") {
+          runSafeQueryCycle();
+        }
+
+        scheduleTabAdvance();
+      };
+
+      for (const button of buttons) {
+        button.addEventListener("click", () => {
+          const tab = button.getAttribute("data-hero-product-tab");
+
+          if (tab) {
+            setActiveTab(tab);
+          }
+        });
+      }
+
+      scheduleTabAdvance();
+    }
+  })();
+</script>
