@@ -1,0 +1,4 @@
+# Canonical page aliases for Cloudflare Workers static assets.
+# Keep static redirects before the dynamic splat rule.
+/index.html / 308
+/*/index.html /:splat/ 308
