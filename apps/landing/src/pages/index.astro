@@ -21,12 +21,9 @@ import {
   QUERY_TERMINAL_LINES,
   QUICKSTART_TERMINAL_LINES,
 } from "../data/home";
-import { actions } from "astro:actions";
 
-// ProductUpdatesSection uses Astro Actions with server-rendered form feedback.
-// The Remotion demo stays isolated in a client-visible island and is not the
-// reason this SEO landing page opts out of prerendering.
-export const prerender = false;
+// Keep the SEO landing page prerendered; dynamic signup posts to the API route.
+export const prerender = true;
 
 type LandingCtaAction = {
   className: string;
@@ -75,8 +72,6 @@ const finalCtaActions: ReadonlyArray<LandingCtaAction> = [
     trackingSection: "final_cta",
   },
 ] as const;
-
-const productUpdatesResult = Astro.getActionResult(actions.productUpdates);
 ---
 
 <MarketingLayout>
@@ -199,6 +194,6 @@ const productUpdatesResult = Astro.getActionResult(actions.productUpdates);
         </div>
       </section>
 
-      <ProductUpdatesSection result={productUpdatesResult} />
+      <ProductUpdatesSection />
   </main>
 </MarketingLayout>

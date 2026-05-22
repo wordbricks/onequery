@@ -121,6 +121,11 @@
   --duration-move: 400ms;
 }
 
+/* Native cross-document transitions keep navigation as an MPA with no router JS. */
+@view-transition {
+  navigation: auto;
+}
+
 @keyframes fade {
   from {
     filter: blur(3px);
@@ -312,6 +317,12 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 body {

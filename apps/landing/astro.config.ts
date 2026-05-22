@@ -140,6 +140,9 @@ export default defineConfig({
     // Keep page CSS out of a separate render-blocking request for first-load LCP.
     inlineStylesheets: "always",
   },
+  prefetch: {
+    defaultStrategy: "hover",
+  },
   env: {
     schema: {
       PUBLIC_GOOGLE_TAG_MANAGER_ID: envField.string({

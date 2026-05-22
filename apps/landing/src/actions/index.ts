@@ -1,14 +1,8 @@
 import { ActionError, defineAction } from "astro:actions";
 import { env } from "cloudflare:workers";
 
-import {
-  submitContactLead,
-  submitProductUpdatesLead,
-} from "../server/landing-api";
-import {
-  ContactRequestSchema,
-  ProductUpdatesRequestSchema,
-} from "../server/landing-schemas";
+import { submitContactLead } from "../server/landing-api";
+import { ContactRequestSchema } from "../server/landing-schemas";
 import { LandingNotificationConfigurationError } from "../server/landing/landing-notifications";
 import type { LandingNotificationError } from "../server/landing/landing-notifications";
 import { SENT_CONTACT_ACTION_STATE } from "./contact-action-state";
@@ -49,22 +43,6 @@ export const server = {
       }
 
       return SENT_CONTACT_ACTION_STATE;
-    },
-  }),
-  productUpdates: defineAction({
-    accept: "form",
-    input: ProductUpdatesRequestSchema,
-    handler: async (input, { request }) => {
-      const result = await submitProductUpdatesLead(input, {
-        bindings: readLandingWorkerBindings(),
-        request,
-      });
-
-      if (result.isErr()) {
-        throw createLandingActionError(result.error);
-      }
-
-      return result.value;
     },
   }),
 };

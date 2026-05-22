@@ -4,6 +4,7 @@ import {
 } from "../../landing/blog/blog-taxonomy";
 import type { BlogCategoryFilter } from "../../landing/blog/blog-taxonomy";
 import type { BlogPostSummary } from "../../landing/blog/blog-types";
+import TrackedLink from "../landing/TrackedLink.astro";
 import BlogThumbnail from "./BlogThumbnail.astro";
 
 interface Props {
@@ -22,7 +23,7 @@ const { activeCategory, categories, posts } = Astro.props;
       <nav aria-label="Blog categories" class="blog-categories">
         {
           categories.map((category) => (
-            <a
+            <TrackedLink
               href={getBlogIndexPath({ category })}
               class={
                 activeCategory === category
@@ -30,9 +31,10 @@ const { activeCategory, categories, posts } = Astro.props;
                   : "blog-category"
               }
               aria-current={activeCategory === category ? "page" : undefined}
+              prefetch={activeCategory === category ? false : "tap"}
             >
               {category}
-            </a>
+            </TrackedLink>
           ))
         }
       </nav>
@@ -47,7 +49,10 @@ const { activeCategory, categories, posts } = Astro.props;
         {
           posts.map((post, postIndex) => (
             <article class="blog-card">
-              <a href={`/blog/${post.slug}/`}>
+              <TrackedLink
+                href={`/blog/${post.slug}/`}
+                prefetch="tap"
+              >
                 <BlogThumbnail post={post} priority={postIndex === 0} />
                 <div class="blog-card-meta">
                   <span>{post.category}</span>
@@ -60,7 +65,7 @@ const { activeCategory, categories, posts } = Astro.props;
                   {post.readTime}
                   <span aria-hidden="true">→</span>
                 </span>
-              </a>
+              </TrackedLink>
             </article>
           ))
         }
