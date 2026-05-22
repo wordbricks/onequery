@@ -11,6 +11,7 @@ import {
 import BlogPostParagraph from "./BlogPostParagraph.astro";
 import LinkedText from "./LinkedText.astro";
 import OptimizedBlogImage from "./OptimizedBlogImage.astro";
+import TrackedLink from "../landing/TrackedLink.astro";
 
 interface Props {
   post: BlogPost;
@@ -43,7 +44,7 @@ const visibleRelatedPosts =
     <article id="top">
       <header class="blog-post-header">
         <div class="blog-breadcrumb">
-          <a href="/blog/">Blog</a>
+          <TrackedLink href="/blog/" prefetch>Blog</TrackedLink>
           <span aria-hidden="true">/</span>
           <span>{post.category}</span>
         </div>
@@ -145,7 +146,10 @@ const visibleRelatedPosts =
       <div class="blog-related-grid">
         {
           visibleRelatedPosts.map((relatedPost) => (
-            <a href={`/blog/${relatedPost.slug}/`}>
+            <TrackedLink
+              href={`/blog/${relatedPost.slug}/`}
+              prefetch="tap"
+            >
               <span>
                 {relatedPost.date} - {relatedPost.category}
               </span>
@@ -153,12 +157,16 @@ const visibleRelatedPosts =
               <p>
                 {relatedPost.readTime} <span aria-hidden="true">→</span>
               </p>
-            </a>
+            </TrackedLink>
           ))
         }
       </div>
-      <a href="/blog/" class="blog-more-link">
+      <TrackedLink
+        href="/blog/"
+        class="blog-more-link"
+        prefetch
+      >
         View more posts <span aria-hidden="true">→</span>
-      </a>
+      </TrackedLink>
     </section>
 </main>

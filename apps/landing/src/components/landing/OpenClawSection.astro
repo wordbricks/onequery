@@ -1,14 +1,185 @@
 ---
-import { OpenClawDemoIsland } from "../../landing/openclaw-demo/openclaw-demo-island";
+import {
+  getOpenClawDemoPosterImage,
+  OPEN_CLAW_DEMO_VIDEO,
+} from "../../landing/openclaw-demo-video";
+
+const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
 ---
 
-<section class="section openclaw-demo-section" id="demo">
+<section
+  aria-labelledby="openclaw-demo-title"
+  class="section openclaw-demo-section"
+  id="demo"
+>
   <div class="section-intro">
     <p class="eyebrow">Agent-native access</p>
-    <h2>One grant. Any agent.</h2>
+    <h2 id="openclaw-demo-title">One grant. Any agent.</h2>
+    <p id="openclaw-demo-description">
+      Watch OneQuery grant an AI agent governed access to approved production
+      context while credentials stay centralized and every query remains
+      auditable.
+    </p>
   </div>
 
-  <div class="openclaw-demo-frame">
-    <OpenClawDemoIsland client:visible={{ rootMargin: "700px 0px" }} />
+  <div class="openclaw-demo-frame" data-openclaw-demo-frame>
+    <video
+      aria-describedby="openclaw-demo-description"
+      aria-label={OPEN_CLAW_DEMO_VIDEO.name}
+      class="openclaw-demo-video"
+      controls
+      data-openclaw-demo-poster={openClawDemoPosterImage.src}
+      data-openclaw-demo-video
+      height={OPEN_CLAW_DEMO_VIDEO.height}
+      loop
+      muted
+      playsinline
+      preload="none"
+      width={OPEN_CLAW_DEMO_VIDEO.width}
+    >
+      <source src={OPEN_CLAW_DEMO_VIDEO.webmSrc} type="video/webm" />
+      <source src={OPEN_CLAW_DEMO_VIDEO.mp4Src} type="video/mp4" />
+    </video>
   </div>
 </section>
+
+<script is:inline type="module">
+  const autoplayVisibilityThreshold = 0.28;
+  const playbackObserverThresholds = [
+    0,
+    autoplayVisibilityThreshold,
+    0.5,
+    0.75,
+    1,
+  ];
+
+  function getVisibleRatio(element) {
+    const rect = element.getBoundingClientRect();
+    const elementArea = rect.width * rect.height;
+
+    if (elementArea <= 0) {
+      return 0;
+    }
+
+    const viewportWidth =
+      window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight =
+      window.innerHeight || document.documentElement.clientHeight;
+    const visibleWidth = Math.max(
+      0,
+      Math.min(rect.right, viewportWidth) - Math.max(rect.left, 0)
+    );
+    const visibleHeight = Math.max(
+      0,
+      Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0)
+    );
+
+    return (visibleWidth * visibleHeight) / elementArea;
+  }
+
+  function isReadyForAutoplay(element) {
+    return getVisibleRatio(element) >= autoplayVisibilityThreshold;
+  }
+
+  for (const frame of document.querySelectorAll("[data-openclaw-demo-frame]")) {
+    const video = frame.querySelector("[data-openclaw-demo-video]");
+
+    if (!(video instanceof HTMLVideoElement)) {
+      continue;
+    }
+
+    let hasStartedVisibilityAutoplay = false;
+    let pauseRequestedByVisibility = false;
+    let userPaused = false;
+
+    const playForVisibility = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (userPaused && hasStartedVisibilityAutoplay) {
+        return;
+      }
+
+      if (!isReadyForAutoplay(frame)) {
+        return;
+      }
+
+      if (!video.poster && video.dataset.openclawDemoPoster) {
+        video.poster = video.dataset.openclawDemoPoster;
+      }
+
+      video.muted = true;
+
+      if (!video.paused) {
+        hasStartedVisibilityAutoplay = true;
+        pauseRequestedByVisibility = false;
+        return;
+      }
+
+      const playRequest = video.play();
+      hasStartedVisibilityAutoplay = true;
+      pauseRequestedByVisibility = false;
+
+      if (playRequest) {
+        playRequest.catch(() => {
+          hasStartedVisibilityAutoplay = false;
+        });
+      }
+    };
+
+    const pauseForVisibility = () => {
+      if (!hasStartedVisibilityAutoplay || video.paused) {
+        return;
+      }
+
+      pauseRequestedByVisibility = true;
+      video.pause();
+    };
+
+    const syncVisibilityPlayback = () => {
+      if (
+        document.visibilityState === "visible" &&
+        isReadyForAutoplay(frame)
+      ) {
+        playForVisibility();
+        return;
+      }
+
+      pauseForVisibility();
+    };
+
+    video.addEventListener("play", () => {
+      hasStartedVisibilityAutoplay = true;
+      pauseRequestedByVisibility = false;
+      userPaused = false;
+    });
+
+    video.addEventListener("pause", () => {
+      if (pauseRequestedByVisibility) {
+        pauseRequestedByVisibility = false;
+        return;
+      }
+
+      if (isReadyForAutoplay(frame)) {
+        userPaused = true;
+      }
+    });
+
+    document.addEventListener("visibilitychange", syncVisibilityPlayback);
+
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(syncVisibilityPlayback, {
+        threshold: playbackObserverThresholds,
+      });
+      observer.observe(frame);
+    } else {
+      window.addEventListener("scroll", syncVisibilityPlayback, {
+        passive: true,
+      });
+      window.addEventListener("resize", syncVisibilityPlayback);
+    }
+
+    window.requestAnimationFrame(syncVisibilityPlayback);
+  }
+</script>

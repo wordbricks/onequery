@@ -1006,112 +1006,12 @@
   box-shadow: var(--shadow), var(--shadow-ring);
 }
 
-.openclaw-demo-player {
+.openclaw-demo-video {
   display: block;
   width: 100% !important;
   height: 100% !important;
-}
-
-.openclaw-demo-loading {
-  position: absolute;
-  inset: 0;
-  padding: 24px;
   background: #0d0d0d;
-}
-
-.openclaw-demo-poster {
-  display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
-  gap: 22px;
-  height: 100%;
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.openclaw-demo-poster-sidebar {
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.openclaw-demo-poster-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.openclaw-demo-poster-channel {
-  display: block;
-  min-height: 34px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.openclaw-demo-poster-channel:first-of-type {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.86);
-}
-
-.openclaw-demo-poster-main {
-  display: grid;
-  align-content: center;
-  gap: 14px;
-  padding: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
-    rgba(255, 255, 255, 0.025);
-}
-
-.openclaw-demo-poster-message {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 0 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.openclaw-demo-poster-message p,
-.openclaw-demo-poster-audit {
-  margin: 0;
-  font-size: 14px;
-  line-height: 20px;
-}
-
-.openclaw-demo-poster-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--success);
-  box-shadow: 0 0 0 5px rgba(15, 118, 110, 0.16);
-}
-
-.openclaw-demo-poster-audit {
-  justify-self: start;
-  margin-top: 6px;
-  padding: 7px 10px;
-  border: 1px solid rgba(15, 118, 110, 0.28);
-  border-radius: 8px;
-  background: rgba(15, 118, 110, 0.12);
-  color: rgba(255, 255, 255, 0.78);
+  object-fit: cover;
 }
 
 .control-plane-diagram {
@@ -1963,33 +1863,6 @@
 
   .hero-safe-query-result {
     width: 100%;
-  }
-
-  .openclaw-demo-loading {
-    padding: 14px;
-  }
-
-  .openclaw-demo-poster {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .openclaw-demo-poster-sidebar {
-    grid-template-columns: auto repeat(3, minmax(0, 1fr));
-    align-items: center;
-    padding: 12px;
-  }
-
-  .openclaw-demo-poster-channel {
-    min-height: 30px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    font-size: 11px;
-  }
-
-  .openclaw-demo-poster-main {
-    padding: 16px;
   }
 
   .control-plane-column {

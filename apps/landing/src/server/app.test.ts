@@ -77,6 +77,36 @@ describe("landing API handlers", () => {
     });
   });
 
+  it("accepts product updates form submissions for the HTML fallback", async () => {
+    const fetchSpy = vi.fn<typeof globalThis.fetch>();
+    fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));
+    installFetchMock(fetchSpy);
+
+    const response = await handleProductUpdatesRequest({
+      bindings: {
+        LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
+      },
+      request: new Request("https://landing.onequery.dev/api/product-updates", {
+        body: new URLSearchParams({
+          email: " FORM@Example.COM ",
+        }),
+        method: "POST",
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      email: "form@example.com",
+    });
+    expect(fetchSpy).toHaveBeenCalledWith("https://example.com/hooks/landing", {
+      body: JSON.stringify(
+        createProductUpdatesNotification("form@example.com")
+      ),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+  });
+
   it("normalizes contact submissions before delivery", async () => {
     const fetchSpy = vi.fn<typeof globalThis.fetch>();
     fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));

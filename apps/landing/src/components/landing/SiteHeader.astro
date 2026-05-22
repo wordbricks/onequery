@@ -45,7 +45,12 @@ const navigationItems = NAVIGATION_ITEMS.map((item) => ({
 ---
 
 <header class="site-header">
-  <a href="/" class="brand-mark" aria-label="OneQuery landing homepage">
+  <TrackedLink
+    href="/"
+    class="brand-mark"
+    aria-label="OneQuery landing homepage"
+    prefetch
+  >
     <Image
       src={onequeryIcon}
       alt=""
@@ -56,7 +61,7 @@ const navigationItems = NAVIGATION_ITEMS.map((item) => ({
       loading="eager"
     />
     <span>OneQuery</span>
-  </a>
+  </TrackedLink>
 
   <nav class="site-nav" aria-label="Primary">
     {
@@ -68,6 +73,7 @@ const navigationItems = NAVIGATION_ITEMS.map((item) => ({
             { "site-nav-link-active": item.isActive },
           ]}
           aria-current={item.isActive ? "page" : undefined}
+          prefetch
           trackingName="nav_section_link"
           trackingSection="header_nav"
         >

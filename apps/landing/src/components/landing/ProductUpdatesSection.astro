@@ -1,68 +1,3 @@
----
-import { actions, isInputError } from "astro:actions";
-
-const DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE =
-  "Failed to subscribe for product updates";
-
-type ProductUpdatesActionResult =
-  | {
-      data?: { email: string };
-      error?: unknown;
-    }
-  | undefined;
-
-interface Props {
-  result?: ProductUpdatesActionResult;
-}
-
-const { result } = Astro.props;
-
-function readActionErrorMessage(error: unknown, fallback: string): string {
-  if (isInputError(error)) {
-    const fieldMessage = Object.values(error.fields)
-      .flat()
-      .find((message): message is string => typeof message === "string");
-
-    if (fieldMessage) {
-      return fieldMessage;
-    }
-  }
-
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof error.message === "string" &&
-    error.message.length > 0
-  ) {
-    return error.message;
-  }
-
-  return fallback;
-}
-
-const feedback = result?.error
-  ? {
-      className: "marketing-form-feedback marketing-form-feedback-error",
-      message: readActionErrorMessage(
-        result.error,
-        DEFAULT_PRODUCT_UPDATES_ERROR_MESSAGE
-      ),
-      role: "alert" as const,
-    }
-  : result?.data
-    ? {
-        className: "marketing-form-feedback marketing-form-feedback-success",
-        message: `We'll send product updates to ${result.data.email}.`,
-        role: "status" as const,
-      }
-    : {
-        className: "marketing-form-feedback",
-        message: "We only use this to send product updates.",
-        role: "status" as const,
-      };
----
-
 <section class="section marketing-updates">
   <div class="marketing-updates-copy">
     <p class="eyebrow">Stay in the loop</p>
@@ -72,7 +7,8 @@ const feedback = result?.error
   <form
     class="marketing-updates-form"
     method="POST"
-    action={actions.productUpdates}
+    action="/api/product-updates/"
+    data-product-updates-form
   >
     <div class="marketing-inline-form">
       <input
@@ -88,21 +24,126 @@ const feedback = result?.error
       </button>
     </div>
 
-    <p class={feedback.className} role={feedback.role}>
-      {feedback.message}
+    <p
+      class="marketing-form-feedback"
+      role="status"
+      aria-live="polite"
+      data-product-updates-feedback
+    >
+      We only use this to send product updates.
     </p>
   </form>
 </section>
 
-{
-  result?.data ? (
-    <script is:inline>
-      if (Array.isArray(window.dataLayer)) {
-        window.dataLayer.push({
-          event: "sign_up",
-          method: "product_updates",
-        });
+<script is:inline>
+  const PRODUCT_UPDATES_DEFAULT_MESSAGE =
+    "Failed to subscribe for product updates";
+
+  function readProductUpdatesErrorMessage(payload) {
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "message" in payload &&
+      typeof payload.message === "string" &&
+      payload.message.length > 0
+    ) {
+      return payload.message;
+    }
+
+    return PRODUCT_UPDATES_DEFAULT_MESSAGE;
+  }
+
+  function setProductUpdatesFeedback(feedback, message, state) {
+    feedback.textContent = message;
+    feedback.classList.toggle(
+      "marketing-form-feedback-success",
+      state === "success"
+    );
+    feedback.classList.toggle(
+      "marketing-form-feedback-error",
+      state === "error"
+    );
+    feedback.setAttribute("role", state === "error" ? "alert" : "status");
+  }
+
+  for (const form of document.querySelectorAll(
+    "[data-product-updates-form]"
+  )) {
+    if (!(form instanceof HTMLFormElement)) {
+      continue;
+    }
+
+    const feedback = form.querySelector("[data-product-updates-feedback]");
+    const submitButton = form.querySelector('button[type="submit"]');
+
+    if (!(feedback instanceof HTMLElement)) {
+      continue;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      if (!form.reportValidity()) {
+        return;
       }
-    </script>
-  ) : null
-}
+
+      event.preventDefault();
+      const formData = new FormData(form);
+      const email = String(formData.get("email") ?? "").trim();
+
+      form.setAttribute("aria-busy", "true");
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = true;
+      }
+
+      setProductUpdatesFeedback(feedback, "Sending...", "neutral");
+
+      try {
+        const response = await fetch(form.action, {
+          body: JSON.stringify({ email }),
+          headers: {
+            accept: "application/json",
+            "content-type": "application/json",
+          },
+          method: "POST",
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(readProductUpdatesErrorMessage(payload));
+        }
+
+        const subscribedEmail =
+          payload &&
+          typeof payload === "object" &&
+          "email" in payload &&
+          typeof payload.email === "string"
+            ? payload.email
+            : email;
+
+        form.reset();
+        setProductUpdatesFeedback(
+          feedback,
+          `We'll send product updates to ${subscribedEmail}.`,
+          "success"
+        );
+
+        if (Array.isArray(window.dataLayer)) {
+          window.dataLayer.push({
+            event: "sign_up",
+            method: "product_updates",
+          });
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : PRODUCT_UPDATES_DEFAULT_MESSAGE;
+        setProductUpdatesFeedback(feedback, message, "error");
+      } finally {
+        form.removeAttribute("aria-busy");
+        if (submitButton instanceof HTMLButtonElement) {
+          submitButton.disabled = false;
+        }
+      }
+    });
+  }
+</script>

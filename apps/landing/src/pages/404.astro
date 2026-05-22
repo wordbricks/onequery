@@ -1,6 +1,7 @@
 ---
 import BlogLayout from "../layouts/BlogLayout.astro";
 import { createCanonicalUrl } from "../landing/seo/structured-data";
+import TrackedLink from "../components/landing/TrackedLink.astro";
 ---
 
 <BlogLayout
@@ -16,7 +17,9 @@ import { createCanonicalUrl } from "../landing/seo/structured-data";
       <p class="eyebrow">OneQuery</p>
       <h1>Page not found</h1>
       <p>The page you requested is not available.</p>
-      <a href="/" class="button button-primary">Go home</a>
+      <TrackedLink href="/" class="button button-primary" prefetch>
+        Go home
+      </TrackedLink>
     </section>
   </main>
 </BlogLayout>

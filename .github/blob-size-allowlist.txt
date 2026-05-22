@@ -6,3 +6,4 @@ bun.lock
 apps/cli/crates/proto-cli/src/generated/proto/
 apps/cli/crates/proto-runtime/src/generated/proto/
 apps/landing/src/assets/blog/
+apps/landing/src/assets/openclaw-demo-video.mp4

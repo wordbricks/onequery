@@ -20,8 +20,8 @@ export const AGENT_DISCOVERY_LINK_HEADER = [
 export function buildApiCatalogLinkset(origin: string) {
   const homepageUrl = `${origin}/`;
   const catalogUrl = `${origin}${API_CATALOG_PATH}`;
-  const productUpdatesApiUrl = `${origin}${LANDING_API_PREFIX}/product-updates`;
-  const contactApiUrl = `${origin}${LANDING_API_PREFIX}/contact`;
+  const productUpdatesApiUrl = `${origin}${LANDING_API_PREFIX}/product-updates/`;
+  const contactApiUrl = `${origin}${LANDING_API_PREFIX}/contact/`;
 
   return {
     linkset: [

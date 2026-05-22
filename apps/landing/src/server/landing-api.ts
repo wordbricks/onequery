@@ -199,22 +199,54 @@ function createServiceUnavailableResponse(
   );
 }
 
-async function readValidatedJson<T extends z.ZodType>(
+function createBodyValidationError(
+  message: string
+): LandingValidationErrorResponse {
+  return {
+    code: "validation_error",
+    fieldErrors: {
+      _form: [message],
+    },
+    message,
+  };
+}
+
+function readFormDataBody(formData: FormData) {
+  return Object.fromEntries(formData.entries());
+}
+
+async function readRequestBody(request: Request) {
+  const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
+
+  if (
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data")
+  ) {
+    try {
+      return readFormDataBody(await request.formData());
+    } catch {
+      return createBodyValidationError("Invalid form request body");
+    }
+  }
+
+  if (contentType.length > 0 && !contentType.includes("application/json")) {
+    return createBodyValidationError("Unsupported request content type");
+  }
+
+  try {
+    return await request.json();
+  } catch {
+    return createBodyValidationError("Invalid JSON request body");
+  }
+}
+
+async function readValidatedRequestBody<T extends z.ZodType>(
   request: Request,
   schema: T
 ): Promise<z.infer<T> | LandingValidationErrorResponse> {
-  let body: unknown;
-
-  try {
-    body = await request.json();
-  } catch {
-    return {
-      code: "validation_error",
-      fieldErrors: {
-        _form: ["Invalid JSON request body"],
-      },
-      message: "Invalid JSON request body",
-    };
+  const body = await readRequestBody(request);
+  if (isValidationErrorResponse(body)) {
+    return body;
   }
 
   const result = schema.safeParse(body);
@@ -287,7 +319,10 @@ export async function handleProductUpdatesRequest({
   const requestId = createRequestId();
 
   try {
-    const input = await readValidatedJson(request, ProductUpdatesRequestSchema);
+    const input = await readValidatedRequestBody(
+      request,
+      ProductUpdatesRequestSchema
+    );
     if (isValidationErrorResponse(input)) {
       return createValidationErrorResponse(input, requestId);
     }
@@ -325,7 +360,7 @@ export async function handleContactRequest({
   const requestId = createRequestId();
 
   try {
-    const input = await readValidatedJson(request, ContactRequestSchema);
+    const input = await readValidatedRequestBody(request, ContactRequestSchema);
     if (isValidationErrorResponse(input)) {
       return createValidationErrorResponse(input, requestId);
     }

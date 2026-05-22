@@ -10,23 +10,31 @@ import {
   createLandingPageStructuredData,
   normalizeSiteUrl,
   ONEQUERY_DEFAULT_DESCRIPTION,
-  toAbsoluteSiteUrl,
 } from "../landing/seo/structured-data";
+import {
+  getOneQueryPublicShareImageMetadata,
+  getOneQueryStructuredShareImageMetadata,
+  ONEQUERY_DEFAULT_SHARE_IMAGE_ALT,
+} from "../landing/seo/site-images";
 import type { PageMetadata } from "./layout-types";
 
 const DEFAULT_TITLE = "OneQuery | Governed Data Access for AI Agents";
 const DEFAULT_DESCRIPTION = ONEQUERY_DEFAULT_DESCRIPTION;
 const DEFAULT_KEYWORDS =
   "OneQuery, AI agent access control, production context, production keys, Claude Code, centralized credentials, audit logs, capability grants, safe production access";
-const DEFAULT_IMAGE_ALT =
-  "OneQuery - Governed Data Access for AI Agents";
+const DEFAULT_IMAGE_ALT = ONEQUERY_DEFAULT_SHARE_IMAGE_ALT;
 const siteUrl = normalizeSiteUrl(Astro.site);
 const DEFAULT_CANONICAL_URL = createCanonicalUrl("/", siteUrl);
-const DEFAULT_IMAGE_URL = toAbsoluteSiteUrl("/og.png", siteUrl);
+const defaultShareImage = getOneQueryPublicShareImageMetadata(siteUrl);
+const defaultStructuredShareImage =
+  await getOneQueryStructuredShareImageMetadata(siteUrl);
+const DEFAULT_IMAGE_URL = defaultShareImage.url;
 const DEFAULT_STRUCTURED_DATA = createLandingPageStructuredData({
   description: DEFAULT_DESCRIPTION,
   imageAlt: DEFAULT_IMAGE_ALT,
-  imageUrl: DEFAULT_IMAGE_URL,
+  imageHeight: defaultStructuredShareImage.height,
+  imageUrl: defaultStructuredShareImage.url,
+  imageWidth: defaultStructuredShareImage.width,
   site: siteUrl,
   title: DEFAULT_TITLE,
 });
@@ -37,9 +45,10 @@ const {
   canonicalUrl = DEFAULT_CANONICAL_URL,
   description = DEFAULT_DESCRIPTION,
   imageAlt = DEFAULT_IMAGE_ALT,
-  imageHeight = 630,
+  imageHeight = defaultShareImage.height,
+  imageType = defaultShareImage.type,
   imageUrl = DEFAULT_IMAGE_URL,
-  imageWidth = 1200,
+  imageWidth = defaultShareImage.width,
   keywords = DEFAULT_KEYWORDS,
   metaTags = [],
   ogType = "website",
@@ -122,6 +131,7 @@ const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
     <meta property="og:locale" content="en_US" />
     <meta property="og:image" content={imageUrl} />
     <meta property="og:image:secure_url" content={imageUrl} />
+    <meta property="og:image:type" content={imageType} />
     <meta property="og:image:width" content={String(imageWidth)} />
     <meta property="og:image:height" content={String(imageHeight)} />
     <meta property="og:image:alt" content={imageAlt} />

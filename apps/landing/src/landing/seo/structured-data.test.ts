@@ -5,6 +5,7 @@ import type { BlogPost } from "../blog/blog-types";
 import {
   createBlogPostStructuredData,
   createCanonicalUrl,
+  createLandingPageStructuredData,
   toIsoDateTime,
 } from "./structured-data";
 
@@ -34,6 +35,56 @@ describe("createCanonicalUrl", () => {
   it("keeps file endpoint URLs extension-first", () => {
     expect(createCanonicalUrl("/sitemap.xml")).toBe(
       "https://onequery.dev/sitemap.xml"
+    );
+  });
+});
+
+describe("createLandingPageStructuredData", () => {
+  it("links the landing demo video into the webpage graph", () => {
+    const schema = createLandingPageStructuredData({
+      description: "Landing description",
+      imageAlt: "OneQuery share image",
+      imageUrl: "/og.png",
+      title: "OneQuery",
+      video: {
+        contentUrl: "/_astro/openclaw-demo-video.hash.mp4",
+        description: "Demo video description",
+        duration: "PT20S",
+        name: "OneQuery OpenClaw agent access demo",
+        pageUrl: "https://onequery.dev/#demo",
+        thumbnailHeight: 900,
+        thumbnailUrl: "/_astro/openclaw-demo-poster.hash.avif",
+        thumbnailWidth: 1400,
+        uploadDate: "2026-05-22T00:00:00.000Z",
+      },
+    });
+    const graph = schema["@graph"];
+
+    expect(Array.isArray(graph)).toBe(true);
+    expect(graph).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "@type": "VideoObject",
+          "@id": "https://onequery.dev/#demo-video",
+          contentUrl:
+            "https://onequery.dev/_astro/openclaw-demo-video.hash.mp4",
+          duration: "PT20S",
+          thumbnailUrl: [
+            "https://onequery.dev/_astro/openclaw-demo-poster.hash.avif",
+          ],
+          uploadDate: "2026-05-22T00:00:00.000Z",
+          url: "https://onequery.dev/#demo",
+        }),
+        expect.objectContaining({
+          "@type": "WebPage",
+          hasPart: {
+            "@id": "https://onequery.dev/#demo-video",
+          },
+          video: {
+            "@id": "https://onequery.dev/#demo-video",
+          },
+        }),
+      ])
     );
   });
 });
