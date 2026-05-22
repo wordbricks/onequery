@@ -15,6 +15,7 @@ export interface PageMetadata {
   description?: string;
   imageAlt?: string;
   imageHeight?: number;
+  imageType?: string;
   imageUrl?: string;
   imageWidth?: number;
   keywords?: string | null;

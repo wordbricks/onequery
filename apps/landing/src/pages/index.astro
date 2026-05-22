@@ -26,6 +26,11 @@ import {
   toAbsoluteSiteUrl,
 } from "../landing/seo/structured-data";
 import {
+  getOneQueryPublicShareImageMetadata,
+  getOneQueryStructuredShareImageMetadata,
+  ONEQUERY_DEFAULT_SHARE_IMAGE_ALT,
+} from "../landing/seo/site-images";
+import {
   HERO_SIGNALS,
   INSTALL_STEPS,
   QUERY_DETAILS_SNIPPET,
@@ -37,15 +42,20 @@ import {
 export const prerender = true;
 
 const landingTitle = "OneQuery | Governed Data Access for AI Agents";
-const landingImageAlt = "OneQuery - Governed Data Access for AI Agents";
+const landingImageAlt = ONEQUERY_DEFAULT_SHARE_IMAGE_ALT;
 const siteUrl = normalizeSiteUrl(Astro.site);
 const landingCanonicalUrl = createCanonicalUrl("/", siteUrl);
-const landingImageUrl = toAbsoluteSiteUrl("/og.png", siteUrl);
+const landingShareImage = getOneQueryPublicShareImageMetadata(siteUrl);
+const landingStructuredShareImage =
+  await getOneQueryStructuredShareImageMetadata(siteUrl);
+const landingImageUrl = landingShareImage.url;
 const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
 const landingStructuredData = createLandingPageStructuredData({
   description: ONEQUERY_DEFAULT_DESCRIPTION,
   imageAlt: landingImageAlt,
-  imageUrl: landingImageUrl,
+  imageHeight: landingStructuredShareImage.height,
+  imageUrl: landingStructuredShareImage.url,
+  imageWidth: landingStructuredShareImage.width,
   site: siteUrl,
   title: landingTitle,
   video: {
@@ -136,7 +146,10 @@ const finalCtaActions: ReadonlyArray<LandingCtaAction> = [
   canonicalUrl={landingCanonicalUrl}
   description={ONEQUERY_DEFAULT_DESCRIPTION}
   imageAlt={landingImageAlt}
+  imageHeight={landingShareImage.height}
+  imageType={landingShareImage.type}
   imageUrl={landingImageUrl}
+  imageWidth={landingShareImage.width}
   metaTags={landingMetaTags}
   structuredData={landingStructuredData}
   title={landingTitle}
