@@ -65,7 +65,35 @@ const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
     <meta name="theme-color" content="#ffffff" />
     {
       googleTagManagerConfig ? (
-        <GoogleTagManager {...googleTagManagerConfig} />
+        <>
+          <GoogleTagManager {...googleTagManagerConfig} />
+          <script>
+            import { trackLandingCtaClick } from "../landing/analytics/landing-analytics";
+
+            document.addEventListener("click", (event) => {
+              if (!(event.target instanceof Element)) {
+                return;
+              }
+
+              const target = event.target.closest("[data-landing-cta]");
+              if (!(target instanceof HTMLElement)) {
+                return;
+              }
+
+              const ctaId = target.dataset.landingCta;
+              const ctaLocation = target.dataset.landingCtaSection;
+              if (!ctaId || !ctaLocation) {
+                return;
+              }
+
+              const destination =
+                target.dataset.landingCtaHref ||
+                (target instanceof HTMLAnchorElement ? target.href : undefined);
+
+              trackLandingCtaClick(ctaId, ctaLocation, destination);
+            });
+          </script>
+        </>
       ) : null
     }
     <meta name="robots" content={robots} />
@@ -114,37 +142,6 @@ const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
         />
       ))
     }
-    <script>
-      import { trackPageView } from "../landing/analytics/landing-analytics";
-
-      trackPageView();
-    </script>
-    <script>
-      import { trackLandingCtaClick } from "../landing/analytics/landing-analytics";
-
-      document.addEventListener("click", (event) => {
-        if (!(event.target instanceof Element)) {
-          return;
-        }
-
-        const target = event.target.closest("[data-landing-cta]");
-        if (!(target instanceof HTMLElement)) {
-          return;
-        }
-
-        const ctaId = target.dataset.landingCta;
-        const ctaLocation = target.dataset.landingCtaSection;
-        if (!ctaId || !ctaLocation) {
-          return;
-        }
-
-        const destination =
-          target.dataset.landingCtaHref ||
-          (target instanceof HTMLAnchorElement ? target.href : undefined);
-
-        trackLandingCtaClick(ctaId, ctaLocation, destination);
-      });
-    </script>
   </head>
   <body>
     {

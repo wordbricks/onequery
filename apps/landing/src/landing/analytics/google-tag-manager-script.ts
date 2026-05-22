@@ -36,12 +36,9 @@ if(!window.__onequeryGoogleTagManagerAfterSwapAdded){
     window.dataLayer=window.dataLayer||[];
     window.dataLayer.push({
       event:"virtualPageview",
-      "gtm.start":new Date().getTime(),
       page_location:window.location.href,
       page_path:window.location.pathname+window.location.search,
-      page_title:document.title,
-      virtualPagePath:window.location.pathname+window.location.search,
-      virtualPageTitle:document.title
+      page_title:document.title
     });
   });
 }`;

@@ -63,5 +63,11 @@ describe("createGoogleTagManagerAfterSwapScript", () => {
     expect(script).toContain("astro:after-swap");
     expect(script).toContain("dataLayer.push");
     expect(script).toContain("virtualPageview");
+    expect(script).toContain("page_location");
+    expect(script).toContain("page_path");
+    expect(script).toContain("page_title");
+    expect(script).not.toContain("gtm.start");
+    expect(script).not.toContain("virtualPagePath");
+    expect(script).not.toContain("virtualPageTitle");
   });
 });
