@@ -3,9 +3,11 @@ import { basename, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import cloudflare from "@astrojs/cloudflare";
+import partytown from "@astrojs/partytown";
 import react from "@astrojs/react";
 import { defineConfig, envField, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
+import { loadEnv } from "vite";
 
 import {
   BLOG_POST_CATEGORIES,
@@ -21,6 +23,16 @@ const BUNDLE_REPORT_TEMPLATES = ["markdown", "list", "raw-data"] as const;
 const BLOG_CONTENT_DIRECTORY = new URL("./src/content/blog/", import.meta.url);
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const PERMANENT_REDIRECT_STATUS = 308;
+// `astro:env` is unavailable in config files, so use Vite's loadEnv only
+// to avoid registering Partytown when GTM is not configured.
+const BUILD_ENV = loadEnv(
+  process.env.NODE_ENV ?? "development",
+  process.cwd(),
+  "PUBLIC_"
+);
+const HAS_GOOGLE_TAG_MANAGER_ID = Boolean(
+  BUILD_ENV.PUBLIC_GOOGLE_TAG_MANAGER_ID?.trim()
+);
 
 type BundleReportTemplate = (typeof BUNDLE_REPORT_TEMPLATES)[number];
 type RedirectConfig = {
@@ -143,7 +155,18 @@ export default defineConfig({
       weights: ["400 700"],
     },
   ],
-  integrations: [react()],
+  integrations: [
+    ...(HAS_GOOGLE_TAG_MANAGER_ID
+      ? [
+          partytown({
+            config: {
+              forward: ["dataLayer.push"],
+            },
+          }),
+        ]
+      : []),
+    react(),
+  ],
   // Astro's Cloudflare redirect output does not preserve a useful dynamic
   // /index.html alias rule here, so expand the finite SEO inventory instead.
   redirects: createCanonicalRedirects(),

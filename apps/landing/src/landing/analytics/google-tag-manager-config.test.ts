@@ -5,7 +5,10 @@ import {
   GOOGLE_TAG_MANAGER_DOMAIN,
   readGoogleTagManagerConfig,
 } from "./google-tag-manager-config";
-import { createGoogleTagManagerScript } from "./google-tag-manager-script";
+import {
+  createGoogleTagManagerAfterSwapScript,
+  createGoogleTagManagerScript,
+} from "./google-tag-manager-script";
 
 describe("readGoogleTagManagerConfig", () => {
   it("returns null when no GTM ID is configured", () => {
@@ -29,7 +32,7 @@ describe("readGoogleTagManagerConfig", () => {
 });
 
 describe("createGoogleTagManagerScript", () => {
-  it("includes the GTM loader and Astro swap pageview bridge", () => {
+  it("includes the GTM loader", () => {
     const script = createGoogleTagManagerScript({
       container: GOOGLE_TAG_MANAGER_CONTAINER,
       domain: GOOGLE_TAG_MANAGER_DOMAIN,
@@ -38,8 +41,6 @@ describe("createGoogleTagManagerScript", () => {
 
     expect(script).toContain("gtm.js");
     expect(script).toContain("GTM-ABC123");
-    expect(script).toContain("astro:after-swap");
-    expect(script).toContain("virtualPageview");
   });
 
   it("escapes inline script values that could close the script tag", () => {
@@ -52,5 +53,15 @@ describe("createGoogleTagManagerScript", () => {
     expect(script).not.toContain("</script>");
     expect(script).toContain("\\u003c/script>");
     expect(script).toContain("\\u003cscript>");
+  });
+});
+
+describe("createGoogleTagManagerAfterSwapScript", () => {
+  it("pushes a virtual pageview through dataLayer on Astro route swaps", () => {
+    const script = createGoogleTagManagerAfterSwapScript();
+
+    expect(script).toContain("astro:after-swap");
+    expect(script).toContain("dataLayer.push");
+    expect(script).toContain("virtualPageview");
   });
 });

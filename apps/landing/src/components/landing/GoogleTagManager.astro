@@ -1,10 +1,15 @@
 ---
-import { createGoogleTagManagerScript } from "../../landing/analytics/google-tag-manager-script";
+import {
+  createGoogleTagManagerAfterSwapScript,
+  createGoogleTagManagerScript,
+} from "../../landing/analytics/google-tag-manager-script";
 import type { GoogleTagManagerConfig } from "../../landing/analytics/google-tag-manager-config";
 
 type Props = GoogleTagManagerConfig;
 
 const script = createGoogleTagManagerScript(Astro.props);
+const afterSwapScript = createGoogleTagManagerAfterSwapScript();
 ---
 
-<script is:inline set:html={script} />
+<script is:inline type="text/partytown" set:html={script} />
+<script is:inline set:html={afterSwapScript} />

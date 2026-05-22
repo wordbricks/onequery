@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@astrojs/cloudflare": "catalog:",
+    "@astrojs/partytown": "catalog:",
     "@astrojs/react": "catalog:",
     "@nanostores/react": "catalog:",
     "@onequery/landing-video": "workspace:*",
