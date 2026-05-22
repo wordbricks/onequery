@@ -1,42 +1,31 @@
 ---
 import BlogPostView from "../../components/blog/BlogPost.astro";
-import BaseLayout from "../../layouts/BaseLayout.astro";
-import "../../styles/blog.css";
+import BlogLayout from "../../layouts/BlogLayout.astro";
 import {
-  blogPostSummaries,
-  loadBlogPostBySlug,
-} from "../../landing/blog/blog-posts";
+  getBlogPosts,
+  getBlogPostSummaries,
+} from "../../landing/blog/blog-collection";
+import type { BlogPost as BlogPostData } from "../../landing/blog/blog-types";
 import { getBlogPostShareImageMetadata } from "../../landing/blog/blog-image-assets";
 import { getBlogPostShareMetadata } from "../../landing/blog/blog-share-metadata";
 import {
   createBlogPostStructuredData,
   getBlogPostKeywords,
 } from "../../landing/seo/structured-data";
-import type { BlogPost as BlogPostData } from "../../landing/blog/blog-posts";
+
+interface Props {
+  post: BlogPostData;
+}
 
 export async function getStaticPaths() {
-  const paths = await Promise.all(
-    blogPostSummaries.map(async (summary) => {
-      const post = await loadBlogPostBySlug(summary.slug);
-
-      return {
-        params: { postSlug: summary.slug },
-        props: { post },
-      };
-    })
-  );
-
-  return paths.filter(
-    (
-      path
-    ): path is {
-      params: { postSlug: string };
-      props: { post: BlogPostData };
-    } => path.props.post !== undefined
-  );
+  return (await getBlogPosts()).map((post) => ({
+    params: { postSlug: post.slug },
+    props: { post },
+  }));
 }
 
 const { post } = Astro.props;
+const postSummaries = await getBlogPostSummaries();
 const imageMetadata = await getBlogPostShareImageMetadata(post, Astro.site);
 const metadata = getBlogPostShareMetadata(post, Astro.site, imageMetadata);
 const structuredData = createBlogPostStructuredData(
@@ -64,7 +53,7 @@ const articleMetaTags = [
 ];
 ---
 
-<BaseLayout
+<BlogLayout
   canonicalUrl={metadata.canonicalUrl}
   description={metadata.description}
   imageAlt={metadata.imageAlt}
@@ -78,5 +67,5 @@ const articleMetaTags = [
   title={metadata.title}
   twitterTitle={metadata.twitterTitle}
 >
-  <BlogPostView post={post} />
-</BaseLayout>
+  <BlogPostView post={post} postSummaries={postSummaries} />
+</BlogLayout>

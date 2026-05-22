@@ -6,7 +6,6 @@ import { getBlogImageAsset } from "../../landing/blog/blog-image-assets";
 interface Props {
   alt: string;
   class?: string;
-  loading?: "eager" | "lazy";
   priority?: boolean;
   sizes: string;
   src: string;
@@ -16,7 +15,6 @@ interface Props {
 const {
   alt,
   class: className,
-  loading = "lazy",
   priority = false,
   sizes,
   src,
@@ -33,7 +31,7 @@ const loadingAttributes = priority
   ? {}
   : {
       decoding: "async" as const,
-      loading,
+      loading: "lazy" as const,
     };
 ---
 

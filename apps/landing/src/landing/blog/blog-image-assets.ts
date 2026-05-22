@@ -26,19 +26,18 @@ const blogImagesByContentPath = new Map(
   })
 );
 
-export function getBlogImageAsset(src: string | undefined) {
-  return src ? blogImagesByContentPath.get(src) : undefined;
+export function getBlogImageAsset(src: string) {
+  return blogImagesByContentPath.get(src);
 }
 
 function getBlogPostImageSources(
   post: Pick<BlogPost, "imageSrc" | "sections">
 ) {
-  const sectionSources =
-    post.sections?.flatMap((section) => [
-      section.imageSrc,
-      ...(section.inlineImages?.map((image) => image.src) ?? []),
-      ...(section.images?.map((image) => image.src) ?? []),
-    ]) ?? [];
+  const sectionSources = post.sections.flatMap((section) => [
+    section.imageSrc,
+    ...(section.inlineImages?.map((image) => image.src) ?? []),
+    ...(section.images?.map((image) => image.src) ?? []),
+  ]);
 
   return [...sectionSources, post.imageSrc].filter(
     (src): src is string => typeof src === "string" && src.length > 0
@@ -71,7 +70,7 @@ export async function getBlogShareImageMetadata(
   src: string | undefined,
   site?: string | URL | null
 ): Promise<StructuredImageMetadata> {
-  const image = getBlogImageAsset(src);
+  const image = src ? getBlogImageAsset(src) : undefined;
 
   if (!image) {
     return {

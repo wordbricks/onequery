@@ -2,12 +2,13 @@
 import "../styles/base.css";
 import { Font } from "astro:assets";
 import {
+  createCanonicalUrl,
   createLandingPageStructuredData,
   normalizeSiteUrl,
   ONEQUERY_DEFAULT_DESCRIPTION,
   toAbsoluteSiteUrl,
 } from "../landing/seo/structured-data";
-import type { StructuredData } from "../landing/seo/structured-data";
+import type { PageMetadata } from "./layout-types";
 
 const DEFAULT_TITLE = "OneQuery | Governed Data Access for AI Agents";
 const DEFAULT_DESCRIPTION = ONEQUERY_DEFAULT_DESCRIPTION;
@@ -16,7 +17,7 @@ const DEFAULT_KEYWORDS =
 const DEFAULT_IMAGE_ALT =
   "OneQuery - Governed Data Access for AI Agents";
 const siteUrl = normalizeSiteUrl(Astro.site);
-const DEFAULT_CANONICAL_URL = `${siteUrl}/`;
+const DEFAULT_CANONICAL_URL = createCanonicalUrl("/", siteUrl);
 const DEFAULT_IMAGE_URL = toAbsoluteSiteUrl("/og.png", siteUrl);
 const DEFAULT_STRUCTURED_DATA = createLandingPageStructuredData({
   description: DEFAULT_DESCRIPTION,
@@ -26,30 +27,7 @@ const DEFAULT_STRUCTURED_DATA = createLandingPageStructuredData({
   title: DEFAULT_TITLE,
 });
 
-type MetaTag =
-  | {
-      content: string;
-      name: string;
-    }
-  | {
-      content: string;
-      property: string;
-    };
-
-interface Props {
-  canonicalUrl?: string;
-  description?: string;
-  imageAlt?: string;
-  imageHeight?: number;
-  imageUrl?: string;
-  imageWidth?: number;
-  keywords?: string | null;
-  metaTags?: MetaTag[];
-  ogType?: "article" | "website";
-  structuredData?: StructuredData | StructuredData[] | null;
-  title?: string;
-  twitterTitle?: string;
-}
+type Props = PageMetadata;
 
 const {
   canonicalUrl = DEFAULT_CANONICAL_URL,

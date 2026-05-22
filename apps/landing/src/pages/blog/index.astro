@@ -1,37 +1,37 @@
 ---
 import BlogIndex from "../../components/blog/BlogIndex.astro";
-import BaseLayout from "../../layouts/BaseLayout.astro";
-import "../../styles/blog.css";
+import BlogLayout from "../../layouts/BlogLayout.astro";
 import { getBlogShareImageMetadataBySlug } from "../../landing/blog/blog-image-assets";
-import { blogPostSummaries } from "../../landing/blog/blog-posts";
+import { getBlogPostSummaries } from "../../landing/blog/blog-collection";
 import {
   createBlogIndexStructuredData,
-  normalizeSiteUrl,
+  createCanonicalUrl,
 } from "../../landing/seo/structured-data";
 
 const title = "OneQuery Blog | Governed Data Access for AI Agents";
 const description =
   "Notes from the OneQuery team on production data access, AI agent safety, telemetry, and operational workflows.";
-const canonicalUrl = `${normalizeSiteUrl(Astro.site)}/blog`;
+const canonicalUrl = createCanonicalUrl("/blog", Astro.site);
+const posts = await getBlogPostSummaries();
 const postImages = await getBlogShareImageMetadataBySlug(
-  blogPostSummaries,
+  posts,
   Astro.site
 );
 const structuredData = createBlogIndexStructuredData({
   description,
   postImages,
-  posts: blogPostSummaries,
+  posts,
   site: Astro.site,
   title,
 });
 ---
 
-<BaseLayout
+<BlogLayout
   canonicalUrl={canonicalUrl}
   description={description}
   keywords="OneQuery blog, AI agent safety, governed data access, production data access, LLM telemetry, data agent workflows"
   structuredData={structuredData}
   title={title}
 >
-  <BlogIndex />
-</BaseLayout>
+  <BlogIndex posts={posts} />
+</BlogLayout>

@@ -142,10 +142,6 @@
   aspect-ratio: 1;
 }
 
-.blog-image-hero {
-  aspect-ratio: 16 / 9;
-}
-
 .blog-image-media {
   width: 100%;
   height: 100%;
@@ -157,74 +153,6 @@
   display: block;
   width: 100%;
   height: 100%;
-}
-
-.blog-thumbnail-slate {
-  background: #050917;
-}
-
-.blog-thumbnail-emerald {
-  background: #042f25;
-}
-
-.blog-thumbnail-violet {
-  background: #24185f;
-}
-
-.blog-thumbnail-rose {
-  background: #5d0019;
-}
-
-.blog-thumbnail-teal {
-  background: #063b3c;
-}
-
-.blog-thumbnail-indigo {
-  background: #1f1b63;
-}
-
-.blog-image-inner {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
-  padding: 24px;
-}
-
-.blog-image-bars {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.blog-image-bars span {
-  height: 7px;
-  border-radius: 999px;
-  background: currentColor;
-  opacity: 0.45;
-}
-
-.blog-image-symbols {
-  display: grid;
-  gap: 18px;
-}
-
-.blog-image-icon {
-  width: 38px;
-  height: 38px;
-}
-
-.blog-image-cells {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 7px;
-}
-
-.blog-image-cells span {
-  aspect-ratio: 1;
-  border-radius: 7px;
-  background: currentColor;
-  opacity: 0.14;
 }
 
 .blog-post-header,

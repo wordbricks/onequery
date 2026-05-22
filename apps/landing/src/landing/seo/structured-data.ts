@@ -68,6 +68,14 @@ export function toAbsoluteSiteUrl(pathOrUrl: string, site?: SiteInput) {
   return `${siteUrl}${path}`;
 }
 
+export function createCanonicalUrl(pathname: string, site?: SiteInput) {
+  const siteUrl = normalizeSiteUrl(site);
+  const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const normalizedPath = path === "/" ? "/" : path.replace(/\/+$/u, "");
+
+  return `${siteUrl}${normalizedPath}`;
+}
+
 export function toIsoDateTime(date: string) {
   if (!ISO_DATE_PATTERN.test(date)) {
     return undefined;
@@ -350,7 +358,7 @@ export function createBlogPostStructuredData(
   const siteUrl = normalizeSiteUrl(site);
   const postUrl = `${siteUrl}/blog/${post.slug}`;
   const publishedTime = toIsoDateTime(post.publishedAt);
-  const postSections = post.sections ?? [];
+  const postSections = post.sections;
 
   return createGraph([
     ...createSiteGraph(siteUrl),
@@ -493,19 +501,15 @@ function createBlogPostSummaryStructuredData(
 }
 
 function getPostText(post: BlogPost) {
-  const sectionText =
-    post.sections?.flatMap((section) => [
-      section.title,
-      ...section.paragraphs,
-      ...(section.table
-        ? [
-            ...section.table.headers,
-            ...section.table.rows.flatMap((row) => row),
-          ]
-        : []),
-    ]) ?? [];
+  const sectionText = post.sections.flatMap((section) => [
+    section.title,
+    ...section.paragraphs,
+    ...(section.table
+      ? [...section.table.headers, ...section.table.rows.flatMap((row) => row)]
+      : []),
+  ]);
 
-  return [post.title, post.description, ...post.body, ...sectionText].join(" ");
+  return [post.title, post.description, ...sectionText].join(" ");
 }
 
 function countWords(text: string) {

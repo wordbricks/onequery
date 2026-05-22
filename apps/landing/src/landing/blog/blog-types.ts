@@ -1,47 +1,23 @@
-export type BlogCategory =
-  | "All"
-  | "Product"
-  | "Engineering"
-  | "Safety"
-  | "Usecase"
-  | "Research";
+import type { z } from "astro/zod";
 
-export type BlogPostPublishedAt = `${number}-${number}-${number}`;
+import type { blogPostContentSchema } from "./blog-content-schema";
 
-export interface BlogPost {
-  body: string[];
-  category: Exclude<BlogCategory, "All">;
+export type BlogPostContent = z.infer<typeof blogPostContentSchema>;
+export type BlogPostSection = BlogPostContent["sections"][number];
+
+export type BlogPost = BlogPostContent & {
   date: string;
-  description: string;
-  imageSrc?: string;
-  publishedAt: BlogPostPublishedAt;
-  readTime: string;
-  sections?: BlogPostSection[];
   slug: string;
-  thumbnail: string;
-  title: string;
-}
+};
 
-export type BlogPostSummary = Omit<BlogPost, "body" | "sections">;
-
-export interface BlogPostSection {
-  imageAlt?: string;
-  imagePlacement?: "after-title" | "after-paragraphs";
-  imageSrc?: string;
-  inlineImages?: {
-    alt: string;
-    beforeParagraphIndex: number;
-    src: string;
-  }[];
-  images?: {
-    alt: string;
-    src: string;
-  }[];
-  id: string;
-  paragraphs: string[];
-  table?: {
-    headers: string[];
-    rows: string[][];
-  };
-  title: string;
-}
+export type BlogPostSummary = Pick<
+  BlogPost,
+  | "category"
+  | "date"
+  | "description"
+  | "imageSrc"
+  | "publishedAt"
+  | "readTime"
+  | "slug"
+  | "title"
+>;

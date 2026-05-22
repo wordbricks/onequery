@@ -1,30 +1,29 @@
 ---
-import {
-  blogCategories,
-  blogPostSummaries,
-  comparePostDates,
-} from "../../landing/blog/blog-posts";
-import type { BlogCategory } from "../../landing/blog/blog-posts";
-import SiteFooter from "../landing/SiteFooter.astro";
-import SiteHeader from "../landing/SiteHeader.astro";
+import { BLOG_CATEGORY_FILTERS } from "../../landing/blog/blog-taxonomy";
+import type { BlogCategoryFilter } from "../../landing/blog/blog-taxonomy";
+import { comparePostDates } from "../../landing/blog/blog-collection";
+import type { BlogPostSummary } from "../../landing/blog/blog-types";
 import BlogThumbnail from "./BlogThumbnail.astro";
 
-const blogNavigationItems = [
-  { href: "/", label: "Product" },
-  { href: "/blog", label: "Blog" },
-] as const;
-const blogFooterLinks = [{ href: "https://github.com/wordbricks/onequery", label: "GitHub" }];
+interface Props {
+  posts: readonly BlogPostSummary[];
+}
+
+const { posts } = Astro.props;
 
 const categoryParam = Astro.url.searchParams.get("category");
-const activeCategory = blogCategories.includes(categoryParam as BlogCategory)
-  ? (categoryParam as BlogCategory)
+const activeCategoryFilter = BLOG_CATEGORY_FILTERS.includes(
+  categoryParam as BlogCategoryFilter
+)
+  ? (categoryParam as BlogCategoryFilter)
   : "All";
 const sortDirection =
   Astro.url.searchParams.get("sort") === "oldest" ? "Oldest" : "Latest";
 
-const filteredPosts = blogPostSummaries
+const filteredPosts = posts
   .filter(
-    (post) => activeCategory === "All" || post.category === activeCategory
+    (post) =>
+      activeCategoryFilter === "All" || post.category === activeCategoryFilter
   )
   .toSorted((left, right) =>
     sortDirection === "Latest"
@@ -33,10 +32,10 @@ const filteredPosts = blogPostSummaries
   );
 
 function createBlogHref(input: {
-  category?: BlogCategory;
+  category?: BlogCategoryFilter;
   sort?: typeof sortDirection;
 }) {
-  const category = input.category ?? activeCategory;
+  const category = input.category ?? activeCategoryFilter;
   const sort = input.sort ?? sortDirection;
   const params = new URLSearchParams();
 
@@ -53,24 +52,21 @@ function createBlogHref(input: {
 }
 ---
 
-<div class="page-shell blog-shell">
-  <SiteHeader navigationItems={blogNavigationItems} />
-
-  <main class="blog-main">
+<main class="blog-main">
     <section class="blog-index-hero">
       <p class="eyebrow">OneQuery</p>
       <h1>Blog</h1>
       <nav aria-label="Blog categories" class="blog-categories">
         {
-          blogCategories.map((category) => (
+          BLOG_CATEGORY_FILTERS.map((category) => (
             <a
               href={createBlogHref({ category })}
               class={
-                activeCategory === category
+                activeCategoryFilter === category
                   ? "blog-category blog-category-active"
                   : "blog-category"
               }
-              aria-current={activeCategory === category ? "page" : undefined}
+              aria-current={activeCategoryFilter === category ? "page" : undefined}
             >
               {category}
             </a>
@@ -80,7 +76,7 @@ function createBlogHref(input: {
     </section>
 
     <form class="blog-toolbar" aria-label="Blog filters" method="GET" action="/blog">
-      {activeCategory === "All" ? null : <input type="hidden" name="category" value={activeCategory} />}
+      {activeCategoryFilter === "All" ? null : <input type="hidden" name="category" value={activeCategoryFilter} />}
       <span class="blog-toolbar-button">{filteredPosts.length} posts</span>
       <label class="blog-toolbar-button">
         <span>Sort</span>
@@ -116,7 +112,4 @@ function createBlogHref(input: {
         }
       </div>
     </section>
-  </main>
-
-  <SiteFooter links={blogFooterLinks} showContact={false} />
-</div>
+ </main>
