@@ -7,11 +7,9 @@ export const BLOG_POST_CATEGORIES = [
 ] as const;
 
 export const BLOG_CATEGORY_FILTERS = ["All", ...BLOG_POST_CATEGORIES] as const;
-export const BLOG_SORT_DIRECTIONS = ["Latest", "Oldest"] as const;
 
 export type BlogPostCategory = (typeof BLOG_POST_CATEGORIES)[number];
 export type BlogCategoryFilter = (typeof BLOG_CATEGORY_FILTERS)[number];
-export type BlogSortDirection = (typeof BLOG_SORT_DIRECTIONS)[number];
 
 const BLOG_CATEGORY_SLUGS = {
   Engineering: "engineering",
@@ -25,17 +23,24 @@ export function getBlogCategorySlug(category: BlogPostCategory) {
   return BLOG_CATEGORY_SLUGS[category];
 }
 
-export function getBlogIndexPath(input: {
-  category: BlogCategoryFilter;
-  sortDirection?: BlogSortDirection;
-}) {
-  const sortDirection = input.sortDirection ?? "Latest";
-
+export function getBlogIndexPath(input: { category: BlogCategoryFilter }) {
   if (input.category === "All") {
-    return sortDirection === "Latest" ? "/blog" : "/blog/archive";
+    return "/blog";
   }
 
-  const categoryPath = `/blog/category/${getBlogCategorySlug(input.category)}`;
+  return `/blog/category/${getBlogCategorySlug(input.category)}`;
+}
 
-  return sortDirection === "Latest" ? categoryPath : `${categoryPath}/archive`;
+export function getPopulatedBlogPostCategories(
+  posts: readonly { readonly category: BlogPostCategory }[]
+) {
+  const categories = new Set(posts.map((post) => post.category));
+
+  return BLOG_POST_CATEGORIES.filter((category) => categories.has(category));
+}
+
+export function getBlogCategoryFilters(
+  posts: readonly { readonly category: BlogPostCategory }[]
+): BlogCategoryFilter[] {
+  return ["All", ...getPopulatedBlogPostCategories(posts)];
 }

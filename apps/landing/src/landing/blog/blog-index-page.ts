@@ -4,8 +4,8 @@ import {
 } from "../seo/structured-data";
 import { comparePostDates, getBlogPostSummaries } from "./blog-collection";
 import { getBlogShareImageMetadataBySlug } from "./blog-images";
-import { getBlogIndexPath } from "./blog-taxonomy";
-import type { BlogCategoryFilter, BlogSortDirection } from "./blog-taxonomy";
+import { getBlogCategoryFilters, getBlogIndexPath } from "./blog-taxonomy";
+import type { BlogCategoryFilter } from "./blog-taxonomy";
 
 const BLOG_INDEX_TITLE = "OneQuery Blog | Governed Data Access for AI Agents";
 const BLOG_INDEX_DESCRIPTION =
@@ -17,36 +17,22 @@ function getCategorySeoLabel(category: BlogCategoryFilter) {
   return category === "Usecase" ? "use case" : category.toLowerCase();
 }
 
-function getBlogIndexTitle(
-  category: BlogCategoryFilter,
-  sortDirection: BlogSortDirection
-) {
+function getBlogIndexTitle(category: BlogCategoryFilter) {
   if (category === "All") {
-    return sortDirection === "Latest"
-      ? BLOG_INDEX_TITLE
-      : "OneQuery Blog Archive | Governed Data Access for AI Agents";
+    return BLOG_INDEX_TITLE;
   }
 
-  return sortDirection === "Latest"
-    ? `${category} Articles | OneQuery Blog`
-    : `${category} Article Archive | OneQuery Blog`;
+  return `${category} Articles | OneQuery Blog`;
 }
 
-function getBlogIndexDescription(
-  category: BlogCategoryFilter,
-  sortDirection: BlogSortDirection
-) {
+function getBlogIndexDescription(category: BlogCategoryFilter) {
   if (category === "All") {
-    return sortDirection === "Latest"
-      ? BLOG_INDEX_DESCRIPTION
-      : "Browse the OneQuery blog archive from oldest to newest across production data access, AI agent safety, telemetry, and operations.";
+    return BLOG_INDEX_DESCRIPTION;
   }
 
   const categoryLabel = getCategorySeoLabel(category);
 
-  return sortDirection === "Latest"
-    ? `Read OneQuery ${categoryLabel} articles on governed data access for AI agents, production context, telemetry, and operational workflows.`
-    : `Browse archived OneQuery ${categoryLabel} articles from oldest to newest.`;
+  return `Read OneQuery ${categoryLabel} articles on governed data access for AI agents, production context, telemetry, and operational workflows.`;
 }
 
 function getBlogIndexKeywords(category: BlogCategoryFilter) {
@@ -55,62 +41,38 @@ function getBlogIndexKeywords(category: BlogCategoryFilter) {
     : `${BLOG_INDEX_KEYWORDS}, ${category}, OneQuery ${getCategorySeoLabel(category)} articles`;
 }
 
-function getBlogIndexBreadcrumbName(
-  category: BlogCategoryFilter,
-  sortDirection: BlogSortDirection
-) {
+function getBlogIndexBreadcrumbName(category: BlogCategoryFilter) {
   if (category === "All") {
-    return sortDirection === "Latest" ? "Blog" : "Archive";
+    return "Blog";
   }
 
-  return sortDirection === "Latest" ? category : `${category} Archive`;
+  return category;
 }
 
 export async function getBlogIndexPage(input: {
   category: BlogCategoryFilter;
   site?: string | URL | null;
-  sortDirection: BlogSortDirection;
 }) {
-  const posts = (await getBlogPostSummaries())
+  const allPosts = await getBlogPostSummaries();
+  const posts = allPosts
     .filter(
       (post) => input.category === "All" || post.category === input.category
     )
-    .toSorted((left, right) =>
-      input.sortDirection === "Latest"
-        ? comparePostDates(left, right)
-        : comparePostDates(right, left)
-    );
+    .toSorted(comparePostDates);
   const pagePath = getBlogIndexPath(input);
-  const canonicalPath =
-    input.sortDirection === "Latest"
-      ? pagePath
-      : getBlogIndexPath({
-          category: input.category,
-          sortDirection: "Latest",
-        });
-  const title = getBlogIndexTitle(input.category, input.sortDirection);
-  const description = getBlogIndexDescription(
-    input.category,
-    input.sortDirection
-  );
+  const title = getBlogIndexTitle(input.category);
+  const description = getBlogIndexDescription(input.category);
   const postImages = await getBlogShareImageMetadataBySlug(posts, input.site);
 
   return {
     activeCategory: input.category,
-    canonicalUrl: createCanonicalUrl(canonicalPath, input.site),
+    canonicalUrl: createCanonicalUrl(pagePath, input.site),
+    categories: getBlogCategoryFilters(allPosts),
     description,
     keywords: getBlogIndexKeywords(input.category),
     posts,
-    robots:
-      input.sortDirection === "Latest"
-        ? undefined
-        : "noindex, follow, max-image-preview:large",
-    sortDirection: input.sortDirection,
     structuredData: createBlogIndexStructuredData({
-      breadcrumbName: getBlogIndexBreadcrumbName(
-        input.category,
-        input.sortDirection
-      ),
+      breadcrumbName: getBlogIndexBreadcrumbName(input.category),
       description,
       itemListName:
         input.category === "All"

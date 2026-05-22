@@ -6,7 +6,6 @@ import { getBlogIndexPage } from "../../landing/blog/blog-index-page";
 const page = await getBlogIndexPage({
   category: "All",
   site: Astro.site,
-  sortDirection: "Latest",
 });
 ---
 
@@ -19,7 +18,7 @@ const page = await getBlogIndexPage({
 >
   <BlogIndex
     activeCategory={page.activeCategory}
+    categories={page.categories}
     posts={page.posts}
-    sortDirection={page.sortDirection}
   />
 </BlogLayout>

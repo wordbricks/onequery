@@ -20,6 +20,7 @@ describe("landing discovery resources", () => {
       'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"'
     );
     expect(response.headers.get("Link")).toBe(AGENT_DISCOVERY_LINK_HEADER);
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex");
     expect(body.linkset).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

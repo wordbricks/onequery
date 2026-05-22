@@ -1,23 +1,18 @@
 ---
 import {
-  BLOG_CATEGORY_FILTERS,
-  BLOG_SORT_DIRECTIONS,
   getBlogIndexPath,
 } from "../../landing/blog/blog-taxonomy";
-import type {
-  BlogCategoryFilter,
-  BlogSortDirection,
-} from "../../landing/blog/blog-taxonomy";
+import type { BlogCategoryFilter } from "../../landing/blog/blog-taxonomy";
 import type { BlogPostSummary } from "../../landing/blog/blog-types";
 import BlogThumbnail from "./BlogThumbnail.astro";
 
 interface Props {
   activeCategory: BlogCategoryFilter;
+  categories: readonly BlogCategoryFilter[];
   posts: readonly BlogPostSummary[];
-  sortDirection: BlogSortDirection;
 }
 
-const { activeCategory, posts, sortDirection } = Astro.props;
+const { activeCategory, categories, posts } = Astro.props;
 ---
 
 <main class="blog-main">
@@ -26,9 +21,9 @@ const { activeCategory, posts, sortDirection } = Astro.props;
       <h1>Blog</h1>
       <nav aria-label="Blog categories" class="blog-categories">
         {
-          BLOG_CATEGORY_FILTERS.map((category) => (
+          categories.map((category) => (
             <a
-              href={getBlogIndexPath({ category, sortDirection: "Latest" })}
+              href={getBlogIndexPath({ category })}
               class={
                 activeCategory === category
                   ? "blog-category blog-category-active"
@@ -43,27 +38,9 @@ const { activeCategory, posts, sortDirection } = Astro.props;
       </nav>
     </section>
 
-    <nav class="blog-toolbar" aria-label="Blog sort">
+    <div class="blog-toolbar">
       <span class="blog-toolbar-button">{posts.length} posts</span>
-      {
-        BLOG_SORT_DIRECTIONS.map((nextSortDirection) => (
-          <a
-            href={getBlogIndexPath({
-              category: activeCategory,
-              sortDirection: nextSortDirection,
-            })}
-            class={
-              sortDirection === nextSortDirection
-                ? "blog-toolbar-button blog-toolbar-button-active"
-                : "blog-toolbar-button"
-            }
-            aria-current={sortDirection === nextSortDirection ? "page" : undefined}
-          >
-            {nextSortDirection}
-          </a>
-        ))
-      }
-    </nav>
+    </div>
 
     <section>
       <div class="blog-grid">

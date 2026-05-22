@@ -86,6 +86,7 @@ export function createApiCatalogResponse(request: Request) {
   const headers = new Headers({
     "content-type": API_CATALOG_CONTENT_TYPE,
     Link: AGENT_DISCOVERY_LINK_HEADER,
+    "X-Robots-Tag": "noindex",
   });
 
   if (request.method === "HEAD") {

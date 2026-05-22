@@ -70,6 +70,7 @@ export default defineConfig({
     port: DEFAULT_DEV_PORT,
   },
   site: "https://onequery.dev",
+  trailingSlash: "never",
   vite: {
     optimizeDeps: {
       exclude: ["@nanostores/react"],

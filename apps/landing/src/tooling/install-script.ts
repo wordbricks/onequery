@@ -4,6 +4,11 @@ import {
   INSTALL_SCRIPT_PATH,
 } from "@onequery/installer";
 
+const INSTALL_SCRIPT_RESPONSE_HEADERS = {
+  ...INSTALL_SCRIPT_HEADERS,
+  "X-Robots-Tag": "noindex",
+} as const;
+
 export interface InstallScriptAsset {
   readonly fileName: string;
   readonly headers: Readonly<Record<string, string>>;
@@ -13,7 +18,7 @@ export interface InstallScriptAsset {
 export function createInstallScriptAsset(): InstallScriptAsset {
   return {
     fileName: INSTALL_SCRIPT_PATH.slice(1),
-    headers: INSTALL_SCRIPT_HEADERS,
+    headers: INSTALL_SCRIPT_RESPONSE_HEADERS,
     source: createInstallScript(),
   };
 }

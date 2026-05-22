@@ -44,6 +44,7 @@ describe("landing API handlers", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-request-id")).toEqual(expect.any(String));
+    expect(response.headers.get("x-robots-tag")).toBe("noindex");
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
