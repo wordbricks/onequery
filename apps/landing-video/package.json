@@ -12,7 +12,7 @@
     "dev": "remotion studio src/index.ts",
     "build": "remotion bundle src/index.ts",
     "render": "bun run render:video",
-    "render:video": "remotion render src/index.ts OpenClawDemoVideo out/openclaw-demo-video.mp4",
+    "render:video": "remotion render src/index.ts OpenClawDemoVideo out/openclaw-demo-video.mp4 --muted",
     "render:webm": "remotion render src/index.ts OpenClawDemoVideo out/openclaw-demo-video.webm --codec=vp9 --crf=28 --muted",
     "render:still": "bun run scripts/render-still.ts",
     "typecheck": "tsgo --noEmit -p tsconfig.json"
