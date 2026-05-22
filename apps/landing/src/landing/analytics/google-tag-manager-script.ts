@@ -25,19 +25,20 @@ export function createGoogleTagManagerScript({
   }
   d.head.appendChild(j);
 })(window,document,"script",${toInlineScriptLiteral(DATA_LAYER_NAME)},${toInlineScriptLiteral(id)},${toInlineScriptLiteral(domain)},${toInlineScriptLiteral(container)});
+`;
+}
 
+export function createGoogleTagManagerAfterSwapScript() {
+  return `
 if(!window.__onequeryGoogleTagManagerAfterSwapAdded){
   window.__onequeryGoogleTagManagerAfterSwapAdded=true;
   document.addEventListener("astro:after-swap",function(){
     window.dataLayer=window.dataLayer||[];
     window.dataLayer.push({
       event:"virtualPageview",
-      "gtm.start":new Date().getTime(),
       page_location:window.location.href,
       page_path:window.location.pathname+window.location.search,
-      page_title:document.title,
-      virtualPagePath:window.location.pathname+window.location.search,
-      virtualPageTitle:document.title
+      page_title:document.title
     });
   });
 }`;

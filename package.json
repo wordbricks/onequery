@@ -8,6 +8,7 @@
     ],
     "catalog": {
       "@astrojs/cloudflare": "13.5.1",
+      "@astrojs/partytown": "2.1.7",
       "@astrojs/react": "5.0.5",
       "@bufbuild/protobuf": "2.11.0",
       "@bufbuild/protovalidate": "1.1.1",

@@ -13,9 +13,7 @@ declare global {
   }
 }
 
-function getPagePath() {
-  return `${window.location.pathname}${window.location.search}`;
-}
+const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
 
 function getDefinedEventParams(params: AnalyticsEventParams) {
   return Object.fromEntries(
@@ -37,25 +35,11 @@ function pushDataLayerEvent(name: string, params: AnalyticsEventParams) {
 }
 
 function trackEvent(name: string, params: AnalyticsEventParams = {}) {
-  if (!readGoogleTagManagerConfig(landingAnalyticsEnv)) {
+  if (!googleTagManagerConfig) {
     return;
   }
 
   pushDataLayerEvent(name, params);
-}
-
-export function trackPageView() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const pagePath = getPagePath();
-
-  trackEvent("page_view", {
-    page_location: window.location.href,
-    page_path: pagePath,
-    page_title: document.title,
-  });
 }
 
 export function trackLandingCtaClick(
