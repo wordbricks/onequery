@@ -20,6 +20,7 @@ export interface PageMetadata {
   keywords?: string | null;
   metaTags?: MetaTag[];
   ogType?: "article" | "website";
+  robots?: string;
   structuredData?: StructuredData | StructuredData[] | null;
   title?: string;
   twitterTitle?: string;

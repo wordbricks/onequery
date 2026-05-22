@@ -1,55 +1,23 @@
 ---
-import { BLOG_CATEGORY_FILTERS } from "../../landing/blog/blog-taxonomy";
-import type { BlogCategoryFilter } from "../../landing/blog/blog-taxonomy";
-import { comparePostDates } from "../../landing/blog/blog-collection";
+import {
+  BLOG_CATEGORY_FILTERS,
+  BLOG_SORT_DIRECTIONS,
+  getBlogIndexPath,
+} from "../../landing/blog/blog-taxonomy";
+import type {
+  BlogCategoryFilter,
+  BlogSortDirection,
+} from "../../landing/blog/blog-taxonomy";
 import type { BlogPostSummary } from "../../landing/blog/blog-types";
 import BlogThumbnail from "./BlogThumbnail.astro";
 
 interface Props {
+  activeCategory: BlogCategoryFilter;
   posts: readonly BlogPostSummary[];
+  sortDirection: BlogSortDirection;
 }
 
-const { posts } = Astro.props;
-
-const categoryParam = Astro.url.searchParams.get("category");
-const activeCategoryFilter = BLOG_CATEGORY_FILTERS.includes(
-  categoryParam as BlogCategoryFilter
-)
-  ? (categoryParam as BlogCategoryFilter)
-  : "All";
-const sortDirection =
-  Astro.url.searchParams.get("sort") === "oldest" ? "Oldest" : "Latest";
-
-const filteredPosts = posts
-  .filter(
-    (post) =>
-      activeCategoryFilter === "All" || post.category === activeCategoryFilter
-  )
-  .toSorted((left, right) =>
-    sortDirection === "Latest"
-      ? comparePostDates(left, right)
-      : comparePostDates(right, left)
-  );
-
-function createBlogHref(input: {
-  category?: BlogCategoryFilter;
-  sort?: typeof sortDirection;
-}) {
-  const category = input.category ?? activeCategoryFilter;
-  const sort = input.sort ?? sortDirection;
-  const params = new URLSearchParams();
-
-  if (category !== "All") {
-    params.set("category", category);
-  }
-
-  if (sort === "Oldest") {
-    params.set("sort", "oldest");
-  }
-
-  const query = params.toString();
-  return query ? `/blog?${query}` : "/blog";
-}
+const { activeCategory, posts, sortDirection } = Astro.props;
 ---
 
 <main class="blog-main">
@@ -60,13 +28,13 @@ function createBlogHref(input: {
         {
           BLOG_CATEGORY_FILTERS.map((category) => (
             <a
-              href={createBlogHref({ category })}
+              href={getBlogIndexPath({ category, sortDirection: "Latest" })}
               class={
-                activeCategoryFilter === category
+                activeCategory === category
                   ? "blog-category blog-category-active"
                   : "blog-category"
               }
-              aria-current={activeCategoryFilter === category ? "page" : undefined}
+              aria-current={activeCategory === category ? "page" : undefined}
             >
               {category}
             </a>
@@ -75,23 +43,32 @@ function createBlogHref(input: {
       </nav>
     </section>
 
-    <form class="blog-toolbar" aria-label="Blog filters" method="GET" action="/blog">
-      {activeCategoryFilter === "All" ? null : <input type="hidden" name="category" value={activeCategoryFilter} />}
-      <span class="blog-toolbar-button">{filteredPosts.length} posts</span>
-      <label class="blog-toolbar-button">
-        <span>Sort</span>
-        <select name="sort">
-          <option value="latest" selected={sortDirection === "Latest"}>Latest</option>
-          <option value="oldest" selected={sortDirection === "Oldest"}>Oldest</option>
-        </select>
-      </label>
-      <button type="submit" class="blog-toolbar-button">Apply</button>
-    </form>
+    <nav class="blog-toolbar" aria-label="Blog sort">
+      <span class="blog-toolbar-button">{posts.length} posts</span>
+      {
+        BLOG_SORT_DIRECTIONS.map((nextSortDirection) => (
+          <a
+            href={getBlogIndexPath({
+              category: activeCategory,
+              sortDirection: nextSortDirection,
+            })}
+            class={
+              sortDirection === nextSortDirection
+                ? "blog-toolbar-button blog-toolbar-button-active"
+                : "blog-toolbar-button"
+            }
+            aria-current={sortDirection === nextSortDirection ? "page" : undefined}
+          >
+            {nextSortDirection}
+          </a>
+        ))
+      }
+    </nav>
 
     <section>
       <div class="blog-grid">
         {
-          filteredPosts.map((post, postIndex) => (
+          posts.map((post, postIndex) => (
             <article class="blog-card">
               <a href={`/blog/${post.slug}`}>
                 <BlogThumbnail post={post} priority={postIndex === 0} />

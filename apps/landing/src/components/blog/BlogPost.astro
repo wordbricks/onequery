@@ -74,11 +74,11 @@ const visibleRelatedPosts =
             sections.map((section) => (
               <section id={section.id}>
                 <h2>{section.title}</h2>
-                {section.imagePlacement === "after-title" && section.imageSrc ? (
+                {section.imagePlacement === "after-title" && section.image ? (
                   <figure class={getFigureClass(section)}>
                     <OptimizedBlogImage
-                      src={section.imageSrc}
-                      alt={section.imageAlt ?? ""}
+                      src={section.image.src}
+                      alt={section.image.alt}
                       sizes={BLOG_POST_IMAGE_SIZES}
                       widths={BLOG_POST_IMAGE_WIDTHS}
                     />
@@ -113,7 +113,7 @@ const visibleRelatedPosts =
                     </table>
                   </div>
                 ) : null}
-                {section.images?.map((image) => (
+                {section.images.map((image) => (
                   <figure class="blog-post-figure">
                     <OptimizedBlogImage
                       src={image.src}
@@ -123,11 +123,11 @@ const visibleRelatedPosts =
                     />
                   </figure>
                 ))}
-                {section.imagePlacement !== "after-title" && section.imageSrc ? (
+                {section.imagePlacement !== "after-title" && section.image ? (
                   <figure class={getFigureClass(section)}>
                     <OptimizedBlogImage
-                      src={section.imageSrc}
-                      alt={section.imageAlt ?? ""}
+                      src={section.image.src}
+                      alt={section.image.alt}
                       sizes={BLOG_POST_IMAGE_SIZES}
                       widths={BLOG_POST_IMAGE_WIDTHS}
                     />

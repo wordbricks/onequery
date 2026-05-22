@@ -23,6 +23,9 @@ import { DownloadCommand } from "../landing/download-command/download-command";
 import { HeroProductSurface } from "../landing/hero-product/hero-product-surface";
 import { actions } from "astro:actions";
 
+// ProductUpdatesSection uses Astro Actions with server-rendered form feedback.
+// The Remotion demo stays isolated in a client-visible island and is not the
+// reason this SEO landing page opts out of prerendering.
 export const prerender = false;
 
 type LandingCtaAction = {

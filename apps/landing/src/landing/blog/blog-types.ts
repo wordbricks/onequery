@@ -1,8 +1,10 @@
 import type { z } from "astro/zod";
 
-import type { blogPostContentSchema } from "./blog-content-schema";
+import type { createBlogPostContentSchema } from "./blog-content-schema";
 
-export type BlogPostContent = z.infer<typeof blogPostContentSchema>;
+export type BlogPostContent = z.infer<
+  ReturnType<typeof createBlogPostContentSchema>
+>;
 export type BlogPostSection = BlogPostContent["sections"][number];
 
 export type BlogPost = BlogPostContent & {
@@ -13,9 +15,9 @@ export type BlogPost = BlogPostContent & {
 export type BlogPostSummary = Pick<
   BlogPost,
   | "category"
+  | "coverImage"
   | "date"
   | "description"
-  | "imageSrc"
   | "publishedAt"
   | "readTime"
   | "slug"

@@ -39,6 +39,7 @@ const {
   keywords = DEFAULT_KEYWORDS,
   metaTags = [],
   ogType = "website",
+  robots = "index, follow, max-image-preview:large",
   structuredData = DEFAULT_STRUCTURED_DATA,
   title = DEFAULT_TITLE,
   twitterTitle = title,
@@ -57,7 +58,7 @@ const structuredDataItems =
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
-    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="robots" content={robots} />
     <meta name="author" content="OneQuery Maintainers" />
     <meta name="application-name" content="OneQuery" />
     <meta name="apple-mobile-web-app-title" content="OneQuery" />

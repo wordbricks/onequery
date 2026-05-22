@@ -1,14 +1,13 @@
 ---
 import { Picture } from "astro:assets";
-
-import { getBlogImageAsset } from "../../landing/blog/blog-image-assets";
+import type { ImageMetadata } from "astro";
 
 interface Props {
   alt: string;
   class?: string;
   priority?: boolean;
   sizes: string;
-  src: string;
+  src: ImageMetadata;
   widths: number[];
 }
 
@@ -21,12 +20,6 @@ const {
   widths,
 } = Astro.props;
 
-const image = getBlogImageAsset(src);
-
-if (!image) {
-  throw new Error(`Missing optimized blog image asset for ${src}`);
-}
-
 const loadingAttributes = priority
   ? {}
   : {
@@ -36,7 +29,7 @@ const loadingAttributes = priority
 ---
 
 <Picture
-  src={image}
+  src={src}
   alt={alt}
   class={className}
   fallbackFormat="webp"

@@ -1,3 +1,4 @@
+import type { ImageMetadata } from "astro";
 import { describe, expect, it } from "vitest";
 
 import type { BlogPost } from "../blog/blog-types";
@@ -20,18 +21,28 @@ describe("toIsoDateTime", () => {
 
 describe("createBlogPostStructuredData", () => {
   it("emits BlogPosting schema from existing post fields", () => {
+    const coverImage = {
+      format: "png",
+      height: 630,
+      src: "/_astro/debug-production-agent-runs-with-onequery-icon.png",
+      width: 1200,
+    } as ImageMetadata;
     const post: BlogPost = {
       category: "Engineering",
+      coverImage: {
+        alt: "Debugging production on Cloudflare with Codex cover image.",
+        src: coverImage,
+      },
       date: "May 6, 2026",
       description:
         "How Codex can use OneQuery-connected Cloudflare logs to inspect production failures, separate evidence from guesses, and make targeted code changes.",
-      imageSrc:
-        "/images/blog/debug-production-agent-runs-with-onequery-icon.png",
       publishedAt: "2026-05-06",
       readTime: "7 min read",
       sections: [
         {
           id: "evidence-loop",
+          images: [],
+          inlineImages: [],
           paragraphs: ["Evidence paragraph"],
           title: "Evidence loop",
         },

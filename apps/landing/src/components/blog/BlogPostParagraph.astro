@@ -14,10 +14,9 @@ interface Props {
 }
 
 const { paragraph, paragraphIndex, section } = Astro.props;
-const inlineImages =
-  section.inlineImages?.filter(
-    (image) => image.beforeParagraphIndex === paragraphIndex
-  ) ?? [];
+const inlineImages = section.inlineImages.filter(
+  (image) => image.beforeParagraphIndex === paragraphIndex
+);
 ---
 
 {

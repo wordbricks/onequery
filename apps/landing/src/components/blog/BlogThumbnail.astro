@@ -16,8 +16,8 @@ const { post, priority = false } = Astro.props;
 
 <div class="blog-image blog-image-card">
   <OptimizedBlogImage
-    src={post.imageSrc}
-    alt=""
+    src={post.coverImage.src}
+    alt={post.coverImage.alt}
     class="blog-image-media"
     priority={priority}
     sizes={BLOG_THUMBNAIL_IMAGE_SIZES}

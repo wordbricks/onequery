@@ -1,39 +1,50 @@
 {
   "category": "Engineering",
+  "title": "Debugging production on Cloudflare with Codex.",
   "description": "How Codex can use OneQuery-connected Cloudflare logs to inspect production failures, separate evidence from guesses, and make targeted code changes.",
-  "imageSrc": "/images/blog/debug-production-agent-runs-with-onequery-icon.png",
+  "coverImage": {
+    "src": "../../assets/blog/debug-production-agent-runs-with-onequery-icon.png",
+    "alt": "Debugging production on Cloudflare with Codex - OneQuery blog cover image."
+  },
   "publishedAt": "2026-05-06",
   "readTime": "7 min read",
   "sections": [
     {
       "id": "bounded-production-lens",
-      "imageAlt": "Diagram showing Codex querying Cloudflare Worker logs through OneQuery and turning evidence into a pull request.",
+      "title": "The Concept: Connect Cloudflare Logs to Codex",
+      "image": {
+        "src": "../../assets/blog/debug-production-agent-runs-with-onequery-access-path.png",
+        "alt": "Diagram showing Codex querying Cloudflare Worker logs through OneQuery and turning evidence into a pull request."
+      },
       "imagePlacement": "after-title",
-      "imageSrc": "/images/blog/debug-production-agent-runs-with-onequery-access-path.png",
       "paragraphs": [
         "The concept is not to give Codex raw production credentials. The concept is to connect a production telemetry source to OneQuery, then let Codex ask bounded questions through that source while OneQuery handles auth, source scope, and auditability.",
         "For a Cloudflare-deployed app, that source can be Cloudflare Workers Observability. Codex can discover which fields exist, filter by service, inspect failure messages, and correlate request IDs or run IDs without opening a Cloudflare dashboard session.",
         "This gives the agent a production debugging loop: observe the failure, query logs, narrow the evidence, inspect the relevant code, make a small patch, and verify it. The agent is not guessing from the UI state alone."
-      ],
-      "title": "The Concept: Connect Cloudflare Logs to Codex"
+      ]
     },
     {
       "id": "logs-into-evidence",
-      "imageAlt": "Diagram showing the production log investigation narrowing from discovered fields to filters and a summarized failure pattern.",
+      "title": "The Loop: Discover, Filter, Summarize",
+      "image": {
+        "src": "../../assets/blog/debug-production-agent-runs-with-onequery-evidence-loop.png",
+        "alt": "Diagram showing the production log investigation narrowing from discovered fields to filters and a summarized failure pattern."
+      },
       "imagePlacement": "after-title",
-      "imageSrc": "/images/blog/debug-production-agent-runs-with-onequery-evidence-loop.png",
       "paragraphs": [
         "A useful debugging agent starts with discovery. It asks what the source can expose before it assumes the schema: fields, services, log levels, messages, workflow names, request IDs, and application-specific IDs.",
         "Then it narrows the window. Instead of reading every log line, Codex can filter to one Cloudflare service, one recent timeframe, one failure message, or one run ID. Each query becomes a smaller question.",
         "Only after that does it summarize. The output should be evidence, not vibes: which trigger failed, which provider emitted the error, whether manual runs and scheduled runs behave differently, and which code path should be inspected next."
-      ],
-      "title": "The Loop: Discover, Filter, Summarize"
+      ]
     },
     {
       "id": "fireworks-example",
-      "imageAlt": "Diagram showing scheduled failures and provider limits becoming a default model change and pull request.",
+      "title": "Example: Fireworks Rate Limits",
+      "image": {
+        "src": "../../assets/blog/debug-production-agent-runs-with-onequery-root-cause.png",
+        "alt": "Diagram showing scheduled failures and provider limits becoming a default model change and pull request."
+      },
       "imagePlacement": "after-title",
-      "imageSrc": "/images/blog/debug-production-agent-runs-with-onequery-root-cause.png",
       "paragraphs": [
         "The Fireworks AI incident is one example of this pattern, not the only use case. In that run, Codex was asked to use the cloudflare-wordbricks source to investigate why recent agent runs failed on the velen-web-production Cloudflare service.",
         "The agent first found a plausible code issue in a separate path: provider secrets were available on the Worker env binding but not necessarily in process.env, while the AI SDK provider constructors read process.env. That was worth fixing, but it was not enough to explain the fresh failures.",
@@ -41,21 +52,21 @@
       ],
       "inlineImages": [
         {
+          "src": "../../assets/blog/debug-production-agent-runs-with-onequery-codex-screen.png",
           "alt": "Codex investigating a production agent run failure with the onequery-cli skill and cloudflare-wordbricks source.",
-          "beforeParagraphIndex": 1,
-          "src": "/images/blog/debug-production-agent-runs-with-onequery-codex-screen.png"
+          "beforeParagraphIndex": 1
         }
       ],
       "images": [
         {
-          "alt": "Codex reporting the production investigation result with a Fireworks API rate limit cause and recent failure summary.",
-          "src": "/images/blog/debug-production-agent-runs-with-onequery-codex-result.png"
+          "src": "../../assets/blog/debug-production-agent-runs-with-onequery-codex-result.png",
+          "alt": "Codex reporting the production investigation result with a Fireworks API rate limit cause and recent failure summary."
         }
-      ],
-      "title": "Example: Fireworks Rate Limits"
+      ]
     },
     {
       "id": "what-changed",
+      "title": "What the Agent Changed",
       "paragraphs": [
         "Once the example root cause was clear, the code change was small. Codex moved the shared default model away from the Fireworks-backed default and onto google/gemini-3-flash-preview, added the UI label, and kept the model-specific truncation policy exhaustive.",
         "The important part is not that every team should make the same model choice. The important part is that the agent used production evidence to choose the right class of fix before touching code."
@@ -80,18 +91,16 @@
             "The debugging session ended as a reviewable production change, not a loose diagnosis."
           ]
         ]
-      },
-      "title": "What the Agent Changed"
+      }
     },
     {
       "id": "pattern",
+      "title": "The Debugging Loop We Want",
       "paragraphs": [
         "The reusable pattern is simple: connect production evidence through OneQuery, let the agent inspect only the source and operations it is allowed to use, then require the final output to be a narrow code change with tests and review.",
         "That gives the agent a better debugging loop without giving it raw production authority. It can see enough to be useful, but the source boundary, audit trail, and execution controls stay outside the model.",
         "The Fireworks example happened to end in a default-model change. Another incident might end in a retry policy, a workflow timeout fix, a webhook handler patch, or a better UI error state. The concept stays the same: Codex reads bounded production telemetry, then changes code based on evidence."
-      ],
-      "title": "The Debugging Loop We Want"
+      ]
     }
-  ],
-  "title": "Debugging production on Cloudflare with Codex."
+  ]
 }

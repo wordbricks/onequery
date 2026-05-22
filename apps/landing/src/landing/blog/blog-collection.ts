@@ -24,9 +24,9 @@ export function comparePostDates(
 function toBlogPostSummary(post: BlogPost): BlogPostSummary {
   return {
     category: post.category,
+    coverImage: post.coverImage,
     date: post.date,
     description: post.description,
-    imageSrc: post.imageSrc,
     publishedAt: post.publishedAt,
     readTime: post.readTime,
     slug: post.slug,

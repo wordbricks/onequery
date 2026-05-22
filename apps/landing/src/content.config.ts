@@ -1,11 +1,11 @@
 import { glob } from "astro/loaders";
 import { defineCollection } from "astro:content";
 
-import { blogPostContentSchema } from "./landing/blog/blog-content-schema";
+import { createBlogPostContentSchema } from "./landing/blog/blog-content-schema";
 
 const blog = defineCollection({
   loader: glob({ base: "./src/content/blog", pattern: "**/*.json" }),
-  schema: blogPostContentSchema,
+  schema: createBlogPostContentSchema,
 });
 
 export const collections = { blog };

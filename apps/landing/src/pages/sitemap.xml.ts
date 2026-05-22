@@ -2,6 +2,10 @@ import type { APIRoute } from "astro";
 
 import { getBlogPostSummaries } from "../landing/blog/blog-collection";
 import {
+  BLOG_POST_CATEGORIES,
+  getBlogIndexPath,
+} from "../landing/blog/blog-taxonomy";
+import {
   normalizeSiteUrl,
   toIsoDateTime,
 } from "../landing/seo/structured-data";
@@ -29,6 +33,11 @@ export const GET: APIRoute = async ({ site }) => {
       loc: `${siteUrl}/blog`,
       priority: "0.8",
     },
+    ...BLOG_POST_CATEGORIES.map((category) => ({
+      changefreq: "weekly" as const,
+      loc: `${siteUrl}${getBlogIndexPath({ category })}`,
+      priority: "0.7",
+    })),
     {
       changefreq: "monthly",
       loc: `${siteUrl}/connectors`,
