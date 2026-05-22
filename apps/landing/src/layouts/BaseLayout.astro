@@ -1,6 +1,10 @@
 ---
 import "../styles/base.css";
 import { Font } from "astro:assets";
+import GoogleTagManager from "../components/landing/GoogleTagManager.astro";
+import GoogleTagManagerNoscript from "../components/landing/GoogleTagManagerNoscript.astro";
+import { landingAnalyticsEnv } from "../landing/analytics/landing-analytics-env";
+import { readGoogleTagManagerConfig } from "../landing/analytics/google-tag-manager-config";
 import {
   createCanonicalUrl,
   createLandingPageStructuredData,
@@ -50,6 +54,7 @@ const structuredDataItems =
     : Array.isArray(structuredData)
       ? structuredData
       : [structuredData];
+const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
 ---
 
 <!doctype html>
@@ -58,6 +63,11 @@ const structuredDataItems =
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
+    {
+      googleTagManagerConfig ? (
+        <GoogleTagManager {...googleTagManagerConfig} />
+      ) : null
+    }
     <meta name="robots" content={robots} />
     <meta name="author" content="OneQuery Maintainers" />
     <meta name="application-name" content="OneQuery" />
@@ -137,6 +147,11 @@ const structuredDataItems =
     </script>
   </head>
   <body>
+    {
+      googleTagManagerConfig ? (
+        <GoogleTagManagerNoscript {...googleTagManagerConfig} />
+      ) : null
+    }
     <slot />
   </body>
 </html>

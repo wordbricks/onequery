@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import cloudflare from "@astrojs/cloudflare";
 import react from "@astrojs/react";
-import { defineConfig, fontProviders } from "astro/config";
+import { defineConfig, envField, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
 import {
@@ -124,6 +124,15 @@ export default defineConfig({
   adapter: cloudflare({
     imageService: { build: "compile", runtime: "cloudflare-binding" },
   }),
+  env: {
+    schema: {
+      PUBLIC_GOOGLE_TAG_MANAGER_ID: envField.string({
+        access: "public",
+        context: "client",
+        optional: true,
+      }),
+    },
+  },
   fonts: [
     {
       cssVariable: "--font-geist",
