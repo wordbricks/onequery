@@ -29,6 +29,7 @@
     "nanostores": "catalog:",
     "react": "19.3.0-canary-d5736f09-20260507",
     "react-dom": "19.3.0-canary-d5736f09-20260507",
+    "remotion": "catalog:",
     "simple-icons": "catalog:",
     "zod": "catalog:"
   },
