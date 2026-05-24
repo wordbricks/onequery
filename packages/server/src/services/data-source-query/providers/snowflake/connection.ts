@@ -1,5 +1,4 @@
 import type { SnowflakeCredentials } from "@onequery/db/server";
-import snowflake from "snowflake-sdk";
 import type {
   Connection as SnowflakeConnection,
   ConnectionOptions as SnowflakeConnectionOptions,
@@ -35,11 +34,11 @@ export type SnowflakeTransport = {
 export function createSnowflakeTransport(
   dependencies: SnowflakeQueryDependencies = {}
 ): SnowflakeTransport {
-  const createConnection =
-    dependencies.createConnection ?? snowflake.createConnection;
-
   return {
     open: async ({ credentials, deadline }) => {
+      const createConnection =
+        dependencies.createConnection ??
+        (await loadSnowflakeSdk()).createConnection;
       const connection = createConnection(
         buildSnowflakeConnectionOptions(credentials, deadline.timeoutMs)
       );
@@ -58,6 +57,10 @@ export function createSnowflakeTransport(
       };
     },
   };
+}
+
+async function loadSnowflakeSdk(): Promise<typeof import("snowflake-sdk")> {
+  return import("snowflake-sdk");
 }
 
 function buildSnowflakeConnectionOptions(
