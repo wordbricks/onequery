@@ -399,6 +399,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "@polyglot-sql/sdk@0.3.11": "patches/@polyglot-sql%2Fsdk@0.3.11.patch",
+  },
   "overrides": {
     "@tanstack/query-core": "5.90.20",
   },
