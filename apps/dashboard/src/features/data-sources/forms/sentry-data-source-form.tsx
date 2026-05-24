@@ -59,7 +59,6 @@ export function SentryDataSourceForm({
       provider: "sentry",
       name: data.name,
       status: "active",
-      useAsDataSource: true,
       errorMessage: null,
       lastUsedAt: null,
       createdAt: new Date().toISOString(),

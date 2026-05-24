@@ -14,7 +14,6 @@ export interface DataSource {
   provider: string;
   name: string;
   status: DataSourceStatus;
-  useAsDataSource: boolean;
   errorMessage: string | null;
   lastUsedAt: string | null;
   createdAt: string;

@@ -54,7 +54,6 @@ export function ConnectorDataSourceForm({
       provider: "aws_athena_connector",
       name: data.name,
       status: "active",
-      useAsDataSource: true,
       errorMessage: null,
       lastUsedAt: null,
       createdAt: new Date().toISOString(),

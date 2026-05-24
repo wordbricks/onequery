@@ -37,6 +37,13 @@ export interface ServerRuntimeConfig {
   readonly crypto: {
     readonly masterEncryptionKey: Uint8Array;
   };
+  readonly credentials?: {
+    readonly googleOAuth?: {
+      readonly clientId: string;
+      readonly clientSecret: string;
+      readonly redirectUri?: string;
+    };
+  };
   readonly listen: {
     readonly host: string;
     readonly port: number;
