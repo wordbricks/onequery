@@ -129,6 +129,8 @@
     let previousBodyOverflow = "";
     let shakeTimer = 0;
     let revertTimer = 0;
+    let pendingSubmissionController = null;
+    let submissionId = 0;
 
     function readRootCssTimeMs(name, fallback) {
       const rawValue = getComputedStyle(document.documentElement)
@@ -227,8 +229,27 @@
       );
     }
 
+    function isCurrentSubmission(controller, currentSubmissionId) {
+      return (
+        pendingSubmissionController === controller &&
+        submissionId === currentSubmissionId
+      );
+    }
+
+    function cancelPendingSubmission() {
+      if (pendingSubmissionController) {
+        pendingSubmissionController.abort();
+        pendingSubmissionController = null;
+      }
+
+      submissionId += 1;
+      setPending(false);
+    }
+
     function closeModal() {
       window.clearTimeout(closeTimer);
+      cancelPendingSubmission();
+      clearError();
       backdrop.classList.remove("is-open");
       backdrop.classList.add("is-closing");
       modal.classList.remove("is-open");
@@ -250,6 +271,7 @@
 
     function openModal() {
       window.clearTimeout(closeTimer);
+      clearError();
       focusedBeforeOpen = document.activeElement;
       previousBodyOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
@@ -293,11 +315,21 @@
     async function submitContactForm(event) {
       event.preventDefault();
 
+      if (pendingSubmissionController) {
+        return;
+      }
+
       if (!form.reportValidity()) {
         showError("Please fill out the required fields");
         return;
       }
 
+      const formData = new FormData(form);
+      const controller = new AbortController();
+      const currentSubmissionId = submissionId + 1;
+
+      pendingSubmissionController = controller;
+      submissionId = currentSubmissionId;
       clearError();
       setPending(true);
 
@@ -307,10 +339,19 @@
           headers: {
             accept: "application/json",
           },
-          body: new FormData(form),
+          body: formData,
+          signal: controller.signal,
         });
 
+        if (!isCurrentSubmission(controller, currentSubmissionId)) {
+          return;
+        }
+
         const body = await readResponseBody(response);
+
+        if (!isCurrentSubmission(controller, currentSubmissionId)) {
+          return;
+        }
 
         if (!response.ok) {
           showError(readErrorMessage(body, "Failed to send message"));
@@ -324,9 +365,19 @@
         form.reset();
         closeModal();
       } catch {
+        if (
+          !isCurrentSubmission(controller, currentSubmissionId) ||
+          controller.signal.aborted
+        ) {
+          return;
+        }
+
         showError("Failed to send message");
       } finally {
-        setPending(false);
+        if (isCurrentSubmission(controller, currentSubmissionId)) {
+          pendingSubmissionController = null;
+          setPending(false);
+        }
       }
     }
 
