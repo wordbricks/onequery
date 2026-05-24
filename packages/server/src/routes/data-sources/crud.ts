@@ -203,7 +203,6 @@ export const dataSourcesCrudRoute = new Hono<{
           provider: true,
           name: true,
           status: true,
-          useAsDataSource: true,
           errorMessage: true,
           lastUsedAt: true,
           createdAt: true,
@@ -231,7 +230,6 @@ export const dataSourcesCrudRoute = new Hono<{
           provider: true,
           name: true,
           status: true,
-          useAsDataSource: true,
           errorMessage: true,
           scope: true,
           lastUsedAt: true,
@@ -452,10 +450,6 @@ export const dataSourcesCrudRoute = new Hono<{
         );
         updates.credentialsEncrypted = encrypted.ciphertext;
         updates.credentialsIv = encrypted.iv;
-      }
-
-      if (typeof body.useAsDataSource === "boolean") {
-        updates.useAsDataSource = body.useAsDataSource;
       }
 
       try {

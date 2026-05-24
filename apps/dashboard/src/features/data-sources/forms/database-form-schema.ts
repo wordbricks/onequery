@@ -6,7 +6,7 @@ export const DatabaseFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   password: z.string().min(1, "Password is required"),
   port: z.number().min(1).max(65535),
-  provider: z.enum(["postgres", "supabase", "mysql"]),
+  provider: z.enum(["postgres", "supabase", "motherduck", "mysql"]),
   sslMode: z.enum(["disable", "prefer", "require"]).optional(),
   username: z.string().min(1, "Username is required"),
 });

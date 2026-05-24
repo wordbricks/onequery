@@ -166,6 +166,30 @@ export const LaminarCredentialsSchema = z.object({
 
 export type LaminarCredentials = z.infer<typeof LaminarCredentialsSchema>;
 
+const DEFAULT_MOTHERDUCK_POSTGRES_HOST = "pg.us-east-1-aws.motherduck.com";
+const DEFAULT_MOTHERDUCK_DATABASE = "md:";
+
+function normalizeMotherDuckDatabase(database: string): string {
+  return database.startsWith("md:") ? database : `md:${database}`;
+}
+
+export const MotherDuckCredentialsSchema = z.object({
+  database: trimmedString("MotherDuck database is required")
+    .default(DEFAULT_MOTHERDUCK_DATABASE)
+    .transform(normalizeMotherDuckDatabase),
+  host: trimmedString("MotherDuck host is required").default(
+    DEFAULT_MOTHERDUCK_POSTGRES_HOST
+  ),
+  port: z.number().int().min(1).max(65535).default(5432),
+  token: requiredOpaqueString("MotherDuck token is required"),
+  type: z.literal("motherduck"),
+  username: trimmedString("MotherDuck username is required").default(
+    "postgres"
+  ),
+});
+
+export type MotherDuckCredentials = z.infer<typeof MotherDuckCredentialsSchema>;
+
 export const ConnectorCredentialsSchema = z.object({
   connectorId: trimmedString("Connector ID is required"),
   database: trimmedString("Athena database is required"),
@@ -286,6 +310,7 @@ export const CredentialsSchema = z.union([
   BigQueryCredentialsSchema,
   SnowflakeCredentialsSchema,
   LaminarCredentialsSchema,
+  MotherDuckCredentialsSchema,
   ConnectorCredentialsSchema,
   AmplitudeCredentialsSchema,
   MixpanelCredentialsSchema,
@@ -306,6 +331,7 @@ export const DATABASE_CREDENTIAL_PROVIDER = {
   CLOUDFLARE_D1: "cloudflare_d1",
   CONNECTOR: "aws_athena_connector",
   LAMINAR: "laminar",
+  MOTHERDUCK: "motherduck",
   MYSQL: "mysql",
   POSTGRES: "postgres",
   SNOWFLAKE: "snowflake",
@@ -321,6 +347,7 @@ export const DATABASE_CREDENTIAL_PROVIDER_TYPES = [
   DATABASE_CREDENTIAL_PROVIDER.BIGQUERY,
   DATABASE_CREDENTIAL_PROVIDER.CLOUDFLARE_D1,
   DATABASE_CREDENTIAL_PROVIDER.LAMINAR,
+  DATABASE_CREDENTIAL_PROVIDER.MOTHERDUCK,
   DATABASE_CREDENTIAL_PROVIDER.CONNECTOR,
 ] as const satisfies readonly DatabaseCredentialProviderType[];
 
@@ -341,6 +368,7 @@ export const credentialSchemaMap = {
   laminar: LaminarCredentialsSchema,
   linear: LinearCredentialsSchema,
   mixpanel: MixpanelCredentialsSchema,
+  motherduck: MotherDuckCredentialsSchema,
   mongodb: MongoDBCredentialsSchema,
   mysql: MySQLCredentialsSchema,
   postgres: PostgresCredentialsSchema,

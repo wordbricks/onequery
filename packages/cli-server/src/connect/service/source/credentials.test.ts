@@ -80,6 +80,29 @@ describe("parseConnectSourceCredentials", () => {
     });
   });
 
+  it("applies MotherDuck credential defaults from JSON credentials", () => {
+    const result = parseConnectSourceCredentials("motherduck", {
+      token: "md-token",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value).toEqual({
+      provider: "motherduck",
+      credentials: {
+        type: "motherduck",
+        database: "md:",
+        host: "pg.us-east-1-aws.motherduck.com",
+        port: 5432,
+        token: "md-token",
+        username: "postgres",
+      },
+    });
+  });
+
   it("infers BigQuery service-account auth mode from guide-shaped credentials", () => {
     const result = parseConnectSourceCredentials("bigquery", {
       projectId: "analytics-project",

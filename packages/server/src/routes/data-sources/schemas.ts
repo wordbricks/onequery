@@ -19,5 +19,4 @@ export const CreateDataSourceSchema = z.object({
 export const UpdateDataSourceSchema = z.object({
   credentials: z.unknown().optional(),
   name: z.string().min(1).optional(),
-  useAsDataSource: z.boolean().optional(),
 });

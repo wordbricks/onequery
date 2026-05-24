@@ -144,6 +144,23 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
     },
   },
   {
+    provider: "motherduck",
+    summary:
+      "Connect MotherDuck through its PostgreSQL wire protocol endpoint with a service token.",
+    steps: [
+      "Create a MotherDuck service token with access to the target database.",
+      "Use `md:` for the default database, or `md:database_name` for a specific MotherDuck database.",
+      "Only include host, port, or username when you need to override the default MotherDuck Postgres endpoint.",
+    ],
+    exampleInput: {
+      sourceKey: "motherduck_prod",
+      credentials: {
+        database: "md:",
+        token: "motherduck_service_token",
+      },
+    },
+  },
+  {
     provider: "aws_athena_connector",
     summary:
       "Connect an Athena connector already registered with this org in OneQuery.",

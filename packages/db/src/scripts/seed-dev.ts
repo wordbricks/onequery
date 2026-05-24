@@ -101,7 +101,6 @@ async function seedDataSources(tx: Transaction) {
       organizationId: DEV_ORG_ID,
       provider: "github",
       status: "error",
-      useAsDataSource: false,
     },
   ]);
 }

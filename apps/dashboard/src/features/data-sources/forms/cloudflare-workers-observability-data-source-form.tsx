@@ -61,7 +61,6 @@ export function CloudflareWorkersObservabilityDataSourceForm({
       provider: "cloudflare_workers_observability",
       name: data.name,
       status: "active",
-      useAsDataSource: true,
       errorMessage: null,
       lastUsedAt: null,
       createdAt: new Date().toISOString(),

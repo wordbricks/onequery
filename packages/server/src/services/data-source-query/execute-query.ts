@@ -49,6 +49,7 @@ export {
 } from "./providers/bigquery/driver";
 export { executeCloudflareD1Query } from "./providers/cloudflare-d1/driver";
 export { executeLaminarQuery } from "./providers/laminar/driver";
+export { executeMotherDuckQuery } from "./providers/motherduck/driver";
 export { executeMySQLQuery } from "./providers/mysql/driver";
 export { executePostgresQuery } from "./providers/postgres/driver";
 export {

@@ -339,7 +339,10 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
           organizationId: access.authorizedOrg.org.id,
         })
       );
-      if (validation.kind === "supported" && !validation.result.success) {
+      if (
+        validation.kind === "supported" &&
+        validation.result.success === false
+      ) {
         return cliServiceErr({
           detail: validation.result.error,
           errors: [

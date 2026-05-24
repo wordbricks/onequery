@@ -1,4 +1,4 @@
-import { boolean, index, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { index, text, timestamp, unique } from "drizzle-orm/pg-core";
 
 import {
   ANALYSIS_SOURCE_PROVIDER_TYPES,
@@ -53,7 +53,6 @@ export const dataSources = pgTable(
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
-    useAsDataSource: boolean("use_as_data_source").notNull().default(true),
   },
   (table) => [
     unique("data_sources_organization_name_unique").on(
