@@ -2,12 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   AmplitudeCredentialsSchema,
+  AirtableCredentialsSchema,
   BigQueryCredentialsSchema,
+  CalCredentialsSchema,
   CloudflareD1CredentialsSchema,
   ConnectorCredentialsSchema,
   credentialSchemaMap,
+  DiscordCredentialsSchema,
   GitHubCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
+  GranolaCredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   isAnalyticsCredentials,
   isDatabaseCredentials,
@@ -32,12 +36,16 @@ import {
 } from "./credentials";
 import type {
   AmplitudeCredentials,
+  AirtableCredentials,
   BigQueryCredentials,
+  CalCredentials,
   CloudflareD1Credentials,
   ConnectorCredentials,
   Credentials,
+  DiscordCredentials,
   GitHubCredentials,
   GoogleAnalyticsCredentials,
+  GranolaCredentials,
   LaminarCredentials,
   LinearCredentials,
   MixpanelCredentials,
@@ -1326,6 +1334,104 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("AirtableCredentialsSchema", () => {
+    it("validates Airtable credentials and trims optional fields", () => {
+      const result = AirtableCredentialsSchema.safeParse({
+        apiBaseUrl: "  https://api.airtable.com/v0  ",
+        baseId: "  app123  ",
+        personalAccessToken: "pat123",
+        type: "airtable",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: AirtableCredentials = result.data;
+        expect(credentials.apiBaseUrl).toBe("https://api.airtable.com/v0");
+        expect(credentials.baseId).toBe("app123");
+      }
+    });
+
+    it("rejects missing personal access token", () => {
+      const result = AirtableCredentialsSchema.safeParse({
+        baseId: "app123",
+        type: "airtable",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("DiscordCredentialsSchema", () => {
+    it("defaults authScheme to bot", () => {
+      const result = DiscordCredentialsSchema.safeParse({
+        guildId: "123456789012345678",
+        token: "discord-token",
+        type: "discord",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: DiscordCredentials = result.data;
+        expect(credentials.authScheme).toBe("bot");
+      }
+    });
+
+    it("accepts bearer auth scheme", () => {
+      const result = DiscordCredentialsSchema.safeParse({
+        authScheme: "bearer",
+        token: "oauth-token",
+        type: "discord",
+      });
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("CalCredentialsSchema", () => {
+    it("defaults apiVersion to the current v2 header version", () => {
+      const result = CalCredentialsSchema.safeParse({
+        apiKey: "cal_123",
+        type: "cal",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: CalCredentials = result.data;
+        expect(credentials.apiVersion).toBe("2026-05-01");
+      }
+    });
+
+    it("rejects missing API key", () => {
+      const result = CalCredentialsSchema.safeParse({
+        type: "cal",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("GranolaCredentialsSchema", () => {
+    it("validates Granola credentials", () => {
+      const credentials: GranolaCredentials = {
+        apiKey: "grn_123",
+        type: "granola",
+      };
+
+      const result = GranolaCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects invalid apiBaseUrl", () => {
+      const result = GranolaCredentialsSchema.safeParse({
+        apiBaseUrl: "not-a-url",
+        apiKey: "grn_123",
+        type: "granola",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("LinearCredentialsSchema", () => {
     it("should validate valid Linear credentials", () => {
       const credentials: LinearCredentials = {
@@ -1465,6 +1571,22 @@ describe("credentials schemas", () => {
 
     it("should map amplitude to AmplitudeCredentialsSchema", () => {
       expect(credentialSchemaMap.amplitude).toBe(AmplitudeCredentialsSchema);
+    });
+
+    it("should map airtable to AirtableCredentialsSchema", () => {
+      expect(credentialSchemaMap.airtable).toBe(AirtableCredentialsSchema);
+    });
+
+    it("should map discord to DiscordCredentialsSchema", () => {
+      expect(credentialSchemaMap.discord).toBe(DiscordCredentialsSchema);
+    });
+
+    it("should map cal to CalCredentialsSchema", () => {
+      expect(credentialSchemaMap.cal).toBe(CalCredentialsSchema);
+    });
+
+    it("should map granola to GranolaCredentialsSchema", () => {
+      expect(credentialSchemaMap.granola).toBe(GranolaCredentialsSchema);
     });
 
     it("should map mixpanel to MixpanelCredentialsSchema", () => {

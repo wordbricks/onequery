@@ -4,10 +4,17 @@ import {
   resolveSvgIconAccessibility,
 } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
-import { IconDatabase, IconHelpCircle } from "@tabler/icons-react";
+import {
+  IconCalendar,
+  IconDatabase,
+  IconHelpCircle,
+  IconNotebook,
+} from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import {
   siCloudflareworkers,
+  siAirtable,
+  siDiscord,
   siGithub,
   siGoogleanalytics,
   siGooglebigquery,
@@ -172,18 +179,69 @@ function MotherDuckIcon({
   );
 }
 
+function TablerProviderIcon({
+  "aria-hidden": ariaHidden,
+  "aria-label": ariaLabel,
+  defaultLabel,
+  Icon,
+  role,
+  size = 24,
+  title,
+  ...props
+}: ProviderIconProps & {
+  defaultLabel: string;
+  Icon: typeof IconDatabase;
+}) {
+  const accessibility = resolveSvgIconAccessibility({
+    ariaHidden,
+    ariaLabel,
+    ariaLabelledBy: props["aria-labelledby"],
+    defaultLabel,
+    role,
+    title,
+  });
+
+  return (
+    <Icon
+      {...props}
+      aria-hidden={accessibility.hidden ? true : undefined}
+      aria-label={accessibility.label}
+      aria-labelledby={accessibility.labelledBy}
+      role={accessibility.role}
+      size={size}
+      stroke={2}
+    />
+  );
+}
+
+function CalIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon {...props} defaultLabel="Cal.com" Icon={IconCalendar} />
+  );
+}
+
+function GranolaIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon {...props} defaultLabel="Granola" Icon={IconNotebook} />
+  );
+}
+
 export const GitHubIcon = createSimpleProviderIcon(siGithub);
 
 export const ProviderIcons = {
   amplitude: AmplitudeIcon,
+  airtable: createSimpleProviderIcon(siAirtable),
   aws_athena_connector: AwsAthenaConnectorIcon,
   bigquery: createSimpleProviderIcon(siGooglebigquery),
+  cal: CalIcon,
   cloudflare_d1: CloudflareD1Icon,
   cloudflare_workers_observability:
     createSimpleProviderIcon(siCloudflareworkers),
+  discord: createSimpleProviderIcon(siDiscord),
   ga: createSimpleProviderIcon(siGoogleanalytics),
   github: GitHubIcon,
   google_docs: createSimpleProviderIcon(siGoogledocs),
+  granola: GranolaIcon,
   laminar: LaminarIcon,
   linear: createSimpleProviderIcon(siLinear),
   mixpanel: createSimpleProviderIcon(siMixpanel),
