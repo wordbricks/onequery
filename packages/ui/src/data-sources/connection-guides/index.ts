@@ -6,15 +6,18 @@ import { cloudflareWorkersObservabilityGuideContent } from "./cloudflare-workers
 import { gaGuideContent } from "./ga";
 import { githubGuideContent } from "./github";
 import { laminarGuideContent } from "./laminar";
+import { linkedInAdsGuideContent } from "./linkedin-ads";
 import { mixpanelGuideContent } from "./mixpanel";
 import { mongodbGuideContent } from "./mongodb";
 import { motherduckGuideContent } from "./motherduck";
 import { mysqlGuideContent } from "./mysql";
 import { postgresGuideContent } from "./postgres";
 import { posthogGuideContent } from "./posthog";
+import { sendGridGuideContent } from "./sendgrid";
 import { sentryGuideContent } from "./sentry";
 import { snowflakeGuideContent } from "./snowflake";
 import { supabaseGuideContent } from "./supabase";
+import { tiktokMarketingGuideContent } from "./tiktok-marketing";
 import type { DataSourceConnectionGuideProvider, GuideContent } from "./types";
 import { CONNECTOR_BASE_URL_TOKEN } from "./types";
 
@@ -38,13 +41,16 @@ export const GUIDE_CONTENT: Record<
   ga: gaGuideContent,
   github: githubGuideContent,
   laminar: laminarGuideContent,
+  linkedin_ads: linkedInAdsGuideContent,
   mixpanel: mixpanelGuideContent,
   motherduck: motherduckGuideContent,
   mongodb: mongodbGuideContent,
   mysql: mysqlGuideContent,
   postgres: postgresGuideContent,
   posthog: posthogGuideContent,
+  sendgrid: sendGridGuideContent,
   sentry: sentryGuideContent,
   snowflake: snowflakeGuideContent,
   supabase: supabaseGuideContent,
+  tiktok_marketing: tiktokMarketingGuideContent,
 };

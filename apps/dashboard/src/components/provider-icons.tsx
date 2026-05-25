@@ -5,9 +5,11 @@ import {
 } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
 import {
+  IconBrandLinkedin,
   IconCalendar,
   IconDatabase,
   IconHelpCircle,
+  IconMail,
   IconNotebook,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
@@ -31,6 +33,7 @@ import {
   siSentry,
   siSnowflake,
   siSupabase,
+  siTiktok,
 } from "simple-icons";
 
 type ProviderIconProps = IconSvgProps;
@@ -239,6 +242,22 @@ function AmazonAdsIcon(props: ProviderIconProps) {
   );
 }
 
+function LinkedInAdsIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon
+      {...props}
+      defaultLabel="LinkedIn Ads"
+      Icon={IconBrandLinkedin}
+    />
+  );
+}
+
+function SendGridIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon {...props} defaultLabel="SendGrid" Icon={IconMail} />
+  );
+}
+
 export const GitHubIcon = createSimpleProviderIcon(siGithub);
 
 export const ProviderIcons = {
@@ -261,6 +280,7 @@ export const ProviderIcons = {
   jira: createSimpleProviderIcon(siJira),
   laminar: LaminarIcon,
   linear: createSimpleProviderIcon(siLinear),
+  linkedin_ads: LinkedInAdsIcon,
   mixpanel: createSimpleProviderIcon(siMixpanel),
   motherduck: MotherDuckIcon,
   mongodb: createSimpleProviderIcon(siMongodb),
@@ -268,8 +288,10 @@ export const ProviderIcons = {
   postgres: createSimpleProviderIcon(siPostgresql),
   supabase: createSimpleProviderIcon(siSupabase),
   posthog: createSimpleProviderIcon(siPosthog),
+  sendgrid: SendGridIcon,
   sentry: createSimpleProviderIcon(siSentry),
   snowflake: createSimpleProviderIcon(siSnowflake),
+  tiktok_marketing: createSimpleProviderIcon(siTiktok),
 } as const satisfies Record<string, ProviderIconComponent>;
 
 function hasProviderIcon(

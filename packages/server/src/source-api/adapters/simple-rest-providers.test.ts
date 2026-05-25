@@ -9,6 +9,9 @@ import { discordSourceApiAdapter } from "./discord";
 import { googleSearchConsoleSourceApiAdapter } from "./google-search-console";
 import { granolaSourceApiAdapter } from "./granola";
 import { jiraSourceApiAdapter } from "./jira";
+import { linkedInAdsSourceApiAdapter } from "./linkedin-ads";
+import { sendGridSourceApiAdapter } from "./sendgrid";
+import { tiktokMarketingSourceApiAdapter } from "./tiktok-marketing";
 
 const originalFetch = globalThis.fetch;
 
@@ -431,6 +434,180 @@ describe("simple REST source API providers", () => {
       Authorization: "Bearer amazon_token",
       "Amazon-Advertising-API-ClientId": "client_123",
       "Amazon-Advertising-API-Scope": "profile_123",
+    });
+  });
+
+  it("executes LinkedIn Ads requests with versioned Rest.li headers", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ elements: [] }), {
+        headers: {
+          "content-type": "application/json",
+        },
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        accessToken: "linkedin_token",
+        apiVersion: "202605",
+        type: "linkedin_ads",
+      },
+      displayName: "LinkedIn Ads",
+      id: "source_9",
+      provider: "linkedin_ads",
+      sourceKey: "linkedin-ads-main",
+    };
+
+    await linkedInAdsSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        body: { kind: "none" },
+        bodyKind: "none",
+        bodyPaths: [],
+        descriptorVersion: "linkedin-ads.v1",
+        headerNames: [],
+        headers: [],
+        kind: "http_request",
+        method: "GET",
+        operation: "fetch_api",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
+        provider: "linkedin_ads",
+        query: {
+          q: "search",
+        },
+        selector: "/adAccounts",
+        selectorTemplate: "/{path}",
+        sourceId: "source_9",
+        sourceKey: "linkedin-ads-main",
+        url: "https://api.linkedin.com/rest/adAccounts?q=search",
+      },
+      source,
+    });
+
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(calledUrl)).toBe(
+      "https://api.linkedin.com/rest/adAccounts?q=search"
+    );
+    expect(calledInit?.headers).toMatchObject({
+      Authorization: "Bearer linkedin_token",
+      "Linkedin-Version": "202605",
+      "X-Restli-Protocol-Version": "2.0.0",
+    });
+  });
+
+  it("executes TikTok Marketing requests with Access-Token auth", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { list: [] } }), {
+        headers: {
+          "content-type": "application/json",
+        },
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        accessToken: "tiktok_token",
+        advertiserId: "1234567890",
+        type: "tiktok_marketing",
+      },
+      displayName: "TikTok Marketing",
+      id: "source_10",
+      provider: "tiktok_marketing",
+      sourceKey: "tiktok-marketing-main",
+    };
+
+    await tiktokMarketingSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        body: { kind: "none" },
+        bodyKind: "none",
+        bodyPaths: [],
+        descriptorVersion: "tiktok-marketing.v1",
+        headerNames: [],
+        headers: [],
+        kind: "http_request",
+        method: "GET",
+        operation: "fetch_api",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
+        provider: "tiktok_marketing",
+        query: {
+          advertiser_ids: ["1234567890"],
+        },
+        selector: "/advertiser/info/",
+        selectorTemplate: "/{path}",
+        sourceId: "source_10",
+        sourceKey: "tiktok-marketing-main",
+        url: "https://business-api.tiktok.com/open_api/v1.3/advertiser/info/?advertiser_ids=%5B%221234567890%22%5D",
+      },
+      source,
+    });
+
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(calledUrl)).toBe(
+      "https://business-api.tiktok.com/open_api/v1.3/advertiser/info/?advertiser_ids=%5B%221234567890%22%5D"
+    );
+    expect(calledInit?.headers).toMatchObject({
+      "Access-Token": "tiktok_token",
+    });
+    expect(calledInit?.headers).not.toHaveProperty("Authorization");
+  });
+
+  it("executes SendGrid requests with bearer API key auth", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ templates: [] }), {
+        headers: {
+          "content-type": "application/json",
+        },
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        apiKey: "SG.xxxxx",
+        type: "sendgrid",
+      },
+      displayName: "SendGrid",
+      id: "source_11",
+      provider: "sendgrid",
+      sourceKey: "sendgrid-main",
+    };
+
+    await sendGridSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        body: { kind: "none" },
+        bodyKind: "none",
+        bodyPaths: [],
+        descriptorVersion: "sendgrid.v1",
+        headerNames: [],
+        headers: [],
+        kind: "http_request",
+        method: "GET",
+        operation: "fetch_api",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
+        provider: "sendgrid",
+        selector: "/templates",
+        selectorTemplate: "/{path}",
+        sourceId: "source_11",
+        sourceKey: "sendgrid-main",
+        url: "https://api.sendgrid.com/v3/templates",
+      },
+      source,
+    });
+
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(calledUrl)).toBe("https://api.sendgrid.com/v3/templates");
+    expect(calledInit?.headers).toMatchObject({
+      Authorization: "Bearer SG.xxxxx",
     });
   });
 

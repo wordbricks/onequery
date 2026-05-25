@@ -17,6 +17,7 @@ import {
   siSentry,
   siSnowflake,
   siSupabase,
+  siTiktok,
 } from "simple-icons";
 
 type BrandIconComponent = ComponentType<IconSvgProps>;
@@ -118,6 +119,7 @@ const BRAND_ICONS = {
   sentry: createSimpleBrandIcon(siSentry),
   snowflake: createSimpleBrandIcon(siSnowflake),
   supabase: createSimpleBrandIcon(siSupabase),
+  tiktok_marketing: createSimpleBrandIcon(siTiktok),
 } as const satisfies Record<string, BrandIconComponent>;
 
 export type BrandIconName = keyof typeof BRAND_ICONS;

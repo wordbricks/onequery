@@ -17,6 +17,7 @@ import {
   GranolaCredentialsSchema,
   JiraCredentialsSchema,
   LaminarCredentialsSchema,
+  LinkedInAdsCredentialsSchema,
   LinearCredentialsSchema,
   MixpanelCredentialsSchema,
   MotherDuckCredentialsSchema,
@@ -24,8 +25,10 @@ import {
   MySQLCredentialsSchema,
   PostgresCredentialsSchema,
   PostHogCredentialsSchema,
+  SendGridCredentialsSchema,
   SentryCredentialsSchema,
   SnowflakeCredentialsSchema,
+  TikTokMarketingCredentialsSchema,
 } from "./credentials";
 
 type ProviderCredentialSchema = z.ZodType<{ type: string }>;
@@ -728,6 +731,88 @@ export const SOURCE_PROVIDER_REGISTRY = {
           clientId: "amzn1.application-oa2-client...",
           profileId: "1234567890",
           region: "na",
+        },
+      },
+    },
+  },
+  linkedin_ads: {
+    label: "LinkedIn Ads",
+    credentialSchema: LinkedInAdsCredentialsSchema,
+    credentialType: "linkedin_ads",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    guide: {
+      summary:
+        "Connect LinkedIn Ads with a Marketing API OAuth access token and version header.",
+      steps: [
+        "Create or obtain a LinkedIn Marketing API OAuth access token with access to the ad accounts OneQuery should query.",
+        "Use a supported Marketing API version as `credentials.apiVersion` in `YYYYMM` format; OneQuery defaults to `202605`.",
+        "Only include `apiBaseUrl` when you need a non-default LinkedIn-compatible API origin.",
+      ],
+      exampleInput: {
+        sourceKey: "linkedin_ads_main",
+        credentials: {
+          accessToken: "linkedin_oauth_access_token",
+          apiVersion: "202605",
+        },
+      },
+    },
+  },
+  tiktok_marketing: {
+    label: "TikTok Marketing",
+    credentialSchema: TikTokMarketingCredentialsSchema,
+    credentialType: "tiktok_marketing",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    guide: {
+      summary:
+        "Connect TikTok Marketing API with an API for Business access token.",
+      steps: [
+        "Create or obtain a TikTok API for Business access token authorized for the advertiser accounts OneQuery should query.",
+        "Optionally include the common advertiser ID as `credentials.advertiserId`; endpoint calls can still pass advertiser IDs in request params.",
+        "Only include `apiBaseUrl` when you need a non-default TikTok Business API origin.",
+      ],
+      exampleInput: {
+        sourceKey: "tiktok_marketing_main",
+        credentials: {
+          accessToken: "tiktok_access_token",
+          advertiserId: "1234567890",
+        },
+      },
+    },
+  },
+  sendgrid: {
+    label: "SendGrid",
+    credentialSchema: SendGridCredentialsSchema,
+    credentialType: "sendgrid",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    guide: {
+      summary: "Connect SendGrid with a v3 Web API key.",
+      steps: [
+        "Create a SendGrid API key with the scopes required for the account, email, or marketing endpoints OneQuery should call.",
+        "Copy the key into `credentials.apiKey`.",
+        "Only include `apiBaseUrl` when you need a non-default SendGrid-compatible API origin.",
+      ],
+      exampleInput: {
+        sourceKey: "sendgrid_main",
+        credentials: {
+          apiKey: "SG.xxxxx",
         },
       },
     },
