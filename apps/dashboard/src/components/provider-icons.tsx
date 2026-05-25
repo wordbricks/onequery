@@ -14,11 +14,14 @@ import type { ComponentType } from "react";
 import {
   siCloudflareworkers,
   siAirtable,
+  siConfluence,
   siDiscord,
   siGithub,
   siGoogleanalytics,
   siGooglebigquery,
   siGoogledocs,
+  siGooglesearchconsole,
+  siJira,
   siLinear,
   siMixpanel,
   siMongodb,
@@ -226,10 +229,21 @@ function GranolaIcon(props: ProviderIconProps) {
   );
 }
 
+function AmazonAdsIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon
+      {...props}
+      defaultLabel="Amazon Ads"
+      Icon={IconDatabase}
+    />
+  );
+}
+
 export const GitHubIcon = createSimpleProviderIcon(siGithub);
 
 export const ProviderIcons = {
   amplitude: AmplitudeIcon,
+  amazon_ads: AmazonAdsIcon,
   airtable: createSimpleProviderIcon(siAirtable),
   aws_athena_connector: AwsAthenaConnectorIcon,
   bigquery: createSimpleProviderIcon(siGooglebigquery),
@@ -237,11 +251,14 @@ export const ProviderIcons = {
   cloudflare_d1: CloudflareD1Icon,
   cloudflare_workers_observability:
     createSimpleProviderIcon(siCloudflareworkers),
+  confluence: createSimpleProviderIcon(siConfluence),
   discord: createSimpleProviderIcon(siDiscord),
   ga: createSimpleProviderIcon(siGoogleanalytics),
   github: GitHubIcon,
   google_docs: createSimpleProviderIcon(siGoogledocs),
+  google_search_console: createSimpleProviderIcon(siGooglesearchconsole),
   granola: GranolaIcon,
+  jira: createSimpleProviderIcon(siJira),
   laminar: LaminarIcon,
   linear: createSimpleProviderIcon(siLinear),
   mixpanel: createSimpleProviderIcon(siMixpanel),

@@ -41,6 +41,7 @@ import type {
 type SimpleRestCredentials = Extract<Credentials, { type: ProviderType }>;
 
 type SimpleRestAuth =
+  | { type: "basic"; username: string; password: string }
   | { type: "bearer"; token: string }
   | { type: "raw"; value: string };
 

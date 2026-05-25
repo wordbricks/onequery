@@ -2,16 +2,20 @@ import { describe, expect, it } from "vitest";
 
 import {
   AmplitudeCredentialsSchema,
+  AmazonAdsCredentialsSchema,
   AirtableCredentialsSchema,
   BigQueryCredentialsSchema,
   CalCredentialsSchema,
   CloudflareD1CredentialsSchema,
+  ConfluenceCredentialsSchema,
   ConnectorCredentialsSchema,
   credentialSchemaMap,
   DiscordCredentialsSchema,
   GitHubCredentialsSchema,
+  GoogleSearchConsoleCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
   GranolaCredentialsSchema,
+  JiraCredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   isAnalyticsCredentials,
   isDatabaseCredentials,
@@ -36,16 +40,20 @@ import {
 } from "./credentials";
 import type {
   AmplitudeCredentials,
+  AmazonAdsCredentials,
   AirtableCredentials,
   BigQueryCredentials,
   CalCredentials,
   CloudflareD1Credentials,
+  ConfluenceCredentials,
   ConnectorCredentials,
   Credentials,
   DiscordCredentials,
   GitHubCredentials,
+  GoogleSearchConsoleCredentials,
   GoogleAnalyticsCredentials,
   GranolaCredentials,
+  JiraCredentials,
   LaminarCredentials,
   LinearCredentials,
   MixpanelCredentials,
@@ -1432,6 +1440,119 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("GoogleSearchConsoleCredentialsSchema", () => {
+    it("validates Google Search Console credentials", () => {
+      const credentials: GoogleSearchConsoleCredentials = {
+        accessToken: "ya29.token",
+        siteUrl: "https://www.example.com/",
+        type: "google_search_console",
+      };
+
+      const result =
+        GoogleSearchConsoleCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects missing access token", () => {
+      const result = GoogleSearchConsoleCredentialsSchema.safeParse({
+        siteUrl: "https://www.example.com/",
+        type: "google_search_console",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("ConfluenceCredentialsSchema", () => {
+    it("validates Confluence credentials and trims siteUrl", () => {
+      const result = ConfluenceCredentialsSchema.safeParse({
+        apiToken: "atlassian-token",
+        email: "reader@example.com",
+        siteUrl: "https://example.atlassian.net/",
+        type: "confluence",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: ConfluenceCredentials = result.data;
+        expect(credentials.siteUrl).toBe("https://example.atlassian.net");
+      }
+    });
+
+    it("rejects invalid email", () => {
+      const result = ConfluenceCredentialsSchema.safeParse({
+        apiToken: "atlassian-token",
+        email: "not-an-email",
+        siteUrl: "https://example.atlassian.net",
+        type: "confluence",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("AmazonAdsCredentialsSchema", () => {
+    it("defaults region to North America", () => {
+      const result = AmazonAdsCredentialsSchema.safeParse({
+        accessToken: "Atza|token",
+        clientId: "amzn1.application-oa2-client.test",
+        type: "amazon_ads",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: AmazonAdsCredentials = result.data;
+        expect(credentials.region).toBe("na");
+      }
+    });
+
+    it("accepts supported Amazon Ads regions", () => {
+      const eu = AmazonAdsCredentialsSchema.safeParse({
+        accessToken: "Atza|token",
+        clientId: "client-id",
+        region: "eu",
+        type: "amazon_ads",
+      });
+      const fe = AmazonAdsCredentialsSchema.safeParse({
+        accessToken: "Atza|token",
+        clientId: "client-id",
+        region: "fe",
+        type: "amazon_ads",
+      });
+
+      expect(eu.success).toBe(true);
+      expect(fe.success).toBe(true);
+    });
+  });
+
+  describe("JiraCredentialsSchema", () => {
+    it("validates Jira credentials and trims siteUrl", () => {
+      const result = JiraCredentialsSchema.safeParse({
+        apiToken: "atlassian-token",
+        email: "reader@example.com",
+        siteUrl: "https://example.atlassian.net/",
+        type: "jira",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: JiraCredentials = result.data;
+        expect(credentials.siteUrl).toBe("https://example.atlassian.net");
+      }
+    });
+
+    it("rejects invalid siteUrl", () => {
+      const result = JiraCredentialsSchema.safeParse({
+        apiToken: "atlassian-token",
+        email: "reader@example.com",
+        siteUrl: "not-a-url",
+        type: "jira",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("LinearCredentialsSchema", () => {
     it("should validate valid Linear credentials", () => {
       const credentials: LinearCredentials = {
@@ -1573,6 +1694,10 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.amplitude).toBe(AmplitudeCredentialsSchema);
     });
 
+    it("should map amazon_ads to AmazonAdsCredentialsSchema", () => {
+      expect(credentialSchemaMap.amazon_ads).toBe(AmazonAdsCredentialsSchema);
+    });
+
     it("should map airtable to AirtableCredentialsSchema", () => {
       expect(credentialSchemaMap.airtable).toBe(AirtableCredentialsSchema);
     });
@@ -1585,8 +1710,22 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.cal).toBe(CalCredentialsSchema);
     });
 
+    it("should map confluence to ConfluenceCredentialsSchema", () => {
+      expect(credentialSchemaMap.confluence).toBe(ConfluenceCredentialsSchema);
+    });
+
     it("should map granola to GranolaCredentialsSchema", () => {
       expect(credentialSchemaMap.granola).toBe(GranolaCredentialsSchema);
+    });
+
+    it("should map google_search_console to GoogleSearchConsoleCredentialsSchema", () => {
+      expect(credentialSchemaMap.google_search_console).toBe(
+        GoogleSearchConsoleCredentialsSchema
+      );
+    });
+
+    it("should map jira to JiraCredentialsSchema", () => {
+      expect(credentialSchemaMap.jira).toBe(JiraCredentialsSchema);
     });
 
     it("should map mixpanel to MixpanelCredentialsSchema", () => {
