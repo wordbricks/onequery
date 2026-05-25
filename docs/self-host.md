@@ -98,6 +98,9 @@ Current provider identifiers:
 - `posthog` for PostHog
 - `sentry` for Sentry
 - `github` for GitHub
+- `linkedin_ads` for LinkedIn Ads
+- `tiktok_marketing` for TikTok Marketing
+- `sendgrid` for SendGrid
 - `linear` for Linear
 
 For provider-specific setup steps and example JSON, run `onequery source connect --source <provider>` without `--input`.

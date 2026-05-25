@@ -328,6 +328,36 @@ export const AmazonAdsCredentialsSchema = z.object({
 
 export type AmazonAdsCredentials = z.infer<typeof AmazonAdsCredentialsSchema>;
 
+export const LinkedInAdsCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiVersion: trimmedString("API version is required").default("202605"),
+  type: z.literal("linkedin_ads"),
+});
+
+export type LinkedInAdsCredentials = z.infer<
+  typeof LinkedInAdsCredentialsSchema
+>;
+
+export const TikTokMarketingCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  advertiserId: optionalTrimmedString("Advertiser ID is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  type: z.literal("tiktok_marketing"),
+});
+
+export type TikTokMarketingCredentials = z.infer<
+  typeof TikTokMarketingCredentialsSchema
+>;
+
+export const SendGridCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiKey: requiredOpaqueString("API key is required"),
+  type: z.literal("sendgrid"),
+});
+
+export type SendGridCredentials = z.infer<typeof SendGridCredentialsSchema>;
+
 export const JiraCredentialsSchema = z.object({
   apiToken: requiredOpaqueString("API token is required"),
   email: z
@@ -416,6 +446,9 @@ export const CredentialsSchema = z.union([
   GoogleSearchConsoleCredentialsSchema,
   ConfluenceCredentialsSchema,
   AmazonAdsCredentialsSchema,
+  LinkedInAdsCredentialsSchema,
+  TikTokMarketingCredentialsSchema,
+  SendGridCredentialsSchema,
   JiraCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
@@ -471,6 +504,7 @@ export const credentialSchemaMap = {
   google_search_console: GoogleSearchConsoleCredentialsSchema,
   granola: GranolaCredentialsSchema,
   jira: JiraCredentialsSchema,
+  linkedin_ads: LinkedInAdsCredentialsSchema,
   cloudflare_workers_observability:
     CloudflareWorkersObservabilityCredentialsSchema,
   laminar: LaminarCredentialsSchema,
@@ -481,8 +515,10 @@ export const credentialSchemaMap = {
   mysql: MySQLCredentialsSchema,
   postgres: PostgresCredentialsSchema,
   posthog: PostHogCredentialsSchema,
+  sendgrid: SendGridCredentialsSchema,
   sentry: SentryCredentialsSchema,
   snowflake: SnowflakeCredentialsSchema,
+  tiktok_marketing: TikTokMarketingCredentialsSchema,
 } as const;
 
 export function validateCredentials(credentials: unknown): Credentials {

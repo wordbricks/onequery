@@ -422,6 +422,55 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
     },
   },
   {
+    provider: "linkedin_ads",
+    summary:
+      "Connect LinkedIn Ads with a Marketing API OAuth access token and version header.",
+    steps: [
+      "Create or obtain a LinkedIn Marketing API OAuth access token with access to the ad accounts OneQuery should query.",
+      "Use a supported Marketing API version as `credentials.apiVersion` in `YYYYMM` format; OneQuery defaults to `202605`.",
+      "Only include `apiBaseUrl` when you need a non-default LinkedIn-compatible API origin.",
+    ],
+    exampleInput: {
+      sourceKey: "linkedin_ads_main",
+      credentials: {
+        accessToken: "linkedin_oauth_access_token",
+        apiVersion: "202605",
+      },
+    },
+  },
+  {
+    provider: "tiktok_marketing",
+    summary:
+      "Connect TikTok Marketing API with an API for Business access token.",
+    steps: [
+      "Create or obtain a TikTok API for Business access token authorized for the advertiser accounts OneQuery should query.",
+      "Optionally include the common advertiser ID as `credentials.advertiserId`; endpoint calls can still pass advertiser IDs in request params.",
+      "Only include `apiBaseUrl` when you need a non-default TikTok Business API origin.",
+    ],
+    exampleInput: {
+      sourceKey: "tiktok_marketing_main",
+      credentials: {
+        accessToken: "tiktok_access_token",
+        advertiserId: "1234567890",
+      },
+    },
+  },
+  {
+    provider: "sendgrid",
+    summary: "Connect SendGrid with a v3 Web API key.",
+    steps: [
+      "Create a SendGrid API key with the scopes required for the account, email, or marketing endpoints OneQuery should call.",
+      "Copy the key into `credentials.apiKey`.",
+      "Only include `apiBaseUrl` when you need a non-default SendGrid-compatible API origin.",
+    ],
+    exampleInput: {
+      sourceKey: "sendgrid_main",
+      credentials: {
+        apiKey: "SG.xxxxx",
+      },
+    },
+  },
+  {
     provider: "jira",
     summary:
       "Connect Jira Cloud with an Atlassian account email and API token.",

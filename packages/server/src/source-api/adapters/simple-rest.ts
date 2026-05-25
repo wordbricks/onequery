@@ -55,6 +55,7 @@ type SimpleRestAdapterConfig<TCredentials extends SimpleRestCredentials> = {
   descriptorVersion: string;
   apiBaseUrl: (credentials: TCredentials) => string;
   auth: (credentials: TCredentials) => SimpleRestAuth;
+  authHeaderName?: string;
   defaultHeaders?: (credentials: TCredentials) => Record<string, string>;
   allowedMethods?: readonly string[];
   allowedRequestHeaders?: readonly string[];
@@ -472,6 +473,7 @@ function createSimpleRestHttpClient<
 }) {
   return new ProviderHttpClient({
     auth: input.config.auth(input.credentials),
+    authHeaderName: input.config.authHeaderName,
     baseUrl: input.config.apiBaseUrl(input.credentials),
     blockedParams:
       input.config.blockedQueryParamNames ??

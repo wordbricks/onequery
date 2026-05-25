@@ -13,10 +13,13 @@ import { githubSourceApiAdapter } from "./adapters/github";
 import { googleSearchConsoleSourceApiAdapter } from "./adapters/google-search-console";
 import { granolaSourceApiAdapter } from "./adapters/granola";
 import { jiraSourceApiAdapter } from "./adapters/jira";
+import { linkedInAdsSourceApiAdapter } from "./adapters/linkedin-ads";
 import { mixpanelSourceApiAdapter } from "./adapters/mixpanel";
 import { mongodbSourceApiAdapter } from "./adapters/mongodb";
 import { postHogSourceApiAdapter } from "./adapters/posthog";
+import { sendGridSourceApiAdapter } from "./adapters/sendgrid";
 import { sentrySourceApiAdapter } from "./adapters/sentry";
+import { tiktokMarketingSourceApiAdapter } from "./adapters/tiktok-marketing";
 import {
   SourceApiAdapterNotRegisteredError,
   SourceApiRegistryConfigurationError,
@@ -74,8 +77,11 @@ export const sourceApiRegistry = createSourceApiRegistry([
   googleSearchConsoleSourceApiAdapter,
   granolaSourceApiAdapter,
   jiraSourceApiAdapter,
+  linkedInAdsSourceApiAdapter,
   mixpanelSourceApiAdapter,
   mongodbSourceApiAdapter,
   postHogSourceApiAdapter,
+  sendGridSourceApiAdapter,
   sentrySourceApiAdapter,
+  tiktokMarketingSourceApiAdapter,
 ]);

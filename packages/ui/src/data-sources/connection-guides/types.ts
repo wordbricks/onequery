@@ -9,15 +9,18 @@ export type DataSourceConnectionGuideProvider =
   | "ga"
   | "github"
   | "laminar"
+  | "linkedin_ads"
   | "mixpanel"
   | "motherduck"
   | "mongodb"
   | "mysql"
   | "postgres"
   | "posthog"
+  | "sendgrid"
   | "sentry"
   | "snowflake"
-  | "supabase";
+  | "supabase"
+  | "tiktok_marketing";
 
 export interface GuideStep {
   title: string;

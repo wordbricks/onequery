@@ -17,6 +17,7 @@ import {
   GranolaCredentialsSchema,
   JiraCredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
+  LinkedInAdsCredentialsSchema,
   isAnalyticsCredentials,
   isDatabaseCredentials,
   isGitHubCredentials,
@@ -33,8 +34,10 @@ import {
   normalizeEnvVarName,
   PostgresCredentialsSchema,
   PostHogCredentialsSchema,
+  SendGridCredentialsSchema,
   SentryCredentialsSchema,
   SnowflakeCredentialsSchema,
+  TikTokMarketingCredentialsSchema,
   safeValidateCredentials,
   validateCredentials,
 } from "./credentials";
@@ -55,6 +58,7 @@ import type {
   GranolaCredentials,
   JiraCredentials,
   LaminarCredentials,
+  LinkedInAdsCredentials,
   LinearCredentials,
   MixpanelCredentials,
   MotherDuckCredentials,
@@ -62,8 +66,10 @@ import type {
   MySQLCredentials,
   PostgresCredentials,
   PostHogCredentials,
+  SendGridCredentials,
   SentryCredentials,
   SnowflakeCredentials,
+  TikTokMarketingCredentials,
 } from "./credentials";
 
 describe("credentials schemas", () => {
@@ -1525,6 +1531,81 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("LinkedInAdsCredentialsSchema", () => {
+    it("defaults to the current LinkedIn Marketing API version", () => {
+      const result = LinkedInAdsCredentialsSchema.safeParse({
+        accessToken: "linkedin-token",
+        type: "linkedin_ads",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: LinkedInAdsCredentials = result.data;
+        expect(credentials.apiVersion).toBe("202605");
+      }
+    });
+
+    it("accepts optional API base URL and version override", () => {
+      const result = LinkedInAdsCredentialsSchema.safeParse({
+        accessToken: "linkedin-token",
+        apiBaseUrl: "https://api.linkedin.com/rest",
+        apiVersion: "202604",
+        type: "linkedin_ads",
+      });
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("TikTokMarketingCredentialsSchema", () => {
+    it("validates TikTok Marketing credentials", () => {
+      const result = TikTokMarketingCredentialsSchema.safeParse({
+        accessToken: "tiktok-token",
+        advertiserId: "1234567890",
+        type: "tiktok_marketing",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: TikTokMarketingCredentials = result.data;
+        expect(credentials.advertiserId).toBe("1234567890");
+      }
+    });
+
+    it("treats blank optional advertiserId as undefined", () => {
+      const result = TikTokMarketingCredentialsSchema.safeParse({
+        accessToken: "tiktok-token",
+        advertiserId: "   ",
+        type: "tiktok_marketing",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.advertiserId).toBeUndefined();
+      }
+    });
+  });
+
+  describe("SendGridCredentialsSchema", () => {
+    it("validates SendGrid credentials", () => {
+      const credentials: SendGridCredentials = {
+        apiKey: "SG.xxxxx",
+        type: "sendgrid",
+      };
+
+      const result = SendGridCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects missing API key", () => {
+      const result = SendGridCredentialsSchema.safeParse({
+        type: "sendgrid",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("JiraCredentialsSchema", () => {
     it("validates Jira credentials and trims siteUrl", () => {
       const result = JiraCredentialsSchema.safeParse({
@@ -1728,12 +1809,22 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.jira).toBe(JiraCredentialsSchema);
     });
 
+    it("should map linkedin_ads to LinkedInAdsCredentialsSchema", () => {
+      expect(credentialSchemaMap.linkedin_ads).toBe(
+        LinkedInAdsCredentialsSchema
+      );
+    });
+
     it("should map mixpanel to MixpanelCredentialsSchema", () => {
       expect(credentialSchemaMap.mixpanel).toBe(MixpanelCredentialsSchema);
     });
 
     it("should map posthog to PostHogCredentialsSchema", () => {
       expect(credentialSchemaMap.posthog).toBe(PostHogCredentialsSchema);
+    });
+
+    it("should map sendgrid to SendGridCredentialsSchema", () => {
+      expect(credentialSchemaMap.sendgrid).toBe(SendGridCredentialsSchema);
     });
 
     it("should map sentry to SentryCredentialsSchema", () => {
@@ -1752,6 +1843,12 @@ describe("credentials schemas", () => {
 
     it("should map linear to LinearCredentialsSchema", () => {
       expect(credentialSchemaMap.linear).toBe(LinearCredentialsSchema);
+    });
+
+    it("should map tiktok_marketing to TikTokMarketingCredentialsSchema", () => {
+      expect(credentialSchemaMap.tiktok_marketing).toBe(
+        TikTokMarketingCredentialsSchema
+      );
     });
 
     it("matches supported provider keys", () => {
@@ -1893,6 +1990,36 @@ describe("credentials schemas", () => {
 
       const result = validateCredentials(credentials);
       expect(result.type).toBe("sentry");
+    });
+
+    it("should validate LinkedIn Ads credentials", () => {
+      const credentials = {
+        accessToken: "linkedin-token",
+        type: "linkedin_ads",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("linkedin_ads");
+    });
+
+    it("should validate TikTok Marketing credentials", () => {
+      const credentials = {
+        accessToken: "tiktok-token",
+        type: "tiktok_marketing",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("tiktok_marketing");
+    });
+
+    it("should validate SendGrid credentials", () => {
+      const credentials = {
+        apiKey: "SG.xxxxx",
+        type: "sendgrid",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("sendgrid");
     });
 
     it("should validate MongoDB credentials", () => {
