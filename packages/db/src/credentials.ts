@@ -290,6 +290,60 @@ export const GranolaCredentialsSchema = z.object({
 
 export type GranolaCredentials = z.infer<typeof GranolaCredentialsSchema>;
 
+export const GoogleSearchConsoleCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  siteUrl: optionalTrimmedString("Site URL is required"),
+  type: z.literal("google_search_console"),
+});
+
+export type GoogleSearchConsoleCredentials = z.infer<
+  typeof GoogleSearchConsoleCredentialsSchema
+>;
+
+export const ConfluenceCredentialsSchema = z.object({
+  apiToken: requiredOpaqueString("API token is required"),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .pipe(z.email("Email must be a valid email address")),
+  siteUrl: trimmedUrl(
+    "Site URL is required",
+    "Site URL must be a valid URL"
+  ).transform((value) => value.replace(/\/+$/, "")),
+  type: z.literal("confluence"),
+});
+
+export type ConfluenceCredentials = z.infer<typeof ConfluenceCredentialsSchema>;
+
+export const AmazonAdsCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  clientId: trimmedString("Client ID is required"),
+  profileId: optionalTrimmedString("Profile ID is required"),
+  region: z.enum(["na", "eu", "fe"]).default("na"),
+  type: z.literal("amazon_ads"),
+});
+
+export type AmazonAdsCredentials = z.infer<typeof AmazonAdsCredentialsSchema>;
+
+export const JiraCredentialsSchema = z.object({
+  apiToken: requiredOpaqueString("API token is required"),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .pipe(z.email("Email must be a valid email address")),
+  siteUrl: trimmedUrl(
+    "Site URL is required",
+    "Site URL must be a valid URL"
+  ).transform((value) => value.replace(/\/+$/, "")),
+  type: z.literal("jira"),
+});
+
+export type JiraCredentials = z.infer<typeof JiraCredentialsSchema>;
+
 export const CloudflareD1CredentialsSchema = z.object({
   accountId: trimmedString("Account ID is required"),
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
@@ -359,6 +413,10 @@ export const CredentialsSchema = z.union([
   DiscordCredentialsSchema,
   CalCredentialsSchema,
   GranolaCredentialsSchema,
+  GoogleSearchConsoleCredentialsSchema,
+  ConfluenceCredentialsSchema,
+  AmazonAdsCredentialsSchema,
+  JiraCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   LinearCredentialsSchema,
@@ -400,15 +458,19 @@ export type DatabaseCredentials = Extract<
 
 export const credentialSchemaMap = {
   amplitude: AmplitudeCredentialsSchema,
+  amazon_ads: AmazonAdsCredentialsSchema,
   airtable: AirtableCredentialsSchema,
   aws_athena_connector: ConnectorCredentialsSchema,
   bigquery: BigQueryCredentialsSchema,
   cal: CalCredentialsSchema,
   cloudflare_d1: CloudflareD1CredentialsSchema,
+  confluence: ConfluenceCredentialsSchema,
   discord: DiscordCredentialsSchema,
   ga: GoogleAnalyticsCredentialsSchema,
   github: GitHubCredentialsSchema,
+  google_search_console: GoogleSearchConsoleCredentialsSchema,
   granola: GranolaCredentialsSchema,
+  jira: JiraCredentialsSchema,
   cloudflare_workers_observability:
     CloudflareWorkersObservabilityCredentialsSchema,
   laminar: LaminarCredentialsSchema,

@@ -368,6 +368,78 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
     },
   },
   {
+    provider: "google_search_console",
+    summary:
+      "Connect Google Search Console with an OAuth access token and optional default site URL.",
+    steps: [
+      "Create or obtain an OAuth 2.0 access token with the `https://www.googleapis.com/auth/webmasters.readonly` scope.",
+      "Copy the token into `credentials.accessToken`.",
+      "Optionally include `siteUrl` so source API selectors like `/searchAnalytics/query` expand to `/sites/<siteUrl>/searchAnalytics/query`.",
+    ],
+    exampleInput: {
+      sourceKey: "gsc_site",
+      credentials: {
+        accessToken: "ya29...",
+        siteUrl: "https://www.example.com/",
+      },
+    },
+  },
+  {
+    provider: "confluence",
+    summary:
+      "Connect Confluence Cloud with an Atlassian account email and API token.",
+    steps: [
+      "Create an Atlassian API token for the account that can read the Confluence site.",
+      "Copy the Atlassian account email into `credentials.email` and the token into `credentials.apiToken`.",
+      "Set `siteUrl` to the Atlassian Cloud site origin, for example `https://example.atlassian.net`.",
+    ],
+    exampleInput: {
+      sourceKey: "confluence_docs",
+      credentials: {
+        siteUrl: "https://example.atlassian.net",
+        email: "reader@example.com",
+        apiToken: "atlassian_api_token",
+      },
+    },
+  },
+  {
+    provider: "amazon_ads",
+    summary:
+      "Connect Amazon Ads with a Login with Amazon access token, client ID, region, and optional profile ID.",
+    steps: [
+      "Create or refresh a Login with Amazon access token authorized for the Amazon Ads account.",
+      "Copy the Amazon Ads API client ID into `credentials.clientId` and the access token into `credentials.accessToken`.",
+      "Set `region` to `na`, `eu`, or `fe`; optionally include `profileId` so OneQuery sends the `Amazon-Advertising-API-Scope` header.",
+    ],
+    exampleInput: {
+      sourceKey: "amazon_ads_na",
+      credentials: {
+        accessToken: "Atza|...",
+        clientId: "amzn1.application-oa2-client...",
+        profileId: "1234567890",
+        region: "na",
+      },
+    },
+  },
+  {
+    provider: "jira",
+    summary:
+      "Connect Jira Cloud with an Atlassian account email and API token.",
+    steps: [
+      "Create an Atlassian API token for the account that can read the Jira site.",
+      "Copy the Atlassian account email into `credentials.email` and the token into `credentials.apiToken`.",
+      "Set `siteUrl` to the Atlassian Cloud site origin, for example `https://example.atlassian.net`.",
+    ],
+    exampleInput: {
+      sourceKey: "jira_projects",
+      credentials: {
+        siteUrl: "https://example.atlassian.net",
+        email: "reader@example.com",
+        apiToken: "atlassian_api_token",
+      },
+    },
+  },
+  {
     provider: "linear",
     summary:
       "Connect Linear with either an API key or a full OAuth token bundle.",

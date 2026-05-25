@@ -2,9 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { SourceApiActorContext, PreparedSourceConnection } from "../types";
 import { airtableSourceApiAdapter } from "./airtable";
+import { amazonAdsSourceApiAdapter } from "./amazon-ads";
 import { calSourceApiAdapter } from "./cal";
+import { confluenceSourceApiAdapter } from "./confluence";
 import { discordSourceApiAdapter } from "./discord";
+import { googleSearchConsoleSourceApiAdapter } from "./google-search-console";
 import { granolaSourceApiAdapter } from "./granola";
+import { jiraSourceApiAdapter } from "./jira";
 
 const originalFetch = globalThis.fetch;
 
@@ -264,6 +268,226 @@ describe("simple REST source API providers", () => {
     );
     expect(calledInit?.headers).toMatchObject({
       Authorization: "Bearer grn_123",
+    });
+  });
+
+  it("normalizes Google Search Console search analytics selectors against the configured site", async () => {
+    const source: PreparedSourceConnection = {
+      credentials: {
+        accessToken: "gsc_token",
+        siteUrl: "https://www.example.com/",
+        type: "google_search_console",
+      },
+      displayName: "GSC",
+      id: "source_5",
+      provider: "google_search_console",
+      sourceKey: "gsc-main",
+    };
+    const descriptor = await googleSearchConsoleSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    const plan = await googleSearchConsoleSourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: {
+          kind: "json",
+          value: {
+            startDate: "2026-05-01",
+            endDate: "2026-05-07",
+            dimensions: ["query"],
+          },
+        },
+        headers: [],
+        methodOverride: "POST",
+        operation: "fetch_api",
+        selector: "/searchAnalytics/query",
+      },
+      source,
+    });
+
+    expect(plan.kind).toBe("http_request");
+    if (plan.kind !== "http_request") {
+      throw new Error("expected HTTP request plan");
+    }
+    expect(plan.url).toBe(
+      "https://www.googleapis.com/webmasters/v3/sites/https%3A%2F%2Fwww.example.com%2F/searchAnalytics/query"
+    );
+  });
+
+  it("executes Confluence requests with Atlassian API token basic auth", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ results: [] }), {
+        headers: {
+          "content-type": "application/json",
+        },
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        apiToken: "confluence_token",
+        email: "reader@example.com",
+        siteUrl: "https://example.atlassian.net",
+        type: "confluence",
+      },
+      displayName: "Confluence",
+      id: "source_6",
+      provider: "confluence",
+      sourceKey: "confluence-main",
+    };
+
+    await confluenceSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        body: { kind: "none" },
+        bodyKind: "none",
+        bodyPaths: [],
+        descriptorVersion: "confluence.v1",
+        headerNames: [],
+        headers: [],
+        kind: "http_request",
+        method: "GET",
+        operation: "fetch_api",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
+        provider: "confluence",
+        selector: "/pages",
+        selectorTemplate: "/{path}",
+        sourceId: "source_6",
+        sourceKey: "confluence-main",
+        url: "https://example.atlassian.net/wiki/api/v2/pages",
+      },
+      source,
+    });
+
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(calledUrl)).toBe(
+      "https://example.atlassian.net/wiki/api/v2/pages"
+    );
+    expect(calledInit?.headers).toMatchObject({
+      Authorization: `Basic ${btoa("reader@example.com:confluence_token")}`,
+    });
+  });
+
+  it("executes Amazon Ads requests with client and profile headers", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        headers: {
+          "content-type": "application/json",
+        },
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        accessToken: "amazon_token",
+        clientId: "client_123",
+        profileId: "profile_123",
+        region: "eu",
+        type: "amazon_ads",
+      },
+      displayName: "Amazon Ads",
+      id: "source_7",
+      provider: "amazon_ads",
+      sourceKey: "amazon-ads-main",
+    };
+
+    await amazonAdsSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        body: { kind: "none" },
+        bodyKind: "none",
+        bodyPaths: [],
+        descriptorVersion: "amazon-ads.v1",
+        headerNames: [],
+        headers: [],
+        kind: "http_request",
+        method: "GET",
+        operation: "fetch_api",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
+        provider: "amazon_ads",
+        selector: "/sp/campaigns",
+        selectorTemplate: "/{path}",
+        sourceId: "source_7",
+        sourceKey: "amazon-ads-main",
+        url: "https://advertising-api-eu.amazon.com/sp/campaigns",
+      },
+      source,
+    });
+
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(calledUrl)).toBe(
+      "https://advertising-api-eu.amazon.com/sp/campaigns"
+    );
+    expect(calledInit?.headers).toMatchObject({
+      Authorization: "Bearer amazon_token",
+      "Amazon-Advertising-API-ClientId": "client_123",
+      "Amazon-Advertising-API-Scope": "profile_123",
+    });
+  });
+
+  it("executes Jira requests against REST API v3 with Atlassian API token basic auth", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ issues: [] }), {
+        headers: {
+          "content-type": "application/json",
+        },
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        apiToken: "jira_token",
+        email: "reader@example.com",
+        siteUrl: "https://example.atlassian.net",
+        type: "jira",
+      },
+      displayName: "Jira",
+      id: "source_8",
+      provider: "jira",
+      sourceKey: "jira-main",
+    };
+
+    await jiraSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        body: { kind: "none" },
+        bodyKind: "none",
+        bodyPaths: [],
+        descriptorVersion: "jira.v1",
+        headerNames: [],
+        headers: [],
+        kind: "http_request",
+        method: "GET",
+        operation: "fetch_api",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
+        provider: "jira",
+        selector: "/project/search",
+        selectorTemplate: "/{path}",
+        sourceId: "source_8",
+        sourceKey: "jira-main",
+        url: "https://example.atlassian.net/rest/api/3/project/search",
+      },
+      source,
+    });
+
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(calledUrl)).toBe(
+      "https://example.atlassian.net/rest/api/3/project/search"
+    );
+    expect(calledInit?.headers).toMatchObject({
+      Authorization: `Basic ${btoa("reader@example.com:jira_token")}`,
     });
   });
 });
