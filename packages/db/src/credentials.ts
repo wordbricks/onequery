@@ -252,6 +252,44 @@ export const GitHubCredentialsSchema = z.object({
 
 export type GitHubCredentials = z.infer<typeof GitHubCredentialsSchema>;
 
+export const AirtableCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  baseId: optionalTrimmedString("Base ID is required"),
+  personalAccessToken: requiredOpaqueString(
+    "Personal access token is required"
+  ),
+  type: z.literal("airtable"),
+});
+
+export type AirtableCredentials = z.infer<typeof AirtableCredentialsSchema>;
+
+export const DiscordCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  authScheme: z.enum(["bot", "bearer"]).default("bot"),
+  guildId: optionalTrimmedString("Guild ID is required"),
+  token: requiredOpaqueString("Token is required"),
+  type: z.literal("discord"),
+});
+
+export type DiscordCredentials = z.infer<typeof DiscordCredentialsSchema>;
+
+export const CalCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiKey: requiredOpaqueString("API key is required"),
+  apiVersion: trimmedString("API version is required").default("2026-05-01"),
+  type: z.literal("cal"),
+});
+
+export type CalCredentials = z.infer<typeof CalCredentialsSchema>;
+
+export const GranolaCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiKey: requiredOpaqueString("API key is required"),
+  type: z.literal("granola"),
+});
+
+export type GranolaCredentials = z.infer<typeof GranolaCredentialsSchema>;
+
 export const CloudflareD1CredentialsSchema = z.object({
   accountId: trimmedString("Account ID is required"),
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
@@ -317,6 +355,10 @@ export const CredentialsSchema = z.union([
   PostHogCredentialsSchema,
   SentryCredentialsSchema,
   GitHubCredentialsSchema,
+  AirtableCredentialsSchema,
+  DiscordCredentialsSchema,
+  CalCredentialsSchema,
+  GranolaCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   LinearCredentialsSchema,
@@ -358,11 +400,15 @@ export type DatabaseCredentials = Extract<
 
 export const credentialSchemaMap = {
   amplitude: AmplitudeCredentialsSchema,
+  airtable: AirtableCredentialsSchema,
   aws_athena_connector: ConnectorCredentialsSchema,
   bigquery: BigQueryCredentialsSchema,
+  cal: CalCredentialsSchema,
   cloudflare_d1: CloudflareD1CredentialsSchema,
+  discord: DiscordCredentialsSchema,
   ga: GoogleAnalyticsCredentialsSchema,
   github: GitHubCredentialsSchema,
+  granola: GranolaCredentialsSchema,
   cloudflare_workers_observability:
     CloudflareWorkersObservabilityCredentialsSchema,
   laminar: LaminarCredentialsSchema,

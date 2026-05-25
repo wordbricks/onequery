@@ -1,10 +1,14 @@
 import type { ProviderType } from "@onequery/db/server";
 
+import { airtableSourceApiAdapter } from "./adapters/airtable";
 import { amplitudeSourceApiAdapter } from "./adapters/amplitude";
 import { bigQuerySourceApiAdapter } from "./adapters/bigquery";
+import { calSourceApiAdapter } from "./adapters/cal";
 import { cloudflareWorkersObservabilitySourceApiAdapter } from "./adapters/cloudflare-workers-observability";
+import { discordSourceApiAdapter } from "./adapters/discord";
 import { googleAnalyticsSourceApiAdapter } from "./adapters/ga";
 import { githubSourceApiAdapter } from "./adapters/github";
+import { granolaSourceApiAdapter } from "./adapters/granola";
 import { mixpanelSourceApiAdapter } from "./adapters/mixpanel";
 import { mongodbSourceApiAdapter } from "./adapters/mongodb";
 import { postHogSourceApiAdapter } from "./adapters/posthog";
@@ -54,10 +58,14 @@ export function getSourceApiAdapter(
 
 export const sourceApiRegistry = createSourceApiRegistry([
   amplitudeSourceApiAdapter,
+  airtableSourceApiAdapter,
   bigQuerySourceApiAdapter,
+  calSourceApiAdapter,
   cloudflareWorkersObservabilitySourceApiAdapter,
+  discordSourceApiAdapter,
   googleAnalyticsSourceApiAdapter,
   githubSourceApiAdapter,
+  granolaSourceApiAdapter,
   mixpanelSourceApiAdapter,
   mongodbSourceApiAdapter,
   postHogSourceApiAdapter,

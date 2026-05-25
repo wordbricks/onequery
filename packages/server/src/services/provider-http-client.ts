@@ -5,7 +5,8 @@ import { serializeQueryParam } from "./provider-utils";
 
 type ProviderAuth =
   | { type: "basic"; username: string; password: string }
-  | { type: "bearer"; token: string };
+  | { type: "bearer"; token: string }
+  | { type: "raw"; value: string };
 
 interface ProviderHttpClientOptions {
   auth: ProviderAuth;
@@ -41,6 +42,9 @@ function normalizeBaseUrl(baseUrl: string): string {
 function createAuthHeader(auth: ProviderAuth): string {
   if (auth.type === "bearer") {
     return `Bearer ${auth.token}`;
+  }
+  if (auth.type === "raw") {
+    return auth.value;
   }
 
   return `Basic ${base64ToUtf8.encode(`${auth.username}:${auth.password}`)}`;

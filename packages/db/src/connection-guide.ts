@@ -300,6 +300,74 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
     },
   },
   {
+    provider: "airtable",
+    summary:
+      "Connect Airtable with a Personal Access Token and optional default base ID.",
+    steps: [
+      "Create an Airtable Personal Access Token with scopes and base access for the records or metadata endpoints OneQuery should call.",
+      "Copy the token into `credentials.personalAccessToken`.",
+      "Optionally include `baseId` so source API selectors like `/TableName` expand to `/v0/<baseId>/TableName`.",
+    ],
+    exampleInput: {
+      sourceKey: "airtable_ops",
+      credentials: {
+        personalAccessToken: "pat...",
+        baseId: "appXXXXXXXXXXXXXX",
+      },
+    },
+  },
+  {
+    provider: "discord",
+    summary:
+      "Connect Discord with a bot token or OAuth bearer token for Discord REST API access.",
+    steps: [
+      "Create a Discord application and bot in the Developer Portal, or provide an OAuth token with the scopes required by the endpoints you will call.",
+      "Copy the token into `credentials.token`; leave `authScheme` as `bot` for bot tokens or set it to `bearer` for OAuth access tokens.",
+      "Optionally include `guildId` so selectors like `/channels` expand to `/guilds/<guildId>/channels`.",
+    ],
+    exampleInput: {
+      sourceKey: "discord_workspace",
+      credentials: {
+        token: "discord_bot_token",
+        authScheme: "bot",
+        guildId: "123456789012345678",
+      },
+    },
+  },
+  {
+    provider: "cal",
+    summary:
+      "Connect Cal.com API v2 with an API key or compatible bearer token.",
+    steps: [
+      "Create a Cal.com API key from Settings > Security, or use a managed-user/OAuth access token for endpoints that require it.",
+      "Copy the token into `credentials.apiKey`.",
+      "Keep `apiVersion` at `2026-05-01` unless Cal.com documents a newer required `cal-api-version` value for the endpoint.",
+    ],
+    exampleInput: {
+      sourceKey: "cal_bookings",
+      credentials: {
+        apiKey: "cal_...",
+        apiVersion: "2026-05-01",
+      },
+    },
+  },
+  {
+    provider: "granola",
+    summary:
+      "Connect Granola with an API key that has access to the note scopes you want to query.",
+    steps: [
+      "Create a Granola API key from the desktop app under Settings > Connectors > API keys.",
+      "Choose the Personal notes and/or Public notes scopes needed for OneQuery.",
+      "Copy the generated key into `credentials.apiKey`.",
+    ],
+    exampleInput: {
+      sourceKey: "granola_notes",
+      credentials: {
+        apiKey: "grn_...",
+      },
+    },
+  },
+  {
     provider: "linear",
     summary:
       "Connect Linear with either an API key or a full OAuth token bundle.",
