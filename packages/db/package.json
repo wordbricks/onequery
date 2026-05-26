@@ -11,6 +11,7 @@
     "./constants": "./src/constants.ts",
     "./credentials": "./src/credentials.ts",
     "./pglite": "./src/pglite.ts",
+    "./source-providers": "./src/source-providers.ts",
     "./testing/setup": "./src/testing/setup.ts"
   },
   "scripts": {
