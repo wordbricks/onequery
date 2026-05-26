@@ -1,7 +1,8 @@
+import { listPublicSourceProviders } from "@onequery/db/source-providers";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { getProviderIcon } from "./provider-icons";
+import { ProviderIcons, getProviderIcon } from "./provider-icons";
 
 type ProviderIconTestProps = {
   "aria-hidden"?: boolean | "true" | "false";
@@ -18,6 +19,12 @@ function renderProviderIcon(
 }
 
 describe("provider icon accessibility", () => {
+  it("has an integration icon for every public source provider", () => {
+    for (const provider of listPublicSourceProviders()) {
+      expect(ProviderIcons).toHaveProperty(provider.id);
+    }
+  });
+
   it("treats simple-icons provider icons as decorative by default", () => {
     const markup = renderProviderIcon("github");
 
