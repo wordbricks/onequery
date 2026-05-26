@@ -9,6 +9,10 @@ logpush = true
 preview_urls = true
 routes = [{ pattern = "onequery.dev", custom_domain = true }]
 
+[[kv_namespaces]]
+binding = "SESSION"
+id = "4eae4e6551dc4042950bd2270b09f772"
+
 [assets]
 directory = "./dist"
 binding = "ASSETS"
