@@ -1,12 +1,14 @@
 # OneQuery
 
 <p align="center">
-  <a href="./README.md">English</a> | <a href="./README.zh-CN.md">中文</a>
+  <strong>中文</strong> | <a href="./README.md">English</a>
 </p>
 
 <p align="center">
-  <a href="https://onequery.dev"><img src="https://img.shields.io/badge/Site-onequery.dev-blue?style=for-the-badge" alt="Site"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge" alt="License: Apache 2.0"></a>
+  <a href="https://onequery.dev"><img src="https://img.shields.io/badge/Site-onequery.dev-blue?style=flat-square" alt="Site"></a>
+  <a href="https://github.com/wordbricks/onequery/releases"><img src="https://img.shields.io/github/v/release/wordbricks/onequery?display_name=release&style=flat-square" alt="Release"></a>
+  <a href="https://www.npmjs.com/package/@onequery/cli"><img src="https://img.shields.io/npm/dm/@onequery/cli?style=flat-square" alt="npm downloads"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/wordbricks/onequery?style=flat-square" alt="License"></a>
 </p>
 
 **自部署 OneQuery，把数据库、分析工具和 API 接入同一个入口，统一管理凭证，在 CLI 和 Web 上跑安全、可审计的查询。**
