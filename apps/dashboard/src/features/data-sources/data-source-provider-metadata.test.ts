@@ -13,6 +13,7 @@ const providers = [
   {
     id: "postgres",
     label: "PostgreSQL",
+    publicCategory: "Databases",
     connectable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "database",
@@ -26,6 +27,7 @@ const providers = [
   {
     id: "linear",
     label: "Linear",
+    publicCategory: "Developer workflow",
     connectable: true,
     dashboardConnectable: false,
     dashboardCredentialForm: "json",
@@ -39,6 +41,7 @@ const providers = [
   {
     id: "cloudflare_workers_observability",
     label: "Cloudflare Workers Observability",
+    publicCategory: "Observability",
     connectable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "cloudflare_workers_observability",
