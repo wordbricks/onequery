@@ -5,7 +5,7 @@ import {
   member,
   organization,
 } from "@onequery/db/server";
-import type { Database } from "@onequery/db/server";
+import type { Database, ProviderType } from "@onequery/db/server";
 
 import type { CliLoadSourceEffectResult } from "../domain/effects";
 import type {
@@ -59,8 +59,17 @@ export async function runCliLoadOrgAccessWithSource(input: {
   db: Database;
   orgSlug: string;
   sourceKey: string;
+  sourceProvider?: ProviderType;
   userId: string;
 }): Promise<CliOrgAccessWithSourceResult> {
+  const sourceConditions = [
+    eq(dataSources.organizationId, organization.id),
+    eq(dataSources.name, input.sourceKey),
+  ];
+  if (input.sourceProvider) {
+    sourceConditions.push(eq(dataSources.provider, input.sourceProvider));
+  }
+
   const [row] = await input.db
     .select({
       orgId: organization.id,
@@ -84,13 +93,7 @@ export async function runCliLoadOrgAccessWithSource(input: {
         eq(member.userId, input.userId)
       )
     )
-    .leftJoin(
-      dataSources,
-      and(
-        eq(dataSources.organizationId, organization.id),
-        eq(dataSources.name, input.sourceKey)
-      )
-    )
+    .leftJoin(dataSources, and(...sourceConditions))
     .where(eq(organization.slug, input.orgSlug))
     .limit(1);
 

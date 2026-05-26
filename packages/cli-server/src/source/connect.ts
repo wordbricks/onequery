@@ -7,6 +7,7 @@ import {
   buildCliSourceShowCommand,
 } from "../cli-defaults";
 import type { CliSourceRecord } from "../domain/workflows";
+import { formatCliSourceReference } from "./reference";
 
 export function buildCliSourceConnectGuide(provider: ProviderType) {
   const guide = sourceConnectProviderGuide(provider);
@@ -22,7 +23,9 @@ export function buildCliSourceConnectGuide(provider: ProviderType) {
 
 export function buildCliSourceConnectResult(source: CliSourceRecord) {
   return {
-    nextCommand: buildCliSourceShowCommand(source.sourceKey),
+    nextCommand: buildCliSourceShowCommand(
+      formatCliSourceReference(source.provider, source.sourceKey)
+    ),
     source,
   };
 }
@@ -43,7 +46,7 @@ function buildSourceConnectContent(
     "",
     "Use a CLI-safe `sourceKey` such as `warehouse` or `github_main`.",
     `Run: \`${buildCliSourceConnectCommand(provider.provider)}\``,
-    "Verify: `onequery source show <source_key>`",
+    "Verify: `onequery source show <provider>://<source_key>`",
     "Do not include `organizationId` or `organizationSlug`; the CLI injects org context automatically.",
     'The JSON input shape is always `{ "sourceKey": string, "credentials": { ...provider-specific fields... } }`.',
     "",

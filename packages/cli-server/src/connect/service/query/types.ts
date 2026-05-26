@@ -78,5 +78,6 @@ export type ResolvedCliQueryRequest<TRequest extends CliQueryServiceRequest> = {
   requestId: string;
   resultWindow: ReturnType<typeof resolveQueryResultWindow>;
   session: CliSessionIdentity;
+  sourceKey: string;
   sourceLookup: CliLoadSourceEffectResult | null;
 };

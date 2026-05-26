@@ -147,7 +147,7 @@ async function handlePreviewSourceApiCommand(
         dependencies,
         draft: buildSourceApiDraft(input.command.draft),
         invokeMode: "preview_only",
-        sourceKey: input.command.target.sourceKey,
+        sourceKey: workflowContext.sourceKey,
       })
     );
 
@@ -195,7 +195,7 @@ async function handleExecuteSourceApiCommand(
         dependencies,
         draft: buildSourceApiDraft(input.command.draft),
         invokeMode: "execute",
-        sourceKey: input.command.target.sourceKey,
+        sourceKey: workflowContext.sourceKey,
       })
     );
     const result = response.result;

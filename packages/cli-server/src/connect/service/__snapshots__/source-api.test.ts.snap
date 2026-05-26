@@ -127,7 +127,7 @@ exports[`source api connect service > binds continuation tokens to execution sta
       "source": {
         "displayName": "GitHub Prod",
         "provider": "github",
-        "sourceKey": "github-prod",
+        "sourceKey": "github://github-prod",
       },
       "url": "https://api.github.com/issues",
     },
@@ -149,7 +149,7 @@ exports[`source api connect service > binds continuation tokens to execution sta
       "source": {
         "displayName": "GitHub Prod",
         "provider": "github",
-        "sourceKey": "github-prod",
+        "sourceKey": "github://github-prod",
       },
     },
   },
@@ -300,7 +300,7 @@ exports[`source api connect service > describes the source API through the Conne
     "descriptorVersion": "github-v1",
     "examples": [
       {
-        "command": "onequery api --source github-prod /issues",
+        "command": "onequery api --source github://github-prod /issues",
         "description": "Fetch issues",
         "label": "issues",
       },
@@ -341,7 +341,7 @@ exports[`source api connect service > describes the source API through the Conne
     "source": {
       "displayName": "GitHub Prod",
       "provider": "github",
-      "sourceKey": "github-prod",
+      "sourceKey": "github://github-prod",
     },
   },
 }
@@ -432,7 +432,7 @@ exports[`source api connect service > executes source API requests through the C
       "source": {
         "displayName": "GitHub Prod",
         "provider": "github",
-        "sourceKey": "github-prod",
+        "sourceKey": "github://github-prod",
       },
       "url": "https://api.github.com/issues",
     },
@@ -454,7 +454,7 @@ exports[`source api connect service > executes source API requests through the C
       "source": {
         "displayName": "GitHub Prod",
         "provider": "github",
-        "sourceKey": "github-prod",
+        "sourceKey": "github://github-prod",
       },
     },
   },
@@ -479,7 +479,7 @@ exports[`source api connect service > preserves JSON source API response bodies 
     "source": {
       "displayName": "GitHub Prod",
       "provider": "github",
-      "sourceKey": "github-prod",
+      "sourceKey": "github://github-prod",
     },
     "url": "https://api.github.com/issues",
   },
@@ -505,7 +505,7 @@ exports[`source api connect service > preserves JSON source API response bodies 
     "source": {
       "displayName": "GitHub Prod",
       "provider": "github",
-      "sourceKey": "github-prod",
+      "sourceKey": "github://github-prod",
     },
   },
 }
@@ -637,7 +637,7 @@ exports[`source api connect service > previews source API execution through the 
       "source": {
         "displayName": "GitHub Prod",
         "provider": "github",
-        "sourceKey": "github-prod",
+        "sourceKey": "github://github-prod",
       },
       "url": "https://api.github.com/issues",
     },

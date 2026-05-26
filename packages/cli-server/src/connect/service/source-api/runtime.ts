@@ -18,6 +18,7 @@ import { Result } from "better-result";
 
 import type { AuthorizedCliOrgContext } from "../../../authorization";
 import { isCliFailure } from "../../../domain/failures";
+import { parseCliSourceSelector } from "../../../source/reference";
 import type { AuthenticatedCliConnectRequestContext } from "../../context";
 import { resolveAuthorizedCliOrgFromAccess } from "../access";
 import { createCliSourceNotFoundFailure } from "../errors";
@@ -49,10 +50,21 @@ export async function resolveAuthorizedSourceApiAccess(
 ): Promise<CliServiceResult<SourceApiAccessState>> {
   return Result.gen(async function* resolveAuthorizedSourceApiAccessFlow() {
     const c = input.requestContext.honoContext;
+    const sourceSelector = parseCliSourceSelector(input.sourceKey);
+    if (!sourceSelector) {
+      return yield* Result.err(
+        createCliServiceFailure({
+          detail: "source must look like provider://source-key",
+          key: "SOURCE_API_REQUEST_INVALID",
+        })
+      );
+    }
+
     const access = await dependencies.runCliLoadOrgAccessWithSource({
       db: c.var.storage.db,
       orgSlug: input.orgSlug,
-      sourceKey: input.sourceKey,
+      sourceKey: sourceSelector.sourceKey,
+      sourceProvider: sourceSelector.sourceProvider,
       userId: input.requestContext.session.user.id,
     });
     const authorizedOrg = yield* resolveAuthorizedCliOrgFromAccess({
@@ -64,7 +76,7 @@ export async function resolveAuthorizedSourceApiAccess(
     });
     const resourceCache = createSourceApiWorkflowResourceCacheFromLookup({
       organizationId: authorizedOrg.org.id,
-      sourceKey: input.sourceKey,
+      sourceKey: sourceSelector.sourceKey,
       sourceLookup: access.source,
     });
     const source = yield* Result.await(
@@ -73,7 +85,7 @@ export async function resolveAuthorizedSourceApiAccess(
           authorizedOrg,
           c,
           resourceCache,
-          sourceKey: input.sourceKey,
+          sourceKey: sourceSelector.sourceKey,
         },
         dependencies
       )

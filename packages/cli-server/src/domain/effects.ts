@@ -25,6 +25,7 @@ export type CliLoadSourceEffect = {
   kind: "load_source";
   organizationId: string;
   sourceKey: string;
+  sourceProvider?: ProviderType;
 };
 
 export type CliLoadSourceEffectResult =
