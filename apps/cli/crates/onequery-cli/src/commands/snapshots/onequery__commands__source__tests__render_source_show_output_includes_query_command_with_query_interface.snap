@@ -2,9 +2,9 @@
 source: crates/onequery-cli/src/commands/source.rs
 expression: "output.lines.join(\"\\n\")"
 ---
-Source: warehouse
+Source: postgres://warehouse
 Display Name: Warehouse
 Provider: postgres
 Status: active
 Interfaces: query
-Query command: onequery query exec --source warehouse --sql "select 1"
+Query command: onequery query exec --source postgres://warehouse --sql "select 1"

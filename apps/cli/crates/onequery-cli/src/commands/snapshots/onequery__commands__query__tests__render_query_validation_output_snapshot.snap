@@ -1,9 +1,8 @@
 ---
 source: crates/onequery-cli/src/commands/query/tests.rs
-assertion_line: 164
 expression: "output.lines.join(\"\\n\")"
 ---
-Source: warehouse (postgres)
+Source: postgres://warehouse
 SQL normalized: no
 
 Normalized SQL:

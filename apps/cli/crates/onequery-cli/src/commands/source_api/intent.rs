@@ -386,7 +386,7 @@ mod tests {
 
     fn context() -> CommandContext {
         CommandContext {
-            command_line: "onequery api --source github-prod".to_owned(),
+            command_line: "onequery api --source github://github-prod".to_owned(),
             base_url: default_base_url(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
@@ -397,7 +397,7 @@ mod tests {
 
     fn api_args() -> ApiArgs {
         ApiArgs {
-            source: crate::identifiers::test_source_key("github-prod"),
+            source: crate::identifiers::test_source_reference("github://github-prod"),
             op: None,
             target: None,
             method: None,

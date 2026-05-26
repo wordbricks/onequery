@@ -9,6 +9,7 @@ use crate::transport::query::DeclaredQueryResultWindow;
 use crate::transport::query::QueryResult;
 use crate::transport::query::QueryValidationResult;
 use crate::transport::read_controls::PageInfo;
+use crate::transport::source::format_source_reference;
 use onequery_core::error::CliError;
 
 pub(super) fn render_query_output(
@@ -23,11 +24,10 @@ pub(super) fn render_query_output(
             .with_sanitization_metadata(output_metadata));
     }
 
-    let source = &result.source.source_key;
-    let provider = &result.source.provider;
+    let source = format_source_reference(&result.source.provider, &result.source.source_key);
 
     let mut lines = vec![
-        format!("Source: {source} ({provider})"),
+        format!("Source: {source}"),
         format!("Rows: {}", result.row_count),
         format!("Time: {} ms", result.elapsed_ms),
     ];
@@ -63,11 +63,10 @@ pub(super) fn render_query_validation_output(
         return Ok(CommandOutput::structured(pretty_json_lines(&data), data));
     }
 
-    let source_name = &result.source.source_key;
-    let provider = &result.source.provider;
+    let source_name = format_source_reference(&result.source.provider, &result.source.source_key);
 
     let mut lines = vec![
-        format!("Source: {source_name} ({provider})"),
+        format!("Source: {source_name}"),
         format!(
             "SQL normalized: {}",
             if result.sql_normalized { "yes" } else { "no" }

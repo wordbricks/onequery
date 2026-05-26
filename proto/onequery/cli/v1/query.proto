@@ -19,7 +19,7 @@ message ValidateQueryRequest {
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+    (buf.validate.field).string.pattern = "^(?:[a-z][a-z0-9_]*://)?[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$"
   ];
   CliQueryRequest query = 3 [(buf.validate.field).required = true];
 }
@@ -47,7 +47,7 @@ message ExecuteQueryRequest {
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+    (buf.validate.field).string.pattern = "^(?:[a-z][a-z0-9_]*://)?[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$"
   ];
   CliPageRequest page = 3;
   CliQueryRequest query = 4 [(buf.validate.field).required = true];

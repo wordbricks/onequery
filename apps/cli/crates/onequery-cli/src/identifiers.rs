@@ -60,6 +60,12 @@ pub(crate) struct SourceKey(String);
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) struct SourceKeyParseError;
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub(crate) struct SourceReference(String);
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) struct SourceReferenceParseError;
+
 impl SourceKey {
     pub(crate) fn as_str(&self) -> &str {
         self.0.as_str()
@@ -105,6 +111,56 @@ impl TryFrom<String> for SourceKey {
 
 impl From<SourceKey> for String {
     fn from(value: SourceKey) -> Self {
+        value.0
+    }
+}
+
+impl SourceReference {
+    pub(crate) fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl AsRef<str> for SourceReference {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl fmt::Display for SourceReference {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+impl fmt::Display for SourceReferenceParseError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(
+            "source must look like provider://source-key and use only letters, numbers, dots, underscores, or hyphens in the source key",
+        )
+    }
+}
+
+impl TryFrom<&str> for SourceReference {
+    type Error = SourceReferenceParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        normalize_source_reference(value)
+            .map(|normalized| Self(normalized.to_owned()))
+            .ok_or(SourceReferenceParseError)
+    }
+}
+
+impl TryFrom<String> for SourceReference {
+    type Error = SourceReferenceParseError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(value.as_str())
+    }
+}
+
+impl From<SourceReference> for String {
+    fn from(value: SourceReference) -> Self {
         value.0
     }
 }
@@ -181,9 +237,9 @@ pub(crate) fn test_request_id(value: &str) -> RequestId {
 }
 
 #[cfg(test)]
-pub(crate) fn test_source_key(value: &str) -> SourceKey {
-    SourceKey::try_from(value)
-        .unwrap_or_else(|error| panic!("expected valid source key `{value}`: {error}"))
+pub(crate) fn test_source_reference(value: &str) -> SourceReference {
+    SourceReference::try_from(value)
+        .unwrap_or_else(|error| panic!("expected valid source reference `{value}`: {error}"))
 }
 
 pub(crate) fn normalize_org_slug(raw: &str) -> Option<&str> {
@@ -219,6 +275,16 @@ pub(crate) fn normalize_safe_path_segment(raw: &str) -> Option<&str> {
         .chars()
         .all(|character| character.is_ascii_alphanumeric() || matches!(character, '.' | '-' | '_'))
     {
+        return None;
+    }
+
+    Some(normalized)
+}
+
+pub(crate) fn normalize_source_reference(raw: &str) -> Option<&str> {
+    let normalized = raw.trim();
+    let (provider, source_key) = normalized.split_once("://")?;
+    if !is_source_provider_scheme(provider) || normalize_safe_path_segment(source_key).is_none() {
         return None;
     }
 
@@ -272,6 +338,17 @@ fn is_org_slug(value: &str) -> bool {
     saw_character && !previous_was_dash
 }
 
+fn is_source_provider_scheme(value: &str) -> bool {
+    let mut characters = value.chars();
+    let Some(first) = characters.next() else {
+        return false;
+    };
+    first.is_ascii_lowercase()
+        && characters.all(|character| {
+            character.is_ascii_lowercase() || character.is_ascii_digit() || character == '_'
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
@@ -280,9 +357,11 @@ mod tests {
     use super::REQUEST_ID_PARSE_ERROR_MESSAGE;
     use super::RequestId;
     use super::SourceKey;
+    use super::SourceReference;
     use super::is_public_id_format;
     use super::normalize_org_slug;
     use super::normalize_safe_path_segment;
+    use super::normalize_source_reference;
 
     #[test]
     fn normalize_org_slug_accepts_lowercase_slug() {
@@ -348,6 +427,50 @@ mod tests {
                 "source key must use only letters, numbers, dots, underscores, or hyphens"
                     .to_owned()
             )
+        );
+    }
+
+    #[test]
+    fn source_reference_type_parses_provider_prefixed_source_key() {
+        assert_eq!(
+            [
+                SourceReference::try_from(" postgres://warehouse "),
+                SourceReference::try_from("bigquery://bq-hello"),
+                SourceReference::try_from("cloudflare_d1://prod.d1"),
+            ],
+            [
+                Ok(SourceReference("postgres://warehouse".to_owned())),
+                Ok(SourceReference("bigquery://bq-hello".to_owned())),
+                Ok(SourceReference("cloudflare_d1://prod.d1".to_owned())),
+            ]
+        );
+    }
+
+    #[test]
+    fn source_reference_type_rejects_bare_or_malformed_values() {
+        assert_eq!(
+            [
+                SourceReference::try_from("warehouse").map_err(|error| error.to_string()),
+                SourceReference::try_from("Postgres://warehouse")
+                    .map_err(|error| error.to_string()),
+                SourceReference::try_from("postgres://warehouse/main")
+                    .map_err(|error| error.to_string()),
+                SourceReference::try_from("postgres://").map_err(|error| error.to_string()),
+            ],
+            [
+                Err("source must look like provider://source-key and use only letters, numbers, dots, underscores, or hyphens in the source key".to_owned()),
+                Err("source must look like provider://source-key and use only letters, numbers, dots, underscores, or hyphens in the source key".to_owned()),
+                Err("source must look like provider://source-key and use only letters, numbers, dots, underscores, or hyphens in the source key".to_owned()),
+                Err("source must look like provider://source-key and use only letters, numbers, dots, underscores, or hyphens in the source key".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn normalize_source_reference_accepts_provider_prefixed_source_key() {
+        assert_eq!(
+            normalize_source_reference(" github://gh-bye "),
+            Some("github://gh-bye")
         );
     }
 

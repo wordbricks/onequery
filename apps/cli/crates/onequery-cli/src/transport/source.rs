@@ -30,6 +30,20 @@ pub(crate) struct SourceSummary {
     pub(crate) interfaces: Vec<String>,
 }
 
+impl SourceSummary {
+    pub(crate) fn reference(&self) -> String {
+        format_source_reference(&self.provider, &self.source_key)
+    }
+}
+
+pub(crate) fn format_source_reference(provider: &str, source_key: &str) -> String {
+    if source_key.contains("://") {
+        return source_key.to_owned();
+    }
+
+    format!("{provider}://{source_key}")
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct SourceListPayload {

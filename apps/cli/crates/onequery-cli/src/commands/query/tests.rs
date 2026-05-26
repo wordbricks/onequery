@@ -12,7 +12,7 @@ use crate::cli::QueryInputArgs;
 use crate::cli::QueryResultWindowArgs;
 use crate::cli::ReadArgs;
 use crate::identifiers::test_org_slug as org_slug;
-use crate::identifiers::test_source_key as source_key;
+use crate::identifiers::test_source_reference as source_key;
 use crate::transport::query::DeclaredQueryResultWindow;
 use crate::transport::query::QueryCanonicalRequest;
 use crate::transport::query::QueryColumn;
@@ -57,7 +57,8 @@ use super::validate::reduce_validating_query;
 
 fn sample_context() -> CommandContext {
     CommandContext {
-        command_line: "onequery query exec --source warehouse --sql \"select 1\"".to_owned(),
+        command_line: "onequery query exec --source postgres://warehouse --sql \"select 1\""
+            .to_owned(),
         base_url: "https://example.com".to_owned(),
         request_id: None,
         resolved_org: Some("acme".to_owned()),
@@ -219,7 +220,7 @@ fn render_query_output_renders_no_columns() {
     assert_eq!(
         output.lines,
         vec![
-            "Source: warehouse (postgres)".to_owned(),
+            "Source: postgres://warehouse".to_owned(),
             "Rows: 0".to_owned(),
             "Time: 0 ms".to_owned(),
             String::new(),
@@ -235,7 +236,7 @@ fn start_loads_local_sql_input_before_authentication() {
     let transition = reduce_idle(
         IdleState {
             args: QueryExecuteArgs {
-                source: source_key("warehouse"),
+                source: source_key("postgres://warehouse"),
                 read: ListReadArgs {
                     read: ReadArgs::default(),
                     pagination: PaginationArgs::default(),
@@ -255,7 +256,7 @@ fn start_loads_local_sql_input_before_authentication() {
             } => (source_key, input),
             other => panic!("expected SQL input loading transition, got {other:?}"),
         },
-        (source_key("warehouse"), sample_query_input(),)
+        (source_key("postgres://warehouse"), sample_query_input(),)
     );
 }
 
@@ -265,7 +266,7 @@ fn loading_sql_input_defers_org_resolution_until_authenticated_org_is_resolved()
 
     let transition = reduce_loading_query_input(
         LoadingQueryInputState {
-            source_key: source_key("warehouse"),
+            source_key: source_key("postgres://warehouse"),
             read: ListReadArgs::default(),
         },
         QueryEvent::RequestLoaded {
@@ -287,7 +288,7 @@ fn loading_sql_input_defers_org_resolution_until_authenticated_org_is_resolved()
             other => panic!("expected auth-check transition, got {other:?}"),
         },
         (
-            source_key("warehouse"),
+            source_key("postgres://warehouse"),
             ListReadArgs::default(),
             sample_query_payload(),
         )
@@ -301,7 +302,7 @@ fn authenticated_query_transition_materializes_scoped_request_after_authenticati
     let transition = reduce_checking_auth(
         CheckingAuthState {
             request: Rc::new(super::PendingQueryRequest {
-                source_key: source_key("warehouse"),
+                source_key: source_key("postgres://warehouse"),
                 read: ListReadArgs::default(),
                 payload: sample_query_payload(),
             }),
@@ -336,11 +337,11 @@ fn authenticated_query_transition_materializes_scoped_request_after_authenticati
         },
         (
             org_slug("acme"),
-            source_key("warehouse"),
+            source_key("postgres://warehouse"),
             ListReadArgs::default(),
             sample_query_payload(),
             org_slug("acme"),
-            source_key("warehouse"),
+            source_key("postgres://warehouse"),
             ListReadArgs::default(),
             sample_query_payload(),
             1,
@@ -356,14 +357,16 @@ fn retryable_query_failure_transitions_to_explicit_retry_state() {
         context.command_line.clone(),
         ErrorStage::Http,
         "temporary network timeout",
-        vec!["retry onequery query exec --source warehouse --sql \"select 1\"".to_owned()],
+        vec![
+            "retry onequery query exec --source postgres://warehouse --sql \"select 1\"".to_owned(),
+        ],
     );
 
     let transition = reduce_executing_query(
         ExecutingQueryState {
             request: Rc::new(QueryRequest {
                 org: org_slug("acme"),
-                source_key: source_key("warehouse"),
+                source_key: source_key("postgres://warehouse"),
                 read: ListReadArgs::default(),
                 payload: sample_query_payload(),
             }),
@@ -405,7 +408,7 @@ fn retryable_query_failure_transitions_to_explicit_retry_state() {
         },
         (
             org_slug("acme"),
-            source_key("warehouse"),
+            source_key("postgres://warehouse"),
             ListReadArgs::default(),
             sample_query_payload(),
             2,
@@ -423,14 +426,16 @@ fn retryable_query_failure_exhausts_after_max_attempts() {
         context.command_line.clone(),
         ErrorStage::Http,
         "temporary network timeout",
-        vec!["retry onequery query exec --source warehouse --sql \"select 1\"".to_owned()],
+        vec![
+            "retry onequery query exec --source postgres://warehouse --sql \"select 1\"".to_owned(),
+        ],
     );
 
     let transition = reduce_executing_query(
         ExecutingQueryState {
             request: Rc::new(QueryRequest {
                 org: org_slug("acme"),
-                source_key: source_key("warehouse"),
+                source_key: source_key("postgres://warehouse"),
                 read: ListReadArgs::default(),
                 payload: sample_query_payload(),
             }),
@@ -468,7 +473,7 @@ fn unauthorized_query_failure_transitions_to_explicit_reauth_terminal_state() {
         ExecutingQueryState {
             request: Rc::new(QueryRequest {
                 org: org_slug("acme"),
-                source_key: source_key("warehouse"),
+                source_key: source_key("postgres://warehouse"),
                 read: ListReadArgs::default(),
                 payload: sample_query_payload(),
             }),
@@ -503,7 +508,7 @@ fn validate_unauthorized_failure_transitions_to_explicit_reauth_terminal_state()
         ValidatingQueryState {
             request: Rc::new(ValidateQueryRequest {
                 org: org_slug("acme"),
-                source_key: source_key("warehouse"),
+                source_key: source_key("postgres://warehouse"),
                 read: ReadArgs::default(),
                 payload: sample_query_payload(),
             }),

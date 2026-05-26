@@ -24,7 +24,7 @@ npx @onequery/cli --help
 onequery auth login
 onequery org use <org>
 onequery source list
-onequery query exec --source <key> --sql "SELECT * FROM users LIMIT 10"
+onequery query exec --source postgres://<key> --sql "SELECT * FROM users LIMIT 10"
 ```
 
 ## Profiles
