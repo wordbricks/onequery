@@ -2,14 +2,20 @@ import { SimpleIconSvg, SvgIcon } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
 import type { ComponentType } from "react";
 import {
+  siAirtable,
   siBun,
+  siCaldotcom,
   siCloudflareworkers,
+  siConfluence,
   siCurl,
+  siDiscord,
   siGithub,
   siGoogleanalytics,
   siGooglebigquery,
   siGoogledrive,
+  siGooglesearchconsole,
   siHomebrew,
+  siJira,
   siLinear,
   siMixpanel,
   siMongodb,
@@ -81,6 +87,77 @@ function AwsAthenaConnectorIcon({ size, ...props }: IconSvgProps) {
   );
 }
 
+function MotherDuckIcon({ size, ...props }: IconSvgProps) {
+  return (
+    <SvgIcon
+      {...props}
+      defaultLabel="MotherDuck"
+      fill="currentColor"
+      size={size}
+      viewBox="0 0 24 24"
+    >
+      <path d="M12 3C7.03 3 3 4.57 3 6.5v11C3 19.43 7.03 21 12 21s9-1.57 9-3.5v-11C21 4.57 16.97 3 12 3Zm0 2c4.42 0 7 1.24 7 1.5S16.42 8 12 8 5 6.76 5 6.5 7.58 5 12 5Zm7 5.07c-1.62 1.08-4.22 1.68-7 1.68s-5.38-.6-7-1.68V8.93c1.62.69 4.01 1.07 7 1.07s5.38-.38 7-1.07v1.14Zm0 3.5c-1.62 1.08-4.22 1.68-7 1.68s-5.38-.6-7-1.68v-1.14c1.62.69 4.01 1.07 7 1.07s5.38-.38 7-1.07v1.14Zm-7 5.68c-4.42 0-7-1.24-7-1.75v-1.57c1.62 1.08 4.22 1.68 7 1.68s5.38-.6 7-1.68v1.57c0 .51-2.58 1.75-7 1.75Z" />
+    </SvgIcon>
+  );
+}
+
+function GranolaIcon({ size, ...props }: IconSvgProps) {
+  return (
+    <SvgIcon
+      {...props}
+      defaultLabel="Granola"
+      fill="currentColor"
+      size={size}
+      viewBox="0 0 24 24"
+    >
+      <path d="M6.75 3A2.75 2.75 0 0 0 4 5.75v12.5A2.75 2.75 0 0 0 6.75 21h10.5A2.75 2.75 0 0 0 20 18.25V5.75A2.75 2.75 0 0 0 17.25 3H6.75ZM6 5.75c0-.41.34-.75.75-.75H8v14H6.75a.75.75 0 0 1-.75-.75V5.75ZM10 19V5h7.25c.41 0 .75.34.75.75v12.5c0 .41-.34.75-.75.75H10Zm2-10a1 1 0 0 1 1-1h2.75a1 1 0 1 1 0 2H13a1 1 0 0 1-1-1Zm0 4a1 1 0 0 1 1-1h2.75a1 1 0 1 1 0 2H13a1 1 0 0 1-1-1Z" />
+    </SvgIcon>
+  );
+}
+
+function AmazonAdsIcon({ size, ...props }: IconSvgProps) {
+  return (
+    <SvgIcon
+      {...props}
+      defaultLabel="Amazon Ads"
+      fill="currentColor"
+      size={size}
+      viewBox="0 0 24 24"
+    >
+      <path d="M12.2 3.5a1 1 0 0 1 .93.63l5.5 14a1 1 0 0 1-1.86.74L15.6 15.9H8.4l-1.17 2.97a1 1 0 1 1-1.86-.74l5.5-14a1 1 0 0 1 .93-.63h.4Zm-3 10.4h5.6L12 6.77 9.2 13.9Zm9.95 4.88a1 1 0 0 1-.36 1.37c-3.77 2.16-8.38 2.16-12.15 0a1 1 0 0 1 1-1.73 10.2 10.2 0 0 0 10.15 0 1 1 0 0 1 1.36.36Z" />
+    </SvgIcon>
+  );
+}
+
+function LinkedInAdsIcon({ size, ...props }: IconSvgProps) {
+  return (
+    <SvgIcon
+      {...props}
+      defaultLabel="LinkedIn Ads"
+      fill="currentColor"
+      size={size}
+      viewBox="0 0 24 24"
+    >
+      <path d="M5.75 3A2.75 2.75 0 0 0 3 5.75v12.5A2.75 2.75 0 0 0 5.75 21h12.5A2.75 2.75 0 0 0 21 18.25V5.75A2.75 2.75 0 0 0 18.25 3H5.75Zm2.09 6.28a1.48 1.48 0 1 1 0-2.96 1.48 1.48 0 0 1 0 2.96ZM6.54 18v-7.45h2.6V18h-2.6Zm4.06 0v-7.45h2.48v1.02h.04c.35-.65 1.2-1.2 2.45-1.2 2.62 0 3.1 1.73 3.1 3.97V18h-2.59v-3.25c0-.78-.01-1.78-1.08-1.78-1.09 0-1.26.85-1.26 1.72V18H10.6Z" />
+    </SvgIcon>
+  );
+}
+
+function SendGridIcon({ size, ...props }: IconSvgProps) {
+  return (
+    <SvgIcon
+      {...props}
+      defaultLabel="SendGrid"
+      fill="currentColor"
+      size={size}
+      viewBox="0 0 24 24"
+    >
+      <path d="M4.75 4A2.75 2.75 0 0 0 2 6.75v10.5A2.75 2.75 0 0 0 4.75 20h14.5A2.75 2.75 0 0 0 22 17.25V6.75A2.75 2.75 0 0 0 19.25 4H4.75Zm.36 2h13.78L12 11.17 5.11 6ZM4 7.6l5.35 4.02L4 16.15V7.6Zm2.08 10.4 4.9-4.16.42.32a1 1 0 0 0 1.2 0l.42-.32 4.9 4.16H6.08ZM20 16.15l-5.35-4.53L20 7.6v8.55Z" />
+      <path d="M17.5 10.25a1 1 0 0 1 1 1v.5h.5a1 1 0 1 1 0 2h-.5v.5a1 1 0 1 1-2 0v-.5H16a1 1 0 1 1 0-2h.5v-.5a1 1 0 0 1 1-1Z" />
+    </SvgIcon>
+  );
+}
+
 function CloudflareD1Icon({ size, ...props }: IconSvgProps) {
   return (
     <SvgIcon
@@ -104,19 +181,29 @@ function CloudflareD1Icon({ size, ...props }: IconSvgProps) {
 
 const BRAND_ICONS = {
   amplitude: AmplitudeIcon,
+  amazon_ads: AmazonAdsIcon,
+  airtable: createSimpleBrandIcon(siAirtable),
   aws_athena_connector: AwsAthenaConnectorIcon,
   bigquery: createSimpleBrandIcon(siGooglebigquery),
   bun: createSimpleBrandIcon(siBun),
+  cal: createSimpleBrandIcon(siCaldotcom),
   cloudflare_d1: CloudflareD1Icon,
   cloudflare_workers_observability: createSimpleBrandIcon(siCloudflareworkers),
+  confluence: createSimpleBrandIcon(siConfluence),
   curl: createSimpleBrandIcon(siCurl),
+  discord: createSimpleBrandIcon(siDiscord),
   ga: createSimpleBrandIcon(siGoogleanalytics),
   github: createSimpleBrandIcon(siGithub),
   googledrive: createSimpleBrandIcon(siGoogledrive),
+  google_search_console: createSimpleBrandIcon(siGooglesearchconsole),
+  granola: GranolaIcon,
   homebrew: createSimpleBrandIcon(siHomebrew),
+  jira: createSimpleBrandIcon(siJira),
   laminar: LaminarIcon,
   linear: createSimpleBrandIcon(siLinear),
+  linkedin_ads: LinkedInAdsIcon,
   mixpanel: createSimpleBrandIcon(siMixpanel),
+  motherduck: MotherDuckIcon,
   mongodb: createSimpleBrandIcon(siMongodb),
   mysql: createSimpleBrandIcon(siMysql),
   notion: createSimpleBrandIcon(siNotion),
@@ -125,6 +212,7 @@ const BRAND_ICONS = {
   postgres: createSimpleBrandIcon(siPostgresql),
   posthog: createSimpleBrandIcon(siPosthog),
   sentry: createSimpleBrandIcon(siSentry),
+  sendgrid: SendGridIcon,
   snowflake: createSimpleBrandIcon(siSnowflake),
   supabase: createSimpleBrandIcon(siSupabase),
   tiktok_marketing: createSimpleBrandIcon(siTiktok),
