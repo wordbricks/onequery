@@ -35,6 +35,7 @@ export function createCliQueryExecutionDispatch(c: CliHonoContext) {
     ) =>
       runCliLoadQueryCredentialsEffect({
         db: c.var.storage.db,
+        googleOAuthConfig: c.var.runtime.credentials?.googleOAuth,
         masterEncryptionKey: c.var.runtime.crypto.masterEncryptionKey,
         effect,
       }),

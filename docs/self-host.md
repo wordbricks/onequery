@@ -89,6 +89,7 @@ Current provider identifiers:
 - `snowflake` for Snowflake
 - `mongodb` for MongoDB
 - `bigquery` for BigQuery
+- `motherduck` for MotherDuck through its PostgreSQL wire protocol endpoint
 - `laminar` for Laminar
 - `aws_athena_connector` for an AWS Athena connector already registered in OneQuery
 - `ga` for Google Analytics
@@ -97,6 +98,9 @@ Current provider identifiers:
 - `posthog` for PostHog
 - `sentry` for Sentry
 - `github` for GitHub
+- `linkedin_ads` for LinkedIn Ads
+- `tiktok_marketing` for TikTok Marketing
+- `sendgrid` for SendGrid
 - `linear` for Linear
 
 For provider-specific setup steps and example JSON, run `onequery source connect --source <provider>` without `--input`.

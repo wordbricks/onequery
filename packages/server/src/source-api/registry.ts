@@ -1,14 +1,25 @@
 import type { ProviderType } from "@onequery/db/server";
 
+import { airtableSourceApiAdapter } from "./adapters/airtable";
+import { amazonAdsSourceApiAdapter } from "./adapters/amazon-ads";
 import { amplitudeSourceApiAdapter } from "./adapters/amplitude";
 import { bigQuerySourceApiAdapter } from "./adapters/bigquery";
+import { calSourceApiAdapter } from "./adapters/cal";
 import { cloudflareWorkersObservabilitySourceApiAdapter } from "./adapters/cloudflare-workers-observability";
+import { confluenceSourceApiAdapter } from "./adapters/confluence";
+import { discordSourceApiAdapter } from "./adapters/discord";
 import { googleAnalyticsSourceApiAdapter } from "./adapters/ga";
 import { githubSourceApiAdapter } from "./adapters/github";
+import { googleSearchConsoleSourceApiAdapter } from "./adapters/google-search-console";
+import { granolaSourceApiAdapter } from "./adapters/granola";
+import { jiraSourceApiAdapter } from "./adapters/jira";
+import { linkedInAdsSourceApiAdapter } from "./adapters/linkedin-ads";
 import { mixpanelSourceApiAdapter } from "./adapters/mixpanel";
 import { mongodbSourceApiAdapter } from "./adapters/mongodb";
 import { postHogSourceApiAdapter } from "./adapters/posthog";
+import { sendGridSourceApiAdapter } from "./adapters/sendgrid";
 import { sentrySourceApiAdapter } from "./adapters/sentry";
+import { tiktokMarketingSourceApiAdapter } from "./adapters/tiktok-marketing";
 import {
   SourceApiAdapterNotRegisteredError,
   SourceApiRegistryConfigurationError,
@@ -54,12 +65,23 @@ export function getSourceApiAdapter(
 
 export const sourceApiRegistry = createSourceApiRegistry([
   amplitudeSourceApiAdapter,
+  amazonAdsSourceApiAdapter,
+  airtableSourceApiAdapter,
   bigQuerySourceApiAdapter,
+  calSourceApiAdapter,
   cloudflareWorkersObservabilitySourceApiAdapter,
+  confluenceSourceApiAdapter,
+  discordSourceApiAdapter,
   googleAnalyticsSourceApiAdapter,
   githubSourceApiAdapter,
+  googleSearchConsoleSourceApiAdapter,
+  granolaSourceApiAdapter,
+  jiraSourceApiAdapter,
+  linkedInAdsSourceApiAdapter,
   mixpanelSourceApiAdapter,
   mongodbSourceApiAdapter,
   postHogSourceApiAdapter,
+  sendGridSourceApiAdapter,
   sentrySourceApiAdapter,
+  tiktokMarketingSourceApiAdapter,
 ]);

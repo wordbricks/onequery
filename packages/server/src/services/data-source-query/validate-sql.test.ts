@@ -103,6 +103,22 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
     );
   });
 
+  it("validates MotherDuck queries with the PostgreSQL-compatible dialect", async () => {
+    await expectValidQuery(
+      "SELECT * FROM sample_data.hn.hacker_news LIMIT 10",
+      {
+        sql: "SELECT * FROM sample_data.hn.hacker_news LIMIT 10",
+      },
+      "motherduck"
+    );
+
+    await expectValidationError(
+      "CREATE TABLE copied AS SELECT 1",
+      "Only SELECT queries are allowed. Got: create_table",
+      "motherduck"
+    );
+  });
+
   it("preserves set operations without adding or changing limits", async () => {
     let bounded = "SELECT id FROM users UNION SELECT id FROM archived_users";
     await expectValidQuery(bounded, {

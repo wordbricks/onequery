@@ -166,6 +166,30 @@ export const LaminarCredentialsSchema = z.object({
 
 export type LaminarCredentials = z.infer<typeof LaminarCredentialsSchema>;
 
+const DEFAULT_MOTHERDUCK_POSTGRES_HOST = "pg.us-east-1-aws.motherduck.com";
+const DEFAULT_MOTHERDUCK_DATABASE = "md:";
+
+function normalizeMotherDuckDatabase(database: string): string {
+  return database.startsWith("md:") ? database : `md:${database}`;
+}
+
+export const MotherDuckCredentialsSchema = z.object({
+  database: trimmedString("MotherDuck database is required")
+    .default(DEFAULT_MOTHERDUCK_DATABASE)
+    .transform(normalizeMotherDuckDatabase),
+  host: trimmedString("MotherDuck host is required").default(
+    DEFAULT_MOTHERDUCK_POSTGRES_HOST
+  ),
+  port: z.number().int().min(1).max(65535).default(5432),
+  token: requiredOpaqueString("MotherDuck token is required"),
+  type: z.literal("motherduck"),
+  username: trimmedString("MotherDuck username is required").default(
+    "postgres"
+  ),
+});
+
+export type MotherDuckCredentials = z.infer<typeof MotherDuckCredentialsSchema>;
+
 export const ConnectorCredentialsSchema = z.object({
   connectorId: trimmedString("Connector ID is required"),
   database: trimmedString("Athena database is required"),
@@ -228,6 +252,128 @@ export const GitHubCredentialsSchema = z.object({
 
 export type GitHubCredentials = z.infer<typeof GitHubCredentialsSchema>;
 
+export const AirtableCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  baseId: optionalTrimmedString("Base ID is required"),
+  personalAccessToken: requiredOpaqueString(
+    "Personal access token is required"
+  ),
+  type: z.literal("airtable"),
+});
+
+export type AirtableCredentials = z.infer<typeof AirtableCredentialsSchema>;
+
+export const DiscordCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  authScheme: z.enum(["bot", "bearer"]).default("bot"),
+  guildId: optionalTrimmedString("Guild ID is required"),
+  token: requiredOpaqueString("Token is required"),
+  type: z.literal("discord"),
+});
+
+export type DiscordCredentials = z.infer<typeof DiscordCredentialsSchema>;
+
+export const CalCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiKey: requiredOpaqueString("API key is required"),
+  apiVersion: trimmedString("API version is required").default("2026-05-01"),
+  type: z.literal("cal"),
+});
+
+export type CalCredentials = z.infer<typeof CalCredentialsSchema>;
+
+export const GranolaCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiKey: requiredOpaqueString("API key is required"),
+  type: z.literal("granola"),
+});
+
+export type GranolaCredentials = z.infer<typeof GranolaCredentialsSchema>;
+
+export const GoogleSearchConsoleCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  siteUrl: optionalTrimmedString("Site URL is required"),
+  type: z.literal("google_search_console"),
+});
+
+export type GoogleSearchConsoleCredentials = z.infer<
+  typeof GoogleSearchConsoleCredentialsSchema
+>;
+
+export const ConfluenceCredentialsSchema = z.object({
+  apiToken: requiredOpaqueString("API token is required"),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .pipe(z.email("Email must be a valid email address")),
+  siteUrl: trimmedUrl(
+    "Site URL is required",
+    "Site URL must be a valid URL"
+  ).transform((value) => value.replace(/\/+$/, "")),
+  type: z.literal("confluence"),
+});
+
+export type ConfluenceCredentials = z.infer<typeof ConfluenceCredentialsSchema>;
+
+export const AmazonAdsCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  clientId: trimmedString("Client ID is required"),
+  profileId: optionalTrimmedString("Profile ID is required"),
+  region: z.enum(["na", "eu", "fe"]).default("na"),
+  type: z.literal("amazon_ads"),
+});
+
+export type AmazonAdsCredentials = z.infer<typeof AmazonAdsCredentialsSchema>;
+
+export const LinkedInAdsCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiVersion: trimmedString("API version is required").default("202605"),
+  type: z.literal("linkedin_ads"),
+});
+
+export type LinkedInAdsCredentials = z.infer<
+  typeof LinkedInAdsCredentialsSchema
+>;
+
+export const TikTokMarketingCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  advertiserId: optionalTrimmedString("Advertiser ID is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  type: z.literal("tiktok_marketing"),
+});
+
+export type TikTokMarketingCredentials = z.infer<
+  typeof TikTokMarketingCredentialsSchema
+>;
+
+export const SendGridCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiKey: requiredOpaqueString("API key is required"),
+  type: z.literal("sendgrid"),
+});
+
+export type SendGridCredentials = z.infer<typeof SendGridCredentialsSchema>;
+
+export const JiraCredentialsSchema = z.object({
+  apiToken: requiredOpaqueString("API token is required"),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .pipe(z.email("Email must be a valid email address")),
+  siteUrl: trimmedUrl(
+    "Site URL is required",
+    "Site URL must be a valid URL"
+  ).transform((value) => value.replace(/\/+$/, "")),
+  type: z.literal("jira"),
+});
+
+export type JiraCredentials = z.infer<typeof JiraCredentialsSchema>;
+
 export const CloudflareD1CredentialsSchema = z.object({
   accountId: trimmedString("Account ID is required"),
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
@@ -286,12 +432,24 @@ export const CredentialsSchema = z.union([
   BigQueryCredentialsSchema,
   SnowflakeCredentialsSchema,
   LaminarCredentialsSchema,
+  MotherDuckCredentialsSchema,
   ConnectorCredentialsSchema,
   AmplitudeCredentialsSchema,
   MixpanelCredentialsSchema,
   PostHogCredentialsSchema,
   SentryCredentialsSchema,
   GitHubCredentialsSchema,
+  AirtableCredentialsSchema,
+  DiscordCredentialsSchema,
+  CalCredentialsSchema,
+  GranolaCredentialsSchema,
+  GoogleSearchConsoleCredentialsSchema,
+  ConfluenceCredentialsSchema,
+  AmazonAdsCredentialsSchema,
+  LinkedInAdsCredentialsSchema,
+  TikTokMarketingCredentialsSchema,
+  SendGridCredentialsSchema,
+  JiraCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   LinearCredentialsSchema,
@@ -306,6 +464,7 @@ export const DATABASE_CREDENTIAL_PROVIDER = {
   CLOUDFLARE_D1: "cloudflare_d1",
   CONNECTOR: "aws_athena_connector",
   LAMINAR: "laminar",
+  MOTHERDUCK: "motherduck",
   MYSQL: "mysql",
   POSTGRES: "postgres",
   SNOWFLAKE: "snowflake",
@@ -321,6 +480,7 @@ export const DATABASE_CREDENTIAL_PROVIDER_TYPES = [
   DATABASE_CREDENTIAL_PROVIDER.BIGQUERY,
   DATABASE_CREDENTIAL_PROVIDER.CLOUDFLARE_D1,
   DATABASE_CREDENTIAL_PROVIDER.LAMINAR,
+  DATABASE_CREDENTIAL_PROVIDER.MOTHERDUCK,
   DATABASE_CREDENTIAL_PROVIDER.CONNECTOR,
 ] as const satisfies readonly DatabaseCredentialProviderType[];
 
@@ -331,22 +491,34 @@ export type DatabaseCredentials = Extract<
 
 export const credentialSchemaMap = {
   amplitude: AmplitudeCredentialsSchema,
+  amazon_ads: AmazonAdsCredentialsSchema,
+  airtable: AirtableCredentialsSchema,
   aws_athena_connector: ConnectorCredentialsSchema,
   bigquery: BigQueryCredentialsSchema,
+  cal: CalCredentialsSchema,
   cloudflare_d1: CloudflareD1CredentialsSchema,
+  confluence: ConfluenceCredentialsSchema,
+  discord: DiscordCredentialsSchema,
   ga: GoogleAnalyticsCredentialsSchema,
   github: GitHubCredentialsSchema,
+  google_search_console: GoogleSearchConsoleCredentialsSchema,
+  granola: GranolaCredentialsSchema,
+  jira: JiraCredentialsSchema,
+  linkedin_ads: LinkedInAdsCredentialsSchema,
   cloudflare_workers_observability:
     CloudflareWorkersObservabilityCredentialsSchema,
   laminar: LaminarCredentialsSchema,
   linear: LinearCredentialsSchema,
   mixpanel: MixpanelCredentialsSchema,
+  motherduck: MotherDuckCredentialsSchema,
   mongodb: MongoDBCredentialsSchema,
   mysql: MySQLCredentialsSchema,
   postgres: PostgresCredentialsSchema,
   posthog: PostHogCredentialsSchema,
+  sendgrid: SendGridCredentialsSchema,
   sentry: SentryCredentialsSchema,
   snowflake: SnowflakeCredentialsSchema,
+  tiktok_marketing: TikTokMarketingCredentialsSchema,
 } as const;
 
 export function validateCredentials(credentials: unknown): Credentials {

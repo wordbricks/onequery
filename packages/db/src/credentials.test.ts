@@ -2,13 +2,22 @@ import { describe, expect, it } from "vitest";
 
 import {
   AmplitudeCredentialsSchema,
+  AmazonAdsCredentialsSchema,
+  AirtableCredentialsSchema,
   BigQueryCredentialsSchema,
+  CalCredentialsSchema,
   CloudflareD1CredentialsSchema,
+  ConfluenceCredentialsSchema,
   ConnectorCredentialsSchema,
   credentialSchemaMap,
+  DiscordCredentialsSchema,
   GitHubCredentialsSchema,
+  GoogleSearchConsoleCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
+  GranolaCredentialsSchema,
+  JiraCredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
+  LinkedInAdsCredentialsSchema,
   isAnalyticsCredentials,
   isDatabaseCredentials,
   isGitHubCredentials,
@@ -19,33 +28,48 @@ import {
   LaminarCredentialsSchema,
   LinearCredentialsSchema,
   MixpanelCredentialsSchema,
+  MotherDuckCredentialsSchema,
   MongoDBCredentialsSchema,
   MySQLCredentialsSchema,
   normalizeEnvVarName,
   PostgresCredentialsSchema,
   PostHogCredentialsSchema,
+  SendGridCredentialsSchema,
   SentryCredentialsSchema,
   SnowflakeCredentialsSchema,
+  TikTokMarketingCredentialsSchema,
   safeValidateCredentials,
   validateCredentials,
 } from "./credentials";
 import type {
   AmplitudeCredentials,
+  AmazonAdsCredentials,
+  AirtableCredentials,
   BigQueryCredentials,
+  CalCredentials,
   CloudflareD1Credentials,
+  ConfluenceCredentials,
   ConnectorCredentials,
   Credentials,
+  DiscordCredentials,
   GitHubCredentials,
+  GoogleSearchConsoleCredentials,
   GoogleAnalyticsCredentials,
+  GranolaCredentials,
+  JiraCredentials,
   LaminarCredentials,
+  LinkedInAdsCredentials,
   LinearCredentials,
   MixpanelCredentials,
+  MotherDuckCredentials,
   MongoDBCredentials,
   MySQLCredentials,
   PostgresCredentials,
   PostHogCredentials,
+  SendGridCredentials,
   SentryCredentials,
   SnowflakeCredentials,
+  TikTokMarketingCredentials,
 } from "./credentials";
 
 describe("credentials schemas", () => {
@@ -590,6 +614,65 @@ describe("credentials schemas", () => {
       };
 
       const result = LaminarCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("MotherDuckCredentialsSchema", () => {
+    it("should validate valid MotherDuck credentials", () => {
+      const credentials: MotherDuckCredentials = {
+        database: "md:analytics",
+        host: "pg.us-east-1-aws.motherduck.com",
+        port: 5432,
+        token: "md_token",
+        type: "motherduck",
+        username: "postgres",
+      };
+
+      const result = MotherDuckCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should apply MotherDuck endpoint defaults", () => {
+      const result = MotherDuckCredentialsSchema.safeParse({
+        token: "md_token",
+        type: "motherduck",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({
+          database: "md:",
+          host: "pg.us-east-1-aws.motherduck.com",
+          port: 5432,
+          token: "md_token",
+          type: "motherduck",
+          username: "postgres",
+        });
+      }
+    });
+
+    it("should normalize plain database names to md: database paths", () => {
+      const result = MotherDuckCredentialsSchema.safeParse({
+        database: "analytics",
+        token: "md_token",
+        type: "motherduck",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.database).toBe("md:analytics");
+      }
+    });
+
+    it("should reject missing token", () => {
+      const result = MotherDuckCredentialsSchema.safeParse({
+        type: "motherduck",
+      });
+
       expect(result.success).toBe(false);
     });
   });
@@ -1265,6 +1348,292 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("AirtableCredentialsSchema", () => {
+    it("validates Airtable credentials and trims optional fields", () => {
+      const result = AirtableCredentialsSchema.safeParse({
+        apiBaseUrl: "  https://api.airtable.com/v0  ",
+        baseId: "  app123  ",
+        personalAccessToken: "pat123",
+        type: "airtable",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: AirtableCredentials = result.data;
+        expect(credentials.apiBaseUrl).toBe("https://api.airtable.com/v0");
+        expect(credentials.baseId).toBe("app123");
+      }
+    });
+
+    it("rejects missing personal access token", () => {
+      const result = AirtableCredentialsSchema.safeParse({
+        baseId: "app123",
+        type: "airtable",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("DiscordCredentialsSchema", () => {
+    it("defaults authScheme to bot", () => {
+      const result = DiscordCredentialsSchema.safeParse({
+        guildId: "123456789012345678",
+        token: "discord-token",
+        type: "discord",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: DiscordCredentials = result.data;
+        expect(credentials.authScheme).toBe("bot");
+      }
+    });
+
+    it("accepts bearer auth scheme", () => {
+      const result = DiscordCredentialsSchema.safeParse({
+        authScheme: "bearer",
+        token: "oauth-token",
+        type: "discord",
+      });
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("CalCredentialsSchema", () => {
+    it("defaults apiVersion to the current v2 header version", () => {
+      const result = CalCredentialsSchema.safeParse({
+        apiKey: "cal_123",
+        type: "cal",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: CalCredentials = result.data;
+        expect(credentials.apiVersion).toBe("2026-05-01");
+      }
+    });
+
+    it("rejects missing API key", () => {
+      const result = CalCredentialsSchema.safeParse({
+        type: "cal",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("GranolaCredentialsSchema", () => {
+    it("validates Granola credentials", () => {
+      const credentials: GranolaCredentials = {
+        apiKey: "grn_123",
+        type: "granola",
+      };
+
+      const result = GranolaCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects invalid apiBaseUrl", () => {
+      const result = GranolaCredentialsSchema.safeParse({
+        apiBaseUrl: "not-a-url",
+        apiKey: "grn_123",
+        type: "granola",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("GoogleSearchConsoleCredentialsSchema", () => {
+    it("validates Google Search Console credentials", () => {
+      const credentials: GoogleSearchConsoleCredentials = {
+        accessToken: "ya29.token",
+        siteUrl: "https://www.example.com/",
+        type: "google_search_console",
+      };
+
+      const result =
+        GoogleSearchConsoleCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects missing access token", () => {
+      const result = GoogleSearchConsoleCredentialsSchema.safeParse({
+        siteUrl: "https://www.example.com/",
+        type: "google_search_console",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("ConfluenceCredentialsSchema", () => {
+    it("validates Confluence credentials and trims siteUrl", () => {
+      const result = ConfluenceCredentialsSchema.safeParse({
+        apiToken: "atlassian-token",
+        email: "reader@example.com",
+        siteUrl: "https://example.atlassian.net/",
+        type: "confluence",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: ConfluenceCredentials = result.data;
+        expect(credentials.siteUrl).toBe("https://example.atlassian.net");
+      }
+    });
+
+    it("rejects invalid email", () => {
+      const result = ConfluenceCredentialsSchema.safeParse({
+        apiToken: "atlassian-token",
+        email: "not-an-email",
+        siteUrl: "https://example.atlassian.net",
+        type: "confluence",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("AmazonAdsCredentialsSchema", () => {
+    it("defaults region to North America", () => {
+      const result = AmazonAdsCredentialsSchema.safeParse({
+        accessToken: "Atza|token",
+        clientId: "amzn1.application-oa2-client.test",
+        type: "amazon_ads",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: AmazonAdsCredentials = result.data;
+        expect(credentials.region).toBe("na");
+      }
+    });
+
+    it("accepts supported Amazon Ads regions", () => {
+      const eu = AmazonAdsCredentialsSchema.safeParse({
+        accessToken: "Atza|token",
+        clientId: "client-id",
+        region: "eu",
+        type: "amazon_ads",
+      });
+      const fe = AmazonAdsCredentialsSchema.safeParse({
+        accessToken: "Atza|token",
+        clientId: "client-id",
+        region: "fe",
+        type: "amazon_ads",
+      });
+
+      expect(eu.success).toBe(true);
+      expect(fe.success).toBe(true);
+    });
+  });
+
+  describe("LinkedInAdsCredentialsSchema", () => {
+    it("defaults to the current LinkedIn Marketing API version", () => {
+      const result = LinkedInAdsCredentialsSchema.safeParse({
+        accessToken: "linkedin-token",
+        type: "linkedin_ads",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: LinkedInAdsCredentials = result.data;
+        expect(credentials.apiVersion).toBe("202605");
+      }
+    });
+
+    it("accepts optional API base URL and version override", () => {
+      const result = LinkedInAdsCredentialsSchema.safeParse({
+        accessToken: "linkedin-token",
+        apiBaseUrl: "https://api.linkedin.com/rest",
+        apiVersion: "202604",
+        type: "linkedin_ads",
+      });
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("TikTokMarketingCredentialsSchema", () => {
+    it("validates TikTok Marketing credentials", () => {
+      const result = TikTokMarketingCredentialsSchema.safeParse({
+        accessToken: "tiktok-token",
+        advertiserId: "1234567890",
+        type: "tiktok_marketing",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: TikTokMarketingCredentials = result.data;
+        expect(credentials.advertiserId).toBe("1234567890");
+      }
+    });
+
+    it("treats blank optional advertiserId as undefined", () => {
+      const result = TikTokMarketingCredentialsSchema.safeParse({
+        accessToken: "tiktok-token",
+        advertiserId: "   ",
+        type: "tiktok_marketing",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.advertiserId).toBeUndefined();
+      }
+    });
+  });
+
+  describe("SendGridCredentialsSchema", () => {
+    it("validates SendGrid credentials", () => {
+      const credentials: SendGridCredentials = {
+        apiKey: "SG.xxxxx",
+        type: "sendgrid",
+      };
+
+      const result = SendGridCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects missing API key", () => {
+      const result = SendGridCredentialsSchema.safeParse({
+        type: "sendgrid",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("JiraCredentialsSchema", () => {
+    it("validates Jira credentials and trims siteUrl", () => {
+      const result = JiraCredentialsSchema.safeParse({
+        apiToken: "atlassian-token",
+        email: "reader@example.com",
+        siteUrl: "https://example.atlassian.net/",
+        type: "jira",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const credentials: JiraCredentials = result.data;
+        expect(credentials.siteUrl).toBe("https://example.atlassian.net");
+      }
+    });
+
+    it("rejects invalid siteUrl", () => {
+      const result = JiraCredentialsSchema.safeParse({
+        apiToken: "atlassian-token",
+        email: "reader@example.com",
+        siteUrl: "not-a-url",
+        type: "jira",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("LinearCredentialsSchema", () => {
     it("should validate valid Linear credentials", () => {
       const credentials: LinearCredentials = {
@@ -1392,6 +1761,10 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.laminar).toBe(LaminarCredentialsSchema);
     });
 
+    it("should map motherduck to MotherDuckCredentialsSchema", () => {
+      expect(credentialSchemaMap.motherduck).toBe(MotherDuckCredentialsSchema);
+    });
+
     it("should map connector to ConnectorCredentialsSchema", () => {
       expect(credentialSchemaMap.aws_athena_connector).toBe(
         ConnectorCredentialsSchema
@@ -1402,12 +1775,56 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.amplitude).toBe(AmplitudeCredentialsSchema);
     });
 
+    it("should map amazon_ads to AmazonAdsCredentialsSchema", () => {
+      expect(credentialSchemaMap.amazon_ads).toBe(AmazonAdsCredentialsSchema);
+    });
+
+    it("should map airtable to AirtableCredentialsSchema", () => {
+      expect(credentialSchemaMap.airtable).toBe(AirtableCredentialsSchema);
+    });
+
+    it("should map discord to DiscordCredentialsSchema", () => {
+      expect(credentialSchemaMap.discord).toBe(DiscordCredentialsSchema);
+    });
+
+    it("should map cal to CalCredentialsSchema", () => {
+      expect(credentialSchemaMap.cal).toBe(CalCredentialsSchema);
+    });
+
+    it("should map confluence to ConfluenceCredentialsSchema", () => {
+      expect(credentialSchemaMap.confluence).toBe(ConfluenceCredentialsSchema);
+    });
+
+    it("should map granola to GranolaCredentialsSchema", () => {
+      expect(credentialSchemaMap.granola).toBe(GranolaCredentialsSchema);
+    });
+
+    it("should map google_search_console to GoogleSearchConsoleCredentialsSchema", () => {
+      expect(credentialSchemaMap.google_search_console).toBe(
+        GoogleSearchConsoleCredentialsSchema
+      );
+    });
+
+    it("should map jira to JiraCredentialsSchema", () => {
+      expect(credentialSchemaMap.jira).toBe(JiraCredentialsSchema);
+    });
+
+    it("should map linkedin_ads to LinkedInAdsCredentialsSchema", () => {
+      expect(credentialSchemaMap.linkedin_ads).toBe(
+        LinkedInAdsCredentialsSchema
+      );
+    });
+
     it("should map mixpanel to MixpanelCredentialsSchema", () => {
       expect(credentialSchemaMap.mixpanel).toBe(MixpanelCredentialsSchema);
     });
 
     it("should map posthog to PostHogCredentialsSchema", () => {
       expect(credentialSchemaMap.posthog).toBe(PostHogCredentialsSchema);
+    });
+
+    it("should map sendgrid to SendGridCredentialsSchema", () => {
+      expect(credentialSchemaMap.sendgrid).toBe(SendGridCredentialsSchema);
     });
 
     it("should map sentry to SentryCredentialsSchema", () => {
@@ -1426,6 +1843,12 @@ describe("credentials schemas", () => {
 
     it("should map linear to LinearCredentialsSchema", () => {
       expect(credentialSchemaMap.linear).toBe(LinearCredentialsSchema);
+    });
+
+    it("should map tiktok_marketing to TikTokMarketingCredentialsSchema", () => {
+      expect(credentialSchemaMap.tiktok_marketing).toBe(
+        TikTokMarketingCredentialsSchema
+      );
     });
 
     it("matches supported provider keys", () => {
@@ -1535,6 +1958,16 @@ describe("credentials schemas", () => {
       expect(result.type).toBe("aws_athena_connector");
     });
 
+    it("should validate MotherDuck credentials", () => {
+      const credentials = {
+        token: "md_token",
+        type: "motherduck",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("motherduck");
+    });
+
     it("should validate Cloudflare D1 credentials", () => {
       const credentials = {
         accountId: "023e105f4ecef8ad9ca31a8372d0c353",
@@ -1557,6 +1990,36 @@ describe("credentials schemas", () => {
 
       const result = validateCredentials(credentials);
       expect(result.type).toBe("sentry");
+    });
+
+    it("should validate LinkedIn Ads credentials", () => {
+      const credentials = {
+        accessToken: "linkedin-token",
+        type: "linkedin_ads",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("linkedin_ads");
+    });
+
+    it("should validate TikTok Marketing credentials", () => {
+      const credentials = {
+        accessToken: "tiktok-token",
+        type: "tiktok_marketing",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("tiktok_marketing");
+    });
+
+    it("should validate SendGrid credentials", () => {
+      const credentials = {
+        apiKey: "SG.xxxxx",
+        type: "sendgrid",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("sendgrid");
     });
 
     it("should validate MongoDB credentials", () => {
@@ -1638,6 +2101,14 @@ describe("credentials schemas", () => {
           type: "laminar",
         },
         {
+          database: "md:",
+          host: "pg.us-east-1-aws.motherduck.com",
+          port: 5432,
+          token: "md_token",
+          type: "motherduck",
+          username: "postgres",
+        },
+        {
           connectorId: "connector_123",
           database: "analytics",
           type: "aws_athena_connector",
@@ -1689,6 +2160,7 @@ describe("credentials schemas", () => {
           "aws_athena_connector",
           "cloudflare_d1",
           "laminar",
+          "motherduck",
           "mysql",
           "postgres",
           "snowflake",

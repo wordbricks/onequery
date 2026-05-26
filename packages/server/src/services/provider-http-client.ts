@@ -5,10 +5,12 @@ import { serializeQueryParam } from "./provider-utils";
 
 type ProviderAuth =
   | { type: "basic"; username: string; password: string }
-  | { type: "bearer"; token: string };
+  | { type: "bearer"; token: string }
+  | { type: "raw"; value: string };
 
 interface ProviderHttpClientOptions {
   auth: ProviderAuth;
+  authHeaderName?: string;
   baseUrl: string;
   blockedParams?: ReadonlySet<string>;
   defaultHeaders?: Record<string, string>;
@@ -42,6 +44,9 @@ function createAuthHeader(auth: ProviderAuth): string {
   if (auth.type === "bearer") {
     return `Bearer ${auth.token}`;
   }
+  if (auth.type === "raw") {
+    return auth.value;
+  }
 
   return `Basic ${base64ToUtf8.encode(`${auth.username}:${auth.password}`)}`;
 }
@@ -66,6 +71,7 @@ function isRecordLike(
 
 export class ProviderHttpClient {
   readonly #auth: ProviderAuth;
+  readonly #authHeaderName: string;
   readonly #baseUrl: string;
   readonly #blockedParams: ReadonlySet<string>;
   readonly #defaultHeaders: Record<string, string>;
@@ -76,6 +82,7 @@ export class ProviderHttpClient {
 
   constructor(options: ProviderHttpClientOptions) {
     this.#auth = options.auth;
+    this.#authHeaderName = options.authHeaderName ?? "Authorization";
     this.#baseUrl = normalizeBaseUrl(options.baseUrl);
     this.#blockedParams = options.blockedParams ?? new Set<string>();
     this.#defaultHeaders = options.defaultHeaders ?? {};
@@ -156,7 +163,7 @@ export class ProviderHttpClient {
       const headers = {
         ...this.#defaultHeaders,
         ...input.headers,
-        Authorization: createAuthHeader(this.#auth),
+        [this.#authHeaderName]: createAuthHeader(this.#auth),
       };
       const body = this.#createBody(input.body, headers);
       const response = await this.#fetchImpl(url, {

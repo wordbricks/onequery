@@ -2,21 +2,33 @@ import type { z } from "zod";
 
 import {
   AmplitudeCredentialsSchema,
+  AmazonAdsCredentialsSchema,
+  AirtableCredentialsSchema,
   BigQueryCredentialsSchema,
+  CalCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
+  ConfluenceCredentialsSchema,
   ConnectorCredentialsSchema,
+  DiscordCredentialsSchema,
   GitHubCredentialsSchema,
+  GoogleSearchConsoleCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
+  GranolaCredentialsSchema,
+  JiraCredentialsSchema,
   LaminarCredentialsSchema,
+  LinkedInAdsCredentialsSchema,
   LinearCredentialsSchema,
   MixpanelCredentialsSchema,
+  MotherDuckCredentialsSchema,
   MongoDBCredentialsSchema,
   MySQLCredentialsSchema,
   PostgresCredentialsSchema,
   PostHogCredentialsSchema,
+  SendGridCredentialsSchema,
   SentryCredentialsSchema,
   SnowflakeCredentialsSchema,
+  TikTokMarketingCredentialsSchema,
 } from "./credentials";
 
 type ProviderCredentialSchema = z.ZodType<{ type: string }>;
@@ -30,6 +42,15 @@ type SourceProviderGuide = {
   };
 };
 
+export type SourceProviderPublicCategory =
+  | "Databases"
+  | "Developer workflow"
+  | "Marketing"
+  | "Observability"
+  | "Product analytics"
+  | "Productivity"
+  | "Warehouses";
+
 type SourceProviderDefinition = {
   label: string;
   credentialSchema: ProviderCredentialSchema;
@@ -41,6 +62,7 @@ type SourceProviderDefinition = {
   testable: boolean;
   dashboardConnectable: boolean;
   dashboardCredentialForm: string;
+  publicCategory: SourceProviderPublicCategory;
   guide: SourceProviderGuide;
 };
 
@@ -56,6 +78,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "database",
+    publicCategory: "Databases",
     guide: {
       summary:
         "Connect a Postgres database with a direct host, database, and login.",
@@ -87,6 +110,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "database",
+    publicCategory: "Databases",
     guide: {
       summary:
         "Connect Supabase with the session pooler host, database, and login credentials over the Postgres wire protocol.",
@@ -119,6 +143,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "database",
+    publicCategory: "Databases",
     guide: {
       summary:
         "Connect a MySQL database with host, schema, and login credentials.",
@@ -150,6 +175,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "snowflake",
+    publicCategory: "Warehouses",
     guide: {
       summary:
         "Connect Snowflake with an account identifier, warehouse, database, and login credentials.",
@@ -183,6 +209,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "mongodb",
+    publicCategory: "Databases",
     guide: {
       summary:
         "Connect MongoDB with one connection string plus database selection.",
@@ -210,6 +237,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "google_service_account",
+    publicCategory: "Warehouses",
     guide: {
       summary:
         "Connect BigQuery with either Google OAuth tokens or a Google Cloud service account JSON key.",
@@ -244,6 +272,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "cloudflare_d1",
+    publicCategory: "Warehouses",
     guide: {
       summary:
         "Connect Cloudflare D1 with an account ID, D1 database ID, and account-scoped API token.",
@@ -274,6 +303,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "laminar",
+    publicCategory: "Observability",
     guide: {
       summary:
         "Connect Laminar with an API key and optional non-default base URL.",
@@ -289,6 +319,35 @@ export const SOURCE_PROVIDER_REGISTRY = {
       },
     },
   },
+  motherduck: {
+    label: "MotherDuck",
+    credentialSchema: MotherDuckCredentialsSchema,
+    credentialType: "motherduck",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: true,
+    sourceApiInterface: false,
+    testable: true,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "database",
+    publicCategory: "Warehouses",
+    guide: {
+      summary:
+        "Connect MotherDuck through its PostgreSQL wire protocol endpoint with a service token.",
+      steps: [
+        "Create a MotherDuck service token with access to the target database.",
+        "Use `md:` for the default database, or `md:database_name` for a specific MotherDuck database.",
+        "Only override host, port, or username if MotherDuck documents a different endpoint for your environment.",
+      ],
+      exampleInput: {
+        sourceKey: "motherduck_prod",
+        credentials: {
+          database: "md:",
+          token: "motherduck_service_token",
+        },
+      },
+    },
+  },
   aws_athena_connector: {
     label: "AWS Athena Connector",
     credentialSchema: ConnectorCredentialsSchema,
@@ -300,6 +359,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "aws_athena_connector",
+    publicCategory: "Warehouses",
     guide: {
       summary:
         "Connect an Athena connector already registered with this org in OneQuery.",
@@ -328,6 +388,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "google_service_account",
+    publicCategory: "Product analytics",
     guide: {
       summary:
         "Connect Google Analytics with either Google OAuth tokens or a Google Cloud service account JSON key.",
@@ -362,6 +423,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "amplitude",
+    publicCategory: "Product analytics",
     guide: {
       summary:
         "Connect Amplitude with a project API key, secret key, and region.",
@@ -391,6 +453,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "mixpanel",
+    publicCategory: "Product analytics",
     guide: {
       summary:
         "Connect Mixpanel with an org-level service account, project ID, and region.",
@@ -421,6 +484,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "posthog",
+    publicCategory: "Product analytics",
     guide: {
       summary:
         "Connect PostHog with the PostHog app host URL, a personal API key, and project ID.",
@@ -450,6 +514,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "sentry",
+    publicCategory: "Observability",
     guide: {
       summary:
         "Connect Sentry with a Personal Token, organization slug, optional project slug, and optional self-hosted API base URL.",
@@ -479,6 +544,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "github",
+    publicCategory: "Developer workflow",
     guide: {
       summary:
         "Connect GitHub with a fine-grained personal access token and optional repository or installation scoping.",
@@ -496,6 +562,327 @@ export const SOURCE_PROVIDER_REGISTRY = {
       },
     },
   },
+  airtable: {
+    label: "Airtable",
+    credentialSchema: AirtableCredentialsSchema,
+    credentialType: "airtable",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Productivity",
+    guide: {
+      summary:
+        "Connect Airtable with a Personal Access Token and optional default base ID.",
+      steps: [
+        "Create an Airtable Personal Access Token with scopes and base access for the records or metadata endpoints OneQuery should call.",
+        "Copy the token into `credentials.personalAccessToken`.",
+        "Optionally include `baseId` so source API selectors like `/TableName` expand to `/v0/<baseId>/TableName`.",
+      ],
+      exampleInput: {
+        sourceKey: "airtable_ops",
+        credentials: {
+          personalAccessToken: "pat...",
+          baseId: "appXXXXXXXXXXXXXX",
+        },
+      },
+    },
+  },
+  discord: {
+    label: "Discord",
+    credentialSchema: DiscordCredentialsSchema,
+    credentialType: "discord",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
+    guide: {
+      summary:
+        "Connect Discord with a bot token or OAuth bearer token for Discord REST API access.",
+      steps: [
+        "Create a Discord application and bot in the Developer Portal, or provide an OAuth token with the scopes required by the endpoints you will call.",
+        "Copy the token into `credentials.token`; leave `authScheme` as `bot` for bot tokens or set it to `bearer` for OAuth access tokens.",
+        "Optionally include `guildId` so selectors like `/channels` expand to `/guilds/<guildId>/channels`.",
+      ],
+      exampleInput: {
+        sourceKey: "discord_workspace",
+        credentials: {
+          token: "discord_bot_token",
+          authScheme: "bot",
+          guildId: "123456789012345678",
+        },
+      },
+    },
+  },
+  cal: {
+    label: "Cal.com",
+    credentialSchema: CalCredentialsSchema,
+    credentialType: "cal",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Productivity",
+    guide: {
+      summary:
+        "Connect Cal.com API v2 with an API key or compatible bearer token.",
+      steps: [
+        "Create a Cal.com API key from Settings > Security, or use a managed-user/OAuth access token for endpoints that require it.",
+        "Copy the token into `credentials.apiKey`.",
+        "Keep `apiVersion` at `2026-05-01` unless Cal.com documents a newer required `cal-api-version` value for the endpoint.",
+      ],
+      exampleInput: {
+        sourceKey: "cal_bookings",
+        credentials: {
+          apiKey: "cal_...",
+          apiVersion: "2026-05-01",
+        },
+      },
+    },
+  },
+  granola: {
+    label: "Granola",
+    credentialSchema: GranolaCredentialsSchema,
+    credentialType: "granola",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Productivity",
+    guide: {
+      summary:
+        "Connect Granola with an API key that has access to the note scopes you want to query.",
+      steps: [
+        "Create a Granola API key from the desktop app under Settings > Connectors > API keys.",
+        "Choose the Personal notes and/or Public notes scopes needed for OneQuery.",
+        "Copy the generated key into `credentials.apiKey`.",
+      ],
+      exampleInput: {
+        sourceKey: "granola_notes",
+        credentials: {
+          apiKey: "grn_...",
+        },
+      },
+    },
+  },
+  google_search_console: {
+    label: "Google Search Console",
+    credentialSchema: GoogleSearchConsoleCredentialsSchema,
+    credentialType: "google_search_console",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Marketing",
+    guide: {
+      summary:
+        "Connect Google Search Console with an OAuth access token and optional default site URL.",
+      steps: [
+        "Create or obtain an OAuth 2.0 access token with the `https://www.googleapis.com/auth/webmasters.readonly` scope.",
+        "Copy the token into `credentials.accessToken`.",
+        "Optionally include `siteUrl` so selector `/searchAnalytics/query` expands to `/sites/<siteUrl>/searchAnalytics/query`.",
+      ],
+      exampleInput: {
+        sourceKey: "gsc_site",
+        credentials: {
+          accessToken: "ya29...",
+          siteUrl: "https://www.example.com/",
+        },
+      },
+    },
+  },
+  confluence: {
+    label: "Confluence",
+    credentialSchema: ConfluenceCredentialsSchema,
+    credentialType: "confluence",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
+    guide: {
+      summary:
+        "Connect Confluence Cloud with an Atlassian account email and API token.",
+      steps: [
+        "Create an Atlassian API token for the account that can read the Confluence site.",
+        "Copy the Atlassian account email into `credentials.email` and the token into `credentials.apiToken`.",
+        "Set `siteUrl` to the Atlassian Cloud site origin, for example `https://example.atlassian.net`.",
+      ],
+      exampleInput: {
+        sourceKey: "confluence_docs",
+        credentials: {
+          siteUrl: "https://example.atlassian.net",
+          email: "reader@example.com",
+          apiToken: "atlassian_api_token",
+        },
+      },
+    },
+  },
+  amazon_ads: {
+    label: "Amazon Ads",
+    credentialSchema: AmazonAdsCredentialsSchema,
+    credentialType: "amazon_ads",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Marketing",
+    guide: {
+      summary:
+        "Connect Amazon Ads with a Login with Amazon access token, client ID, region, and optional profile ID.",
+      steps: [
+        "Create or refresh a Login with Amazon access token authorized for the Amazon Ads account.",
+        "Copy the Amazon Ads API client ID into `credentials.clientId` and the access token into `credentials.accessToken`.",
+        "Set `region` to `na`, `eu`, or `fe`; optionally include `profileId` so OneQuery sends the `Amazon-Advertising-API-Scope` header.",
+      ],
+      exampleInput: {
+        sourceKey: "amazon_ads_na",
+        credentials: {
+          accessToken: "Atza|...",
+          clientId: "amzn1.application-oa2-client...",
+          profileId: "1234567890",
+          region: "na",
+        },
+      },
+    },
+  },
+  linkedin_ads: {
+    label: "LinkedIn Ads",
+    credentialSchema: LinkedInAdsCredentialsSchema,
+    credentialType: "linkedin_ads",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Marketing",
+    guide: {
+      summary:
+        "Connect LinkedIn Ads with a Marketing API OAuth access token and version header.",
+      steps: [
+        "Create or obtain a LinkedIn Marketing API OAuth access token with access to the ad accounts OneQuery should query.",
+        "Use a supported Marketing API version as `credentials.apiVersion` in `YYYYMM` format; OneQuery defaults to `202605`.",
+        "Only include `apiBaseUrl` when you need a non-default LinkedIn-compatible API origin.",
+      ],
+      exampleInput: {
+        sourceKey: "linkedin_ads_main",
+        credentials: {
+          accessToken: "linkedin_oauth_access_token",
+          apiVersion: "202605",
+        },
+      },
+    },
+  },
+  tiktok_marketing: {
+    label: "TikTok Marketing",
+    credentialSchema: TikTokMarketingCredentialsSchema,
+    credentialType: "tiktok_marketing",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Marketing",
+    guide: {
+      summary:
+        "Connect TikTok Marketing API with an API for Business access token.",
+      steps: [
+        "Create or obtain a TikTok API for Business access token authorized for the advertiser accounts OneQuery should query.",
+        "Optionally include the common advertiser ID as `credentials.advertiserId`; endpoint calls can still pass advertiser IDs in request params.",
+        "Only include `apiBaseUrl` when you need a non-default TikTok Business API origin.",
+      ],
+      exampleInput: {
+        sourceKey: "tiktok_marketing_main",
+        credentials: {
+          accessToken: "tiktok_access_token",
+          advertiserId: "1234567890",
+        },
+      },
+    },
+  },
+  sendgrid: {
+    label: "SendGrid",
+    credentialSchema: SendGridCredentialsSchema,
+    credentialType: "sendgrid",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Marketing",
+    guide: {
+      summary: "Connect SendGrid with a v3 Web API key.",
+      steps: [
+        "Create a SendGrid API key with the scopes required for the account, email, or marketing endpoints OneQuery should call.",
+        "Copy the key into `credentials.apiKey`.",
+        "Only include `apiBaseUrl` when you need a non-default SendGrid-compatible API origin.",
+      ],
+      exampleInput: {
+        sourceKey: "sendgrid_main",
+        credentials: {
+          apiKey: "SG.xxxxx",
+        },
+      },
+    },
+  },
+  jira: {
+    label: "Jira",
+    credentialSchema: JiraCredentialsSchema,
+    credentialType: "jira",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
+    guide: {
+      summary:
+        "Connect Jira Cloud with an Atlassian account email and API token.",
+      steps: [
+        "Create an Atlassian API token for the account that can read the Jira site.",
+        "Copy the Atlassian account email into `credentials.email` and the token into `credentials.apiToken`.",
+        "Set `siteUrl` to the Atlassian Cloud site origin, for example `https://example.atlassian.net`.",
+      ],
+      exampleInput: {
+        sourceKey: "jira_projects",
+        credentials: {
+          siteUrl: "https://example.atlassian.net",
+          email: "reader@example.com",
+          apiToken: "atlassian_api_token",
+        },
+      },
+    },
+  },
   linear: {
     label: "Linear",
     credentialSchema: LinearCredentialsSchema,
@@ -507,6 +894,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: false,
     dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
     guide: {
       summary:
         "Connect Linear with either an API key or a full OAuth token bundle.",
@@ -533,6 +921,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "cloudflare_workers_observability",
+    publicCategory: "Observability",
     guide: {
       summary:
         "Connect Cloudflare Workers Observability with an account-scoped API token and account ID.",
@@ -598,6 +987,7 @@ export function doesSourceProviderMatchCredentials(input: {
 export type PublicSourceProvider = {
   id: SourceProviderId;
   label: string;
+  publicCategory: SourceProviderPublicCategory;
   connectable: boolean;
   dashboardConnectable: boolean;
   dashboardCredentialForm: string;
@@ -615,6 +1005,7 @@ export function listPublicSourceProviders(): PublicSourceProvider[] {
     return {
       id,
       label: provider.label,
+      publicCategory: provider.publicCategory,
       connectable: provider.connectable,
       dashboardConnectable: provider.dashboardConnectable,
       dashboardCredentialForm: provider.dashboardCredentialForm,

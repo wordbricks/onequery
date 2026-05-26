@@ -144,6 +144,23 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
     },
   },
   {
+    provider: "motherduck",
+    summary:
+      "Connect MotherDuck through its PostgreSQL wire protocol endpoint with a service token.",
+    steps: [
+      "Create a MotherDuck service token with access to the target database.",
+      "Use `md:` for the default database, or `md:database_name` for a specific MotherDuck database.",
+      "Only include host, port, or username when you need to override the default MotherDuck Postgres endpoint.",
+    ],
+    exampleInput: {
+      sourceKey: "motherduck_prod",
+      credentials: {
+        database: "md:",
+        token: "motherduck_service_token",
+      },
+    },
+  },
+  {
     provider: "aws_athena_connector",
     summary:
       "Connect an Athena connector already registered with this org in OneQuery.",
@@ -279,6 +296,195 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
       credentials: {
         accessToken: "github_pat_or_installation_token",
         repositories: ["octocat/Hello-World"],
+      },
+    },
+  },
+  {
+    provider: "airtable",
+    summary:
+      "Connect Airtable with a Personal Access Token and optional default base ID.",
+    steps: [
+      "Create an Airtable Personal Access Token with scopes and base access for the records or metadata endpoints OneQuery should call.",
+      "Copy the token into `credentials.personalAccessToken`.",
+      "Optionally include `baseId` so source API selectors like `/TableName` expand to `/v0/<baseId>/TableName`.",
+    ],
+    exampleInput: {
+      sourceKey: "airtable_ops",
+      credentials: {
+        personalAccessToken: "pat...",
+        baseId: "appXXXXXXXXXXXXXX",
+      },
+    },
+  },
+  {
+    provider: "discord",
+    summary:
+      "Connect Discord with a bot token or OAuth bearer token for Discord REST API access.",
+    steps: [
+      "Create a Discord application and bot in the Developer Portal, or provide an OAuth token with the scopes required by the endpoints you will call.",
+      "Copy the token into `credentials.token`; leave `authScheme` as `bot` for bot tokens or set it to `bearer` for OAuth access tokens.",
+      "Optionally include `guildId` so selectors like `/channels` expand to `/guilds/<guildId>/channels`.",
+    ],
+    exampleInput: {
+      sourceKey: "discord_workspace",
+      credentials: {
+        token: "discord_bot_token",
+        authScheme: "bot",
+        guildId: "123456789012345678",
+      },
+    },
+  },
+  {
+    provider: "cal",
+    summary:
+      "Connect Cal.com API v2 with an API key or compatible bearer token.",
+    steps: [
+      "Create a Cal.com API key from Settings > Security, or use a managed-user/OAuth access token for endpoints that require it.",
+      "Copy the token into `credentials.apiKey`.",
+      "Keep `apiVersion` at `2026-05-01` unless Cal.com documents a newer required `cal-api-version` value for the endpoint.",
+    ],
+    exampleInput: {
+      sourceKey: "cal_bookings",
+      credentials: {
+        apiKey: "cal_...",
+        apiVersion: "2026-05-01",
+      },
+    },
+  },
+  {
+    provider: "granola",
+    summary:
+      "Connect Granola with an API key that has access to the note scopes you want to query.",
+    steps: [
+      "Create a Granola API key from the desktop app under Settings > Connectors > API keys.",
+      "Choose the Personal notes and/or Public notes scopes needed for OneQuery.",
+      "Copy the generated key into `credentials.apiKey`.",
+    ],
+    exampleInput: {
+      sourceKey: "granola_notes",
+      credentials: {
+        apiKey: "grn_...",
+      },
+    },
+  },
+  {
+    provider: "google_search_console",
+    summary:
+      "Connect Google Search Console with an OAuth access token and optional default site URL.",
+    steps: [
+      "Create or obtain an OAuth 2.0 access token with the `https://www.googleapis.com/auth/webmasters.readonly` scope.",
+      "Copy the token into `credentials.accessToken`.",
+      "Optionally include `siteUrl` so source API selectors like `/searchAnalytics/query` expand to `/sites/<siteUrl>/searchAnalytics/query`.",
+    ],
+    exampleInput: {
+      sourceKey: "gsc_site",
+      credentials: {
+        accessToken: "ya29...",
+        siteUrl: "https://www.example.com/",
+      },
+    },
+  },
+  {
+    provider: "confluence",
+    summary:
+      "Connect Confluence Cloud with an Atlassian account email and API token.",
+    steps: [
+      "Create an Atlassian API token for the account that can read the Confluence site.",
+      "Copy the Atlassian account email into `credentials.email` and the token into `credentials.apiToken`.",
+      "Set `siteUrl` to the Atlassian Cloud site origin, for example `https://example.atlassian.net`.",
+    ],
+    exampleInput: {
+      sourceKey: "confluence_docs",
+      credentials: {
+        siteUrl: "https://example.atlassian.net",
+        email: "reader@example.com",
+        apiToken: "atlassian_api_token",
+      },
+    },
+  },
+  {
+    provider: "amazon_ads",
+    summary:
+      "Connect Amazon Ads with a Login with Amazon access token, client ID, region, and optional profile ID.",
+    steps: [
+      "Create or refresh a Login with Amazon access token authorized for the Amazon Ads account.",
+      "Copy the Amazon Ads API client ID into `credentials.clientId` and the access token into `credentials.accessToken`.",
+      "Set `region` to `na`, `eu`, or `fe`; optionally include `profileId` so OneQuery sends the `Amazon-Advertising-API-Scope` header.",
+    ],
+    exampleInput: {
+      sourceKey: "amazon_ads_na",
+      credentials: {
+        accessToken: "Atza|...",
+        clientId: "amzn1.application-oa2-client...",
+        profileId: "1234567890",
+        region: "na",
+      },
+    },
+  },
+  {
+    provider: "linkedin_ads",
+    summary:
+      "Connect LinkedIn Ads with a Marketing API OAuth access token and version header.",
+    steps: [
+      "Create or obtain a LinkedIn Marketing API OAuth access token with access to the ad accounts OneQuery should query.",
+      "Use a supported Marketing API version as `credentials.apiVersion` in `YYYYMM` format; OneQuery defaults to `202605`.",
+      "Only include `apiBaseUrl` when you need a non-default LinkedIn-compatible API origin.",
+    ],
+    exampleInput: {
+      sourceKey: "linkedin_ads_main",
+      credentials: {
+        accessToken: "linkedin_oauth_access_token",
+        apiVersion: "202605",
+      },
+    },
+  },
+  {
+    provider: "tiktok_marketing",
+    summary:
+      "Connect TikTok Marketing API with an API for Business access token.",
+    steps: [
+      "Create or obtain a TikTok API for Business access token authorized for the advertiser accounts OneQuery should query.",
+      "Optionally include the common advertiser ID as `credentials.advertiserId`; endpoint calls can still pass advertiser IDs in request params.",
+      "Only include `apiBaseUrl` when you need a non-default TikTok Business API origin.",
+    ],
+    exampleInput: {
+      sourceKey: "tiktok_marketing_main",
+      credentials: {
+        accessToken: "tiktok_access_token",
+        advertiserId: "1234567890",
+      },
+    },
+  },
+  {
+    provider: "sendgrid",
+    summary: "Connect SendGrid with a v3 Web API key.",
+    steps: [
+      "Create a SendGrid API key with the scopes required for the account, email, or marketing endpoints OneQuery should call.",
+      "Copy the key into `credentials.apiKey`.",
+      "Only include `apiBaseUrl` when you need a non-default SendGrid-compatible API origin.",
+    ],
+    exampleInput: {
+      sourceKey: "sendgrid_main",
+      credentials: {
+        apiKey: "SG.xxxxx",
+      },
+    },
+  },
+  {
+    provider: "jira",
+    summary:
+      "Connect Jira Cloud with an Atlassian account email and API token.",
+    steps: [
+      "Create an Atlassian API token for the account that can read the Jira site.",
+      "Copy the Atlassian account email into `credentials.email` and the token into `credentials.apiToken`.",
+      "Set `siteUrl` to the Atlassian Cloud site origin, for example `https://example.atlassian.net`.",
+    ],
+    exampleInput: {
+      sourceKey: "jira_projects",
+      credentials: {
+        siteUrl: "https://example.atlassian.net",
+        email: "reader@example.com",
+        apiToken: "atlassian_api_token",
       },
     },
   },

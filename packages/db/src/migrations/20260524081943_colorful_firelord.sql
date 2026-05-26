@@ -1,0 +1,1 @@
+ALTER TABLE "data_sources" DROP COLUMN "use_as_data_source";

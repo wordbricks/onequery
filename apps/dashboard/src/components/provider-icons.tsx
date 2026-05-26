@@ -4,14 +4,26 @@ import {
   resolveSvgIconAccessibility,
 } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
-import { IconHelpCircle } from "@tabler/icons-react";
+import {
+  IconBrandLinkedin,
+  IconCalendar,
+  IconDatabase,
+  IconHelpCircle,
+  IconMail,
+  IconNotebook,
+} from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import {
   siCloudflareworkers,
+  siAirtable,
+  siConfluence,
+  siDiscord,
   siGithub,
   siGoogleanalytics,
   siGooglebigquery,
   siGoogledocs,
+  siGooglesearchconsole,
+  siJira,
   siLinear,
   siMixpanel,
   siMongodb,
@@ -21,6 +33,7 @@ import {
   siSentry,
   siSnowflake,
   siSupabase,
+  siTiktok,
 } from "simple-icons";
 
 type ProviderIconProps = IconSvgProps;
@@ -142,28 +155,143 @@ function UnknownProviderIcon({
   );
 }
 
+function MotherDuckIcon({
+  "aria-hidden": ariaHidden,
+  "aria-label": ariaLabel,
+  role,
+  size = 24,
+  title,
+  ...props
+}: ProviderIconProps) {
+  const accessibility = resolveSvgIconAccessibility({
+    ariaHidden,
+    ariaLabel,
+    ariaLabelledBy: props["aria-labelledby"],
+    defaultLabel: "MotherDuck",
+    role,
+    title,
+  });
+
+  return (
+    <IconDatabase
+      {...props}
+      aria-hidden={accessibility.hidden ? true : undefined}
+      aria-label={accessibility.label}
+      aria-labelledby={accessibility.labelledBy}
+      role={accessibility.role}
+      size={size}
+      stroke={2}
+    />
+  );
+}
+
+function TablerProviderIcon({
+  "aria-hidden": ariaHidden,
+  "aria-label": ariaLabel,
+  defaultLabel,
+  Icon,
+  role,
+  size = 24,
+  title,
+  ...props
+}: ProviderIconProps & {
+  defaultLabel: string;
+  Icon: typeof IconDatabase;
+}) {
+  const accessibility = resolveSvgIconAccessibility({
+    ariaHidden,
+    ariaLabel,
+    ariaLabelledBy: props["aria-labelledby"],
+    defaultLabel,
+    role,
+    title,
+  });
+
+  return (
+    <Icon
+      {...props}
+      aria-hidden={accessibility.hidden ? true : undefined}
+      aria-label={accessibility.label}
+      aria-labelledby={accessibility.labelledBy}
+      role={accessibility.role}
+      size={size}
+      stroke={2}
+    />
+  );
+}
+
+function CalIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon {...props} defaultLabel="Cal.com" Icon={IconCalendar} />
+  );
+}
+
+function GranolaIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon {...props} defaultLabel="Granola" Icon={IconNotebook} />
+  );
+}
+
+function AmazonAdsIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon
+      {...props}
+      defaultLabel="Amazon Ads"
+      Icon={IconDatabase}
+    />
+  );
+}
+
+function LinkedInAdsIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon
+      {...props}
+      defaultLabel="LinkedIn Ads"
+      Icon={IconBrandLinkedin}
+    />
+  );
+}
+
+function SendGridIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon {...props} defaultLabel="SendGrid" Icon={IconMail} />
+  );
+}
+
 export const GitHubIcon = createSimpleProviderIcon(siGithub);
 
 export const ProviderIcons = {
   amplitude: AmplitudeIcon,
+  amazon_ads: AmazonAdsIcon,
+  airtable: createSimpleProviderIcon(siAirtable),
   aws_athena_connector: AwsAthenaConnectorIcon,
   bigquery: createSimpleProviderIcon(siGooglebigquery),
+  cal: CalIcon,
   cloudflare_d1: CloudflareD1Icon,
   cloudflare_workers_observability:
     createSimpleProviderIcon(siCloudflareworkers),
+  confluence: createSimpleProviderIcon(siConfluence),
+  discord: createSimpleProviderIcon(siDiscord),
   ga: createSimpleProviderIcon(siGoogleanalytics),
   github: GitHubIcon,
   google_docs: createSimpleProviderIcon(siGoogledocs),
+  google_search_console: createSimpleProviderIcon(siGooglesearchconsole),
+  granola: GranolaIcon,
+  jira: createSimpleProviderIcon(siJira),
   laminar: LaminarIcon,
   linear: createSimpleProviderIcon(siLinear),
+  linkedin_ads: LinkedInAdsIcon,
   mixpanel: createSimpleProviderIcon(siMixpanel),
+  motherduck: MotherDuckIcon,
   mongodb: createSimpleProviderIcon(siMongodb),
   mysql: createSimpleProviderIcon(siMysql),
   postgres: createSimpleProviderIcon(siPostgresql),
   supabase: createSimpleProviderIcon(siSupabase),
   posthog: createSimpleProviderIcon(siPosthog),
+  sendgrid: SendGridIcon,
   sentry: createSimpleProviderIcon(siSentry),
   snowflake: createSimpleProviderIcon(siSnowflake),
+  tiktok_marketing: createSimpleProviderIcon(siTiktok),
 } as const satisfies Record<string, ProviderIconComponent>;
 
 function hasProviderIcon(

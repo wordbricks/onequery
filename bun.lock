@@ -121,6 +121,7 @@
         "@astrojs/partytown": "catalog:",
         "@astrojs/react": "catalog:",
         "@nanostores/react": "catalog:",
+        "@onequery/db": "workspace:*",
         "@onequery/ui": "workspace:*",
         "astro": "catalog:",
         "better-result": "catalog:",
@@ -398,6 +399,9 @@
         "react-dom": "18 || ^19",
       },
     },
+  },
+  "patchedDependencies": {
+    "@polyglot-sql/sdk@0.3.11": "patches/@polyglot-sql%2Fsdk@0.3.11.patch",
   },
   "overrides": {
     "@tanstack/query-core": "5.90.20",
