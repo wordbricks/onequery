@@ -1,8 +1,10 @@
 ---
+import { Code } from "astro:components";
 import {
   COPY_FEEDBACK_RESET_DELAY_MS,
   INSTALL_COMMANDS,
 } from "../../landing/config/landing-config";
+import { BrandIcon } from "../../landing/content/brand-icons";
 
 const defaultMethod = INSTALL_COMMANDS[0];
 
@@ -33,6 +35,11 @@ function getInstallTabId(index: number) {
           data-install-method-label={method.label}
           data-install-method-command={method.command}
         >
+          <BrandIcon
+            aria-hidden="true"
+            className="install-tab-icon"
+            name={method.iconName}
+          />
           {method.label}
         </button>
       ))
@@ -45,10 +52,27 @@ function getInstallTabId(index: number) {
     role="tabpanel"
     aria-labelledby={getInstallTabId(0)}
   >
-    <span class="download-command-label" data-install-command-label>
-      {defaultMethod.label}
-    </span>
-    <code data-install-command-value>{defaultMethod.command}</code>
+    <div class="download-command-line">
+      <code class="download-command-label" aria-hidden="true">$</code>
+      {
+        INSTALL_COMMANDS.map((method, index) => (
+          <span
+            class="download-command-value"
+            data-install-command-value
+            data-install-method-index={index}
+            hidden={method !== defaultMethod}
+          >
+            <Code
+              code={method.command}
+              defaultColor={false}
+              inline
+              lang="bash"
+              theme="min-dark"
+            />
+          </span>
+        ))
+      }
+    </div>
     <button
       type="button"
       class="install-method-copy"
@@ -104,8 +128,9 @@ function getInstallTabId(index: number) {
         selector.querySelectorAll("[data-install-method-index]")
       );
       const panel = selector.querySelector("#install-command-panel");
-      const label = selector.querySelector("[data-install-command-label]");
-      const command = selector.querySelector("[data-install-command-value]");
+      const commands = Array.from(
+        selector.querySelectorAll("[data-install-command-value]")
+      );
       const copyButton = selector.querySelector("[data-install-copy-button]");
       const copyText = selector.querySelector("[data-install-copy-text]");
       const resetDelay =
@@ -118,6 +143,7 @@ function getInstallTabId(index: number) {
       const readTab = (tab) => ({
         command: tab.getAttribute("data-install-method-command") || "",
         id: tab.id,
+        index: tab.getAttribute("data-install-method-index") || "",
         label: tab.getAttribute("data-install-method-label") || "",
         tab,
       });
@@ -165,12 +191,10 @@ function getInstallTabId(index: number) {
           panel.setAttribute("aria-labelledby", selected.id);
         }
 
-        if (label) {
-          label.textContent = selected.label;
-        }
-
-        if (command) {
-          command.textContent = selected.command;
+        for (const command of commands) {
+          command.hidden =
+            command.getAttribute("data-install-method-index") !==
+            selected.index;
         }
 
         resetCopyFeedback();
