@@ -95,8 +95,9 @@
 .install-tab {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   min-height: 28px;
-  padding: 0 9px;
+  padding: 0 10px 0 8px;
   border: 0;
   border-radius: 10px;
   background: transparent;
@@ -107,6 +108,14 @@
   cursor: pointer;
 }
 
+.install-tab-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: currentColor;
+}
+
 .install-tab-active {
   background: var(--wash);
   color: var(--ink);
@@ -114,14 +123,18 @@
 
 .download-command {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: var(--shadow-ring);
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.24);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 100%),
+    #0d0d0d;
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -130,54 +143,96 @@
 
 .download-command:focus-within,
 .download-command:hover {
-  border-color: var(--line-strong);
+  border-color: rgba(255, 255, 255, 0.16);
   box-shadow:
-    0 16px 34px rgba(0, 0, 0, 0.06),
-    var(--shadow-ring);
+    0 22px 48px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transform: translateY(-1px);
+}
+
+.download-command-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 6px;
 }
 
 .download-command-label {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
-  padding: 0 10px;
-  border-radius: 10px;
-  background: var(--wash);
-  color: var(--text-soft);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
 }
 
-.download-command code {
+.download-command-value {
   display: block;
   min-width: 0;
   overflow: hidden;
-  color: var(--ink);
+  color: rgba(255, 255, 255, 0.92);
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.download-command-value[hidden] {
+  display: none;
+}
+
+.download-command-value .astro-code {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  background: transparent !important;
+  font: inherit;
+  line-height: inherit;
+  white-space: inherit;
+  text-overflow: inherit;
+}
+
+.download-command-value .line {
+  display: inline;
 }
 
 .install-method-copy {
-  min-width: 72px;
-  min-height: 36px;
-  padding: 0 10px;
+  min-width: 74px;
+  min-height: 42px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 8px;
-  background: var(--ink);
-  color: var(--surface);
+  border-radius: 11px;
+  background: var(--surface);
+  color: var(--ink);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 19px;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22);
   cursor: pointer;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .install-method-copy:hover {
-  opacity: 0.92;
+  opacity: 0.94;
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.24);
   transform: translateY(-1px);
 }
 
@@ -1835,8 +1890,24 @@
     align-items: stretch;
   }
 
-  .download-command code {
+  .download-command-line {
+    min-height: 42px;
+  }
+
+  .download-command-value {
+    overflow: visible;
     white-space: normal;
+    text-overflow: clip;
+    word-break: break-word;
+  }
+
+  .download-command-value .astro-code {
+    overflow: visible;
+    word-break: inherit;
+  }
+
+  .install-method-copy {
+    width: 100%;
   }
 
   .hero-actions {
@@ -1962,6 +2033,7 @@
   }
 
   .download-command,
+  .install-method-copy,
   .control-plane-node,
   .control-plane-member,
   .control-plane-core-shell,
