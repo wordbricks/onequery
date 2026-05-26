@@ -196,7 +196,7 @@ Two libraries that make OneQuery more reliable:
 
 ## Contributing
 
-We welcome data source integration contributions. See [CONTRIBUTING.md](./CONTRIBUTING.md) for structure and PR process.
+We welcome contributions across the project. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the PR process.
 
 ---
 

@@ -193,7 +193,7 @@ Load skill onequery-cli.
 
 ## 贡献
 
-欢迎贡献新的数据源接入。项目结构和 PR 流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+欢迎为项目贡献改进。PR 流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 ---
 
