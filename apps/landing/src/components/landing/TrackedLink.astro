@@ -1,11 +1,8 @@
 ---
 import type { HTMLAttributes } from "astro/types";
 
-type PrefetchStrategy = "tap" | "hover" | "viewport" | "load";
-
 interface Props extends HTMLAttributes<"a"> {
   href: string;
-  prefetch?: boolean | PrefetchStrategy;
   trackingHref?: string;
   trackingName?: string;
   trackingSection?: string;
@@ -13,96 +10,11 @@ interface Props extends HTMLAttributes<"a"> {
 
 const {
   href,
-  prefetch = false,
   trackingHref,
   trackingName,
   trackingSection,
   ...anchorAttributes
 } = Astro.props;
-
-function normalizePathname(pathname: string) {
-  if (pathname !== "/" && pathname.endsWith("/")) {
-    return pathname.slice(0, -1);
-  }
-
-  return pathname;
-}
-
-function hasFileExtension(pathname: string) {
-  return /\/[^/]+\.[^/]+$/u.test(pathname);
-}
-
-function isDownloadLink(download: HTMLAttributes<"a">["download"]) {
-  return download !== undefined && download !== false;
-}
-
-function resolveUrl(rawHref: string) {
-  try {
-    return new URL(rawHref, Astro.url);
-  } catch {
-    return undefined;
-  }
-}
-
-function readPrefetchStrategy(
-  prefetchValue: boolean | PrefetchStrategy
-): PrefetchStrategy | undefined {
-  if (prefetchValue === true) {
-    return "hover";
-  }
-
-  if (prefetchValue === false) {
-    return undefined;
-  }
-
-  return prefetchValue;
-}
-
-function shouldPrefetchLink() {
-  if (!prefetch || isDownloadLink(anchorAttributes.download)) {
-    return false;
-  }
-
-  if (anchorAttributes.target && anchorAttributes.target !== "_self") {
-    return false;
-  }
-
-  const rawHref = href.trim();
-  if (
-    rawHref.length === 0 ||
-    rawHref.startsWith("#") ||
-    /^(javascript|mailto|sms|tel):/iu.test(rawHref)
-  ) {
-    return false;
-  }
-
-  const targetUrl = resolveUrl(rawHref);
-  if (!targetUrl || targetUrl.origin !== Astro.url.origin || targetUrl.hash) {
-    return false;
-  }
-
-  const targetPathname = normalizePathname(targetUrl.pathname);
-  const currentPathname = normalizePathname(Astro.url.pathname);
-
-  if (
-    targetPathname.startsWith("/api/") ||
-    hasFileExtension(targetPathname) ||
-    (targetPathname === currentPathname && targetUrl.search === Astro.url.search)
-  ) {
-    return false;
-  }
-
-  return true;
-}
-
-const prefetchStrategy = shouldPrefetchLink()
-  ? readPrefetchStrategy(prefetch)
-  : undefined;
-const prefetchAttributes = prefetchStrategy
-  ? {
-      "data-astro-prefetch": prefetchStrategy,
-    }
-  : {};
 const trackingAttributes =
   trackingName && trackingSection
     ? {
@@ -113,6 +25,6 @@ const trackingAttributes =
     : {};
 ---
 
-<a href={href} {...anchorAttributes} {...prefetchAttributes} {...trackingAttributes}>
+<a href={href} {...anchorAttributes} {...trackingAttributes}>
   <slot />
 </a>

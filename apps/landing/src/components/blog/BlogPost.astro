@@ -44,7 +44,7 @@ const visibleRelatedPosts =
     <article id="top">
       <header class="blog-post-header">
         <div class="blog-breadcrumb">
-          <TrackedLink href="/blog/" prefetch>Blog</TrackedLink>
+          <TrackedLink href="/blog/">Blog</TrackedLink>
           <span aria-hidden="true">/</span>
           <span>{post.category}</span>
         </div>
@@ -148,7 +148,6 @@ const visibleRelatedPosts =
           visibleRelatedPosts.map((relatedPost) => (
             <TrackedLink
               href={`/blog/${relatedPost.slug}/`}
-              prefetch="tap"
             >
               <span>
                 {relatedPost.date} - {relatedPost.category}
@@ -161,11 +160,7 @@ const visibleRelatedPosts =
           ))
         }
       </div>
-      <TrackedLink
-        href="/blog/"
-        class="blog-more-link"
-        prefetch
-      >
+      <TrackedLink href="/blog/" class="blog-more-link">
         View more posts <span aria-hidden="true">→</span>
       </TrackedLink>
     </section>
