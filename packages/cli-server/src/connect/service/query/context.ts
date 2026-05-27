@@ -3,9 +3,11 @@ import { Result } from "better-result";
 
 import { runCliLoadOrgAccessWithSource } from "../../../organization/effects";
 import { resolveQueryResultWindow } from "../../../query/result-window";
+import { parseCliSourceSelector } from "../../../source/reference";
 import { requireCliConnectRequestContext } from "../../context";
 import { resolveAuthorizedCliOrgFromAccess } from "../access";
 import type { CliServiceResult } from "../result";
+import { cliServiceErr } from "../result";
 import type { CliServiceMethod } from "../types";
 import { parseCliQueryRequest } from "./request";
 import type { CliQueryServiceRequest, ResolvedCliQueryRequest } from "./types";
@@ -19,10 +21,19 @@ export async function resolveCliQueryRequestState<
   return Result.gen(async function* resolveCliQueryRequestStateFlow() {
     const requestContext = requireCliConnectRequestContext(context);
     const session = yield* Result.await(requestContext.resolveSession());
+    const source = parseCliSourceSelector(request.sourceKey);
+    if (!source) {
+      return yield* cliServiceErr({
+        detail: "source must look like provider://source-key",
+        key: "READ_QUERY_INPUT_INVALID",
+      });
+    }
+
     const access = await runCliLoadOrgAccessWithSource({
       db: requestContext.honoContext.var.storage.db,
       orgSlug: request.orgSlug,
-      sourceKey: request.sourceKey,
+      sourceKey: source.sourceKey,
+      sourceProvider: source.sourceProvider,
       userId: session.user.id,
     });
     const authorizedOrg = yield* resolveAuthorizedCliOrgFromAccess({
@@ -43,6 +54,7 @@ export async function resolveCliQueryRequestState<
       requestId: requestContext.requestId,
       resultWindow: resolveQueryResultWindow(query),
       session,
+      sourceKey: source.sourceKey,
       sourceLookup: access.source,
     });
   });

@@ -11,7 +11,7 @@ use clap::ValueHint;
 use crate::explain::ExplainCode;
 use crate::identifiers::OrgSlug;
 use crate::identifiers::RequestId;
-use crate::identifiers::SourceKey;
+use crate::identifiers::SourceReference;
 use crate::transport::source_connect_provider::SourceConnectProvider;
 
 pub(super) fn parse_trimmed_non_empty(raw: &str) -> Result<String, String> {
@@ -56,7 +56,7 @@ pub(super) fn parse_org_slug(raw: &str) -> Result<OrgSlug, String> {
     parse_identifier(raw)
 }
 
-pub(super) fn parse_source_key(raw: &str) -> Result<SourceKey, String> {
+pub(super) fn parse_source_reference(raw: &str) -> Result<SourceReference, String> {
     parse_identifier(raw)
 }
 
@@ -165,17 +165,17 @@ pub(crate) enum SourceSubcommand {
     Providers,
     /// Show one source by key.
     Show {
-        /// Look up this source key.
-        #[arg(value_name = "SOURCE_KEY", value_parser = parse_source_key)]
-        source_key: SourceKey,
+        /// Look up this source.
+        #[arg(value_name = "SOURCE", value_parser = parse_source_reference)]
+        source_key: SourceReference,
         #[command(flatten, next_help_heading = "Read Controls")]
         read: ReadArgs,
     },
     /// Test one source connection by key.
     Test {
-        /// Test this source key.
-        #[arg(value_name = "SOURCE_KEY", value_parser = parse_source_key)]
-        source_key: SourceKey,
+        /// Test this source.
+        #[arg(value_name = "SOURCE", value_parser = parse_source_reference)]
+        source_key: SourceReference,
     },
     /// Show instructions or create a new source connection.
     Connect(SourceConnectArgs),
@@ -353,9 +353,9 @@ impl QueryInputArgs {
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct QueryExecuteArgs {
-    /// Execute the query against this source key.
-    #[arg(long, value_name = "SOURCE_KEY", value_parser = parse_source_key)]
-    pub source: SourceKey,
+    /// Execute the query against this source.
+    #[arg(long, value_name = "SOURCE", value_parser = parse_source_reference)]
+    pub source: SourceReference,
     #[command(flatten)]
     pub read: ListReadArgs,
     #[command(flatten, next_help_heading = "Query Input")]
@@ -364,9 +364,9 @@ pub(crate) struct QueryExecuteArgs {
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct QueryValidateArgs {
-    /// Validate the query against this source key.
-    #[arg(long, value_name = "SOURCE_KEY", value_parser = parse_source_key)]
-    pub source: SourceKey,
+    /// Validate the query against this source.
+    #[arg(long, value_name = "SOURCE", value_parser = parse_source_reference)]
+    pub source: SourceReference,
     #[command(flatten, next_help_heading = "Read Controls")]
     pub read: ReadArgs,
     #[command(flatten, next_help_heading = "Query Input")]
@@ -380,26 +380,26 @@ pub(crate) enum QuerySubcommand {
         name = "exec",
         visible_alias = "execute",
         override_usage = "\
-onequery query exec [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
-       onequery query exec [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
-       onequery query exec [OPTIONS] --source <SOURCE_KEY> --file <PATH>
-       onequery query exec [OPTIONS] --source <SOURCE_KEY> --stdin"
+onequery query exec [OPTIONS] --source <SOURCE> --input <PATH|->
+       onequery query exec [OPTIONS] --source <SOURCE> --sql <SQL>
+       onequery query exec [OPTIONS] --source <SOURCE> --file <PATH>
+       onequery query exec [OPTIONS] --source <SOURCE> --stdin"
     )]
     Execute(QueryExecuteArgs),
     /// Validate a query without executing it.
     #[command(override_usage = "\
-onequery query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
-       onequery query validate [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
-       onequery query validate [OPTIONS] --source <SOURCE_KEY> --file <PATH>
-       onequery query validate [OPTIONS] --source <SOURCE_KEY> --stdin")]
+onequery query validate [OPTIONS] --source <SOURCE> --input <PATH|->
+       onequery query validate [OPTIONS] --source <SOURCE> --sql <SQL>
+       onequery query validate [OPTIONS] --source <SOURCE> --file <PATH>
+       onequery query validate [OPTIONS] --source <SOURCE> --stdin")]
     Validate(QueryValidateArgs),
 }
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]
 pub(crate) struct ApiArgs {
     /// Describe or execute this connected source API.
-    #[arg(long, value_name = "SOURCE_KEY", value_parser = parse_source_key)]
-    pub source: SourceKey,
+    #[arg(long, value_name = "SOURCE", value_parser = parse_source_reference)]
+    pub source: SourceReference,
     /// Override the inferred source API operation.
     #[arg(long, value_name = "OPERATION", value_parser = parse_trimmed_non_empty)]
     pub op: Option<String>,

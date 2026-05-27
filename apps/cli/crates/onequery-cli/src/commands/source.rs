@@ -8,7 +8,7 @@ use crate::cli::ListReadArgs;
 use crate::cli::ReadArgs;
 use crate::cli::SourceSubcommand;
 use crate::identifiers::OrgSlug;
-use crate::identifiers::SourceKey;
+use crate::identifiers::SourceReference;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::output::append_padded_cell;
@@ -41,11 +41,11 @@ enum SourceMode {
         read: ListReadArgs,
     },
     Show {
-        source_key: SourceKey,
+        source_key: SourceReference,
         read: ReadArgs,
     },
     Test {
-        source_key: SourceKey,
+        source_key: SourceReference,
     },
 }
 
@@ -111,12 +111,12 @@ enum SourceEffect {
     },
     FetchSource {
         org: OrgSlug,
-        source_key: SourceKey,
+        source_key: SourceReference,
         read: ReadArgs,
     },
     FetchSourceTest {
         org: OrgSlug,
-        source_key: SourceKey,
+        source_key: SourceReference,
     },
 }
 
@@ -596,12 +596,12 @@ fn render_source_list_output(
         ));
     }
 
-    let source_key_width = sources
+    let source_width = sources
         .iter()
-        .map(|source| source.source_key.len())
+        .map(|source| source.reference().len())
         .max()
         .unwrap_or(4)
-        .max("SOURCE KEY".len());
+        .max("SOURCE".len());
     let provider_width = sources
         .iter()
         .map(|source| source.provider.len())
@@ -621,10 +621,10 @@ fn render_source_list_output(
         .unwrap_or(6)
         .max("STATUS".len());
 
-    let row_capacity = source_key_width + provider_width + interfaces_width + status_width + 6;
+    let row_capacity = source_width + provider_width + interfaces_width + status_width + 6;
     let mut lines = Vec::with_capacity(sources.len() + 1);
     let mut header = String::with_capacity(row_capacity);
-    append_padded_cell(&mut header, "SOURCE KEY", source_key_width);
+    append_padded_cell(&mut header, "SOURCE", source_width);
     header.push_str("  ");
     append_padded_cell(&mut header, "PROVIDER", provider_width);
     header.push_str("  ");
@@ -635,7 +635,7 @@ fn render_source_list_output(
 
     for source in sources {
         let mut row = String::with_capacity(row_capacity);
-        append_padded_cell(&mut row, &source.source_key, source_key_width);
+        append_padded_cell(&mut row, &source.reference(), source_width);
         row.push_str("  ");
         append_padded_cell(&mut row, &source.provider, provider_width);
         row.push_str("  ");
@@ -672,7 +672,7 @@ fn render_source_show_output(
     }
 
     let mut lines = vec![
-        format!("Source: {}", &source.source_key),
+        format!("Source: {}", source.reference()),
         format!("Provider: {}", &source.provider),
         format!("Status: {}", &source.status),
         format!(
@@ -692,14 +692,14 @@ fn render_source_show_output(
     {
         lines.push(format!(
             "Query command: onequery query exec --source {} --sql \"select 1\"",
-            &source.source_key
+            source.reference()
         ));
     }
 
     if source.interfaces.iter().any(|interface| interface == "api") {
         lines.push(format!(
             "API command: onequery api --source {}",
-            &source.source_key
+            source.reference()
         ));
     }
 
@@ -718,7 +718,7 @@ fn format_source_interfaces(interfaces: &[String]) -> String {
 
 fn render_source_test_output(payload: SourceTestPayload) -> Result<CommandOutput, CliError> {
     let mut lines = vec![
-        format!("Source: {}", &payload.source.source_key),
+        format!("Source: {}", payload.source.reference()),
         format!("Provider: {}", &payload.source.provider),
         format!("Status: {}", &payload.source.status),
     ];
@@ -893,11 +893,11 @@ mod tests {
         assert_eq!(
             output.lines,
             vec![
-                "Source: github_main".to_owned(),
+                "Source: github://github_main".to_owned(),
                 "Provider: github".to_owned(),
                 "Status: active".to_owned(),
                 "Interfaces: api".to_owned(),
-                "API command: onequery api --source github_main".to_owned(),
+                "API command: onequery api --source github://github_main".to_owned(),
             ]
         );
     }
@@ -947,7 +947,7 @@ mod tests {
         assert_eq!(
             output.lines,
             vec![
-                "Source: github_prod".to_owned(),
+                "Source: github://github_prod".to_owned(),
                 "Provider: github".to_owned(),
                 "Status: active".to_owned(),
                 "Test: unsupported".to_owned(),

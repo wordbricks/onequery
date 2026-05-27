@@ -47,10 +47,10 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
       requestId: resolved.requestId,
       resourceCache: createQueryWorkflowResourceCache({
         organizationId: resolved.authorizedOrg.org.id,
-        sourceKey: request.sourceKey,
+        sourceKey: resolved.sourceKey,
         sourceLookup: resolved.sourceLookup,
       }),
-      sourceName: request.sourceKey,
+      sourceName: resolved.sourceKey,
       sql: resolved.query.sql,
       timeoutMs: resolved.resultWindow.timeoutMs,
     });
@@ -71,7 +71,7 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
         c: resolved.c,
         durationMs,
         result,
-        sourceKey: request.sourceKey,
+        sourceKey: resolved.sourceKey,
       });
 
       return Result.err(createCliFailureForQueryWorkflowResult(result));
@@ -93,7 +93,7 @@ const handleExecuteQueryImpl: CliResultServiceMethod<"executeQuery"> = async (
       c: resolved.c,
       durationMs,
       response: windowedResponse,
-      sourceKey: request.sourceKey,
+      sourceKey: resolved.sourceKey,
     });
 
     const page = selectQueryResponseRows({

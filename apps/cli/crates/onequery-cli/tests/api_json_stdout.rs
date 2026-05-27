@@ -47,7 +47,7 @@ fn run_api_json_with_startup_refresh_failure(extra_args: &[&str]) -> Output {
         "acme",
         "api",
         "--source",
-        "github",
+        "github://github",
     ]);
     command
         .env("ONEQUERY_ACCESS_TOKEN", TEST_ACCESS_TOKEN)

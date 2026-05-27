@@ -34,10 +34,10 @@ const handleValidateQueryImpl: CliResultServiceMethod<"validateQuery"> = async (
       requestId: resolved.requestId,
       resourceCache: createQueryWorkflowResourceCache({
         organizationId: resolved.authorizedOrg.org.id,
-        sourceKey: request.sourceKey,
+        sourceKey: resolved.sourceKey,
         sourceLookup: resolved.sourceLookup,
       }),
-      sourceName: request.sourceKey,
+      sourceName: resolved.sourceKey,
       sql: resolved.query.sql,
       timeoutMs: resolved.resultWindow.timeoutMs,
     });
@@ -45,14 +45,14 @@ const handleValidateQueryImpl: CliResultServiceMethod<"validateQuery"> = async (
     const result = yield* workflowResult;
 
     if (result.kind !== "ready") {
-      logCliQueryValidationFailure(resolved.c, request.sourceKey, result);
+      logCliQueryValidationFailure(resolved.c, resolved.sourceKey, result);
       return Result.err(createCliFailureForQueryPlanResult(result));
     }
 
     logCliQueryValidationAccepted({
       c: resolved.c,
       provider: result.source.provider,
-      sourceKey: request.sourceKey,
+      sourceKey: resolved.sourceKey,
       truncated: result.truncated,
     });
 

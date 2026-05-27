@@ -28,6 +28,7 @@ import type {
 import { canonicalizeSourceApiHeaderNames } from "@onequery/server/source-api/header-policy";
 import { Result } from "better-result";
 
+import { formatCliSourceReference } from "../../../source/reference";
 import { cliServiceErr } from "../result";
 import type { CliServiceResult } from "../result";
 import type {
@@ -117,9 +118,19 @@ export function buildSourceApiDraft(
 export function buildCliDescribeSourceApiResponse(
   value: SourceApiDescriptor
 ): DescribeSourceApiResponseInit {
+  const sourceReference = formatCliSourceReference(
+    value.source.provider,
+    value.source.sourceKey
+  );
   return {
     descriptorVersion: value.descriptorVersion,
-    examples: value.examples.map(buildCliSourceApiExample),
+    examples: value.examples.map((example) =>
+      buildCliSourceApiExampleWithSourceReference({
+        example,
+        sourceKey: value.source.sourceKey,
+        sourceReference,
+      })
+    ),
     notes: [...value.notes],
     operations: value.operations.map(buildCliSourceApiOperation),
     source: buildCliSourceApiSource(value.source),
@@ -356,6 +367,20 @@ function buildCliSourceApiExample(
   };
 }
 
+function buildCliSourceApiExampleWithSourceReference(input: {
+  example: SourceApiOperation["examples"][number];
+  sourceKey: string;
+  sourceReference: string;
+}) {
+  return buildCliSourceApiExample({
+    ...input.example,
+    command: input.example.command.replace(
+      `--source ${input.sourceKey}`,
+      `--source ${input.sourceReference}`
+    ),
+  });
+}
+
 function buildCliSourceApiResponseBody(
   value: SourceApiResponseBody
 ): CliSourceApiExecutionResultInit["body"] {
@@ -388,7 +413,7 @@ function buildCliSourceApiResponseBody(
 function buildCliSourceApiSource(value: SourceApiSource) {
   return {
     displayName: value.displayName ?? undefined,
-    sourceKey: value.sourceKey,
+    sourceKey: formatCliSourceReference(value.provider, value.sourceKey),
     provider: value.provider,
   };
 }

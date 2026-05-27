@@ -32,7 +32,7 @@ export function createHandleDescribeSourceApi(
         runDescribeSourceApiWorkflowResult({
           ...workflowContext,
           dependencies: resolvedDependencies,
-          sourceKey: request.sourceKey,
+          sourceKey: workflowContext.sourceKey,
         })
       );
 

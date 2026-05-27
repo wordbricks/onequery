@@ -12,7 +12,7 @@ use toml::Value as TomlValue;
 use crate::explain::ExplainCode;
 use crate::identifiers::test_org_slug;
 use crate::identifiers::test_request_id;
-use crate::identifiers::test_source_key;
+use crate::identifiers::test_source_reference;
 use crate::output::EffectiveOutputMode;
 use crate::transport::source_connect_provider::SourceConnectProvider;
 
@@ -712,7 +712,7 @@ fn normalize_command_line_redacts_raw_config_override_values() {
 
 #[test]
 fn parse_invocation_accepts_api_describe_surface() {
-    let invocation = parse_invocation(&["onequery", "api", "--source", "sentry-prod"]);
+    let invocation = parse_invocation(&["onequery", "api", "--source", "sentry://sentry-prod"]);
 
     assert_eq!(
         match invocation.command {
@@ -720,7 +720,7 @@ fn parse_invocation_accepts_api_describe_surface() {
             other => panic!("expected api command, got {other:?}"),
         },
         ApiArgs {
-            source: test_source_key("sentry-prod"),
+            source: test_source_reference("sentry://sentry-prod"),
             op: None,
             target: None,
             method: None,
@@ -745,7 +745,7 @@ fn parse_invocation_accepts_api_execute_flags() {
         "onequery",
         "api",
         "--source",
-        "github-prod",
+        "github://github-prod",
         "--op",
         "fetch-api",
         "-X",
@@ -778,7 +778,7 @@ fn parse_invocation_accepts_api_execute_flags() {
             other => panic!("expected api command, got {other:?}"),
         },
         ApiArgs {
-            source: test_source_key("github-prod"),
+            source: test_source_reference("github://github-prod"),
             op: Some("fetch-api".to_owned()),
             target: Some("/repos/acme/widgets/pulls/1".to_owned()),
             method: Some("patch".to_owned()),
@@ -955,13 +955,13 @@ fn parse_invocation_accepts_source_connect_input() {
 }
 
 #[test]
-fn parse_invocation_accepts_source_test_key() {
-    let invocation = parse_invocation(&["onequery", "source", "test", "warehouse"]);
+fn parse_invocation_accepts_source_test_reference() {
+    let invocation = parse_invocation(&["onequery", "source", "test", "postgres://warehouse"]);
 
     assert!(matches!(
         invocation.command,
         Command::Source(super::SourceSubcommand::Test { source_key })
-            if source_key == test_source_key("warehouse")
+            if source_key == test_source_reference("postgres://warehouse")
     ));
 }
 
@@ -972,7 +972,7 @@ fn parse_invocation_accepts_query_result_window_args() {
         "query",
         "exec",
         "--source",
-        "warehouse",
+        "postgres://warehouse",
         "--sql",
         "select 1",
         "--fields",
@@ -992,7 +992,7 @@ fn parse_invocation_accepts_query_result_window_args() {
             assert_eq!(
                 args,
                 super::QueryExecuteArgs {
-                    source: test_source_key("warehouse"),
+                    source: test_source_reference("postgres://warehouse"),
                     read: ListReadArgs {
                         read: ReadArgs {
                             fields: Some("rows".to_owned()),
@@ -1039,7 +1039,7 @@ fn parse_invocation_rejects_zero_numeric_flags_at_parse_boundary() {
                 "query",
                 "exec",
                 "--source",
-                "warehouse",
+                "postgres://warehouse",
                 "--sql",
                 "select 1",
                 "--max-rows",
@@ -1052,7 +1052,7 @@ fn parse_invocation_rejects_zero_numeric_flags_at_parse_boundary() {
                 "onequery",
                 "api",
                 "--source",
-                "github-prod",
+                "github://github-prod",
                 "--paginate",
                 "--max-pages",
                 "0",
@@ -1075,7 +1075,7 @@ fn parse_invocation_accepts_explicit_query_validate_subcommand() {
         "query",
         "validate",
         "--source",
-        "warehouse",
+        "postgres://warehouse",
         "--input",
         "query.json",
         "--fields",
@@ -1101,7 +1101,7 @@ fn parse_invocation_accepts_explicit_query_validate_subcommand() {
                     timeout_ms: None,
                 },
             },
-        })) if source == test_source_key("warehouse")
+        })) if source == test_source_reference("postgres://warehouse")
             && fields == "request,source"
             && input == &PathBuf::from("query.json")
     ));
@@ -1146,7 +1146,13 @@ fn parse_invocation_preserves_query_disambiguation_cases() {
         ),
         (
             &[
-                "onequery", "query", "exec", "--source", "query", "--sql", "select 1",
+                "onequery",
+                "query",
+                "exec",
+                "--source",
+                "postgres://query",
+                "--sql",
+                "select 1",
             ][..],
             Case::SourceFlagValue,
         ),
@@ -1164,7 +1170,7 @@ fn parse_invocation_preserves_query_disambiguation_cases() {
                 Command::Query(QuerySubcommand::Execute(super::QueryExecuteArgs {
                     source,
                     ..
-                })) if source == test_source_key("query")
+                })) if source == test_source_reference("postgres://query")
             )),
         }
     }
@@ -1177,7 +1183,7 @@ fn parse_invocation_rejects_raw_query_input_with_result_window_controls() {
         "query",
         "exec",
         "--source",
-        "warehouse",
+        "postgres://warehouse",
         "--input",
         "query.json",
         "--max-rows",

@@ -7,6 +7,7 @@ import {
 } from "@onequery/proto-cli/cli/v1/source_pb";
 
 import { getCliSourceInterfaceTypes } from "../../../source/model";
+import { formatCliSourceReference } from "../../../source/reference";
 import { toCliSourceProvider } from "../source-provider";
 import type {
   BuildCliSourceInput,
@@ -38,7 +39,7 @@ export function buildCliSource(source: BuildCliSourceInput): CliSourceInit {
     interfaces: getCliSourceInterfaceTypes(source.provider, source.status).map(
       toCliSourceInterface
     ),
-    sourceKey: source.sourceKey,
+    sourceKey: formatCliSourceReference(source.provider, source.sourceKey),
     provider: toCliSourceProvider(source.provider),
     status: toCliSourceStatus(source.status),
   };
