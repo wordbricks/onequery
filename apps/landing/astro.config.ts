@@ -65,6 +65,8 @@ function createBundleReportPlugin() {
 export default defineConfig({
   adapter: cloudflare({
     imageService: { build: "compile", runtime: "cloudflare-binding" },
+    // Keep Shiki-backed Astro code rendering out of workerd's prerender path.
+    prerenderEnvironment: "node",
   }),
   build: {
     // Keep page CSS out of a separate render-blocking request for first-load LCP.

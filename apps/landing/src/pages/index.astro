@@ -226,18 +226,21 @@ const finalCtaActions: ReadonlyArray<LandingCtaAction> = [
         id={SECTION_IDS.workflow}
       >
         <article class="utility-panel utility-panel-code workflow-panel-example">
-          <p class="eyebrow">Incident loop</p>
+          <p class="eyebrow">Agent access</p>
           <TerminalSurface
-            title="Agent run"
+            title="Agent terminal"
             lines={QUERY_TERMINAL_LINES}
-            footer="inspect evidence, open PRs and issues, audit everything"
+            footer="GitHub, Sentry, and Slack through one audited access path"
           />
         </article>
 
         <article class="utility-panel workflow-panel-details">
-          <p class="eyebrow">Query details</p>
-          <h2>Review the result and guardrails together.</h2>
-          <p>Source, policy, row count, latency, and budget stay visible.</p>
+          <p class="eyebrow">Access record</p>
+          <h2>Real APIs, no exposed tokens.</h2>
+          <p>
+            Each call names an approved source and endpoint. OneQuery sends the
+            request with server-side credentials and records what happened.
+          </p>
           <pre class="workflow-block">{QUERY_DETAILS_SNIPPET}</pre>
         </article>
       </section>

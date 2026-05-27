@@ -1,10 +1,12 @@
 import { INSTALL_COMMANDS } from "../landing/config/landing-config";
 import type { TerminalLine } from "../landing/terminal/terminal-types";
 
-const querySnippet = `onequery agent debug \\
-  --grant prod-debug-readonly \\
-  --sentry ISSUE-7421 \\
-  --sources sentry://prod-errors,postgres://orders-db,github://app-repo,linear://eng`;
+const agentToolCommands = [
+  "onequery api --source github://demo-prod acme/web/pulls --paginate --max-pages 2 --jq '.[] | {number,title,user,head,base}' --json",
+  "onequery api --source github://demo-prod /repos/acme/web/commits?sha=main --json",
+  "onequery api --source sentry://demo-org /api/0/projects/acme/web/issues/?query=is:unresolved --json",
+  "onequery api --source slack://demo-org /api/conversations.history -F channel=C123 -F limit=20 --json",
+] as const;
 
 export const HERO_SIGNALS = [
   "No prod keys",
@@ -18,12 +20,12 @@ export const INSTALL_STEPS = [
   "Connect sources.",
 ] as const;
 
-export const QUERY_DETAILS_SNIPPET = `source     postgres://orders-postgres-db
-policy     writes blocked
-statement  single statement
-duration   82 ms
-rows       31 returned
-budget     $59.20 remaining`;
+export const QUERY_DETAILS_SNIPPET = `source      github://demo-prod
+endpoint    acme/web/pulls
+actor       agent session
+token       never exposed
+policy      read-only
+audit       source, endpoint, caller, time`;
 
 export const QUICKSTART_TERMINAL_LINES = [
   { kind: "prompt", text: INSTALL_COMMANDS[0].command },
@@ -35,13 +37,12 @@ export const QUICKSTART_TERMINAL_LINES = [
 ] satisfies ReadonlyArray<TerminalLine>;
 
 export const QUERY_TERMINAL_LINES = [
-  ...querySnippet.split("\n").map(
-    (line, index): TerminalLine => ({
-      kind: index === 0 ? "prompt" : "continuation",
-      text: line,
-    })
-  ),
-  { kind: "output", text: "grant loaded | credentials hidden" },
-  { kind: "output", text: "read sentry + postgres limit 100" },
-  { kind: "output", text: "opened PR + Linear issue | audited" },
+  { kind: "prompt", text: agentToolCommands[0] },
+  { kind: "output", text: "200 OK | 2 pages | credentials hidden" },
+  { kind: "prompt", text: agentToolCommands[1] },
+  { kind: "output", text: "200 OK | commits returned | audited" },
+  { kind: "prompt", text: agentToolCommands[2] },
+  { kind: "output", text: "200 OK | unresolved issues | read-only" },
+  { kind: "prompt", text: agentToolCommands[3] },
+  { kind: "output", text: "200 OK | 20 messages | audited" },
 ] satisfies ReadonlyArray<TerminalLine>;
