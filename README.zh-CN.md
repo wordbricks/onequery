@@ -36,15 +36,15 @@
 ## 快速安装
 
 ```bash
-curl -fsSL https://onequery.dev/install.sh | sh
+npm install -g @onequery/cli
 ```
 
-也可以用包管理器装：
+其他安装方式：
 
 ```bash
 brew install wordbricks/tap/onequery    # Homebrew
-npm install -g @onequery/cli            # npm
 bun add -g @onequery/cli                # Bun
+curl -fsSL https://onequery.dev/install.sh | sh    # 安装脚本
 ```
 
 不想全局安装也可以直接跑：`npx @onequery/cli --help` 或 `bunx @onequery/cli --help`。

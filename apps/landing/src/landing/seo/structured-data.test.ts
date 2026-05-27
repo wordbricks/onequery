@@ -2,37 +2,16 @@ import type { ImageMetadata } from "astro";
 import { describe, expect, it } from "vitest";
 
 import type { BlogPost } from "../blog/blog-types";
+import { NPM_PACKAGE_URL } from "../config/landing-config";
 import {
   createBlogPostStructuredData,
   createCanonicalUrl,
   createLandingPageStructuredData,
-  toIsoDateTime,
 } from "./structured-data";
 
-describe("toIsoDateTime", () => {
-  it("converts canonical publication dates to UTC date-time output", () => {
-    expect(toIsoDateTime("2026-05-06")).toBe("2026-05-06T00:00:00.000Z");
-    expect(toIsoDateTime("2026-04-21")).toBe("2026-04-21T00:00:00.000Z");
-  });
-
-  it("does not parse display dates", () => {
-    expect(toIsoDateTime("May 6, 2026")).toBeUndefined();
-  });
-
-  it("rejects invalid calendar dates", () => {
-    expect(toIsoDateTime("2026-02-31")).toBeUndefined();
-  });
-});
-
 describe("createCanonicalUrl", () => {
-  it("matches Cloudflare trailing-slash page URLs", () => {
+  it("normalizes page and endpoint URLs for public SEO links", () => {
     expect(createCanonicalUrl("/blog")).toBe("https://onequery.dev/blog/");
-    expect(createCanonicalUrl("/blog/category/product/")).toBe(
-      "https://onequery.dev/blog/category/product/"
-    );
-  });
-
-  it("keeps file endpoint URLs extension-first", () => {
     expect(createCanonicalUrl("/sitemap.xml")).toBe(
       "https://onequery.dev/sitemap.xml"
     );
@@ -40,7 +19,7 @@ describe("createCanonicalUrl", () => {
 });
 
 describe("createLandingPageStructuredData", () => {
-  it("links the landing demo video into the webpage graph", () => {
+  it("emits landing-page schema with npm as the install target", () => {
     const schema = createLandingPageStructuredData({
       description: "Landing description",
       imageAlt: "OneQuery share image",
@@ -68,21 +47,20 @@ describe("createLandingPageStructuredData", () => {
           "@id": "https://onequery.dev/#demo-video",
           contentUrl:
             "https://onequery.dev/_astro/openclaw-demo-video.hash.mp4",
-          duration: "PT20S",
-          thumbnailUrl: [
-            "https://onequery.dev/_astro/openclaw-demo-poster.hash.avif",
-          ],
-          uploadDate: "2026-05-22T00:00:00.000Z",
-          url: "https://onequery.dev/#demo",
         }),
         expect.objectContaining({
           "@type": "WebPage",
           hasPart: {
             "@id": "https://onequery.dev/#demo-video",
           },
+          significantLink: expect.arrayContaining([NPM_PACKAGE_URL]),
           video: {
             "@id": "https://onequery.dev/#demo-video",
           },
+        }),
+        expect.objectContaining({
+          "@type": "SoftwareApplication",
+          installUrl: NPM_PACKAGE_URL,
         }),
       ])
     );

@@ -36,15 +36,15 @@ One interface for your whole data stack, with built-in safeguards and a simpler 
 ## Quick Install
 
 ```bash
-curl -fsSL https://onequery.dev/install.sh | sh
+npm install -g @onequery/cli
 ```
 
-Or use a package manager:
+Other install options:
 
 ```bash
 brew install wordbricks/tap/onequery    # Homebrew
-npm install -g @onequery/cli            # npm
 bun add -g @onequery/cli                # Bun
+curl -fsSL https://onequery.dev/install.sh | sh    # install script
 ```
 
 Without a global install: `npx @onequery/cli --help` or `bunx @onequery/cli --help`.

@@ -11,10 +11,9 @@ export const REPOSITORY_URL = "https://github.com/wordbricks/onequery" as const;
 export const CLI_SOURCE_URL = `${REPOSITORY_URL}/tree/main/apps/cli` as const;
 export const SELF_HOST_DOCS_URL =
   `${REPOSITORY_URL}/blob/main/docs/self-host.md` as const;
+export const NPM_PACKAGE_URL =
+  "https://www.npmjs.com/package/@onequery/cli" as const;
 export const INSTALL_SCRIPT_URL = "https://onequery.dev/install.sh" as const;
-
-export const DOWNLOAD_COMMAND =
-  `curl -fsSL ${INSTALL_SCRIPT_URL} | sh` as const;
 
 type InstallCommand = {
   command: string;
@@ -42,7 +41,7 @@ export const INSTALL_COMMANDS = [
     label: "Bun",
   },
   {
-    command: DOWNLOAD_COMMAND,
+    command: `curl -fsSL ${INSTALL_SCRIPT_URL} | sh`,
     iconName: "curl",
     label: "Install script",
   },

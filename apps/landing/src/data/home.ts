@@ -1,4 +1,4 @@
-import { DOWNLOAD_COMMAND } from "../landing/config/landing-config";
+import { INSTALL_COMMANDS } from "../landing/config/landing-config";
 import type { TerminalLine } from "../landing/terminal/terminal-types";
 
 const querySnippet = `onequery agent debug \\
@@ -26,7 +26,7 @@ rows       31 returned
 budget     $59.20 remaining`;
 
 export const QUICKSTART_TERMINAL_LINES = [
-  { kind: "prompt", text: DOWNLOAD_COMMAND },
+  { kind: "prompt", text: INSTALL_COMMANDS[0].command },
   { kind: "output", text: "installed onequery under ~/.onequery" },
   { kind: "prompt", text: "onequery gateway start" },
   { kind: "output", text: "gateway listening on http://localhost:5656" },
