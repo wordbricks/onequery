@@ -10,7 +10,7 @@ export type CliSourceReference = {
 
 export type CliSourceSelector = {
   sourceKey: string;
-  sourceProvider?: ProviderType;
+  sourceProvider: ProviderType;
 };
 
 export function formatCliSourceReference(
@@ -49,13 +49,12 @@ export function parseCliSourceSelector(
   value: string
 ): CliSourceSelector | null {
   const reference = parseCliSourceReference(value);
-  if (reference) {
-    return {
-      sourceKey: reference.sourceKey,
-      sourceProvider: reference.provider,
-    };
+  if (!reference) {
+    return null;
   }
 
-  const sourceKey = value.trim();
-  return isCliSourceKey(sourceKey) ? { sourceKey } : null;
+  return {
+    sourceKey: reference.sourceKey,
+    sourceProvider: reference.provider,
+  };
 }

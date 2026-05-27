@@ -20,9 +20,11 @@ describe("source references", () => {
     });
   });
 
-  it("treats bare keys as legacy selectors", () => {
-    expect(parseCliSourceSelector("github-prod")).toEqual({
+  it("requires selectors to include provider schemes", () => {
+    expect(parseCliSourceSelector("github-prod")).toBeNull();
+    expect(parseCliSourceSelector("github://github-prod")).toEqual({
       sourceKey: "github-prod",
+      sourceProvider: "github",
     });
   });
 

@@ -52,6 +52,7 @@ function summarizeLoadOrgSourceAccessCall(
     | {
         orgSlug: string;
         sourceKey: string;
+        sourceProvider: string;
         userId: string;
       }
     | undefined
@@ -60,6 +61,7 @@ function summarizeLoadOrgSourceAccessCall(
     ? {
         orgSlug: call.orgSlug,
         sourceKey: call.sourceKey,
+        sourceProvider: call.sourceProvider,
         userId: call.userId,
       }
     : null;
@@ -104,6 +106,8 @@ const loadedSource = {
     status: "active",
   },
 } as const;
+
+const loadedSourceReference = "github://github-prod";
 
 const preparedSource = {
   credentials: {
@@ -576,7 +580,7 @@ function createResumeExecuteSourceApiRequest(
     continuationToken: input.continuationToken ?? "continuation_1",
     target: {
       orgSlug: input.orgSlug ?? "acme",
-      sourceKey: input.sourceKey ?? "github-prod",
+      sourceKey: input.sourceKey ?? loadedSourceReference,
     },
   });
 }
@@ -731,7 +735,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     const harness = await createTrackedHarness(db);
     const request = create(DescribeSourceApiRequestSchema, {
       orgSlug: "acme",
-      sourceKey: "github-prod",
+      sourceKey: loadedSourceReference,
     });
 
     const response = create(
@@ -762,7 +766,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     );
     const request = create(DescribeSourceApiRequestSchema, {
       orgSlug: "acme",
-      sourceKey: "github-prod",
+      sourceKey: loadedSourceReference,
     });
 
     const error = await expectConnectError(
@@ -786,6 +790,29 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     });
   });
 
+  it("rejects bare source API source selectors", async ({ db }) => {
+    const harness = await createTrackedHarness(db);
+    const request = create(DescribeSourceApiRequestSchema, {
+      orgSlug: "acme",
+      sourceKey: "github-prod",
+    });
+
+    await expectConnectError(
+      harness.handleDescribeSourceApi(
+        request,
+        createHandlerContext(harness.requestContext)
+      ),
+      {
+        code: Code.InvalidArgument,
+        message: "source must look like provider://source-key",
+      }
+    );
+
+    expect(
+      harness.dependencies.runCliLoadOrgAccessWithSource
+    ).not.toHaveBeenCalled();
+  });
+
   it("previews source API execution through the Connect handler", async ({
     db,
   }) => {
@@ -793,7 +820,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     const request = create(PreviewSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
-        sourceKey: "github-prod",
+        sourceKey: loadedSourceReference,
       },
       draft: {
         body: {
@@ -849,7 +876,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     const request = create(PreviewSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
-        sourceKey: "github-prod",
+        sourceKey: loadedSourceReference,
       },
       draft: {
         descriptorVersion: "github-v1",
@@ -887,7 +914,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     const request = create(PreviewSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
-        sourceKey: "github-prod",
+        sourceKey: loadedSourceReference,
       },
       draft: {
         body: {
@@ -921,7 +948,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     const request = create(ExecuteSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
-        sourceKey: "github-prod",
+        sourceKey: loadedSourceReference,
       },
       draft: {
         descriptorVersion: "github-v1",
@@ -971,7 +998,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     const request = create(ExecuteSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
-        sourceKey: "github-prod",
+        sourceKey: loadedSourceReference,
       },
       draft: {
         descriptorVersion: "github-v1",
@@ -1173,7 +1200,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     const request = create(ExecuteSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
-        sourceKey: "github-prod",
+        sourceKey: loadedSourceReference,
       },
       draft: {
         descriptorVersion: "github-v1",
@@ -1205,7 +1232,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     const request = create(ExecuteSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
-        sourceKey: "github-prod",
+        sourceKey: loadedSourceReference,
       },
       draft: {
         descriptorVersion: "github-v1",
@@ -1238,7 +1265,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
     const request = create(ExecuteSourceApiRequestSchema, {
       target: {
         orgSlug: "acme",
-        sourceKey: "github-prod",
+        sourceKey: loadedSourceReference,
       },
       draft: {
         descriptorVersion: "github-v1",
@@ -1368,7 +1395,7 @@ describe("source api connect service", { timeout: 60_000 }, () => {
       }
     );
     const request = createResumeExecuteSourceApiRequest({
-      sourceKey: "missing-source",
+      sourceKey: "github://missing-source",
     });
 
     await expectConnectError(
