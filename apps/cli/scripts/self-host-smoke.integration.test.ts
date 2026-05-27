@@ -1184,7 +1184,10 @@ describe("CLI self-host smoke", () => {
           cliConnectClient.source.getSource(
             {
               orgSlug: "owner-org",
-              sourceKey: "Warehouse",
+              source: {
+                provider: "postgres",
+                sourceKey: "Warehouse",
+              },
             },
             options
           ),
@@ -1210,7 +1213,10 @@ describe("CLI self-host smoke", () => {
                 sql: "select 1",
                 timeout: durationFromMs(1000),
               },
-              sourceKey: "Warehouse",
+              source: {
+                provider: "postgres",
+                sourceKey: "Warehouse",
+              },
             },
             options
           ),

@@ -1191,13 +1191,12 @@ pub struct DescribeSourceApiRequest {
         skip_serializing_if = "Option::is_none"
     )]
     pub org_slug: Option<::buffa::alloc::string::String>,
-    /// Field 2: `source_key`
+    /// Field 2: `source`
     #[serde(
-        rename = "sourceKey",
-        alias = "source_key",
-        skip_serializing_if = "Option::is_none"
+        rename = "source",
+        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
     )]
-    pub source_key: Option<::buffa::alloc::string::String>,
+    pub source: ::buffa::MessageField<CliSourceSelector>,
     #[serde(skip)]
     #[doc(hidden)]
     pub __buffa_unknown_fields: ::buffa::UnknownFields,
@@ -1209,7 +1208,7 @@ impl ::core::fmt::Debug for DescribeSourceApiRequest {
     fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
         f.debug_struct("DescribeSourceApiRequest")
             .field("org_slug", &self.org_slug)
-            .field("source_key", &self.source_key)
+            .field("source", &self.source)
             .finish()
     }
 }
@@ -1239,8 +1238,11 @@ impl ::buffa::Message for DescribeSourceApiRequest {
         if let Some(ref v) = self.org_slug {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
-        if let Some(ref v) = self.source_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        if self.source.is_set() {
+            let inner_size = self.source.compute_size();
+            size
+                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
+                    + inner_size;
         }
         size += self.__buffa_unknown_fields.encoded_len() as u32;
         self.__buffa_cached_size.set(size);
@@ -1257,13 +1259,14 @@ impl ::buffa::Message for DescribeSourceApiRequest {
                 .encode(buf);
             ::buffa::types::encode_string(v, buf);
         }
-        if let Some(ref v) = self.source_key {
+        if self.source.is_set() {
             ::buffa::encoding::Tag::new(
                     2u32,
                     ::buffa::encoding::WireType::LengthDelimited,
                 )
                 .encode(buf);
-            ::buffa::types::encode_string(v, buf);
+            ::buffa::encoding::encode_varint(self.source.cached_size() as u64, buf);
+            self.source.write_to(buf);
         }
         self.__buffa_unknown_fields.write_to(buf);
     }
@@ -1301,11 +1304,10 @@ impl ::buffa::Message for DescribeSourceApiRequest {
                         actual: tag.wire_type() as u8,
                     });
                 }
-                ::buffa::types::merge_string(
-                    self
-                        .source_key
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                ::buffa::Message::merge_length_delimited(
+                    self.source.get_or_insert_default(),
                     buf,
+                    depth,
                 )?;
             }
             _ => {
@@ -1320,7 +1322,7 @@ impl ::buffa::Message for DescribeSourceApiRequest {
     }
     fn clear(&mut self) {
         self.org_slug = ::core::option::Option::None;
-        self.source_key = ::core::option::Option::None;
+        self.source = ::buffa::MessageField::none();
         self.__buffa_unknown_fields.clear();
         self.__buffa_cached_size.set(0);
     }
@@ -1358,8 +1360,8 @@ pub const __DESCRIBE_SOURCE_API_REQUEST_JSON_ANY: ::buffa::type_registry::JsonAn
 pub struct DescribeSourceApiRequestView<'a> {
     /// Field 1: `org_slug`
     pub org_slug: ::core::option::Option<&'a str>,
-    /// Field 2: `source_key`
-    pub source_key: ::core::option::Option<&'a str>,
+    /// Field 2: `source`
+    pub source: ::buffa::MessageFieldView<CliSourceSelectorView<'a>>,
     pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
 }
 impl<'a> DescribeSourceApiRequestView<'a> {
@@ -1418,7 +1420,18 @@ impl<'a> DescribeSourceApiRequestView<'a> {
                             actual: tag.wire_type() as u8,
                         });
                     }
-                    view.source_key = Some(::buffa::types::borrow_str(&mut cur)?);
+                    if depth == 0 {
+                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
+                    }
+                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
+                    match view.source.as_mut() {
+                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
+                        None => {
+                            view.source = ::buffa::MessageFieldView::set(
+                                CliSourceSelectorView::_decode_depth(sub, depth - 1)?,
+                            );
+                        }
+                    }
                 }
                 _ => {
                     ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
@@ -1448,7 +1461,14 @@ impl<'a> ::buffa::MessageView<'a> for DescribeSourceApiRequestView<'a> {
         use ::buffa::alloc::string::ToString as _;
         DescribeSourceApiRequest {
             org_slug: self.org_slug.map(|s| s.to_string()),
-            source_key: self.source_key.map(|s| s.to_string()),
+            source: match self.source.as_option() {
+                Some(v) => {
+                    ::buffa::MessageField::<
+                        CliSourceSelector,
+                    >::some(v.to_owned_message())
+                }
+                None => ::buffa::MessageField::none(),
+            },
             __buffa_unknown_fields: self
                 .__buffa_unknown_fields
                 .to_owned()
@@ -1994,13 +2014,12 @@ pub struct SourceApiTarget {
         skip_serializing_if = "Option::is_none"
     )]
     pub org_slug: Option<::buffa::alloc::string::String>,
-    /// Field 2: `source_key`
+    /// Field 2: `source`
     #[serde(
-        rename = "sourceKey",
-        alias = "source_key",
-        skip_serializing_if = "Option::is_none"
+        rename = "source",
+        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
     )]
-    pub source_key: Option<::buffa::alloc::string::String>,
+    pub source: ::buffa::MessageField<CliSourceSelector>,
     #[serde(skip)]
     #[doc(hidden)]
     pub __buffa_unknown_fields: ::buffa::UnknownFields,
@@ -2012,7 +2031,7 @@ impl ::core::fmt::Debug for SourceApiTarget {
     fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
         f.debug_struct("SourceApiTarget")
             .field("org_slug", &self.org_slug)
-            .field("source_key", &self.source_key)
+            .field("source", &self.source)
             .finish()
     }
 }
@@ -2042,8 +2061,11 @@ impl ::buffa::Message for SourceApiTarget {
         if let Some(ref v) = self.org_slug {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
-        if let Some(ref v) = self.source_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        if self.source.is_set() {
+            let inner_size = self.source.compute_size();
+            size
+                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
+                    + inner_size;
         }
         size += self.__buffa_unknown_fields.encoded_len() as u32;
         self.__buffa_cached_size.set(size);
@@ -2060,13 +2082,14 @@ impl ::buffa::Message for SourceApiTarget {
                 .encode(buf);
             ::buffa::types::encode_string(v, buf);
         }
-        if let Some(ref v) = self.source_key {
+        if self.source.is_set() {
             ::buffa::encoding::Tag::new(
                     2u32,
                     ::buffa::encoding::WireType::LengthDelimited,
                 )
                 .encode(buf);
-            ::buffa::types::encode_string(v, buf);
+            ::buffa::encoding::encode_varint(self.source.cached_size() as u64, buf);
+            self.source.write_to(buf);
         }
         self.__buffa_unknown_fields.write_to(buf);
     }
@@ -2104,11 +2127,10 @@ impl ::buffa::Message for SourceApiTarget {
                         actual: tag.wire_type() as u8,
                     });
                 }
-                ::buffa::types::merge_string(
-                    self
-                        .source_key
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                ::buffa::Message::merge_length_delimited(
+                    self.source.get_or_insert_default(),
                     buf,
+                    depth,
                 )?;
             }
             _ => {
@@ -2123,7 +2145,7 @@ impl ::buffa::Message for SourceApiTarget {
     }
     fn clear(&mut self) {
         self.org_slug = ::core::option::Option::None;
-        self.source_key = ::core::option::Option::None;
+        self.source = ::buffa::MessageField::none();
         self.__buffa_unknown_fields.clear();
         self.__buffa_cached_size.set(0);
     }
@@ -2161,8 +2183,8 @@ pub const __SOURCE_API_TARGET_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = :
 pub struct SourceApiTargetView<'a> {
     /// Field 1: `org_slug`
     pub org_slug: ::core::option::Option<&'a str>,
-    /// Field 2: `source_key`
-    pub source_key: ::core::option::Option<&'a str>,
+    /// Field 2: `source`
+    pub source: ::buffa::MessageFieldView<CliSourceSelectorView<'a>>,
     pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
 }
 impl<'a> SourceApiTargetView<'a> {
@@ -2221,7 +2243,18 @@ impl<'a> SourceApiTargetView<'a> {
                             actual: tag.wire_type() as u8,
                         });
                     }
-                    view.source_key = Some(::buffa::types::borrow_str(&mut cur)?);
+                    if depth == 0 {
+                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
+                    }
+                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
+                    match view.source.as_mut() {
+                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
+                        None => {
+                            view.source = ::buffa::MessageFieldView::set(
+                                CliSourceSelectorView::_decode_depth(sub, depth - 1)?,
+                            );
+                        }
+                    }
                 }
                 _ => {
                     ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
@@ -2251,7 +2284,14 @@ impl<'a> ::buffa::MessageView<'a> for SourceApiTargetView<'a> {
         use ::buffa::alloc::string::ToString as _;
         SourceApiTarget {
             org_slug: self.org_slug.map(|s| s.to_string()),
-            source_key: self.source_key.map(|s| s.to_string()),
+            source: match self.source.as_option() {
+                Some(v) => {
+                    ::buffa::MessageField::<
+                        CliSourceSelector,
+                    >::some(v.to_owned_message())
+                }
+                None => ::buffa::MessageField::none(),
+            },
             __buffa_unknown_fields: self
                 .__buffa_unknown_fields
                 .to_owned()

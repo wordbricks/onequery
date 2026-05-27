@@ -13,6 +13,14 @@ export type CliSourceSelector = {
   sourceProvider: ProviderType;
 };
 
+type CliSourceSelectorInput =
+  | {
+      provider?: string;
+      sourceKey?: string;
+    }
+  | null
+  | undefined;
+
 export function formatCliSourceReference(
   provider: ProviderType,
   sourceKey: string
@@ -46,15 +54,20 @@ export function parseCliSourceReference(
 }
 
 export function parseCliSourceSelector(
-  value: string
+  value: CliSourceSelectorInput
 ): CliSourceSelector | null {
-  const reference = parseCliSourceReference(value);
-  if (!reference) {
+  if (
+    !value ||
+    !value.provider ||
+    !value.sourceKey ||
+    !isSourceProviderId(value.provider) ||
+    !isCliSourceKey(value.sourceKey)
+  ) {
     return null;
   }
 
   return {
-    sourceKey: reference.sourceKey,
-    sourceProvider: reference.provider,
+    sourceKey: value.sourceKey,
+    sourceProvider: value.provider,
   };
 }

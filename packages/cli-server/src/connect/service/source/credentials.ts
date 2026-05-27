@@ -56,7 +56,7 @@ export function parseConnectSourceCredentials(
     });
   }
 
-  const credentialsForValidation =
+  const credentialsWithAuthDefaults =
     (definition.credentialType === "bigquery" ||
       definition.credentialType === "ga") &&
     "serviceAccount" in credentials &&
@@ -66,6 +66,15 @@ export function parseConnectSourceCredentials(
           authType: "service_account",
         }
       : credentials;
+  const credentialsForValidation =
+    provider === "supabase" &&
+    definition.credentialType === "postgres" &&
+    !("sslMode" in credentialsWithAuthDefaults)
+      ? {
+          ...credentialsWithAuthDefaults,
+          sslMode: "require",
+        }
+      : credentialsWithAuthDefaults;
 
   const parsed = definition.credentialSchema.safeParse({
     ...credentialsForValidation,

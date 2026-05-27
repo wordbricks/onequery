@@ -52,7 +52,10 @@ export type CliResumeSourceApiRequest = ResumeSourceApiRequest;
 
 export type SourceApiTarget = {
   orgSlug: string;
-  sourceKey: string;
+  source?: {
+    provider?: string;
+    sourceKey?: string;
+  };
 };
 
 export type SourceApiStartCommand = {

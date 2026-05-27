@@ -112,8 +112,7 @@ export async function runQueryValidatePreparationStep(input: {
       }
 
       const databaseType = getCliQueryDatabaseProviderType(
-        lookup.result.source.provider,
-        lookup.result.source.status
+        lookup.result.source.provider
       );
       if (!databaseType) {
         return {
@@ -258,8 +257,7 @@ export async function runQueryExecutePreparationStep(input: {
       }
 
       const databaseType = getCliQueryDatabaseProviderType(
-        lookup.result.source.provider,
-        lookup.result.source.status
+        lookup.result.source.provider
       );
       if (!databaseType) {
         return {
