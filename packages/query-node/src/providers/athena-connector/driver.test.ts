@@ -1,7 +1,10 @@
 import { Result } from "better-result";
 import { describe, expect, it, vi } from "vitest";
 
-import { createAthenaConnectorQueryExecutor } from "./driver";
+import {
+  createAthenaConnectorQueryExecutor,
+  createConnectorAthenaJobQueueAdapter,
+} from "./driver";
 import type { ConnectorAthenaJobQueue } from "./driver";
 
 const credentials = {
@@ -98,6 +101,54 @@ describe("Athena connector query driver", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toContain("timed out");
+    }
+  });
+
+  it("adapts broker queues to the driver queue port", async () => {
+    const brokerFailure = {
+      message: "Connector job job_1 timed out after 12000ms",
+      status: 504,
+    };
+    const queueJob = vi.fn(async () => Result.err(brokerFailure));
+    const queue = createConnectorAthenaJobQueueAdapter({
+      isTimedOut: (error) => error === brokerFailure,
+      queueJob,
+    });
+
+    const result = await queue({
+      context: {
+        db: { kind: "db" },
+        organizationId: "org_1",
+      },
+      connectorId: "connector_1",
+      database: "analytics",
+      maxRows: 500,
+      organizationId: "org_1",
+      sql: "SELECT 1",
+      timeoutMs: 10_000,
+      waitTimeoutMs: 12_000,
+      workgroup: "primary",
+    });
+
+    expect(queueJob).toHaveBeenCalledWith({
+      connectorId: "connector_1",
+      database: "analytics",
+      db: { kind: "db" },
+      maxRows: 500,
+      organizationId: "org_1",
+      sql: "SELECT 1",
+      timeoutMs: 10_000,
+      waitTimeoutMs: 12_000,
+      workgroup: "primary",
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toEqual({
+        cause: brokerFailure,
+        message: brokerFailure.message,
+        status: 504,
+        timedOut: true,
+      });
     }
   });
 });

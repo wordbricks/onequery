@@ -71,14 +71,13 @@ export function createQueryNodeRuntime<
   registry: ProviderRegistry<Credentials>;
 }): QueryNodeRuntime<Credentials>;
 export function createQueryNodeRuntime(
-  input:
+  input?:
     | {
         athenaConnector: AthenaConnectorQueryDriverDependencies;
       }
     | {
         registry: ProviderRegistry<DatabaseCredentials>;
       }
-    | undefined = undefined
 ):
   | QueryNodeRuntime<NodeBaseQueryCredentials>
   | QueryNodeRuntime<NodeQueryCredentials>
@@ -107,17 +106,3 @@ function createRuntime<Credentials extends DatabaseCredentials>(
     }),
   };
 }
-
-export * from "./athena-pricing";
-export * from "./postgres-transport";
-export * from "./providers/athena-connector/driver";
-export * from "./providers/motherduck/driver";
-export * from "./providers/motherduck/errors";
-export * from "./providers/mysql/driver";
-export * from "./providers/mysql/errors";
-export * from "./providers/postgres/driver";
-export * from "./providers/postgres/errors";
-export * from "./providers/snowflake/connection";
-export * from "./providers/snowflake/driver";
-export * from "./providers/snowflake/errors";
-export * from "./providers/snowflake/statement-machine";

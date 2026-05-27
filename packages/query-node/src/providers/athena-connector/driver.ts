@@ -87,6 +87,60 @@ export type AthenaConnectorQueryDriverDependencies = {
   queueJob: ConnectorAthenaJobQueue;
 };
 
+export type ConnectorAthenaJobBrokerFailure = {
+  message: string;
+  status: number;
+};
+
+export type ConnectorAthenaJobBrokerInput<Database = unknown> = Omit<
+  ConnectorAthenaJobQueueInput,
+  "context"
+> & {
+  db?: Database;
+};
+
+export type ConnectorAthenaJobBroker<
+  Database = unknown,
+  Failure extends ConnectorAthenaJobBrokerFailure =
+    ConnectorAthenaJobBrokerFailure,
+> = (
+  input: ConnectorAthenaJobBrokerInput<Database>
+) => Promise<ResultType<ConnectorAthenaJobOutcome, Failure>>;
+
+export function createConnectorAthenaJobQueueAdapter<
+  Database = unknown,
+  Failure extends ConnectorAthenaJobBrokerFailure =
+    ConnectorAthenaJobBrokerFailure,
+>(input: {
+  queueJob: ConnectorAthenaJobBroker<Database, Failure>;
+  isTimedOut?: (failure: Failure) => boolean;
+}): ConnectorAthenaJobQueue {
+  return async (queueInput) => {
+    const outcome = await input.queueJob({
+      ...(queueInput.context.db === undefined
+        ? {}
+        : { db: queueInput.context.db as Database }),
+      connectorId: queueInput.connectorId,
+      database: queueInput.database,
+      maxRows: queueInput.maxRows,
+      organizationId: queueInput.organizationId,
+      sql: queueInput.sql,
+      timeoutMs: queueInput.timeoutMs,
+      waitTimeoutMs: queueInput.waitTimeoutMs,
+      workgroup: queueInput.workgroup,
+    });
+
+    return outcome.mapError(
+      (error): ConnectorAthenaJobQueueFailure => ({
+        cause: error,
+        message: error.message,
+        status: error.status,
+        timedOut: input.isTimedOut?.(error) ?? false,
+      })
+    );
+  };
+}
+
 export type AthenaConnectorQueryExecutor = {
   driver: ProviderQueryDriver<ConnectorCredentials>;
   executeConnectorQuery(

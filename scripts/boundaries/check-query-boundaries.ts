@@ -7,9 +7,21 @@ type BoundaryRule = {
   message: string;
 };
 
+type SourceFileRule = {
+  file: string;
+  blocked: RegExp[];
+  message: string;
+};
+
 type PackageDependencyRule = {
   packageJson: string;
   blockedDependencies: string[];
+  message: string;
+};
+
+type PackageExportRule = {
+  packageJson: string;
+  blockedExports: RegExp[];
   message: string;
 };
 
@@ -36,10 +48,11 @@ const rules: BoundaryRule[] = [
       /from\s+["']@polyglot-sql\/sdk["']/u,
       /from\s+["'](?:pg|mysql2|mysql2\/promise|snowflake-sdk)["']/u,
       /import\(["'](?:pg|mysql2|mysql2\/promise|snowflake-sdk)["']\)/u,
+      /from\s+["']@onequery\/query-node\/providers\/(?:motherduck|mysql|postgres|snowflake)(?:\/|["'])/u,
       /export\s+(?:type\s+)?(?:\{[\s\S]*?\}|\*)\s+from\s+["']@onequery\/(?:query|query-node|query-workers)(?:\/|["'])/u,
     ],
     message:
-      "@onequery/server must not import provider SDKs, import Polyglot directly, or keep query compatibility re-export shims.",
+      "@onequery/server must not import provider SDKs, import Polyglot directly, import provider-specific Node drivers, or keep query compatibility re-export shims.",
   },
   {
     root: "packages/query-node/src",
@@ -66,6 +79,21 @@ const rules: BoundaryRule[] = [
     ],
     message:
       "@onequery/query-workers must stay Workers-safe: no Node builtins or Node provider SDKs.",
+  },
+];
+
+const sourceFileRules: SourceFileRule[] = [
+  {
+    file: "packages/query-node/src/index.ts",
+    blocked: [/export\s+\*\s+from\s+["']\.\//u],
+    message:
+      "@onequery/query-node root must stay narrow; use explicit package subpaths for provider internals.",
+  },
+  {
+    file: "packages/query-workers/src/index.ts",
+    blocked: [/export\s+\*\s+from\s+["']\.\//u],
+    message:
+      "@onequery/query-workers root must stay narrow; use explicit package subpaths for provider internals.",
   },
 ];
 
@@ -115,6 +143,18 @@ const packageDependencyRules: PackageDependencyRule[] = [
   },
 ];
 
+const packageExportRules: PackageExportRule[] = [
+  {
+    packageJson: "packages/server/package.json",
+    blockedExports: [
+      /^\.\/services\/data-source-query(?:\/|$)/u,
+      /^\.\/services\/testers\/(?:mysql|postgres|snowflake)-tester$/u,
+    ],
+    message:
+      "@onequery/server package exports must not expose legacy query or provider-specific tester shims.",
+  },
+];
+
 const allowedPolyglotRoots = new Set(["packages/sql-polyglot"]);
 const ignoredDirectories = new Set([
   ".turbo",
@@ -157,6 +197,18 @@ async function checkRule(rule: BoundaryRule): Promise<Violation[]> {
     }
   }
   return violations;
+}
+
+async function checkSourceFileRule(rule: SourceFileRule): Promise<Violation[]> {
+  const source = await readFile(join(repoRoot, rule.file), "utf8");
+  return rule.blocked.some((pattern) => pattern.test(source))
+    ? [
+        {
+          file: rule.file,
+          message: rule.message,
+        },
+      ]
+    : [];
 }
 
 async function checkPolyglotOwnership(): Promise<Violation[]> {
@@ -212,9 +264,32 @@ async function checkPackageDependencyRule(
     : [];
 }
 
+async function checkPackageExportRule(
+  rule: PackageExportRule
+): Promise<Violation[]> {
+  const source = await readFile(join(repoRoot, rule.packageJson), "utf8");
+  const manifest = JSON.parse(source) as {
+    exports?: Record<string, string>;
+  };
+  const exportNames = Object.keys(manifest.exports ?? {});
+  const hasBlockedExport = exportNames.some((exportName) =>
+    rule.blockedExports.some((pattern) => pattern.test(exportName))
+  );
+  return hasBlockedExport
+    ? [
+        {
+          file: rule.packageJson,
+          message: rule.message,
+        },
+      ]
+    : [];
+}
+
 const violations = [
   ...(await checkPolyglotOwnership()),
+  ...(await Promise.all(sourceFileRules.map(checkSourceFileRule))).flat(),
   ...(await Promise.all(rules.map(checkRule))).flat(),
+  ...(await Promise.all(packageExportRules.map(checkPackageExportRule))).flat(),
   ...(
     await Promise.all(packageDependencyRules.map(checkPackageDependencyRule))
   ).flat(),
