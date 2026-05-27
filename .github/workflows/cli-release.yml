@@ -479,6 +479,8 @@ jobs:
       VERSION: ${{ needs.tag-check.outputs.version }}
       REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
     steps:
+      - uses: actions/checkout@v6
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
