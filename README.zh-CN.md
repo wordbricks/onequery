@@ -65,8 +65,11 @@ onequery auth login
 ```bash
 onequery source connect --source postgres \
   --input '{"name":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery","password":"secret"}}'
-onequery query execute --source warehouse --sql "select 1"
+onequery query execute --source postgres://warehouse --sql "select 1"
 ```
+
+在 CLI 中引用已连接的数据源时使用 `<provider>://<source-key>`，例如
+`postgres://warehouse`。
 
 ### 方案 B：连到已有的服务器
 
@@ -74,7 +77,7 @@ onequery query execute --source warehouse --sql "select 1"
 onequery config set server https://onequery.example.com
 onequery auth login
 onequery source list
-onequery query execute --source <source-key> --sql "select 1"
+onequery query execute --source <provider>://<source-key> --sql "select 1"
 ```
 
 ---

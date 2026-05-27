@@ -64,8 +64,11 @@ onequery source connect --source postgres \
     }
   }'
 
-onequery query exec --source warehouse --sql "SELECT 1 AS ping"
+onequery query exec --source postgres://warehouse --sql "SELECT 1 AS ping"
 ```
+
+Query, API, show, and test commands reference connected sources as
+`<provider>://<source-key>`.
 
 When you're done:
 
@@ -181,61 +184,61 @@ Execute and validate queries with result controls.
 ### Inline SQL
 
 ```bash
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT id, name, created_at FROM users LIMIT 10"
 ```
 
 ### SQL from a file
 
 ```bash
-onequery query exec --source warehouse --file ./queries/active-users.sql
+onequery query exec --source postgres://warehouse --file ./queries/active-users.sql
 ```
 
 ### SQL from stdin
 
 ```bash
 echo "SELECT COUNT(*) AS total FROM orders WHERE status = 'completed'" \
-  | onequery query exec --source warehouse --stdin
+  | onequery query exec --source postgres://warehouse --stdin
 ```
 
 ### Result window controls
 
 ```bash
 # Cap the number of returned rows
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT * FROM events" --max-rows 100
 
 # Limit the total response payload size
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT * FROM events" --max-bytes 65536
 
 # Truncate long cell values
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT body FROM logs" --cell-max-chars 200
 
 # Override the query execution timeout
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT * FROM large_table" --timeout-ms 30000
 ```
 
 ### Validate without executing
 
 ```bash
-onequery query validate --source warehouse \
+onequery query validate --source postgres://warehouse \
   --sql "SELECT id, email FROM users WHERE active = true"
 ```
 
 ### Field projection
 
 ```bash
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT id, name FROM users LIMIT 5" --fields "rows"
 ```
 
 ### Full request payload from JSON
 
 ```bash
-onequery query exec --source warehouse --input ./queries/complex-request.json
+onequery query exec --source postgres://warehouse --input ./queries/complex-request.json
 ```
 
 ---
@@ -315,7 +318,7 @@ Override any config key for a single invocation with `-c KEY=VALUE`:
 ```bash
 onequery source list -c api.server_url=http://localhost:5656
 
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT 1" \
   -c api.request_timeout_sec=120
 ```
@@ -344,32 +347,32 @@ Use `onequery api` for connected source APIs (e.g. GitHub, Linear).
 ### Describe available operations
 
 ```bash
-onequery api --source github-org
+onequery api --source github://github-org
 ```
 
 ### Execute a source API call
 
 ```bash
-onequery api --source github-org /repos/wordbricks/onequery
+onequery api --source github://github-org /repos/wordbricks/onequery
 ```
 
 ### Explicit operation and HTTP method
 
 ```bash
-onequery api --source github-org --op http_request /user/repos
-onequery api --source github-org -X GET /user/repos
+onequery api --source github://github-org --op http_request /user/repos
+onequery api --source github://github-org -X GET /user/repos
 ```
 
 ### Headers and field patches
 
 ```bash
 # Custom headers
-onequery api --source github-org \
+onequery api --source github://github-org \
   -H "Accept:application/vnd.github.v3+json" \
   /repos/wordbricks/onequery
 
 # -f sends raw string fields, -F sends typed fields (auto-parses JSON values)
-onequery api --source github-org /repos/wordbricks/onequery/issues \
+onequery api --source github://github-org /repos/wordbricks/onequery/issues \
   -F "per_page=5" \
   -f "state=open"
 ```
@@ -378,32 +381,32 @@ onequery api --source github-org /repos/wordbricks/onequery/issues \
 
 ```bash
 # Follow pagination tokens automatically
-onequery api --source github-org /user/repos --paginate
+onequery api --source github://github-org /user/repos --paginate
 
 # Combine paginated pages into one array
-onequery api --source github-org /user/repos --paginate --slurp
+onequery api --source github://github-org /user/repos --paginate --slurp
 
 # Cap the number of pages
-onequery api --source github-org /user/repos --paginate --max-pages 3
+onequery api --source github://github-org /user/repos --paginate --max-pages 3
 ```
 
 ### JQ expression
 
 ```bash
-onequery api --source github-org /user/repos -q ".[].full_name"
+onequery api --source github://github-org /user/repos -q ".[].full_name"
 ```
 
 ### Other options
 
 ```bash
 # Include response headers
-onequery api --source github-org /user -i
+onequery api --source github://github-org /user -i
 
 # Dry run — preview without executing
-onequery api --source github-org /user/repos --dry-run
+onequery api --source github://github-org /user/repos --dry-run
 
 # Silent — suppress body output (useful with -i for headers only)
-onequery api --source github-org /user --silent -i
+onequery api --source github://github-org /user --silent -i
 ```
 
 ---
@@ -434,14 +437,17 @@ onequery org list --json | jq '.orgs[] | {slug, name}'
 
 ```bash
 # Check if a source exists before querying
-if onequery source show warehouse --json 2>/dev/null; then
-  onequery query exec --source warehouse --sql "SELECT 1"
+if onequery source show postgres://warehouse --json 2>/dev/null; then
+  onequery query exec --source postgres://warehouse --sql "SELECT 1"
 fi
 
 # Iterate over sources
-for key in $(onequery source list --json | jq -r '.sources[].key'); do
-  echo "Source: $key"
-  onequery source show "$key" --json
+for source in $(
+  onequery source list --json \
+    | jq -r '.sources[] | "\(.provider)://\(.sourceKey)"'
+); do
+  echo "Source: $source"
+  onequery source show "$source" --json
 done
 ```
 
@@ -449,11 +455,11 @@ done
 
 ```bash
 # --verbose emits workflow tracing on stderr while keeping stdout clean
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT 1" --json --verbose 2>debug.log
 
 # --request-id attaches a caller-supplied ID for audit log tracing
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT 1" --request-id "batch-2024-01-15-001"
 ```
 

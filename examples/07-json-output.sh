@@ -16,31 +16,35 @@ onequery config get api.server_url --json
 
 # ── Pipe to jq ───────────────────────────────────────────────────────────────
 # Extract specific fields from JSON output.
-onequery source list --json | jq '.sources[].key'
+onequery source list --json \
+  | jq '.sources[] | {source: (.provider + "://" + .sourceKey), status}'
 
 onequery org list --json | jq '.orgs[] | {slug, name}'
 
 # ── Scripting patterns ───────────────────────────────────────────────────────
 # Check if a source exists before querying.
-if onequery source show warehouse --json 2>/dev/null; then
-  onequery query exec --source warehouse --sql "SELECT 1"
+if onequery source show postgres://warehouse --json 2>/dev/null; then
+  onequery query exec --source postgres://warehouse --sql "SELECT 1"
 fi
 
 # Iterate over sources.
-for key in $(onequery source list --json | jq -r '.sources[].key'); do
-  echo "Source: $key"
-  onequery source show "$key" --json
+for source in $(
+  onequery source list --json \
+    | jq -r '.sources[] | "\(.provider)://\(.sourceKey)"'
+); do
+  echo "Source: $source"
+  onequery source show "$source" --json
 done
 
 # ── Verbose mode ─────────────────────────────────────────────────────────────
 # Add --verbose to emit workflow tracing on stderr while keeping stdout clean.
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT 1" \
   --json \
   --verbose 2>debug.log
 
 # ── Request ID tracing ───────────────────────────────────────────────────────
 # Attach a caller-supplied request ID for tracing through audit logs.
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT 1" \
   --request-id "batch-2024-01-15-001"

@@ -132,7 +132,13 @@ export function buildCliDescribeSourceApiResponse(
       })
     ),
     notes: [...value.notes],
-    operations: value.operations.map(buildCliSourceApiOperation),
+    operations: value.operations.map((operation) =>
+      buildCliSourceApiOperation({
+        operation,
+        sourceKey: value.source.sourceKey,
+        sourceReference,
+      })
+    ),
     source: buildCliSourceApiSource(value.source),
     ...(value.defaultPathOperation
       ? { defaultPathOperationName: value.defaultPathOperation }
@@ -308,10 +314,21 @@ function buildCliSourceApiExecutionResult(
   };
 }
 
-function buildCliSourceApiOperation(value: SourceApiOperation) {
+function buildCliSourceApiOperation(input: {
+  operation: SourceApiOperation;
+  sourceKey: string;
+  sourceReference: string;
+}) {
+  const value = input.operation;
   return {
     description: value.description,
-    examples: value.examples.map(buildCliSourceApiExample),
+    examples: value.examples.map((example) =>
+      buildCliSourceApiExampleWithSourceReference({
+        example,
+        sourceKey: input.sourceKey,
+        sourceReference: input.sourceReference,
+      })
+    ),
     fieldPolicy: buildCliSourceApiFieldPolicy(value.fieldPolicy),
     headerPolicy: {
       allowedRequestHeaderNames: canonicalizeSourceApiHeaderNames(

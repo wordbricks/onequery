@@ -33,7 +33,7 @@ onequery source connect --source postgres \
 
 # ── 4. Run a query ───────────────────────────────────────────────────────────
 # Execute a simple test query against the connected source.
-onequery query exec --source warehouse --sql "SELECT 1 AS ping"
+onequery query exec --source postgres://warehouse --sql "SELECT 1 AS ping"
 
 # ── 5. Stop the gateway ──────────────────────────────────────────────────────
 onequery gateway stop

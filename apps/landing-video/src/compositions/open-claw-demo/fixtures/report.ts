@@ -12,7 +12,7 @@ const formatCompactCount = (count: number) => {
 
 const mergedPullRequestRepositoryName = "openclaw/openclaw";
 
-// Comment: These report fixtures mirror a live `onequery api --source github`
+// Comment: These report fixtures mirror a live `onequery api --source github://wordbricks`
 // capture against `openclaw` from Apr 17, 2026.
 export const eventTypeCounts = [
   { name: "PullRequestEvent", count: 17 },

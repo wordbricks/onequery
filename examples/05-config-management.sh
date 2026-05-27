@@ -27,7 +27,7 @@ onequery config set api.request_timeout_sec 60
 onequery source list -c api.server_url=http://localhost:5656
 
 # Multiple overrides.
-onequery query exec --source warehouse \
+onequery query exec --source postgres://warehouse \
   --sql "SELECT 1" \
   -c api.request_timeout_sec=120
 
