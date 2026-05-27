@@ -144,10 +144,10 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
   context
 ) =>
   Result.gen(async function* handleGetSourceFlow() {
-    const sourceSelector = parseCliSourceSelector(request.sourceKey);
+    const sourceSelector = parseCliSourceSelector(request.source);
     if (!sourceSelector) {
       return yield* cliServiceErr({
-        detail: "source must look like provider://source-key",
+        detail: "source must include provider and sourceKey",
         key: "SOURCE_REQUEST_INVALID",
       });
     }
@@ -188,10 +188,7 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
       );
     }
 
-    const interfaces = getCliSourceInterfaceTypes(
-      source.source.provider,
-      source.source.status
-    );
+    const interfaces = getCliSourceInterfaceTypes(source.source.provider);
 
     logCliEvent({
       details: buildCliRequestLogDetails(access.c, {
@@ -213,10 +210,10 @@ const handleTestSourceImpl: CliResultServiceMethod<"testSource"> = async (
   context
 ) =>
   Result.gen(async function* handleTestSourceFlow() {
-    const sourceSelector = parseCliSourceSelector(request.sourceKey);
+    const sourceSelector = parseCliSourceSelector(request.source);
     if (!sourceSelector) {
       return yield* cliServiceErr({
-        detail: "source must look like provider://source-key",
+        detail: "source must include provider and sourceKey",
         key: "SOURCE_REQUEST_INVALID",
       });
     }

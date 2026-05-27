@@ -21,8 +21,13 @@ describe("source references", () => {
   });
 
   it("requires selectors to include provider schemes", () => {
-    expect(parseCliSourceSelector("github-prod")).toBeNull();
-    expect(parseCliSourceSelector("github://github-prod")).toEqual({
+    expect(parseCliSourceSelector({ sourceKey: "github-prod" })).toBeNull();
+    expect(
+      parseCliSourceSelector({
+        provider: "github",
+        sourceKey: "github-prod",
+      })
+    ).toEqual({
       sourceKey: "github-prod",
       sourceProvider: "github",
     });

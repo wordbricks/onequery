@@ -3,6 +3,7 @@ use std::num::NonZeroU32;
 use serde_json::Value;
 
 use crate::cli::ApiArgs;
+use crate::transport::source::format_source_reference;
 use crate::transport::source_api::SourceApiDescriptor;
 use crate::transport::source_api::SourceApiDraft;
 use crate::transport::source_api::SourceApiFieldEncoding;
@@ -64,11 +65,16 @@ pub(super) async fn build_plan(
     descriptor: &SourceApiDescriptor,
     context: &CommandContext,
 ) -> Result<PlannedCommand, CliError> {
-    let source_key = descriptor
+    let source_reference = descriptor
         .source
         .as_option()
-        .and_then(|source| source.source_key.as_deref())
-        .unwrap_or(args.source.as_str());
+        .and_then(|source| {
+            let provider = source.provider.as_deref()?;
+            let source_key = source.source_key.as_deref()?;
+            Some(format_source_reference(provider, source_key))
+        })
+        .unwrap_or_else(|| args.source.as_str().to_owned());
+    let source_reference = source_reference.as_str();
     let intent = resolve_intent(args, descriptor, context)?;
     if matches!(intent, ResolvedIntent::Describe) {
         return Ok(PlannedCommand::Describe);
@@ -90,18 +96,20 @@ pub(super) async fn build_plan(
             source_api_parse_error(
                 context,
                 "unsupported source API operation",
-                format!("operation `{operation_name}` is not described for source `{source_key}`"),
-                source_key,
+                format!(
+                    "operation `{operation_name}` is not described for source `{source_reference}`"
+                ),
+                source_reference,
             )
         })?;
 
-    validate_selector(operation, selector.as_deref(), context, source_key)?;
-    validate_pagination(args, operation, context, source_key)?;
-    validate_method(args, operation, context, source_key)?;
-    validate_field_flags(args, operation, context, source_key)?;
-    validate_input(args, operation, context, source_key)?;
+    validate_selector(operation, selector.as_deref(), context, source_reference)?;
+    validate_pagination(args, operation, context, source_reference)?;
+    validate_method(args, operation, context, source_reference)?;
+    validate_field_flags(args, operation, context, source_reference)?;
+    validate_input(args, operation, context, source_reference)?;
 
-    let headers = parse_headers(&args.headers, operation, context, source_key)?;
+    let headers = parse_headers(&args.headers, operation, context, source_reference)?;
 
     let field_policy = operation.field_policy.as_option();
     let mut reader = SourceApiInputReader::default();
@@ -125,7 +133,7 @@ pub(super) async fn build_plan(
         operation.name.as_deref().unwrap_or_default(),
         &mut reader,
         context,
-        source_key,
+        source_reference,
     )
     .await?;
     let field_patch = field_patch
@@ -135,12 +143,12 @@ pub(super) async fn build_plan(
                     context,
                     "invalid source API field patch",
                     format!("source API field patch must be valid JSON object data: {error}"),
-                    source_key,
+                    source_reference,
                 )
             })
         })
         .transpose()?;
-    let body = load_request_body(args, operation, &mut reader, context, source_key).await?;
+    let body = load_request_body(args, operation, &mut reader, context, source_reference).await?;
     let body = match (field_patch, body) {
         (Some(field_patch), None) => Some(SourceApiRequestBody::FieldPatch(Box::new(field_patch))),
         (None, body) => body,
@@ -151,7 +159,7 @@ pub(super) async fn build_plan(
                 format!(
                     "operation `{operation_name}` cannot combine `--input` with field patch flags"
                 ),
-                source_key,
+                source_reference,
             ));
         }
     };
@@ -745,6 +753,14 @@ mod tests {
 
         assert_eq!(error.stage, ErrorStage::ParseCommand);
         assert_eq!(error.why, "operation `fetch` does not accept `--input`");
+        assert_eq!(
+            error.try_next,
+            vec![
+                "onequery api --source github://github-prod".to_owned(),
+                "onequery api --source github://github-prod /path".to_owned(),
+                "onequery api --source github://github-prod --op <operation> <selector>".to_owned(),
+            ]
+        );
     }
 
     #[tokio::test]

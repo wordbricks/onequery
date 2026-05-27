@@ -30,11 +30,19 @@ describe("connection-string-utils", () => {
     });
   });
 
-  it("normalizes postgres-family URLs independently of provider branding", () => {
+  it("uses provider SSL defaults when postgres-family URLs omit sslmode", () => {
     expect(
       parseConnectionString(
         "postgres://user:secret@db.example.com/app",
         "supabase"
+      )
+    ).toMatchObject({
+      sslMode: "require",
+    });
+    expect(
+      parseConnectionString(
+        "postgres://user:secret@db.example.com/app",
+        "postgres"
       )
     ).toMatchObject({
       sslMode: "prefer",

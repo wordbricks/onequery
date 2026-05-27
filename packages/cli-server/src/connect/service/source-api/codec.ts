@@ -87,11 +87,14 @@ export function resolveSourceApiResumeCommand(
 
 function buildSourceApiTarget(input: {
   orgSlug: string;
-  sourceKey: string;
+  source?: {
+    provider?: string;
+    sourceKey?: string;
+  };
 }): SourceApiTarget {
   return {
     orgSlug: input.orgSlug,
-    sourceKey: input.sourceKey,
+    source: input.source,
   };
 }
 
@@ -430,7 +433,7 @@ function buildCliSourceApiResponseBody(
 function buildCliSourceApiSource(value: SourceApiSource) {
   return {
     displayName: value.displayName ?? undefined,
-    sourceKey: formatCliSourceReference(value.provider, value.sourceKey),
+    sourceKey: value.sourceKey,
     provider: value.provider,
   };
 }

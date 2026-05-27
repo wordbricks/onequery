@@ -182,13 +182,12 @@ pub struct ValidateQueryRequest {
         skip_serializing_if = "Option::is_none"
     )]
     pub org_slug: Option<::buffa::alloc::string::String>,
-    /// Field 2: `source_key`
+    /// Field 2: `source`
     #[serde(
-        rename = "sourceKey",
-        alias = "source_key",
-        skip_serializing_if = "Option::is_none"
+        rename = "source",
+        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
     )]
-    pub source_key: Option<::buffa::alloc::string::String>,
+    pub source: ::buffa::MessageField<CliSourceSelector>,
     /// Field 3: `query`
     #[serde(
         rename = "query",
@@ -206,7 +205,7 @@ impl ::core::fmt::Debug for ValidateQueryRequest {
     fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
         f.debug_struct("ValidateQueryRequest")
             .field("org_slug", &self.org_slug)
-            .field("source_key", &self.source_key)
+            .field("source", &self.source)
             .field("query", &self.query)
             .finish()
     }
@@ -237,8 +236,11 @@ impl ::buffa::Message for ValidateQueryRequest {
         if let Some(ref v) = self.org_slug {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
-        if let Some(ref v) = self.source_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        if self.source.is_set() {
+            let inner_size = self.source.compute_size();
+            size
+                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
+                    + inner_size;
         }
         if self.query.is_set() {
             let inner_size = self.query.compute_size();
@@ -261,13 +263,14 @@ impl ::buffa::Message for ValidateQueryRequest {
                 .encode(buf);
             ::buffa::types::encode_string(v, buf);
         }
-        if let Some(ref v) = self.source_key {
+        if self.source.is_set() {
             ::buffa::encoding::Tag::new(
                     2u32,
                     ::buffa::encoding::WireType::LengthDelimited,
                 )
                 .encode(buf);
-            ::buffa::types::encode_string(v, buf);
+            ::buffa::encoding::encode_varint(self.source.cached_size() as u64, buf);
+            self.source.write_to(buf);
         }
         if self.query.is_set() {
             ::buffa::encoding::Tag::new(
@@ -314,11 +317,10 @@ impl ::buffa::Message for ValidateQueryRequest {
                         actual: tag.wire_type() as u8,
                     });
                 }
-                ::buffa::types::merge_string(
-                    self
-                        .source_key
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                ::buffa::Message::merge_length_delimited(
+                    self.source.get_or_insert_default(),
                     buf,
+                    depth,
                 )?;
             }
             3u32 => {
@@ -347,7 +349,7 @@ impl ::buffa::Message for ValidateQueryRequest {
     }
     fn clear(&mut self) {
         self.org_slug = ::core::option::Option::None;
-        self.source_key = ::core::option::Option::None;
+        self.source = ::buffa::MessageField::none();
         self.query = ::buffa::MessageField::none();
         self.__buffa_unknown_fields.clear();
         self.__buffa_cached_size.set(0);
@@ -386,8 +388,8 @@ pub const __VALIDATE_QUERY_REQUEST_JSON_ANY: ::buffa::type_registry::JsonAnyEntr
 pub struct ValidateQueryRequestView<'a> {
     /// Field 1: `org_slug`
     pub org_slug: ::core::option::Option<&'a str>,
-    /// Field 2: `source_key`
-    pub source_key: ::core::option::Option<&'a str>,
+    /// Field 2: `source`
+    pub source: ::buffa::MessageFieldView<CliSourceSelectorView<'a>>,
     /// Field 3: `query`
     pub query: ::buffa::MessageFieldView<CliQueryRequestView<'a>>,
     pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
@@ -448,7 +450,18 @@ impl<'a> ValidateQueryRequestView<'a> {
                             actual: tag.wire_type() as u8,
                         });
                     }
-                    view.source_key = Some(::buffa::types::borrow_str(&mut cur)?);
+                    if depth == 0 {
+                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
+                    }
+                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
+                    match view.source.as_mut() {
+                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
+                        None => {
+                            view.source = ::buffa::MessageFieldView::set(
+                                CliSourceSelectorView::_decode_depth(sub, depth - 1)?,
+                            );
+                        }
+                    }
                 }
                 3u32 => {
                     if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
@@ -499,7 +512,14 @@ impl<'a> ::buffa::MessageView<'a> for ValidateQueryRequestView<'a> {
         use ::buffa::alloc::string::ToString as _;
         ValidateQueryRequest {
             org_slug: self.org_slug.map(|s| s.to_string()),
-            source_key: self.source_key.map(|s| s.to_string()),
+            source: match self.source.as_option() {
+                Some(v) => {
+                    ::buffa::MessageField::<
+                        CliSourceSelector,
+                    >::some(v.to_owned_message())
+                }
+                None => ::buffa::MessageField::none(),
+            },
             query: match self.query.as_option() {
                 Some(v) => {
                     ::buffa::MessageField::<CliQueryRequest>::some(v.to_owned_message())
@@ -1025,13 +1045,12 @@ pub struct ExecuteQueryRequest {
         skip_serializing_if = "Option::is_none"
     )]
     pub org_slug: Option<::buffa::alloc::string::String>,
-    /// Field 2: `source_key`
+    /// Field 2: `source`
     #[serde(
-        rename = "sourceKey",
-        alias = "source_key",
-        skip_serializing_if = "Option::is_none"
+        rename = "source",
+        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
     )]
-    pub source_key: Option<::buffa::alloc::string::String>,
+    pub source: ::buffa::MessageField<CliSourceSelector>,
     /// Field 3: `page`
     #[serde(
         rename = "page",
@@ -1062,7 +1081,7 @@ impl ::core::fmt::Debug for ExecuteQueryRequest {
     fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
         f.debug_struct("ExecuteQueryRequest")
             .field("org_slug", &self.org_slug)
-            .field("source_key", &self.source_key)
+            .field("source", &self.source)
             .field("page", &self.page)
             .field("query", &self.query)
             .field("all_pages", &self.all_pages)
@@ -1095,8 +1114,11 @@ impl ::buffa::Message for ExecuteQueryRequest {
         if let Some(ref v) = self.org_slug {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
-        if let Some(ref v) = self.source_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        if self.source.is_set() {
+            let inner_size = self.source.compute_size();
+            size
+                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
+                    + inner_size;
         }
         if self.page.is_set() {
             let inner_size = self.page.compute_size();
@@ -1128,13 +1150,14 @@ impl ::buffa::Message for ExecuteQueryRequest {
                 .encode(buf);
             ::buffa::types::encode_string(v, buf);
         }
-        if let Some(ref v) = self.source_key {
+        if self.source.is_set() {
             ::buffa::encoding::Tag::new(
                     2u32,
                     ::buffa::encoding::WireType::LengthDelimited,
                 )
                 .encode(buf);
-            ::buffa::types::encode_string(v, buf);
+            ::buffa::encoding::encode_varint(self.source.cached_size() as u64, buf);
+            self.source.write_to(buf);
         }
         if self.page.is_set() {
             ::buffa::encoding::Tag::new(
@@ -1195,11 +1218,10 @@ impl ::buffa::Message for ExecuteQueryRequest {
                         actual: tag.wire_type() as u8,
                     });
                 }
-                ::buffa::types::merge_string(
-                    self
-                        .source_key
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                ::buffa::Message::merge_length_delimited(
+                    self.source.get_or_insert_default(),
                     buf,
+                    depth,
                 )?;
             }
             3u32 => {
@@ -1254,7 +1276,7 @@ impl ::buffa::Message for ExecuteQueryRequest {
     }
     fn clear(&mut self) {
         self.org_slug = ::core::option::Option::None;
-        self.source_key = ::core::option::Option::None;
+        self.source = ::buffa::MessageField::none();
         self.page = ::buffa::MessageField::none();
         self.query = ::buffa::MessageField::none();
         self.all_pages = ::core::option::Option::None;
@@ -1295,8 +1317,8 @@ pub const __EXECUTE_QUERY_REQUEST_JSON_ANY: ::buffa::type_registry::JsonAnyEntry
 pub struct ExecuteQueryRequestView<'a> {
     /// Field 1: `org_slug`
     pub org_slug: ::core::option::Option<&'a str>,
-    /// Field 2: `source_key`
-    pub source_key: ::core::option::Option<&'a str>,
+    /// Field 2: `source`
+    pub source: ::buffa::MessageFieldView<CliSourceSelectorView<'a>>,
     /// Field 3: `page`
     pub page: ::buffa::MessageFieldView<CliPageRequestView<'a>>,
     /// Field 4: `query`
@@ -1361,7 +1383,18 @@ impl<'a> ExecuteQueryRequestView<'a> {
                             actual: tag.wire_type() as u8,
                         });
                     }
-                    view.source_key = Some(::buffa::types::borrow_str(&mut cur)?);
+                    if depth == 0 {
+                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
+                    }
+                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
+                    match view.source.as_mut() {
+                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
+                        None => {
+                            view.source = ::buffa::MessageFieldView::set(
+                                CliSourceSelectorView::_decode_depth(sub, depth - 1)?,
+                            );
+                        }
+                    }
                 }
                 3u32 => {
                     if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
@@ -1443,7 +1476,14 @@ impl<'a> ::buffa::MessageView<'a> for ExecuteQueryRequestView<'a> {
         use ::buffa::alloc::string::ToString as _;
         ExecuteQueryRequest {
             org_slug: self.org_slug.map(|s| s.to_string()),
-            source_key: self.source_key.map(|s| s.to_string()),
+            source: match self.source.as_option() {
+                Some(v) => {
+                    ::buffa::MessageField::<
+                        CliSourceSelector,
+                    >::some(v.to_owned_message())
+                }
+                None => ::buffa::MessageField::none(),
+            },
             page: match self.page.as_option() {
                 Some(v) => {
                     ::buffa::MessageField::<CliPageRequest>::some(v.to_owned_message())

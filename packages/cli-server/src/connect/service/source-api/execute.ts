@@ -138,7 +138,7 @@ async function handlePreviewSourceApiCommand(
         dependencies,
         orgSlug: input.command.target.orgSlug,
         requestContext: input.requestContext,
-        sourceKey: input.command.target.sourceKey,
+        source: input.command.target.source,
       })
     );
     const response = yield* Result.await(
@@ -186,7 +186,7 @@ async function handleExecuteSourceApiCommand(
         dependencies,
         orgSlug: input.command.target.orgSlug,
         requestContext: input.requestContext,
-        sourceKey: input.command.target.sourceKey,
+        source: input.command.target.source,
       })
     );
     const response = yield* Result.await(
@@ -337,7 +337,7 @@ async function resolveExecuteSourceApiAccess(
       action: "source_api.execute",
       orgSlug: input.command.target.orgSlug,
       requestContext: input.requestContext,
-      sourceKey: input.command.target.sourceKey,
+      source: input.command.target.source,
     },
     dependencies
   );

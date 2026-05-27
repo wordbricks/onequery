@@ -25,12 +25,24 @@ export type PostgresClientConfig = {
 };
 
 const TLS_VERIFICATION_ERRORS = [
+  "self-signed certificate",
   "self signed certificate",
   "unable to verify the first certificate",
+  "unable to get local issuer certificate",
   "hostname/ip does not match certificate's altnames",
   "certificate has expired",
   "certificate is not yet valid",
 ];
+
+const TLS_VERIFICATION_ERROR_CODES = new Set([
+  "CERT_HAS_EXPIRED",
+  "DEPTH_ZERO_SELF_SIGNED_CERT",
+  "ERR_TLS_CERT_ALTNAME_INVALID",
+  "SELF_SIGNED_CERT_IN_CHAIN",
+  "UNABLE_TO_GET_ISSUER_CERT",
+  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+]);
 
 export function resolveInitialPostgresTransportState(
   sslMode: SslMode
@@ -96,6 +108,11 @@ export function buildPostgresClientConfig(
 }
 
 export function isTlsVerificationError(error: unknown): boolean {
+  const code = readErrorCode(error);
+  if (code && TLS_VERIFICATION_ERROR_CODES.has(code)) {
+    return true;
+  }
+
   const message = toErrorMessage(error).toLowerCase();
   return TLS_VERIFICATION_ERRORS.some((fragment) => message.includes(fragment));
 }
@@ -116,4 +133,17 @@ function toErrorMessage(error: unknown): string {
   }
 
   return String(error);
+}
+
+function readErrorCode(error: unknown): string | null {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string"
+  ) {
+    return error.code;
+  }
+
+  return null;
 }

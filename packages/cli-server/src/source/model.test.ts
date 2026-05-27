@@ -40,15 +40,14 @@ describe("source model", () => {
   });
 
   it("exposes BigQuery as both query and API capable", () => {
-    expect(getCliSourceInterfaceTypes("bigquery", "active")).toEqual([
-      "query",
-      "api",
-    ]);
+    expect(getCliSourceInterfaceTypes("bigquery")).toEqual(["query", "api"]);
   });
 
   it("exposes Cloudflare D1 as query capable", () => {
-    expect(getCliSourceInterfaceTypes("cloudflare_d1", "active")).toEqual([
-      "query",
-    ]);
+    expect(getCliSourceInterfaceTypes("cloudflare_d1")).toEqual(["query"]);
+  });
+
+  it("keeps provider interfaces visible when a source is unhealthy", () => {
+    expect(getCliSourceInterfaceTypes("postgres")).toEqual(["query"]);
   });
 });

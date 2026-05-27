@@ -198,6 +198,41 @@ describe("Node query drivers", () => {
     });
   });
 
+  it("detects postgres TLS verification errors by Node error code", async () => {
+    const { receivedConfigs, runner } = createPostgresRunner([
+      {
+        connectError: Object.assign(new Error("certificate rejected"), {
+          code: "SELF_SIGNED_CERT_IN_CHAIN",
+        }),
+      },
+      {
+        rows: [{ result: 1 }],
+      },
+    ]);
+
+    const rows = unwrapQueryResult(
+      await executePostgresQuery(
+        {
+          ...postgresCredentials,
+          sslMode: "prefer",
+          type: "postgres",
+        },
+        "SELECT 1",
+        undefined,
+        runner
+      )
+    );
+
+    expect(rows).toEqual([{ result: 1 }]);
+    expect(receivedConfigs).toHaveLength(2);
+    expect(receivedConfigs[0]).toMatchObject({
+      ssl: { rejectUnauthorized: true },
+    });
+    expect(receivedConfigs[1]).toMatchObject({
+      ssl: { rejectUnauthorized: false },
+    });
+  });
+
   it("preserves the prior transport error when plaintext fallback also fails", async () => {
     const initialError = new Error("connection reset by peer");
     const { receivedConfigs, runner } = createPostgresRunner([

@@ -2,10 +2,6 @@ import type { DatabaseFormData } from "@/features/data-sources/forms/database-fo
 import { getDatabaseProviderDefaults } from "@/features/data-sources/forms/database-provider-defaults";
 import type { DatabaseProviderType } from "@/features/data-sources/forms/database-provider-defaults";
 
-const DEFAULT_POSTGRES_CONNECTION_STRING_SSL_MODE: NonNullable<
-  DatabaseFormData["sslMode"]
-> = "prefer";
-
 function parseSslMode(value: string | null): DatabaseFormData["sslMode"] {
   if (value === null) {
     return undefined;
@@ -24,11 +20,10 @@ function parseSslMode(value: string | null): DatabaseFormData["sslMode"] {
 }
 
 function resolvePostgresConnectionStringSslMode(
-  value: string | null
+  value: string | null,
+  fallback: NonNullable<DatabaseFormData["sslMode"]>
 ): NonNullable<DatabaseFormData["sslMode"]> {
-  // Comment: connection URLs should normalize by Postgres protocol defaults,
-  // not by the provider tab that happened to submit them.
-  return parseSslMode(value) ?? DEFAULT_POSTGRES_CONNECTION_STRING_SSL_MODE;
+  return parseSslMode(value) ?? fallback;
 }
 
 export function parseConnectionString(
@@ -56,7 +51,8 @@ export function parseConnectionString(
       port: url.port ? Number.parseInt(url.port, 10) : defaults.defaultPort,
       sslMode: defaults.isPostgresFamily
         ? resolvePostgresConnectionStringSslMode(
-            url.searchParams.get("sslmode")
+            url.searchParams.get("sslmode"),
+            defaults.defaultSslMode
           )
         : undefined,
       username: decodeURIComponent(url.username) || "",

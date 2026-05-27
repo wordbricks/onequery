@@ -88,13 +88,10 @@ export function sortCliSourceRecords(
 }
 
 export function getCliQueryDatabaseProviderType(
-  provider: ProviderType,
-  status: DataSourceStatus
+  provider: ProviderType
 ): DatabaseCredentialProviderType | null {
-  if (status !== "active") {
-    return null;
-  }
-
+  // Comment: source status is health, not capability. Keep errored database
+  // sources query-addressable so execution can surface live provider failures.
   if (provider === "supabase") {
     return "postgres";
   }
@@ -103,15 +100,10 @@ export function getCliQueryDatabaseProviderType(
 }
 
 export function getCliSourceInterfaceTypes(
-  provider: ProviderType,
-  status: DataSourceStatus
+  provider: ProviderType
 ): CliSourceInterfaceType[] {
-  if (status !== "active") {
-    return [];
-  }
-
   const interfaces: CliSourceInterfaceType[] = [];
-  if (getCliQueryDatabaseProviderType(provider, status) !== null) {
+  if (getCliQueryDatabaseProviderType(provider) !== null) {
     interfaces.push("query");
   }
   if (sourceApiRegistry.get(provider) !== null) {
