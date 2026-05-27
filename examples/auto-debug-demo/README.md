@@ -26,9 +26,10 @@ The TODO app's "mark as completed" endpoint is broken. Every
 `PATCH /todos/:id` returns a 500. The errors are logged to an `error_logs`
 table in the same database.
 
-OneQuery connects to data sources by name. In this demo, `demo-app-db` is a
-PostgreSQL database and `demo-github` is a GitHub account, both registered
-with `onequery source connect` during setup.
+OneQuery connects to data sources by name, then CLI commands reference them
+with provider-prefixed URIs. In this demo, `postgres://demo-app-db` is a
+PostgreSQL database and `github://demo-github` is a GitHub account, both
+registered with `onequery source connect` during setup.
 
 ```mermaid
 sequenceDiagram
@@ -48,13 +49,13 @@ sequenceDiagram
     Q-->>A: column schema
 
     Note over A,G: Phase 2: Read source
-    A->>Q: api --source demo-github
+    A->>Q: api --source github://demo-github
     Q->>G: GET /contents/todos.ts
     G-->>Q: source code
     Q-->>A: SET completed_at = now()
 
     Note over A,G: Phase 3: Ship fix
-    A->>Q: api --source demo-github
+    A->>Q: api --source github://demo-github
     Q->>G: create branch, push fix, open PR
     G-->>Q: PR created
     Q-->>A: PR URL
@@ -63,7 +64,7 @@ sequenceDiagram
 ### Phase 1: Find the errors in the database
 
 ```bash
-onequery query exec --source demo-app-db --json \
+onequery query exec --source postgres://demo-app-db --json \
   --sql "SELECT error_type, message, COUNT(*) AS occurrences
          FROM error_logs
          GROUP BY error_type, message
@@ -86,7 +87,7 @@ Three errors, same message. The code references a column called `completed_at`
 but does that column exist?
 
 ```bash
-onequery query exec --source demo-app-db --json \
+onequery query exec --source postgres://demo-app-db --json \
   --sql "SELECT column_name, data_type
          FROM information_schema.columns
          WHERE table_name = 'todos'
@@ -111,7 +112,7 @@ There's no `completed_at`. The column is `completed`, a boolean.
 Same CLI, different source:
 
 ```bash
-onequery api --source demo-github \
+onequery api --source github://demo-github \
   "/repos/$GITHUB_REPO/contents/src/routes/todos.ts" --json
 ```
 
@@ -130,21 +131,21 @@ Still `onequery`, now writing to GitHub instead of reading from PostgreSQL:
 
 ```bash
 # Get the base branch SHA
-onequery api --source demo-github \
+onequery api --source github://demo-github \
   "/repos/$GITHUB_REPO/git/ref/heads/main" -q ".object.sha"
 
 # Create a fix branch
-onequery api --source demo-github -X POST \
+onequery api --source github://demo-github -X POST \
   "/repos/$GITHUB_REPO/git/refs" \
   --input '{"ref":"refs/heads/fix/completed-column","sha":"abc123..."}'
 
 # Push the corrected file (base64-encoded)
-onequery api --source demo-github -X PUT \
+onequery api --source github://demo-github -X PUT \
   "/repos/$GITHUB_REPO/contents/src/routes/todos.ts" \
   --input '{"message":"fix: use completed column","branch":"fix/completed-column",...}'
 
 # Open a pull request with error log evidence in the body
-onequery api --source demo-github -X POST \
+onequery api --source github://demo-github -X POST \
   "/repos/$GITHUB_REPO/pulls" \
   --input '{"title":"fix: use completed column instead of completed_at",...}'
 ```

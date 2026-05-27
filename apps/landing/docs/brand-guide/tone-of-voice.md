@@ -228,10 +228,10 @@ useful next fact.
 
 Examples:
 
-- `Source connected. You can now run read-only queries against warehouse.`
+- `Source connected. You can now run read-only queries against postgres://warehouse.`
 - `Query completed. 243 rows returned.`
 - `Connector enrolled. Waiting for the first heartbeat.`
-- `Agent query completed. The request used the warehouse source policy.`
+- `Agent query completed. The request used the postgres://warehouse source policy.`
 
 ### Failure
 

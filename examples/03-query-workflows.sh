@@ -2,7 +2,7 @@
 # 03-query-workflows.sh — Execute and validate queries with result controls.
 set -euo pipefail
 
-SOURCE="warehouse"
+SOURCE="postgres://warehouse"
 
 # ── Inline SQL ────────────────────────────────────────────────────────────────
 onequery query exec --source "$SOURCE" \

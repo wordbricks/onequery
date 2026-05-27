@@ -72,9 +72,9 @@ Use realistic but safe sample data.
 
 Good:
 
-- `warehouse`
-- `analytics-prod`
-- `customer_events`
+- `postgres://warehouse`
+- `bigquery://analytics-prod`
+- `postgres://customer-events`
 - `read-only`
 - `243 rows`
 - `cost limit: $5.00`

@@ -4,7 +4,7 @@ import type { TerminalLine } from "../landing/terminal/terminal-types";
 const querySnippet = `onequery agent debug \\
   --grant prod-debug-readonly \\
   --sentry ISSUE-7421 \\
-  --sources sentry,postgres,github,linear`;
+  --sources sentry://prod-errors,postgres://orders-db,github://app-repo,linear://eng`;
 
 export const HERO_SIGNALS = [
   "No prod keys",
@@ -18,7 +18,7 @@ export const INSTALL_STEPS = [
   "Connect sources.",
 ] as const;
 
-export const QUERY_DETAILS_SNIPPET = `source     orders-postgres-db
+export const QUERY_DETAILS_SNIPPET = `source     postgres://orders-postgres-db
 policy     writes blocked
 statement  single statement
 duration   82 ms
