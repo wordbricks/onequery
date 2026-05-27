@@ -139,7 +139,7 @@ div.download-command
 ```
 
 Behavior:
-- Copies `DOWNLOAD_COMMAND`
+- Copies the first `INSTALL_COMMANDS` command
 - Shows `⧉` by default
 - Temporarily changes to `COPIED`
 - Resets after `COPY_FEEDBACK_RESET_DELAY_MS`
@@ -248,7 +248,7 @@ Right column:
 - Preformatted install snippet from `INSTALL_SNIPPET`
 
 `INSTALL_SNIPPET` currently expands to:
-- `curl -fsSL https://onequery.dev/install.sh | sh`
+- `npm install -g @onequery/cli`
 - `onequery gateway`
 - `onequery config set server http://127.0.0.1:5656`
 - `onequery auth login`

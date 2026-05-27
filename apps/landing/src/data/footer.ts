@@ -1,6 +1,6 @@
 import {
   CLI_SOURCE_URL,
-  INSTALL_SCRIPT_URL,
+  NPM_PACKAGE_URL,
   REPOSITORY_URL,
 } from "../landing/config/landing-config";
 
@@ -22,9 +22,9 @@ export const FOOTER_LINKS = [
     trackingName: "footer_cli_source",
   },
   {
-    href: INSTALL_SCRIPT_URL,
-    label: "Install script",
-    trackingName: "footer_install_script",
+    href: NPM_PACKAGE_URL,
+    label: "npm package",
+    trackingName: "footer_npm_package",
   },
 ] satisfies ReadonlyArray<FooterLink>;
 

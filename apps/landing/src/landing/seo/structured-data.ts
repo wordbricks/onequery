@@ -1,6 +1,6 @@
 import type { BlogPost, BlogPostSummary } from "../blog/blog-types";
 import {
-  INSTALL_SCRIPT_URL,
+  NPM_PACKAGE_URL,
   REPOSITORY_URL,
   SELF_HOST_DOCS_URL,
 } from "../config/landing-config";
@@ -223,7 +223,7 @@ function createOneQuerySoftwareApplication(input: {
     },
     sameAs: [REPOSITORY_URL],
     codeRepository: REPOSITORY_URL,
-    installUrl: INSTALL_SCRIPT_URL,
+    installUrl: NPM_PACKAGE_URL,
     softwareHelp: SELF_HOST_DOCS_URL,
     featureList: [
       "Governed production data access for AI agents",
@@ -332,7 +332,7 @@ export function createLandingPageStructuredData(
       },
       significantLink: [
         createCanonicalUrl("/blog", siteUrl),
-        INSTALL_SCRIPT_URL,
+        NPM_PACKAGE_URL,
         SELF_HOST_DOCS_URL,
       ],
     },
