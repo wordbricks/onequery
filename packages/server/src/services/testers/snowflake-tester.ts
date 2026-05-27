@@ -1,8 +1,8 @@
 import type { SnowflakeCredentials } from "@onequery/db/server";
+import { runSnowflakeConnectionTest } from "@onequery/query-node/providers/snowflake/driver";
+import type { ConnectionTestOutcome } from "@onequery/query/connection-test";
+import { createQueryDeadline } from "@onequery/query/timeout";
 
-import { createQueryDeadline } from "../data-source-query/core/timeout";
-import { runSnowflakeConnectionTest } from "../data-source-query/providers/snowflake/driver";
-import type { ConnectionTestOutcome } from "./connection-test-outcome";
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
 
 export async function testSnowflakeConnection(

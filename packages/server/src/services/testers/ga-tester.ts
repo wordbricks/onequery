@@ -1,4 +1,5 @@
 import type { GoogleAnalyticsCredentials } from "@onequery/db/server";
+import { createFailedConnectionTest } from "@onequery/query/connection-test";
 import { Result } from "better-result";
 
 import {
@@ -6,7 +7,6 @@ import {
   resolveGoogleAnalyticsPropertyPath,
   runGoogleAnalyticsDataRequest,
 } from "../google-analytics/relay";
-import { createFailedConnectionTest } from "./connection-test-outcome";
 import { createHttpTester } from "./create-http-tester";
 import { parseHttpStatusError } from "./parse-http-error";
 

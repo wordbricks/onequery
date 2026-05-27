@@ -1,10 +1,10 @@
 import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
 import { isRecord } from "@onequery/base";
 import type { BigQueryCredentials } from "@onequery/db/server";
+import { resolveBigQueryAccessToken } from "@onequery/query-workers/bigquery-client";
+import { requestBigQueryJson } from "@onequery/query-workers/bigquery-client/transport";
 import { z } from "zod";
 
-import { resolveBigQueryAccessToken } from "../../services/data-source-query/bigquery-client";
-import { requestBigQueryJson } from "../../services/data-source-query/bigquery-client/transport";
 import {
   SourceApiInvalidRequestError,
   SourceApiUnsupportedOperationError,

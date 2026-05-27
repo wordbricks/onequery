@@ -1,19 +1,19 @@
 import type { Credentials, Database } from "@onequery/db/server";
 import { isDatabaseCredentials } from "@onequery/db/server";
-import { Result } from "better-result";
-
 import {
   GENERIC_UNSUPPORTED_MESSAGE,
   OAUTH_UNSUPPORTED_MESSAGE,
   UnsupportedDataSourceTestError,
   createUnsupportedConnectionTest,
-} from "./data-source-query/core/connection-test";
+} from "@onequery/query/connection-test";
 import type {
   DataSourceTestOutcome,
   UnsupportedTestReason,
-} from "./data-source-query/core/connection-test";
-import { getQueryDriver } from "./data-source-query/core/registry";
-import { createQueryDeadline } from "./data-source-query/core/timeout";
+} from "@onequery/query/connection-test";
+import { createQueryDeadline } from "@onequery/query/timeout";
+import { Result } from "better-result";
+
+import { getServerQueryDriver } from "./query-runtime";
 import { testAmplitudeConnection } from "./testers/amplitude-tester";
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./testers/defaults";
 import { testGoogleAnalyticsConnection } from "./testers/ga-tester";
@@ -78,7 +78,7 @@ export async function testDataSource(
   options: DataSourceTestOptions = {}
 ): Promise<DataSourceTestOutcome> {
   if (isDatabaseCredentials(credentials)) {
-    const driver = getQueryDriver(credentials.type);
+    const driver = getServerQueryDriver(credentials.type);
     return driver.testConnection({
       context: {
         db: options.db,

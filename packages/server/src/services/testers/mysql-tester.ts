@@ -1,8 +1,8 @@
 import type { MySQLCredentials } from "@onequery/db/server";
+import { runMySQLConnectionTest } from "@onequery/query-node/providers/mysql/driver";
+import type { ConnectionTestOutcome } from "@onequery/query/connection-test";
+import { createQueryDeadline } from "@onequery/query/timeout";
 
-import { createQueryDeadline } from "../data-source-query/core/timeout";
-import { runMySQLConnectionTest } from "../data-source-query/providers/mysql/driver";
-import type { ConnectionTestOutcome } from "./connection-test-outcome";
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
 
 export type MySQLConnectionConfig = {

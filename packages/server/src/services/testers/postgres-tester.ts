@@ -1,8 +1,8 @@
 import type { PostgresCredentials } from "@onequery/db/server";
+import { runPostgresConnectionTest } from "@onequery/query-node/providers/postgres/driver";
+import type { ConnectionTestOutcome } from "@onequery/query/connection-test";
+import { createQueryDeadline } from "@onequery/query/timeout";
 
-import { createQueryDeadline } from "../data-source-query/core/timeout";
-import { runPostgresConnectionTest } from "../data-source-query/providers/postgres/driver";
-import type { ConnectionTestOutcome } from "./connection-test-outcome";
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
 
 export async function testPostgresConnection(
