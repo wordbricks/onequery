@@ -25,7 +25,7 @@ export function createHandleDescribeSourceApi(
           dependencies: resolvedDependencies,
           orgSlug: request.orgSlug,
           requestContext,
-          sourceKey: request.sourceKey,
+          source: request.source,
         })
       );
       const descriptor = yield* Result.await(

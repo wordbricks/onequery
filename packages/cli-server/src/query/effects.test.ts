@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   runCliExecuteSqlEffect,
   runCliLoadQueryCredentialsEffect,
+  runCliValidateQueryEffect,
 } from "./effects";
 import type { CliQueryEffectDependencies } from "./effects";
 
@@ -69,6 +70,19 @@ describe("query effects", () => {
         clientSecret: "google-client-secret",
       },
       masterEncryptionKey: new Uint8Array(32),
+    });
+  });
+
+  it("validates postgres SQL through the production validator", async () => {
+    await expect(
+      runCliValidateQueryEffect({
+        databaseType: "postgres",
+        kind: "validate_query",
+        sql: "select id from users limit 10;",
+      })
+    ).resolves.toMatchObject({
+      kind: "query_ready",
+      normalizedSql: "select id from users limit 10;",
     });
   });
 

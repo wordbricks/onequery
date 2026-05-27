@@ -21,10 +21,10 @@ export async function resolveCliQueryRequestState<
   return Result.gen(async function* resolveCliQueryRequestStateFlow() {
     const requestContext = requireCliConnectRequestContext(context);
     const session = yield* Result.await(requestContext.resolveSession());
-    const source = parseCliSourceSelector(request.sourceKey);
+    const source = parseCliSourceSelector(request.source);
     if (!source) {
       return yield* cliServiceErr({
-        detail: "source must look like provider://source-key",
+        detail: "source must include provider and sourceKey",
         key: "READ_QUERY_INPUT_INVALID",
       });
     }

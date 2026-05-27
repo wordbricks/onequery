@@ -23,7 +23,10 @@ type ValidateQueryResponseMessageInit = MessageInitShape<
 
 export type CliQueryServiceRequest = {
   orgSlug: string;
-  sourceKey: string;
+  source?: {
+    provider?: string;
+    sourceKey?: string;
+  };
   query?: {
     cellMaxChars?: number;
     maxBytes?: number;

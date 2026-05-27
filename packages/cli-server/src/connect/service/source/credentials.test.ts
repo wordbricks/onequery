@@ -48,8 +48,28 @@ describe("parseConnectSourceCredentials", () => {
       credentials: {
         type: "postgres",
         port: 5432,
-        sslMode: "prefer",
+        sslMode: "require",
       },
+    });
+  });
+
+  it("preserves explicit Supabase sslMode overrides", () => {
+    const result = parseConnectSourceCredentials("supabase", {
+      database: "postgres",
+      host: "aws-0-us-east-1.pooler.supabase.com",
+      password: "secret",
+      sslMode: "prefer",
+      username: "postgres.project-ref",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value.credentials).toMatchObject({
+      type: "postgres",
+      sslMode: "prefer",
     });
   });
 

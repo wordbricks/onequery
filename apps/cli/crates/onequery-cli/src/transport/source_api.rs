@@ -12,6 +12,7 @@ use crate::transport::api_failure::try_into_value;
 use crate::transport::client::AuthenticatedApiClient;
 use crate::transport::generated::types;
 use crate::transport::response_decode::require_non_empty_text;
+use crate::transport::source::source_selector_from_reference;
 
 mod validation;
 
@@ -88,7 +89,10 @@ pub(crate) async fn describe_source_api(
         .source_api()
         .describe_source_api(types::DescribeSourceApiRequest {
             org_slug: Some(org_slug),
-            source_key: Some(source_key),
+            source: MessageField::some(source_selector_from_reference(
+                &source_key,
+                ErrorStage::SourceApiDescribe,
+            )?),
             ..Default::default()
         })
         .await
@@ -395,7 +399,7 @@ fn source_api_target(
 ) -> Result<SourceApiTarget, ApiFailure> {
     Ok(SourceApiTarget {
         org_slug: Some(try_into_value(org, stage)?),
-        source_key: Some(try_into_value(source_key, stage)?),
+        source: MessageField::some(source_selector_from_reference(source_key, stage)?),
         ..Default::default()
     })
 }

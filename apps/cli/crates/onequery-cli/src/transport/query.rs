@@ -26,6 +26,7 @@ use crate::transport::response_decode::decode_required_bool;
 use crate::transport::response_decode::decode_required_u32_as_usize;
 use crate::transport::response_decode::require_non_empty_text;
 use crate::transport::source::SourceSummary;
+use crate::transport::source::source_selector_from_reference;
 use crate::transport::source::source_summary_from_generated;
 use crate::transport::well_known::optional_duration_from_ms;
 use crate::transport::well_known::required_duration_ms;
@@ -168,7 +169,10 @@ fn execute_query_request_from_controls(
 
     Ok(types::ExecuteQueryRequest {
         org_slug: Some(org_slug),
-        source_key: Some(source_key),
+        source: MessageField::some(source_selector_from_reference(
+            &source_key,
+            ErrorStage::ExecuteQuery,
+        )?),
         page,
         query: MessageField::some(query),
         all_pages: controls.page_all.then_some(true),
@@ -192,7 +196,10 @@ pub(crate) async fn validate_read_only_query_with_controls(
         .validate_query_with_options(
             types::ValidateQueryRequest {
                 org_slug: Some(org_slug),
-                source_key: Some(source_key),
+                source: MessageField::some(source_selector_from_reference(
+                    &source_key,
+                    ErrorStage::ReadQueryInput,
+                )?),
                 query: MessageField::some(query),
                 ..Default::default()
             },
@@ -686,7 +693,7 @@ mod tests {
     fn execute_query_request_from_controls_maps_all_pages_to_query_request() {
         let request = super::execute_query_request_from_controls(
             "acme",
-            "warehouse",
+            "postgres://warehouse",
             &QueryRequestPayload {
                 sql: "select 42".to_owned(),
                 max_rows: Some(100),
@@ -706,7 +713,11 @@ mod tests {
             request,
             super::types::ExecuteQueryRequest {
                 org_slug: Some("acme".to_owned()),
-                source_key: Some("warehouse".to_owned()),
+                source: buffa::MessageField::some(super::types::CliSourceSelector {
+                    provider: Some("postgres".to_owned()),
+                    source_key: Some("warehouse".to_owned()),
+                    ..Default::default()
+                }),
                 page: buffa::MessageField::some(super::types::CliPageRequest {
                     limit: Some(25),
                     cursor: Some("cursor_2".to_owned()),

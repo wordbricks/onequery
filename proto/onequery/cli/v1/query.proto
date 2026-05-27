@@ -15,12 +15,7 @@ message ValidateQueryRequest {
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  string source_key = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^(?:[a-z][a-z0-9_]*://)?[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$"
-  ];
+  CliSourceSelector source = 2 [(buf.validate.field).required = true];
   CliQueryRequest query = 3 [(buf.validate.field).required = true];
 }
 
@@ -43,12 +38,7 @@ message ExecuteQueryRequest {
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  string source_key = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^(?:[a-z][a-z0-9_]*://)?[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$"
-  ];
+  CliSourceSelector source = 2 [(buf.validate.field).required = true];
   CliPageRequest page = 3;
   CliQueryRequest query = 4 [(buf.validate.field).required = true];
   bool all_pages = 5;

@@ -2121,13 +2121,12 @@ pub struct GetSourceRequest {
         skip_serializing_if = "Option::is_none"
     )]
     pub org_slug: Option<::buffa::alloc::string::String>,
-    /// Field 2: `source_key`
+    /// Field 2: `source`
     #[serde(
-        rename = "sourceKey",
-        alias = "source_key",
-        skip_serializing_if = "Option::is_none"
+        rename = "source",
+        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
     )]
-    pub source_key: Option<::buffa::alloc::string::String>,
+    pub source: ::buffa::MessageField<CliSourceSelector>,
     #[serde(skip)]
     #[doc(hidden)]
     pub __buffa_unknown_fields: ::buffa::UnknownFields,
@@ -2139,7 +2138,7 @@ impl ::core::fmt::Debug for GetSourceRequest {
     fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
         f.debug_struct("GetSourceRequest")
             .field("org_slug", &self.org_slug)
-            .field("source_key", &self.source_key)
+            .field("source", &self.source)
             .finish()
     }
 }
@@ -2169,8 +2168,11 @@ impl ::buffa::Message for GetSourceRequest {
         if let Some(ref v) = self.org_slug {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
-        if let Some(ref v) = self.source_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        if self.source.is_set() {
+            let inner_size = self.source.compute_size();
+            size
+                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
+                    + inner_size;
         }
         size += self.__buffa_unknown_fields.encoded_len() as u32;
         self.__buffa_cached_size.set(size);
@@ -2187,13 +2189,14 @@ impl ::buffa::Message for GetSourceRequest {
                 .encode(buf);
             ::buffa::types::encode_string(v, buf);
         }
-        if let Some(ref v) = self.source_key {
+        if self.source.is_set() {
             ::buffa::encoding::Tag::new(
                     2u32,
                     ::buffa::encoding::WireType::LengthDelimited,
                 )
                 .encode(buf);
-            ::buffa::types::encode_string(v, buf);
+            ::buffa::encoding::encode_varint(self.source.cached_size() as u64, buf);
+            self.source.write_to(buf);
         }
         self.__buffa_unknown_fields.write_to(buf);
     }
@@ -2231,11 +2234,10 @@ impl ::buffa::Message for GetSourceRequest {
                         actual: tag.wire_type() as u8,
                     });
                 }
-                ::buffa::types::merge_string(
-                    self
-                        .source_key
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                ::buffa::Message::merge_length_delimited(
+                    self.source.get_or_insert_default(),
                     buf,
+                    depth,
                 )?;
             }
             _ => {
@@ -2250,7 +2252,7 @@ impl ::buffa::Message for GetSourceRequest {
     }
     fn clear(&mut self) {
         self.org_slug = ::core::option::Option::None;
-        self.source_key = ::core::option::Option::None;
+        self.source = ::buffa::MessageField::none();
         self.__buffa_unknown_fields.clear();
         self.__buffa_cached_size.set(0);
     }
@@ -2288,8 +2290,8 @@ pub const __GET_SOURCE_REQUEST_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = 
 pub struct GetSourceRequestView<'a> {
     /// Field 1: `org_slug`
     pub org_slug: ::core::option::Option<&'a str>,
-    /// Field 2: `source_key`
-    pub source_key: ::core::option::Option<&'a str>,
+    /// Field 2: `source`
+    pub source: ::buffa::MessageFieldView<CliSourceSelectorView<'a>>,
     pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
 }
 impl<'a> GetSourceRequestView<'a> {
@@ -2348,7 +2350,18 @@ impl<'a> GetSourceRequestView<'a> {
                             actual: tag.wire_type() as u8,
                         });
                     }
-                    view.source_key = Some(::buffa::types::borrow_str(&mut cur)?);
+                    if depth == 0 {
+                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
+                    }
+                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
+                    match view.source.as_mut() {
+                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
+                        None => {
+                            view.source = ::buffa::MessageFieldView::set(
+                                CliSourceSelectorView::_decode_depth(sub, depth - 1)?,
+                            );
+                        }
+                    }
                 }
                 _ => {
                     ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
@@ -2378,7 +2391,14 @@ impl<'a> ::buffa::MessageView<'a> for GetSourceRequestView<'a> {
         use ::buffa::alloc::string::ToString as _;
         GetSourceRequest {
             org_slug: self.org_slug.map(|s| s.to_string()),
-            source_key: self.source_key.map(|s| s.to_string()),
+            source: match self.source.as_option() {
+                Some(v) => {
+                    ::buffa::MessageField::<
+                        CliSourceSelector,
+                    >::some(v.to_owned_message())
+                }
+                None => ::buffa::MessageField::none(),
+            },
             __buffa_unknown_fields: self
                 .__buffa_unknown_fields
                 .to_owned()
@@ -2396,6 +2416,289 @@ unsafe impl ::buffa::DefaultViewInstance for GetSourceRequestView<'static> {
 }
 unsafe impl<'a> ::buffa::HasDefaultViewInstance for GetSourceRequestView<'a> {
     type Static = GetSourceRequestView<'static>;
+}
+#[derive(Clone, PartialEq, Default)]
+#[derive(::serde::Serialize, ::serde::Deserialize)]
+#[serde(default)]
+pub struct CliSourceSelector {
+    /// Field 1: `provider`
+    #[serde(rename = "provider", skip_serializing_if = "Option::is_none")]
+    pub provider: Option<::buffa::alloc::string::String>,
+    /// Field 2: `source_key`
+    #[serde(
+        rename = "sourceKey",
+        alias = "source_key",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub source_key: Option<::buffa::alloc::string::String>,
+    #[serde(skip)]
+    #[doc(hidden)]
+    pub __buffa_unknown_fields: ::buffa::UnknownFields,
+    #[doc(hidden)]
+    #[serde(skip)]
+    pub __buffa_cached_size: ::buffa::__private::CachedSize,
+}
+impl ::core::fmt::Debug for CliSourceSelector {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+        f.debug_struct("CliSourceSelector")
+            .field("provider", &self.provider)
+            .field("source_key", &self.source_key)
+            .finish()
+    }
+}
+impl CliSourceSelector {
+    /// Protobuf type URL for this message, for use with `Any::pack` and
+    /// `Any::unpack_if`.
+    ///
+    /// Format: `type.googleapis.com/<fully.qualified.TypeName>`
+    pub const TYPE_URL: &'static str = "type.googleapis.com/onequery.cli.v1.CliSourceSelector";
+}
+unsafe impl ::buffa::DefaultInstance for CliSourceSelector {
+    fn default_instance() -> &'static Self {
+        static VALUE: ::buffa::__private::OnceBox<CliSourceSelector> = ::buffa::__private::OnceBox::new();
+        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
+    }
+}
+impl ::buffa::Message for CliSourceSelector {
+    /// Returns the total encoded size in bytes.
+    ///
+    /// The result is a `u32`; the protobuf specification requires all
+    /// messages to fit within 2 GiB (2,147,483,647 bytes), so a
+    /// compliant message will never overflow this type.
+    fn compute_size(&self) -> u32 {
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        let mut size = 0u32;
+        if let Some(ref v) = self.provider {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
+        if let Some(ref v) = self.source_key {
+            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        }
+        size += self.__buffa_unknown_fields.encoded_len() as u32;
+        self.__buffa_cached_size.set(size);
+        size
+    }
+    fn write_to(&self, buf: &mut impl ::buffa::bytes::BufMut) {
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        if let Some(ref v) = self.provider {
+            ::buffa::encoding::Tag::new(
+                    1u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        if let Some(ref v) = self.source_key {
+            ::buffa::encoding::Tag::new(
+                    2u32,
+                    ::buffa::encoding::WireType::LengthDelimited,
+                )
+                .encode(buf);
+            ::buffa::types::encode_string(v, buf);
+        }
+        self.__buffa_unknown_fields.write_to(buf);
+    }
+    fn merge_field(
+        &mut self,
+        tag: ::buffa::encoding::Tag,
+        buf: &mut impl ::buffa::bytes::Buf,
+        depth: u32,
+    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
+        #[allow(unused_imports)]
+        use ::buffa::bytes::Buf as _;
+        #[allow(unused_imports)]
+        use ::buffa::Enumeration as _;
+        match tag.field_number() {
+            1u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 1u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::types::merge_string(
+                    self
+                        .provider
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            2u32 => {
+                if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                    return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                        field_number: 2u32,
+                        expected: 2u8,
+                        actual: tag.wire_type() as u8,
+                    });
+                }
+                ::buffa::types::merge_string(
+                    self
+                        .source_key
+                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                    buf,
+                )?;
+            }
+            _ => {
+                self.__buffa_unknown_fields
+                    .push(::buffa::encoding::decode_unknown_field(tag, buf, depth)?);
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+    fn cached_size(&self) -> u32 {
+        self.__buffa_cached_size.get()
+    }
+    fn clear(&mut self) {
+        self.provider = ::core::option::Option::None;
+        self.source_key = ::core::option::Option::None;
+        self.__buffa_unknown_fields.clear();
+        self.__buffa_cached_size.set(0);
+    }
+}
+impl ::buffa::ExtensionSet for CliSourceSelector {
+    const PROTO_FQN: &'static str = "onequery.cli.v1.CliSourceSelector";
+    fn unknown_fields(&self) -> &::buffa::UnknownFields {
+        &self.__buffa_unknown_fields
+    }
+    fn unknown_fields_mut(&mut self) -> &mut ::buffa::UnknownFields {
+        &mut self.__buffa_unknown_fields
+    }
+}
+impl ::buffa::json_helpers::ProtoElemJson for CliSourceSelector {
+    fn serialize_proto_json<S: ::serde::Serializer>(
+        v: &Self,
+        s: S,
+    ) -> ::core::result::Result<S::Ok, S::Error> {
+        ::serde::Serialize::serialize(v, s)
+    }
+    fn deserialize_proto_json<'de, D: ::serde::Deserializer<'de>>(
+        d: D,
+    ) -> ::core::result::Result<Self, D::Error> {
+        <Self as ::serde::Deserialize>::deserialize(d)
+    }
+}
+#[doc(hidden)]
+pub const __CLI_SOURCE_SELECTOR_JSON_ANY: ::buffa::type_registry::JsonAnyEntry = ::buffa::type_registry::JsonAnyEntry {
+    type_url: "type.googleapis.com/onequery.cli.v1.CliSourceSelector",
+    to_json: ::buffa::type_registry::any_to_json::<CliSourceSelector>,
+    from_json: ::buffa::type_registry::any_from_json::<CliSourceSelector>,
+    is_wkt: false,
+};
+#[derive(Clone, Debug, Default)]
+pub struct CliSourceSelectorView<'a> {
+    /// Field 1: `provider`
+    pub provider: ::core::option::Option<&'a str>,
+    /// Field 2: `source_key`
+    pub source_key: ::core::option::Option<&'a str>,
+    pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
+}
+impl<'a> CliSourceSelectorView<'a> {
+    /// Decode from `buf`, enforcing a recursion depth limit for nested messages.
+    ///
+    /// Called by [`::buffa::MessageView::decode_view`] with [`::buffa::RECURSION_LIMIT`]
+    /// and by generated sub-message decode arms with `depth - 1`.
+    ///
+    /// **Not part of the public API.** Named with a leading underscore to
+    /// signal that it is for generated-code use only.
+    #[doc(hidden)]
+    pub fn _decode_depth(
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        let mut view = Self::default();
+        view._merge_into_view(buf, depth)?;
+        ::core::result::Result::Ok(view)
+    }
+    /// Merge fields from `buf` into this view (proto merge semantics).
+    ///
+    /// Repeated fields append; singular fields last-wins; singular
+    /// MESSAGE fields merge recursively. Used by sub-message decode
+    /// arms when the same field appears multiple times on the wire.
+    ///
+    /// **Not part of the public API.**
+    #[doc(hidden)]
+    pub fn _merge_into_view(
+        &mut self,
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<(), ::buffa::DecodeError> {
+        let _ = depth;
+        #[allow(unused_variables)]
+        let view = self;
+        let mut cur: &'a [u8] = buf;
+        while !cur.is_empty() {
+            let before_tag = cur;
+            let tag = ::buffa::encoding::Tag::decode(&mut cur)?;
+            match tag.field_number() {
+                1u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 1u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.provider = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                2u32 => {
+                    if tag.wire_type() != ::buffa::encoding::WireType::LengthDelimited {
+                        return ::core::result::Result::Err(::buffa::DecodeError::WireTypeMismatch {
+                            field_number: 2u32,
+                            expected: 2u8,
+                            actual: tag.wire_type() as u8,
+                        });
+                    }
+                    view.source_key = Some(::buffa::types::borrow_str(&mut cur)?);
+                }
+                _ => {
+                    ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
+                    let span_len = before_tag.len() - cur.len();
+                    view.__buffa_unknown_fields.push_raw(&before_tag[..span_len]);
+                }
+            }
+        }
+        ::core::result::Result::Ok(())
+    }
+}
+impl<'a> ::buffa::MessageView<'a> for CliSourceSelectorView<'a> {
+    type Owned = CliSourceSelector;
+    fn decode_view(buf: &'a [u8]) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        Self::_decode_depth(buf, ::buffa::RECURSION_LIMIT)
+    }
+    fn decode_view_with_limit(
+        buf: &'a [u8],
+        depth: u32,
+    ) -> ::core::result::Result<Self, ::buffa::DecodeError> {
+        Self::_decode_depth(buf, depth)
+    }
+    /// Convert this view to the owned message type.
+    #[allow(clippy::redundant_closure, clippy::useless_conversion)]
+    fn to_owned_message(&self) -> CliSourceSelector {
+        #[allow(unused_imports)]
+        use ::buffa::alloc::string::ToString as _;
+        CliSourceSelector {
+            provider: self.provider.map(|s| s.to_string()),
+            source_key: self.source_key.map(|s| s.to_string()),
+            __buffa_unknown_fields: self
+                .__buffa_unknown_fields
+                .to_owned()
+                .unwrap_or_default()
+                .into(),
+            ..::core::default::Default::default()
+        }
+    }
+}
+unsafe impl ::buffa::DefaultViewInstance for CliSourceSelectorView<'static> {
+    fn default_view_instance() -> &'static Self {
+        static VALUE: ::buffa::__private::OnceBox<CliSourceSelectorView<'static>> = ::buffa::__private::OnceBox::new();
+        VALUE.get_or_init(|| ::buffa::alloc::boxed::Box::new(Self::default()))
+    }
+}
+unsafe impl<'a> ::buffa::HasDefaultViewInstance for CliSourceSelectorView<'a> {
+    type Static = CliSourceSelectorView<'static>;
 }
 #[derive(Clone, PartialEq, Default)]
 #[derive(::serde::Serialize, ::serde::Deserialize)]
@@ -3137,13 +3440,12 @@ pub struct TestSourceRequest {
         skip_serializing_if = "Option::is_none"
     )]
     pub org_slug: Option<::buffa::alloc::string::String>,
-    /// Field 2: `source_key`
+    /// Field 2: `source`
     #[serde(
-        rename = "sourceKey",
-        alias = "source_key",
-        skip_serializing_if = "Option::is_none"
+        rename = "source",
+        skip_serializing_if = "::buffa::json_helpers::skip_if::is_unset_message_field"
     )]
-    pub source_key: Option<::buffa::alloc::string::String>,
+    pub source: ::buffa::MessageField<CliSourceSelector>,
     #[serde(skip)]
     #[doc(hidden)]
     pub __buffa_unknown_fields: ::buffa::UnknownFields,
@@ -3155,7 +3457,7 @@ impl ::core::fmt::Debug for TestSourceRequest {
     fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
         f.debug_struct("TestSourceRequest")
             .field("org_slug", &self.org_slug)
-            .field("source_key", &self.source_key)
+            .field("source", &self.source)
             .finish()
     }
 }
@@ -3185,8 +3487,11 @@ impl ::buffa::Message for TestSourceRequest {
         if let Some(ref v) = self.org_slug {
             size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
         }
-        if let Some(ref v) = self.source_key {
-            size += 1u32 + ::buffa::types::string_encoded_len(v) as u32;
+        if self.source.is_set() {
+            let inner_size = self.source.compute_size();
+            size
+                += 1u32 + ::buffa::encoding::varint_len(inner_size as u64) as u32
+                    + inner_size;
         }
         size += self.__buffa_unknown_fields.encoded_len() as u32;
         self.__buffa_cached_size.set(size);
@@ -3203,13 +3508,14 @@ impl ::buffa::Message for TestSourceRequest {
                 .encode(buf);
             ::buffa::types::encode_string(v, buf);
         }
-        if let Some(ref v) = self.source_key {
+        if self.source.is_set() {
             ::buffa::encoding::Tag::new(
                     2u32,
                     ::buffa::encoding::WireType::LengthDelimited,
                 )
                 .encode(buf);
-            ::buffa::types::encode_string(v, buf);
+            ::buffa::encoding::encode_varint(self.source.cached_size() as u64, buf);
+            self.source.write_to(buf);
         }
         self.__buffa_unknown_fields.write_to(buf);
     }
@@ -3247,11 +3553,10 @@ impl ::buffa::Message for TestSourceRequest {
                         actual: tag.wire_type() as u8,
                     });
                 }
-                ::buffa::types::merge_string(
-                    self
-                        .source_key
-                        .get_or_insert_with(::buffa::alloc::string::String::new),
+                ::buffa::Message::merge_length_delimited(
+                    self.source.get_or_insert_default(),
                     buf,
+                    depth,
                 )?;
             }
             _ => {
@@ -3266,7 +3571,7 @@ impl ::buffa::Message for TestSourceRequest {
     }
     fn clear(&mut self) {
         self.org_slug = ::core::option::Option::None;
-        self.source_key = ::core::option::Option::None;
+        self.source = ::buffa::MessageField::none();
         self.__buffa_unknown_fields.clear();
         self.__buffa_cached_size.set(0);
     }
@@ -3304,8 +3609,8 @@ pub const __TEST_SOURCE_REQUEST_JSON_ANY: ::buffa::type_registry::JsonAnyEntry =
 pub struct TestSourceRequestView<'a> {
     /// Field 1: `org_slug`
     pub org_slug: ::core::option::Option<&'a str>,
-    /// Field 2: `source_key`
-    pub source_key: ::core::option::Option<&'a str>,
+    /// Field 2: `source`
+    pub source: ::buffa::MessageFieldView<CliSourceSelectorView<'a>>,
     pub __buffa_unknown_fields: ::buffa::UnknownFieldsView<'a>,
 }
 impl<'a> TestSourceRequestView<'a> {
@@ -3364,7 +3669,18 @@ impl<'a> TestSourceRequestView<'a> {
                             actual: tag.wire_type() as u8,
                         });
                     }
-                    view.source_key = Some(::buffa::types::borrow_str(&mut cur)?);
+                    if depth == 0 {
+                        return Err(::buffa::DecodeError::RecursionLimitExceeded);
+                    }
+                    let sub = ::buffa::types::borrow_bytes(&mut cur)?;
+                    match view.source.as_mut() {
+                        Some(existing) => existing._merge_into_view(sub, depth - 1)?,
+                        None => {
+                            view.source = ::buffa::MessageFieldView::set(
+                                CliSourceSelectorView::_decode_depth(sub, depth - 1)?,
+                            );
+                        }
+                    }
                 }
                 _ => {
                     ::buffa::encoding::skip_field_depth(tag, &mut cur, depth)?;
@@ -3394,7 +3710,14 @@ impl<'a> ::buffa::MessageView<'a> for TestSourceRequestView<'a> {
         use ::buffa::alloc::string::ToString as _;
         TestSourceRequest {
             org_slug: self.org_slug.map(|s| s.to_string()),
-            source_key: self.source_key.map(|s| s.to_string()),
+            source: match self.source.as_option() {
+                Some(v) => {
+                    ::buffa::MessageField::<
+                        CliSourceSelector,
+                    >::some(v.to_owned_message())
+                }
+                None => ::buffa::MessageField::none(),
+            },
             __buffa_unknown_fields: self
                 .__buffa_unknown_fields
                 .to_owned()

@@ -17,7 +17,7 @@ describe("source response codec", () => {
       })
     ).toMatchObject({
       interfaces: [SourceInterface.QUERY],
-      sourceKey: "postgres://broken_warehouse",
+      sourceKey: "broken_warehouse",
       status: SourceStatus.ERROR,
     });
   });

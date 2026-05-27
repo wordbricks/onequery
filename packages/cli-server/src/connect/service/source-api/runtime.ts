@@ -39,7 +39,10 @@ export async function resolveAuthorizedSourceApiAccess(
     action: "source_api.describe" | "source_api.execute";
     orgSlug: string;
     requestContext: AuthenticatedCliConnectRequestContext;
-    sourceKey: string;
+    source?: {
+      provider?: string;
+      sourceKey?: string;
+    };
   },
   dependencies: Pick<
     SourceApiServiceDependencies,
@@ -50,11 +53,11 @@ export async function resolveAuthorizedSourceApiAccess(
 ): Promise<CliServiceResult<SourceApiAccessState>> {
   return Result.gen(async function* resolveAuthorizedSourceApiAccessFlow() {
     const c = input.requestContext.honoContext;
-    const sourceSelector = parseCliSourceSelector(input.sourceKey);
+    const sourceSelector = parseCliSourceSelector(input.source);
     if (!sourceSelector) {
       return yield* Result.err(
         createCliServiceFailure({
-          detail: "source must look like provider://source-key",
+          detail: "source must include provider and sourceKey",
           key: "SOURCE_API_REQUEST_INVALID",
         })
       );

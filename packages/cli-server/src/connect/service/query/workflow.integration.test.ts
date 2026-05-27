@@ -532,6 +532,97 @@ describe("query workflow audit runtime", () => {
     expect(executeSql).toHaveBeenCalledTimes(1);
   });
 
+  it("executes a Supabase source through the Postgres query interface", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const supabaseSource: CliQuerySourceRecord = {
+      ...source,
+      displayName: "Supabase",
+      id: "source_supabase",
+      name: "gg-supa",
+      provider: "supabase",
+      sourceKey: "gg-supa",
+    };
+    const fakeCredentials = {
+      database: "postgres",
+      host: "aws-0-us-west-1.pooler.supabase.com",
+      password: "secret",
+      port: 5432,
+      sslMode: "require",
+      type: "postgres",
+      username: "postgres.project-ref",
+    } satisfies DatabaseCredentials;
+    const validateQuery = vi.fn(
+      async (): Promise<CliValidateQueryEffectResult> => ({
+        kind: "query_ready",
+        normalizedSql: "select id from users limit 10",
+        truncated: false,
+      })
+    );
+    const executeSql = vi.fn(
+      async (): Promise<CliQueryExecutionResult> => ({
+        elapsedMs: 16,
+        kind: "succeeded",
+        rows: [{ id: "user_1" }],
+      })
+    );
+
+    const result = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        executeSql,
+        loadCredentials: async (): Promise<CliLoadCredentialsEffectResult> => ({
+          credentials: fakeCredentials,
+          kind: "credentials_loaded",
+          source: supabaseSource,
+        }),
+        loadSource: vi
+          .fn<() => Promise<CliLoadSourceEffectResult>>()
+          .mockRejectedValue(new Error("loadSource should not run")),
+        persistUsage: async (): Promise<CliPersistUsageEffectResult> => ({
+          kind: "usage_persisted",
+        }),
+        validateQuery,
+      },
+      org,
+      requestId: "req-execute-supabase-1",
+      resourceCache: createQueryWorkflowResourceCache({
+        organizationId: org.id,
+        sourceKey: supabaseSource.sourceKey,
+        sourceLookup: {
+          kind: "found",
+          source: supabaseSource,
+        },
+      }),
+      sourceName: supabaseSource.sourceKey,
+      sql: "select id from users limit 10;",
+      timeoutMs: 30_000,
+    });
+
+    expect(unwrapOk(result)).toMatchObject({
+      kind: "response_ready",
+      response: {
+        source: {
+          provider: "supabase",
+          sourceKey: supabaseSource.sourceKey,
+        },
+      },
+    });
+    expect(validateQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        databaseType: "postgres",
+      })
+    );
+    expect(executeSql).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credentials: fakeCredentials,
+        source: supabaseSource,
+      })
+    );
+  });
+
   it("recovers pending usage persistence from journal state after query response", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);

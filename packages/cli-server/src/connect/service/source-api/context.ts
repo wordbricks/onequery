@@ -36,13 +36,16 @@ export async function resolveSourceApiWorkflowContext(input: {
   >;
   orgSlug: string;
   requestContext: AuthenticatedCliConnectRequestContext;
-  sourceKey: string;
+  source?: {
+    provider?: string;
+    sourceKey?: string;
+  };
 }): Promise<CliServiceResult<ResolvedSourceApiWorkflowContext>> {
   return Result.gen(async function* resolveSourceApiWorkflowContextFlow() {
-    const source = parseCliSourceSelector(input.sourceKey);
+    const source = parseCliSourceSelector(input.source);
     if (!source) {
       return yield* cliServiceErr({
-        detail: "source must look like provider://source-key",
+        detail: "source must include provider and sourceKey",
         key: "SOURCE_API_REQUEST_INVALID",
       });
     }
