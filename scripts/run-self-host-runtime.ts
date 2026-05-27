@@ -262,6 +262,8 @@ function runtimeAssetOwnerPackageJsonPath(ownerPackage: string): string {
       return resolve(rootDir, "packages", "db", "package.json");
     case "@onequery/server":
       return resolve(rootDir, "packages", "server", "package.json");
+    case "@onequery/sql-polyglot":
+      return resolve(rootDir, "packages", "sql-polyglot", "package.json");
     default:
       throw new Error(`Unsupported runtime asset owner '${ownerPackage}'.`);
   }
