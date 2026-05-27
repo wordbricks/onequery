@@ -188,10 +188,7 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
       );
     }
 
-    const interfaces = getCliSourceInterfaceTypes(
-      source.source.provider,
-      source.source.status
-    );
+    const interfaces = getCliSourceInterfaceTypes(source.source.provider);
 
     logCliEvent({
       details: buildCliRequestLogDetails(access.c, {

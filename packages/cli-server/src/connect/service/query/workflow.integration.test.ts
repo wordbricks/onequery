@@ -452,6 +452,86 @@ describe("query workflow audit runtime", () => {
     ).not.toContain("encrypted");
   });
 
+  it("executes an unhealthy source when its provider exposes query", async () => {
+    const db = await createTestDb();
+    openedDatabases.push(db as ClosableDatabase);
+
+    const erroredSource: CliQuerySourceRecord = {
+      ...source,
+      id: "source_error",
+      name: "broken_warehouse",
+      sourceKey: "broken_warehouse",
+      status: "error",
+    };
+    const fakeCredentials = {
+      connectionString: "postgres://example",
+      provider: "postgres",
+    } as unknown as DatabaseCredentials;
+    const validateQuery = vi.fn(
+      async (): Promise<CliValidateQueryEffectResult> => ({
+        kind: "query_ready",
+        normalizedSql: "select 1",
+        truncated: false,
+      })
+    );
+    const executeSql = vi.fn(
+      async (): Promise<CliQueryExecutionResult> => ({
+        elapsedMs: 10,
+        kind: "succeeded",
+        rows: [{ "?column?": 1 }],
+      })
+    );
+
+    const result = await runCliQueryExecutionWorkflowResult({
+      actorSnapshot,
+      db,
+      dispatch: {
+        executeSql,
+        loadCredentials: async (): Promise<CliLoadCredentialsEffectResult> => ({
+          credentials: fakeCredentials,
+          kind: "credentials_loaded",
+          source: erroredSource,
+        }),
+        loadSource: vi
+          .fn<() => Promise<CliLoadSourceEffectResult>>()
+          .mockRejectedValue(new Error("loadSource should not run")),
+        persistUsage: async (): Promise<CliPersistUsageEffectResult> => ({
+          kind: "usage_persisted",
+        }),
+        validateQuery,
+      },
+      org,
+      requestId: "req-execute-error-status-1",
+      resourceCache: createQueryWorkflowResourceCache({
+        organizationId: org.id,
+        sourceKey: erroredSource.sourceKey,
+        sourceLookup: {
+          kind: "found",
+          source: erroredSource,
+        },
+      }),
+      sourceName: erroredSource.sourceKey,
+      sql: "select 1",
+      timeoutMs: 30_000,
+    });
+
+    expect(unwrapOk(result)).toMatchObject({
+      kind: "response_ready",
+      response: {
+        source: {
+          sourceKey: erroredSource.sourceKey,
+          status: "error",
+        },
+      },
+    });
+    expect(validateQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        databaseType: "postgres",
+      })
+    );
+    expect(executeSql).toHaveBeenCalledTimes(1);
+  });
+
   it("recovers pending usage persistence from journal state after query response", async () => {
     const db = await createTestDb();
     openedDatabases.push(db as ClosableDatabase);
