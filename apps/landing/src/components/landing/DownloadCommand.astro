@@ -90,15 +90,12 @@ function getInstallTabId(index: number) {
   (() => {
     const selectors = document.querySelectorAll("[data-install-selector]");
 
-    function trackEvent(event, params) {
-      if (!Array.isArray(window.dataLayer)) {
+    function trackEvent(eventName, params) {
+      if (typeof window.gtag !== "function") {
         return;
       }
 
-      window.dataLayer.push({
-        event,
-        ...params,
-      });
+      window.gtag("event", eventName, params);
     }
 
     function swapText(element, nextText) {

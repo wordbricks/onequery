@@ -146,14 +146,11 @@
     }
 
     function trackEvent(name, params) {
-      if (!Array.isArray(window.dataLayer)) {
+      if (typeof window.gtag !== "function") {
         return;
       }
 
-      window.dataLayer.push({
-        event: name,
-        ...params,
-      });
+      window.gtag("event", name, params);
     }
 
     function readErrorMessage(body, fallback) {
