@@ -12,10 +12,10 @@ import { __internal, tarballNameForPackage } from "./build-npm-package.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const WORKSPACE_ROOT = path.resolve(__dirname, "..", "..", "..");
-const SQL_POLYGLOT_PACKAGE_MANIFEST_PATH = path.join(
+const SERVER_PACKAGE_MANIFEST_PATH = path.join(
   WORKSPACE_ROOT,
   "packages",
-  "sql-polyglot",
+  "server",
   "package.json"
 );
 
@@ -29,15 +29,13 @@ describe("build-npm-package runtime asset resolution", () => {
   it("anchors polyglotSql assets to the declared owner package manifest", async () => {
     const sourcePaths =
       await __internal.resolveRuntimeAssetSourcePaths("polyglotSql");
-    const sqlPolyglotRequire = createRequire(
-      SQL_POLYGLOT_PACKAGE_MANIFEST_PATH
-    );
+    const serverRequire = createRequire(SERVER_PACKAGE_MANIFEST_PATH);
 
     expect(sourcePaths).toEqual([
       {
         filename: "polyglot_sql_wasm_bg.wasm",
         sourcePath: path.join(
-          path.dirname(sqlPolyglotRequire.resolve("@polyglot-sql/sdk")),
+          path.dirname(serverRequire.resolve("@polyglot-sql/sdk")),
           "polyglot_sql_wasm_bg.wasm"
         ),
       },

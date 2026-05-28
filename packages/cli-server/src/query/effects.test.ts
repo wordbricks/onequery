@@ -90,11 +90,9 @@ describe("query effects", () => {
     const values = vi.fn(() => Promise.resolve());
     const insert = vi.fn(() => ({ values }));
     const db = { insert };
-    const executeValidatedDatabaseQueryWithStats =
-      vi.fn<
-        CliQueryEffectDependencies["executeValidatedDatabaseQueryWithStats"]
-      >();
-    executeValidatedDatabaseQueryWithStats.mockResolvedValueOnce(
+    const executeBigQueryQueryWithStats =
+      vi.fn<CliQueryEffectDependencies["executeBigQueryQueryWithStats"]>();
+    executeBigQueryQueryWithStats.mockResolvedValueOnce(
       Result.ok({
         rows: [{ total: 1 }],
         stats: {
@@ -144,7 +142,11 @@ describe("query effects", () => {
         },
       },
       dependencies: {
-        executeValidatedDatabaseQueryWithStats,
+        executeBigQueryQueryWithStats,
+        executeDatabaseQueryWithStats:
+          vi.fn<CliQueryEffectDependencies["executeDatabaseQueryWithStats"]>(),
+        executeValidatedDatabaseQuery:
+          vi.fn<CliQueryEffectDependencies["executeValidatedDatabaseQuery"]>(),
       },
     });
 
@@ -152,13 +154,11 @@ describe("query effects", () => {
       kind: "succeeded",
       rows: [{ total: 1 }],
     });
-    expect(executeValidatedDatabaseQueryWithStats).toHaveBeenCalledWith({
-      credentials: expect.objectContaining({ type: "bigquery" }),
-      db,
-      normalizedSql: "select 1",
-      organizationId: "org_1",
-      timeoutMs: 30_000,
-    });
+    expect(executeBigQueryQueryWithStats).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "bigquery" }),
+      "select 1",
+      { timeoutMs: 30_000 }
+    );
     expect(insert).toHaveBeenCalledWith(dataSourceQueryCosts);
     expect(values).toHaveBeenCalledWith(
       expect.objectContaining({

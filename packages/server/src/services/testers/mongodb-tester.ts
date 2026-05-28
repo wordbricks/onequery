@@ -1,12 +1,12 @@
 import type { MongoDBCredentials } from "@onequery/db/server";
-import {
-  createFailedConnectionTest,
-  createSuccessfulConnectionTest,
-} from "@onequery/query/connection-test";
-import type { ConnectionTestOutcome } from "@onequery/query/connection-test";
 import { Result } from "better-result";
 
 import { listMongoDatabases } from "../mongodb/relay";
+import {
+  createFailedConnectionTest,
+  createSuccessfulConnectionTest,
+} from "./connection-test-outcome";
+import type { ConnectionTestOutcome } from "./connection-test-outcome";
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
 
 export async function testMongoConnection(

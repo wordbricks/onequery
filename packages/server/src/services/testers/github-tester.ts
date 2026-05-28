@@ -1,12 +1,12 @@
 import type { GitHubCredentials } from "@onequery/db/server";
-import {
-  createFailedConnectionTest,
-  createSuccessfulConnectionTest,
-} from "@onequery/query/connection-test";
-import type { ConnectionTestOutcome } from "@onequery/query/connection-test";
 import { Result } from "better-result";
 
 import { fetchGitHubApi } from "../github/relay";
+import {
+  createFailedConnectionTest,
+  createSuccessfulConnectionTest,
+} from "./connection-test-outcome";
+import type { ConnectionTestOutcome } from "./connection-test-outcome";
 
 function normalizeRepositoryFullName(value: string): string | null {
   const parts = value
