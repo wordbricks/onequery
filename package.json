@@ -108,7 +108,7 @@
     "proto:generate:cli": "buf generate proto --template proto/buf.gen.yaml --path proto/onequery/cli/v1 -o packages/proto-cli",
     "proto:generate:runtime": "buf generate proto --template proto/buf.gen.yaml --path proto/onequery/runtime/v1 -o packages/proto-runtime",
     "proto:generate:workflow": "buf generate proto --template proto/buf.gen.yaml --path proto/onequery/workflow/v1 -o packages/proto-workflow",
-    "proto:generate:rust": "bun run proto:generate:rust:cli && bun run proto:generate:rust:runtime && bun run scripts/strip-rust-proto-register-types.ts apps/cli/crates/proto-cli/src/generated/proto apps/cli/crates/proto-runtime/src/generated/proto",
+    "proto:generate:rust": "bun run proto:generate:rust:cli && bun run proto:generate:rust:runtime",
     "proto:generate:rust:cli": "buf generate proto --template proto/buf.gen.rust.cli.yaml --path proto/onequery/cli/v1",
     "proto:generate:rust:runtime": "buf generate proto --template proto/buf.gen.rust.runtime.yaml --path proto/onequery/runtime/v1",
     "postproto:generate:rust": "cargo fmt --manifest-path apps/cli/Cargo.toml -p onequery-proto-cli -p onequery-proto-runtime -- --config imports_granularity=Item",
