@@ -1,0 +1,22 @@
+{
+  "name": "@onequery/sql-polyglot",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@onequery/query": "workspace:*",
+    "@polyglot-sql/sdk": "0.3.11",
+    "better-result": "catalog:"
+  },
+  "devDependencies": {
+    "vitest": "catalog:testing"
+  }
+}

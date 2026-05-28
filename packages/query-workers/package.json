@@ -1,0 +1,31 @@
+{
+  "name": "@onequery/query-workers",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bigquery-client": "./src/bigquery-client.ts",
+    "./bigquery-client/transport": "./src/bigquery-client/transport.ts",
+    "./bigquery-datasets": "./src/bigquery-datasets.ts",
+    "./bigquery-pricing": "./src/bigquery-pricing.ts",
+    "./providers/bigquery/driver": "./src/providers/bigquery/driver.ts",
+    "./providers/cloudflare-d1/driver": "./src/providers/cloudflare-d1/driver.ts",
+    "./providers/laminar/driver": "./src/providers/laminar/driver.ts",
+    "./providers/laminar/errors": "./src/providers/laminar/errors.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@onequery/base": "workspace:*",
+    "@onequery/query": "workspace:*",
+    "better-result": "catalog:",
+    "jose": "6.2.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "vitest": "catalog:testing"
+  }
+}

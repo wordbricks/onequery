@@ -5,20 +5,21 @@ import {
   isDatabaseCredentials,
 } from "@onequery/db/server";
 import type { Database } from "@onequery/db/server";
-import { prepareDataSourceCredentials as prepareDataSourceCredentialsDefault } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
-import {
-  executeBigQueryQueryWithStats as executeBigQueryQueryWithStatsDefault,
-  executeDatabaseQueryWithStats as executeDatabaseQueryWithStatsDefault,
-  getQueryFailureFlags,
-  executeValidatedDatabaseQuery as executeValidatedDatabaseQueryDefault,
-  toErrorMessage,
-} from "@onequery/server/services/data-source-query/execute-query";
+import type { DatabaseCredentials } from "@onequery/query";
+import { createQueryNodeRuntime } from "@onequery/query-node";
+import { createConnectorAthenaJobQueueAdapter } from "@onequery/query-node/providers/athena-connector/driver";
+import { getQueryFailureFlags, toErrorMessage } from "@onequery/query/errors";
+import type { DataSourceQueryFailure } from "@onequery/query/errors";
 import type {
   DatabaseQueryExecution,
   DatabaseQueryExecutionStats,
   DatabaseQueryResult,
-  DataSourceQueryFailure,
-} from "@onequery/server/services/data-source-query/execute-query";
+} from "@onequery/query/types";
+import {
+  ConnectorJobTimeoutError,
+  queueConnectorAthenaJob,
+} from "@onequery/server/services/connectors/broker";
+import { prepareDataSourceCredentials as prepareDataSourceCredentialsDefault } from "@onequery/server/services/data-source-credentials/prepare-data-source-credentials";
 import { Result } from "better-result";
 
 import type {
@@ -32,17 +33,49 @@ import type {
   CliValidateQueryEffectResult,
 } from "../domain/effects";
 
+type ExecuteValidatedDatabaseQueryWithStatsInput = {
+  credentials: DatabaseCredentials;
+  db?: Database;
+  normalizedSql: string;
+  organizationId: string;
+  timeoutMs?: number | null;
+};
+
+type ExecuteValidatedDatabaseQueryWithStats = (
+  input: ExecuteValidatedDatabaseQueryWithStatsInput
+) => Promise<DatabaseQueryResult<DatabaseQueryExecution>>;
+
 export type CliQueryEffectDependencies = {
-  executeBigQueryQueryWithStats: typeof executeBigQueryQueryWithStatsDefault;
-  executeDatabaseQueryWithStats: typeof executeDatabaseQueryWithStatsDefault;
-  executeValidatedDatabaseQuery: typeof executeValidatedDatabaseQueryDefault;
+  executeValidatedDatabaseQueryWithStats: ExecuteValidatedDatabaseQueryWithStats;
   prepareDataSourceCredentials: typeof prepareDataSourceCredentialsDefault;
 };
 
+const queueCliConnectorAthenaJob = createConnectorAthenaJobQueueAdapter({
+  isTimedOut: (error) => error instanceof ConnectorJobTimeoutError,
+  queueJob: queueConnectorAthenaJob,
+});
+
+const defaultQueryRuntime = createQueryNodeRuntime({
+  athenaConnector: {
+    queueJob: queueCliConnectorAthenaJob,
+  },
+});
+
+const executeValidatedDatabaseQueryWithStatsDefault: ExecuteValidatedDatabaseQueryWithStats =
+  (input) =>
+    defaultQueryRuntime.service.executeValidatedDatabaseQueryWithStats({
+      context: {
+        db: input.db,
+        organizationId: input.organizationId,
+      },
+      credentials: input.credentials,
+      normalizedSql: input.normalizedSql,
+      timeoutMs: input.timeoutMs,
+    });
+
 const defaultCliQueryEffectDependencies = {
-  executeBigQueryQueryWithStats: executeBigQueryQueryWithStatsDefault,
-  executeDatabaseQueryWithStats: executeDatabaseQueryWithStatsDefault,
-  executeValidatedDatabaseQuery: executeValidatedDatabaseQueryDefault,
+  executeValidatedDatabaseQueryWithStats:
+    executeValidatedDatabaseQueryWithStatsDefault,
   prepareDataSourceCredentials: prepareDataSourceCredentialsDefault,
 } satisfies CliQueryEffectDependencies;
 
@@ -52,7 +85,7 @@ export async function runCliValidateQueryEffect(
   const {
     classifyCliQueryValidationFailure,
     validateAndNormalizeReadOnlyQuery,
-  } = await import("@onequery/server/services/data-source-query/validate-sql");
+  } = await import("@onequery/sql-polyglot");
   const validation = await validateAndNormalizeReadOnlyQuery(
     effect.sql,
     effect.databaseType
@@ -119,9 +152,7 @@ export async function runCliExecuteSqlEffect(input: {
   effect: CliExecuteSqlEffect;
   dependencies?: Pick<
     CliQueryEffectDependencies,
-    | "executeBigQueryQueryWithStats"
-    | "executeDatabaseQueryWithStats"
-    | "executeValidatedDatabaseQuery"
+    "executeValidatedDatabaseQueryWithStats"
   >;
 }): Promise<CliExecuteSqlEffectResult> {
   const dependencies = input.dependencies ?? defaultCliQueryEffectDependencies;
@@ -158,51 +189,23 @@ export async function runCliExecuteSqlEffect(input: {
 }
 
 async function executeValidatedQueryWithOptionalStats(input: {
-  credentials: Parameters<
-    typeof executeDatabaseQueryWithStatsDefault
-  >[0]["credentials"];
-  db: Parameters<typeof executeDatabaseQueryWithStatsDefault>[0]["db"];
+  credentials: DatabaseCredentials;
+  db: Database;
   dependencies: Pick<
     CliQueryEffectDependencies,
-    | "executeBigQueryQueryWithStats"
-    | "executeDatabaseQueryWithStats"
-    | "executeValidatedDatabaseQuery"
+    "executeValidatedDatabaseQueryWithStats"
   >;
   normalizedSql: string;
   organizationId: string;
   timeoutMs: number | null | undefined;
 }): Promise<DatabaseQueryResult<DatabaseQueryExecution>> {
-  if (input.credentials.type === "bigquery") {
-    return input.dependencies.executeBigQueryQueryWithStats(
-      input.credentials,
-      input.normalizedSql,
-      {
-        timeoutMs: input.timeoutMs,
-      }
-    );
-  }
-
-  if (input.credentials.type === "aws_athena_connector") {
-    return input.dependencies.executeDatabaseQueryWithStats({
-      credentials: input.credentials,
-      db: input.db,
-      organizationId: input.organizationId,
-      sql: input.normalizedSql,
-      timeoutMs: input.timeoutMs,
-    });
-  }
-
-  const rows = await input.dependencies.executeValidatedDatabaseQuery({
+  return input.dependencies.executeValidatedDatabaseQueryWithStats({
     credentials: input.credentials,
     db: input.db,
     normalizedSql: input.normalizedSql,
     organizationId: input.organizationId,
     timeoutMs: input.timeoutMs,
   });
-
-  return rows.map((value) => ({
-    rows: value,
-  }));
 }
 
 async function persistCliQueryCostBestEffort(input: {

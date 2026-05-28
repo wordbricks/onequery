@@ -1,10 +1,10 @@
-import { Result } from "better-result";
-
 import {
   createFailedConnectionTest,
   createSuccessfulConnectionTest,
-} from "./connection-test-outcome";
-import type { ConnectionTestOutcome } from "./connection-test-outcome";
+} from "@onequery/query/connection-test";
+import type { ConnectionTestOutcome } from "@onequery/query/connection-test";
+import { Result } from "better-result";
+
 import { DEFAULT_CONNECTION_TEST_TIMEOUT_SECONDS } from "./defaults";
 
 interface HttpTesterOptions<TCredentials> {

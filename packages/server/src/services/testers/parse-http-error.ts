@@ -1,4 +1,4 @@
-import { createFailedConnectionTest } from "./connection-test-outcome";
+import { createFailedConnectionTest } from "@onequery/query/connection-test";
 
 const HTTP_ERROR_PATTERN =
   /^[A-Za-z0-9 _-]+ API error \((\d{3})\):\s*([\s\S]*)$/u;
