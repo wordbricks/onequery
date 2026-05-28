@@ -1,10 +1,13 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-// COMMENT: protoc-gen-buffa@0.3.0 has no register_types=false option, while
-// connectrpc@0.3.3 still uses buffa@0.3.x. Remove this after that toolchain moves.
+// COMMENT: The local Buffa reference has a register_types=false option, but
+// protoc-gen-buffa@0.6.0 from crates.io rejects it. Keep this normalization
+// until the published tool accepts that option.
 const REGISTER_TYPES_PREFIX =
   "pub fn register_types(reg: &mut ::buffa::type_registry::TypeRegistry)";
+const REGISTER_TYPES_REEXPORT =
+  /\n#\[doc\(inline\)\]\npub use self::__buffa::register_types;\n?/g;
 
 async function collectRustFiles(path: string): Promise<string[]> {
   const entries = await readdir(path, { withFileTypes: true });
@@ -82,7 +85,9 @@ function stripRegisterTypes(source: string): string {
 }
 
 function normalizeGeneratedRust(source: string): string {
-  return stripRegisterTypes(source).replace(/\n{2,}$/g, "\n");
+  return stripRegisterTypes(source)
+    .replace(REGISTER_TYPES_REEXPORT, "\n")
+    .replace(/\n{2,}$/g, "\n");
 }
 
 const roots = process.argv.slice(2);

@@ -45,8 +45,8 @@ pub(crate) async fn supervisor_control_client(
     )
     .await?;
     let config = ClientConfig::new(authority)
-        .default_timeout(SUPERVISOR_CONTROL_REQUEST_TIMEOUT)
-        .default_max_message_size(SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES);
+        .with_default_timeout(SUPERVISOR_CONTROL_REQUEST_TIMEOUT)
+        .with_default_max_message_size(SUPERVISOR_CONTROL_MAX_MESSAGE_SIZE_BYTES);
 
     Ok(SupervisorControlClient::new(
         connection.shared(SUPERVISOR_CONTROL_SHARED_STREAM_BOUND),
