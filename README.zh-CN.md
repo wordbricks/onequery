@@ -187,10 +187,14 @@ Load skill onequery-cli.
 
 ## 技术栈
 
-撑起 OneQuery 可靠性的两个库：
+撑起 OneQuery 可靠性的库：
 
 - [better-result](https://github.com/dmmulroy/better-result)：每个错误都得显式处理，异常不会被悄悄吞掉。
 - [antiox](https://github.com/rivet-dev/antiox)：并发查询、超时、取消都行为可控，不会漏任务、也不会挂住连接。
+- [XState](https://github.com/statelyai/xstate)：把复杂的 Dashboard 流程建模为显式状态机，让 UI 状态转换可测试、可预测。
+- [proptest](https://github.com/proptest-rs/proptest)：用生成式属性测试覆盖 Rust 运行时状态机和路径不变量，减少只靠手写样例留下的盲区。
+- [connect-rust](https://github.com/anthropics/connect-rust)：提供基于 Tower 的 Rust Connect RPC 支持，覆盖 Connect、gRPC 和 gRPC-Web。
+- [polyglot](https://github.com/tobilg/polyglot)：解析、转译、格式化 32+ 种 SQL 方言，让跨数据库查询处理保持一致。
 
 ---
 
