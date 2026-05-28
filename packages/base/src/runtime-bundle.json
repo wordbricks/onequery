@@ -39,7 +39,7 @@
       "packagedPath": "runtime/pglite"
     },
     "polyglotSql": {
-      "buildOwnerPackage": "@onequery/sql-polyglot",
+      "buildOwnerPackage": "@onequery/server",
       "buildSource": {
         "kind": "package-entrypoint-directory",
         "packageSpecifier": "@polyglot-sql/sdk"

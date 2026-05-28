@@ -28,10 +28,7 @@
     "@onequery/db": "workspace:*",
     "@onequery/proto-cli": "workspace:*",
     "@onequery/proto-workflow": "workspace:*",
-    "@onequery/query": "workspace:*",
-    "@onequery/query-node": "workspace:*",
     "@onequery/server": "workspace:*",
-    "@onequery/sql-polyglot": "workspace:*",
     "better-result": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"

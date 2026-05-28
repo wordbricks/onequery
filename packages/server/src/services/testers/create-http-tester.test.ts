@@ -1,7 +1,7 @@
-import { createFailedConnectionTest } from "@onequery/query/connection-test";
 import { Result } from "better-result";
 import { describe, expect, it, vi } from "vitest";
 
+import { createFailedConnectionTest } from "./connection-test-outcome";
 import { createHttpTester } from "./create-http-tester";
 
 describe("createHttpTester", () => {

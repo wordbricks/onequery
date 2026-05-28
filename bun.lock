@@ -188,10 +188,7 @@
         "@onequery/db": "workspace:*",
         "@onequery/proto-cli": "workspace:*",
         "@onequery/proto-workflow": "workspace:*",
-        "@onequery/query": "workspace:*",
-        "@onequery/query-node": "workspace:*",
         "@onequery/server": "workspace:*",
-        "@onequery/sql-polyglot": "workspace:*",
         "better-result": "catalog:",
         "hono": "catalog:",
         "zod": "catalog:",
@@ -303,48 +300,6 @@
         "@bufbuild/protobuf": "catalog:",
       },
     },
-    "packages/query": {
-      "name": "@onequery/query",
-      "version": "0.0.0",
-      "dependencies": {
-        "@onequery/base": "workspace:*",
-        "better-result": "catalog:",
-      },
-      "devDependencies": {
-        "vitest": "catalog:testing",
-      },
-    },
-    "packages/query-node": {
-      "name": "@onequery/query-node",
-      "version": "0.0.0",
-      "dependencies": {
-        "@onequery/query": "workspace:*",
-        "@onequery/query-workers": "workspace:*",
-        "@onequery/sql-polyglot": "workspace:*",
-        "better-result": "catalog:",
-        "mysql2": "catalog:",
-        "pg": "catalog:",
-        "snowflake-sdk": "2.4.1",
-      },
-      "devDependencies": {
-        "@types/pg": "catalog:",
-        "vitest": "catalog:testing",
-      },
-    },
-    "packages/query-workers": {
-      "name": "@onequery/query-workers",
-      "version": "0.0.0",
-      "dependencies": {
-        "@onequery/base": "workspace:*",
-        "@onequery/query": "workspace:*",
-        "better-result": "catalog:",
-        "jose": "6.2.1",
-        "zod": "catalog:",
-      },
-      "devDependencies": {
-        "vitest": "catalog:testing",
-      },
-    },
     "packages/self-host-runtime": {
       "name": "@onequery/self-host-runtime",
       "version": "0.0.0",
@@ -387,9 +342,7 @@
         "@onequery/config": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/proto-workflow": "workspace:*",
-        "@onequery/query": "workspace:*",
-        "@onequery/query-node": "workspace:*",
-        "@onequery/query-workers": "workspace:*",
+        "@polyglot-sql/sdk": "0.3.11",
         "better-auth": "catalog:",
         "better-result": "catalog:",
         "hono": "catalog:",
@@ -397,21 +350,15 @@
         "hono-rate-limiter": "catalog:",
         "jose": "6.2.1",
         "mongodb": "6.12.0",
+        "mysql2": "catalog:",
         "nodemailer": "7.0.5",
+        "pg": "catalog:",
+        "snowflake-sdk": "2.4.1",
         "unstorage": "catalog:",
         "zod": "catalog:",
       },
-    },
-    "packages/sql-polyglot": {
-      "name": "@onequery/sql-polyglot",
-      "version": "0.0.0",
-      "dependencies": {
-        "@onequery/query": "workspace:*",
-        "@polyglot-sql/sdk": "0.3.11",
-        "better-result": "catalog:",
-      },
       "devDependencies": {
-        "vitest": "catalog:testing",
+        "@types/pg": "catalog:",
       },
     },
     "packages/tsconfig": {
@@ -1314,17 +1261,9 @@
 
     "@onequery/proto-workflow": ["@onequery/proto-workflow@workspace:packages/proto-workflow"],
 
-    "@onequery/query": ["@onequery/query@workspace:packages/query"],
-
-    "@onequery/query-node": ["@onequery/query-node@workspace:packages/query-node"],
-
-    "@onequery/query-workers": ["@onequery/query-workers@workspace:packages/query-workers"],
-
     "@onequery/self-host-runtime": ["@onequery/self-host-runtime@workspace:packages/self-host-runtime"],
 
     "@onequery/server": ["@onequery/server@workspace:packages/server"],
-
-    "@onequery/sql-polyglot": ["@onequery/sql-polyglot@workspace:packages/sql-polyglot"],
 
     "@onequery/tsconfig": ["@onequery/tsconfig@workspace:packages/tsconfig"],
 

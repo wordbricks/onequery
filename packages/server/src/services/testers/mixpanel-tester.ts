@@ -1,14 +1,14 @@
 import type { MixpanelCredentials } from "@onequery/db/server";
-import {
-  createFailedConnectionTest,
-  createSuccessfulConnectionTest,
-} from "@onequery/query/connection-test";
 import { Result } from "better-result";
 
 import {
   DEFAULT_MIXPANEL_ENGAGE_PAGE_SIZE,
   fetchMixpanelQueryApi,
 } from "../mixpanel/relay";
+import {
+  createFailedConnectionTest,
+  createSuccessfulConnectionTest,
+} from "./connection-test-outcome";
 import { createHttpTester } from "./create-http-tester";
 import { parseHttpStatusError } from "./parse-http-error";
 
