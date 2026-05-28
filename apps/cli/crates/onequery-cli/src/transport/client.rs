@@ -218,9 +218,9 @@ fn connect_config(
                 message: error.to_string(),
             }
         })?)
-        .default_timeout(request_timeout)
+        .with_default_timeout(request_timeout)
         .compress_requests("gzip")
-        .default_headers(default_headers),
+        .with_default_headers(default_headers),
     )
 }
 
@@ -296,8 +296,8 @@ mod tests {
         )
         .expect("expected connect config");
 
-        assert_eq!(config.default_timeout, Some(Duration::from_secs(5)));
-        assert_eq!(config.default_headers.get(AUTHORIZATION), None);
+        assert_eq!(config.default_timeout(), Some(Duration::from_secs(5)));
+        assert_eq!(config.default_headers().get(AUTHORIZATION), None);
     }
 
     #[test]
@@ -312,7 +312,7 @@ mod tests {
 
         assert_eq!(
             config
-                .default_headers
+                .default_headers()
                 .get(AUTHORIZATION)
                 .and_then(|value| value.to_str().ok()),
             Some("Bearer pat_123")
@@ -331,7 +331,7 @@ mod tests {
 
         assert_eq!(
             config
-                .default_headers
+                .default_headers()
                 .get(USER_AGENT)
                 .and_then(|value| value.to_str().ok()),
             Some(CLI_USER_AGENT)
@@ -348,9 +348,9 @@ mod tests {
         )
         .expect("expected connect config");
 
-        assert_eq!(config.request_compression.as_deref(), Some("gzip"));
-        assert!(config.compression.supports("gzip"));
-        assert!(!config.compression.supports("zstd"));
+        assert_eq!(config.request_compression(), Some("gzip"));
+        assert!(config.compression().supports("gzip"));
+        assert!(!config.compression().supports("zstd"));
     }
 
     #[test]
@@ -380,7 +380,7 @@ mod tests {
 
         assert_eq!(
             config
-                .default_headers
+                .default_headers()
                 .get("x-request-id")
                 .and_then(|value| value.to_str().ok()),
             Some("req_cli_123")

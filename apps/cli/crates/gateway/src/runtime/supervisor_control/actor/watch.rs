@@ -1,6 +1,3 @@
-use std::pin::Pin;
-
-use futures::Stream;
 use tokio::sync::broadcast;
 
 use crate::supervisor_control_proto::types;
@@ -33,16 +30,7 @@ impl SupervisorControlActor {
         &self,
         after_supervisor_sequence: u64,
         include_snapshot: bool,
-    ) -> Pin<
-        Box<
-            dyn Stream<
-                    Item = Result<
-                        types::SupervisorLifecycleServiceWatchStatusResponse,
-                        connectrpc::ConnectError,
-                    >,
-                > + Send,
-        >,
-    > {
+    ) -> connectrpc::ServiceStream<types::SupervisorLifecycleServiceWatchStatusResponse> {
         let receiver = self.state.events.subscribe();
         let initial = if include_snapshot {
             Some(watch_snapshot_response(self.snapshot().await))

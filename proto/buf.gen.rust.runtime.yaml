@@ -9,6 +9,9 @@ plugins:
     opt:
       - views=true
       - json=true
+      # The checked-in CLI Rust crates do not install a Buffa TypeRegistry for
+      # JSON Any or extensions, so keep the generated registry hook out.
+      - register_types=false
   - local: protoc-gen-buffa-packaging
     out: apps/cli/crates/proto-runtime/src/generated/proto
     include_imports: true

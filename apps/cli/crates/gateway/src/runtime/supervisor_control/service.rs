@@ -1,5 +1,3 @@
-use std::pin::Pin;
-
 use buffa::MessageView;
 use buffa::view::OwnedView;
 use futures::Stream;
@@ -12,6 +10,10 @@ use super::actor::SupervisorControlActor;
 use super::errors::failed_precondition;
 use super::errors::missing_required_field;
 
+type RuntimeSessionResponseStream = connectrpc::ServiceStream<types::OpenRuntimeSessionResponse>;
+type WatchStatusResponseStream =
+    connectrpc::ServiceStream<types::SupervisorLifecycleServiceWatchStatusResponse>;
+
 #[derive(Clone)]
 pub(crate) struct SupervisorControlService {
     actor: SupervisorControlActor,
@@ -23,36 +25,15 @@ impl SupervisorControlService {
     }
 }
 
+#[allow(refining_impl_trait)]
 impl SupervisorLifecycleService for SupervisorControlService {
     async fn open_runtime_session(
         &self,
-        ctx: connectrpc::Context,
-        mut requests: Pin<
-            Box<
-                dyn Stream<
-                        Item = Result<
-                            OwnedView<types::OpenRuntimeSessionRequestView<'static>>,
-                            connectrpc::ConnectError,
-                        >,
-                    > + Send,
-            >,
+        _ctx: connectrpc::RequestContext,
+        mut requests: connectrpc::ServiceStream<
+            OwnedView<types::OpenRuntimeSessionRequestView<'static>>,
         >,
-    ) -> Result<
-        (
-            Pin<
-                Box<
-                    dyn Stream<
-                            Item = Result<
-                                types::OpenRuntimeSessionResponse,
-                                connectrpc::ConnectError,
-                            >,
-                        > + Send,
-                >,
-            >,
-            connectrpc::Context,
-        ),
-        connectrpc::ConnectError,
-    > {
+    ) -> connectrpc::ServiceResult<RuntimeSessionResponseStream> {
         let first_request = requests
             .next()
             .await
@@ -146,44 +127,30 @@ impl SupervisorLifecycleService for SupervisorControlService {
             actor.close_runtime_session_commands(session_id).await;
         });
 
-        Ok((
-            Box::pin(runtime_session_command_stream(opened, command_rx, error_rx)),
-            ctx,
+        connectrpc::Response::stream_ok(runtime_session_command_stream(
+            opened, command_rx, error_rx,
         ))
     }
 
     async fn get_status(
         &self,
-        ctx: connectrpc::Context,
+        _ctx: connectrpc::RequestContext,
         _request: OwnedView<types::SupervisorLifecycleServiceGetStatusRequestView<'static>>,
-    ) -> Result<
-        (
-            types::SupervisorLifecycleServiceGetStatusResponse,
-            connectrpc::Context,
-        ),
-        connectrpc::ConnectError,
-    > {
-        Ok((
+    ) -> connectrpc::ServiceResult<types::SupervisorLifecycleServiceGetStatusResponse> {
+        Ok(connectrpc::Response::new(
             types::SupervisorLifecycleServiceGetStatusResponse {
                 status: buffa::MessageField::some(self.actor.snapshot().await),
                 ..Default::default()
             },
-            ctx,
         ))
     }
 
     async fn stop(
         &self,
-        _ctx: connectrpc::Context,
+        _ctx: connectrpc::RequestContext,
         request: OwnedView<types::SupervisorLifecycleServiceStopRequestView<'static>>,
-    ) -> Result<
-        (
-            types::SupervisorLifecycleServiceStopResponse,
-            connectrpc::Context,
-        ),
-        connectrpc::ConnectError,
-    > {
-        Ok((
+    ) -> connectrpc::ServiceResult<types::SupervisorLifecycleServiceStopResponse> {
+        Ok(connectrpc::Response::new(
             self.actor
                 .request_stop(
                     request
@@ -192,39 +159,22 @@ impl SupervisorLifecycleService for SupervisorControlService {
                         .to_owned(),
                 )
                 .await?,
-            _ctx,
         ))
     }
 
     async fn watch_status(
         &self,
-        ctx: connectrpc::Context,
+        _ctx: connectrpc::RequestContext,
         request: OwnedView<types::SupervisorLifecycleServiceWatchStatusRequestView<'static>>,
-    ) -> Result<
-        (
-            Pin<
-                Box<
-                    dyn Stream<
-                            Item = Result<
-                                types::SupervisorLifecycleServiceWatchStatusResponse,
-                                connectrpc::ConnectError,
-                            >,
-                        > + Send,
-                >,
-            >,
-            connectrpc::Context,
-        ),
-        connectrpc::ConnectError,
-    > {
+    ) -> connectrpc::ServiceResult<WatchStatusResponseStream> {
         let after_supervisor_sequence = request.after_supervisor_sequence.unwrap_or(0);
         let include_snapshot = request
             .include_snapshot
             .ok_or_else(|| missing_required_field("watch_status_request.include_snapshot"))?;
-        Ok((
+        Ok(connectrpc::Response::new(
             self.actor
                 .watch_status(after_supervisor_sequence, include_snapshot)
                 .await,
-            ctx,
         ))
     }
 }

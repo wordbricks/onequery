@@ -1,116 +1,292 @@
+///Shorthand for `OwnedView<OpenRuntimeSessionRequestView<'static>>`.
+pub type OwnedOpenRuntimeSessionRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::OpenRuntimeSessionRequestView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<OpenRuntimeSessionResponseView<'static>>`.
+pub type OwnedOpenRuntimeSessionResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::OpenRuntimeSessionResponseView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<SupervisorLifecycleServiceGetStatusRequestView<'static>>`.
+pub type OwnedSupervisorLifecycleServiceGetStatusRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceGetStatusRequestView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<SupervisorLifecycleServiceGetStatusResponseView<'static>>`.
+pub type OwnedSupervisorLifecycleServiceGetStatusResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceGetStatusResponseView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<SupervisorLifecycleServiceStopRequestView<'static>>`.
+pub type OwnedSupervisorLifecycleServiceStopRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceStopRequestView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<SupervisorLifecycleServiceStopResponseView<'static>>`.
+pub type OwnedSupervisorLifecycleServiceStopResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceStopResponseView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<SupervisorLifecycleServiceWatchStatusRequestView<'static>>`.
+pub type OwnedSupervisorLifecycleServiceWatchStatusRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceWatchStatusRequestView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<SupervisorLifecycleServiceWatchStatusResponseView<'static>>`.
+pub type OwnedSupervisorLifecycleServiceWatchStatusResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceWatchStatusResponseView<
+        'static,
+    >,
+>;
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::runtime::v1::OpenRuntimeSessionResponse,
+>
+for crate::proto::onequery::runtime::v1::__buffa::view::OpenRuntimeSessionResponseView<
+    '_,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::runtime::v1::OpenRuntimeSessionResponse,
+>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::OpenRuntimeSessionResponseView<
+        'static,
+    >,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceGetStatusResponse,
+>
+for crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceGetStatusResponseView<
+    '_,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceGetStatusResponse,
+>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceGetStatusResponseView<
+        'static,
+    >,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceStopResponse,
+>
+for crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceStopResponseView<
+    '_,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceStopResponse,
+>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceStopResponseView<
+        'static,
+    >,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceWatchStatusResponse,
+>
+for crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceWatchStatusResponseView<
+    '_,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceWatchStatusResponse,
+>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceWatchStatusResponseView<
+        'static,
+    >,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
 /// Full service name for this service.
 pub const SUPERVISOR_LIFECYCLE_SERVICE_SERVICE_NAME: &str = "onequery.runtime.v1.SupervisorLifecycleService";
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `OpenRuntimeSession` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const SUPERVISOR_LIFECYCLE_SERVICE_OPEN_RUNTIME_SESSION_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.runtime.v1.SupervisorLifecycleService/OpenRuntimeSession",
+        ::connectrpc::StreamType::BidiStream,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `GetStatus` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const SUPERVISOR_LIFECYCLE_SERVICE_GET_STATUS_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.runtime.v1.SupervisorLifecycleService/GetStatus",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::NoSideEffects);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `Stop` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const SUPERVISOR_LIFECYCLE_SERVICE_STOP_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.runtime.v1.SupervisorLifecycleService/Stop",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `WatchStatus` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const SUPERVISOR_LIFECYCLE_SERVICE_WATCH_STATUS_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.runtime.v1.SupervisorLifecycleService/WatchStatus",
+        ::connectrpc::StreamType::ServerStream,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::NoSideEffects);
 /// Server trait for SupervisorLifecycleService.
 ///
 /// # Implementing handlers
 ///
-/// Handlers receive requests as `OwnedView<FooView<'static>>`, which gives
-/// zero-copy borrowed access to fields (e.g. `request.name` is a `&str`
-/// into the decoded buffer). The view can be held across `.await` points.
+/// Handlers receive requests as `OwnedFooView` (an alias for
+/// `OwnedView<FooView<'static>>`), which gives zero-copy borrowed access
+/// to fields (e.g. `request.name` is a `&str` into the decoded buffer).
+/// The view can be held across `.await` points. When two RPC types in
+/// the same package would alias to the same `Owned<…>View` name (e.g.
+/// a local message plus an imported one with the same short name), the
+/// alias is suppressed for both and the request type is spelled as
+/// `OwnedView<…View<'static>>` directly in the trait signature.
 ///
 /// Implement methods with plain `async fn`; the returned future satisfies
 /// the `Send` bound automatically. See the
 /// [buffa user guide](https://github.com/anthropics/buffa/blob/main/docs/guide.md#ownedview-in-async-trait-implementations)
 /// for zero-copy access patterns and when `to_owned_message()` is needed.
+///
+/// The `impl Encodable<Out>` return bound accepts the owned `Out`, the
+/// generated `OutView<'_>` / `OwnedOutView`,
+/// [`MaybeBorrowed`](::connectrpc::MaybeBorrowed), or
+/// [`PreEncoded`](::connectrpc::PreEncoded) for handlers that encode a
+/// non-`'static` view internally and pass the bytes across the handler
+/// boundary. View bodies are not emitted for output types mapped via
+/// `extern_path` (the impl would be an orphan); return owned for
+/// WKT/extern outputs.
+///
+/// Server-streaming and bidi-streaming methods return
+/// `ServiceStream<impl Encodable<Out> + Send + use<Self>>`. The
+/// `use<Self>` precise-capturing clause excludes `&self`'s lifetime
+/// (unary methods use `use<'a, Self>` and may borrow), so stream items
+/// must be `'static`. To stream view-encoded data, encode each item
+/// inside the stream body and yield
+/// [`PreEncoded`](::connectrpc::PreEncoded) — see its `# Streaming
+/// example` doc.
 #[allow(clippy::type_complexity)]
 pub trait SupervisorLifecycleService: Send + Sync + 'static {
     /// Handle the OpenRuntimeSession RPC.
     fn open_runtime_session(
         &self,
-        ctx: ::connectrpc::Context,
-        requests: ::std::pin::Pin<
-            Box<
-                dyn ::futures::Stream<
-                    Item = Result<
-                        ::buffa::view::OwnedView<
-                            crate::proto::onequery::runtime::v1::OpenRuntimeSessionRequestView<
-                                'static,
-                            >,
-                        >,
-                        ::connectrpc::ConnectError,
-                    >,
-                > + Send,
-            >,
-        >,
+        ctx: ::connectrpc::RequestContext,
+        requests: ::connectrpc::ServiceStream<OwnedOpenRuntimeSessionRequestView>,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
-                ::std::pin::Pin<
-                    Box<
-                        dyn ::futures::Stream<
-                            Item = Result<
-                                crate::proto::onequery::runtime::v1::OpenRuntimeSessionResponse,
-                                ::connectrpc::ConnectError,
-                            >,
-                        > + Send,
-                    >,
-                >,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+        Output = ::connectrpc::ServiceResult<
+            ::connectrpc::ServiceStream<
+                impl ::connectrpc::Encodable<
+                    crate::proto::onequery::runtime::v1::OpenRuntimeSessionResponse,
+                > + Send + use<Self>,
+            >,
         >,
     > + Send;
     /// Handle the GetStatus RPC.
-    fn get_status(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceGetStatusRequestView<
-                'static,
-            >,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn get_status<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedSupervisorLifecycleServiceGetStatusRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceGetStatusResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the Stop RPC.
-    fn stop(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceStopRequestView<
-                'static,
-            >,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn stop<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedSupervisorLifecycleServiceStopRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceStopResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the WatchStatus RPC.
     fn watch_status(
         &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceWatchStatusRequestView<
-                'static,
-            >,
-        >,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedSupervisorLifecycleServiceWatchStatusRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
-                ::std::pin::Pin<
-                    Box<
-                        dyn ::futures::Stream<
-                            Item = Result<
-                                crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceWatchStatusResponse,
-                                ::connectrpc::ConnectError,
-                            >,
-                        > + Send,
-                    >,
-                >,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+        Output = ::connectrpc::ServiceResult<
+            ::connectrpc::ServiceStream<
+                impl ::connectrpc::Encodable<
+                    crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceWatchStatusResponse,
+                > + Send + use<Self>,
+            >,
         >,
     > + Send;
 }
@@ -142,7 +318,11 @@ impl<S: SupervisorLifecycleService> SupervisorLifecycleServiceExt for S {
         router: ::connectrpc::Router,
     ) -> ::connectrpc::Router {
         router
-            .route_view_bidi_stream(
+            .route_view_bidi_stream::<
+                _,
+                _,
+                crate::proto::onequery::runtime::v1::OpenRuntimeSessionResponse,
+            >(
                 SUPERVISOR_LIFECYCLE_SERVICE_SERVICE_NAME,
                 "OpenRuntimeSession",
                 ::connectrpc::view_bidi_streaming_handler_fn({
@@ -153,29 +333,48 @@ impl<S: SupervisorLifecycleService> SupervisorLifecycleServiceExt for S {
                     }
                 }),
             )
+            .with_spec(SUPERVISOR_LIFECYCLE_SERVICE_OPEN_RUNTIME_SESSION_SPEC)
             .route_view_idempotent(
                 SUPERVISOR_LIFECYCLE_SERVICE_SERVICE_NAME,
                 "GetStatus",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.get_status(ctx, req).await }
+                        async move {
+                            svc.get_status(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceGetStatusResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(SUPERVISOR_LIFECYCLE_SERVICE_GET_STATUS_SPEC)
             .route_view(
                 SUPERVISOR_LIFECYCLE_SERVICE_SERVICE_NAME,
                 "Stop",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.stop(ctx, req).await }
+                        async move {
+                            svc.stop(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceStopResponse,
+                                >(format)
+                        }
                     })
                 },
             )
-            .route_view_server_stream(
+            .with_spec(SUPERVISOR_LIFECYCLE_SERVICE_STOP_SPEC)
+            .route_view_server_stream::<
+                _,
+                _,
+                crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceWatchStatusResponse,
+            >(
                 SUPERVISOR_LIFECYCLE_SERVICE_SERVICE_NAME,
                 "WatchStatus",
                 ::connectrpc::view_streaming_handler_fn({
@@ -186,6 +385,7 @@ impl<S: SupervisorLifecycleService> SupervisorLifecycleServiceExt for S {
                     }
                 }),
             )
+            .with_spec(SUPERVISOR_LIFECYCLE_SERVICE_WATCH_STATUS_SPEC)
     }
 }
 /// Monomorphic dispatcher for `SupervisorLifecycleService`.
@@ -235,18 +435,28 @@ for SupervisorLifecycleServiceServer<T> {
         match method {
             "OpenRuntimeSession" => {
                 Some(
-                    ::connectrpc::dispatcher::codegen::MethodDescriptor::bidi_streaming(),
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::bidi_streaming()
+                        .with_spec(
+                            SUPERVISOR_LIFECYCLE_SERVICE_OPEN_RUNTIME_SESSION_SPEC,
+                        ),
                 )
             }
             "GetStatus" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true)
+                        .with_spec(SUPERVISOR_LIFECYCLE_SERVICE_GET_STATUS_SPEC),
+                )
             }
             "Stop" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(SUPERVISOR_LIFECYCLE_SERVICE_STOP_SPEC),
+                )
             }
             "WatchStatus" => {
                 Some(
-                    ::connectrpc::dispatcher::codegen::MethodDescriptor::server_streaming(),
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::server_streaming()
+                        .with_spec(SUPERVISOR_LIFECYCLE_SERVICE_WATCH_STATUS_SPEC),
                 )
             }
             _ => None,
@@ -255,8 +465,8 @@ for SupervisorLifecycleServiceServer<T> {
     fn call_unary(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::bytes::Bytes,
+        ctx: ::connectrpc::RequestContext,
+        request: ::connectrpc::Payload,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
         let Some(method) = path
@@ -269,28 +479,26 @@ for SupervisorLifecycleServiceServer<T> {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceGetStatusRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.get_status(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceGetStatusRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.get_status(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceGetStatusResponse,
+                        >(format)
                 })
             }
             "Stop" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceStopRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.stop(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceStopRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.stop(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceStopResponse,
+                        >(format)
                 })
             }
             _ => ::connectrpc::dispatcher::codegen::unimplemented_unary(path),
@@ -299,7 +507,7 @@ for SupervisorLifecycleServiceServer<T> {
     fn call_server_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         request: ::buffa::bytes::Bytes,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -313,16 +521,17 @@ for SupervisorLifecycleServiceServer<T> {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceWatchStatusRequestView,
+                        crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceWatchStatusRequestView,
                     >(request, format)?;
-                    let (resp_stream, ctx) = svc.watch_status(ctx, req).await?;
-                    Ok((
-                        ::connectrpc::dispatcher::codegen::encode_response_stream(
-                            resp_stream,
-                            format,
-                        ),
-                        ctx,
-                    ))
+                    let resp = svc.watch_status(ctx, req).await?;
+                    Ok(
+                        resp
+                            .map_body(|s| ::connectrpc::dispatcher::codegen::encode_response_stream::<
+                                crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceWatchStatusResponse,
+                                _,
+                                _,
+                            >(s, format)),
+                    )
                 })
             }
             _ => ::connectrpc::dispatcher::codegen::unimplemented_streaming(path),
@@ -331,7 +540,7 @@ for SupervisorLifecycleServiceServer<T> {
     fn call_client_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
@@ -347,7 +556,7 @@ for SupervisorLifecycleServiceServer<T> {
     fn call_bidi_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -361,18 +570,17 @@ for SupervisorLifecycleServiceServer<T> {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req_stream = ::connectrpc::dispatcher::codegen::decode_view_request_stream::<
-                        crate::proto::onequery::runtime::v1::OpenRuntimeSessionRequestView,
+                        crate::proto::onequery::runtime::v1::__buffa::view::OpenRuntimeSessionRequestView,
                     >(requests, format);
-                    let (resp_stream, ctx) = svc
-                        .open_runtime_session(ctx, req_stream)
-                        .await?;
-                    Ok((
-                        ::connectrpc::dispatcher::codegen::encode_response_stream(
-                            resp_stream,
-                            format,
-                        ),
-                        ctx,
-                    ))
+                    let resp = svc.open_runtime_session(ctx, req_stream).await?;
+                    Ok(
+                        resp
+                            .map_body(|s| ::connectrpc::dispatcher::codegen::encode_response_stream::<
+                                crate::proto::onequery::runtime::v1::OpenRuntimeSessionResponse,
+                                _,
+                                _,
+                            >(s, format)),
+                    )
                 })
             }
             _ => ::connectrpc::dispatcher::codegen::unimplemented_streaming(path),
@@ -394,7 +602,7 @@ for SupervisorLifecycleServiceServer<T> {
 ///
 /// let uri: http::Uri = "http://localhost:8080".parse()?;
 /// let conn = Http2Connection::connect_plaintext(uri.clone()).await?.shared(1024);
-/// let config = ClientConfig::new(uri).protocol(Protocol::Grpc);
+/// let config = ClientConfig::new(uri).with_protocol(Protocol::Grpc);
 ///
 /// let client = SupervisorLifecycleServiceClient::new(conn, config);
 /// let response = client.open_runtime_session(request).await?;
@@ -457,7 +665,9 @@ where
         ::connectrpc::client::BidiStream<
             T::ResponseBody,
             crate::proto::onequery::runtime::v1::OpenRuntimeSessionRequest,
-            crate::proto::onequery::runtime::v1::OpenRuntimeSessionResponseView<'static>,
+            crate::proto::onequery::runtime::v1::__buffa::view::OpenRuntimeSessionResponseView<
+                'static,
+            >,
         >,
         ::connectrpc::ConnectError,
     > {
@@ -474,7 +684,9 @@ where
         ::connectrpc::client::BidiStream<
             T::ResponseBody,
             crate::proto::onequery::runtime::v1::OpenRuntimeSessionRequest,
-            crate::proto::onequery::runtime::v1::OpenRuntimeSessionResponseView<'static>,
+            crate::proto::onequery::runtime::v1::__buffa::view::OpenRuntimeSessionResponseView<
+                'static,
+            >,
         >,
         ::connectrpc::ConnectError,
     > {
@@ -494,7 +706,7 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceGetStatusResponseView<
+                crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceGetStatusResponseView<
                     'static,
                 >,
             >,
@@ -515,7 +727,7 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceGetStatusResponseView<
+                crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceGetStatusResponseView<
                     'static,
                 >,
             >,
@@ -539,7 +751,7 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceStopResponseView<
+                crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceStopResponseView<
                     'static,
                 >,
             >,
@@ -557,7 +769,7 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceStopResponseView<
+                crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceStopResponseView<
                     'static,
                 >,
             >,
@@ -581,7 +793,7 @@ where
     ) -> Result<
         ::connectrpc::client::ServerStream<
             T::ResponseBody,
-            crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceWatchStatusResponseView<
+            crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceWatchStatusResponseView<
                 'static,
             >,
         >,
@@ -601,7 +813,7 @@ where
     ) -> Result<
         ::connectrpc::client::ServerStream<
             T::ResponseBody,
-            crate::proto::onequery::runtime::v1::SupervisorLifecycleServiceWatchStatusResponseView<
+            crate::proto::onequery::runtime::v1::__buffa::view::SupervisorLifecycleServiceWatchStatusResponseView<
                 'static,
             >,
         >,
