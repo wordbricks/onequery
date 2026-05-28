@@ -1,45 +1,39 @@
-import { readGoogleTagManagerConfig } from "./google-tag-manager-config";
-import { landingAnalyticsEnv } from "./landing-analytics-env";
-
 type AnalyticsEventValue = boolean | number | string | undefined;
 
 type AnalyticsEventParams = Record<string, AnalyticsEventValue>;
-type DataLayerEvent = Record<string, boolean | number | string>;
-type DataLayerEntry = DataLayerEvent | unknown[];
+type GoogleTagEventParams = Record<string, boolean | number | string>;
 
 declare global {
   interface Window {
-    dataLayer?: DataLayerEntry[];
+    dataLayer?: unknown[];
+    gtag?: (
+      command: "event",
+      eventName: string,
+      eventParams?: GoogleTagEventParams
+    ) => void;
   }
 }
-
-const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
 
 function getDefinedEventParams(params: AnalyticsEventParams) {
   return Object.fromEntries(
     Object.entries(params).filter(([, value]) => value !== undefined)
-  ) as Record<string, boolean | number | string>;
-}
-
-function pushDataLayerEvent(name: string, params: AnalyticsEventParams) {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  window.dataLayer ??= [];
-  window.dataLayer.push({
-    event: name,
-    ...getDefinedEventParams(params),
-  });
-  return true;
+  ) as GoogleTagEventParams;
 }
 
 function trackEvent(name: string, params: AnalyticsEventParams = {}) {
-  if (!googleTagManagerConfig) {
+  if (typeof window === "undefined") {
     return;
   }
 
-  pushDataLayerEvent(name, params);
+  const eventParams = getDefinedEventParams(params);
+
+  if (typeof window.gtag === "function") {
+    window.gtag("event", name, eventParams);
+    return;
+  }
+
+  window.dataLayer ??= [];
+  window.dataLayer.push(["event", name, eventParams]);
 }
 
 export function trackLandingCtaClick(
