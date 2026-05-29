@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./astro": "./src/astro.ts",
     "./cloudflare": "./src/cloudflare.ts",
+    "./dev-middleware": "./src/dev-middleware.ts",
     "./html-to-markdown": "./src/html-to-markdown.ts"
   },
   "scripts": {

@@ -10,6 +10,13 @@ export type MarkdownSourceContentExport = {
   sourceDirectory: string;
 };
 
+export type MarkdownSourceContentEntry = {
+  assetPath: string;
+  filePath: string;
+  markdown: string;
+  routePath: string;
+};
+
 const DEFAULT_MARKDOWN_SOURCE_EXTENSIONS = [".md", ".mdx"] as const;
 
 async function* walkFiles(directory: string): AsyncGenerator<string> {
@@ -93,10 +100,15 @@ function getMarkdownOutputPath(input: {
   return outputPath;
 }
 
-export async function exportMarkdownSourceContent(input: {
+function getMarkdownAssetPath(routePath: string) {
+  return routePath.endsWith("/")
+    ? `${routePath}index.md`
+    : `${routePath}/index.md`;
+}
+
+export async function collectMarkdownSourceContent(input: {
   config: AstroConfig;
   logger: AstroIntegrationLogger;
-  outputDir: string;
   source: MarkdownSourceContentExport;
 }) {
   const sourceDirectory = getSourceDirectory({
@@ -105,13 +117,13 @@ export async function exportMarkdownSourceContent(input: {
   });
   const extensions =
     input.source.extensions ?? DEFAULT_MARKDOWN_SOURCE_EXTENSIONS;
-  let exportedCount = 0;
+  const entries: MarkdownSourceContentEntry[] = [];
 
   try {
     await fs.access(sourceDirectory);
   } catch {
     input.logger.warn(`Missing Markdown source directory: ${sourceDirectory}`);
-    return exportedCount;
+    return entries;
   }
 
   for await (const filePath of walkFiles(sourceDirectory)) {
@@ -129,10 +141,6 @@ export async function exportMarkdownSourceContent(input: {
       relativePath,
       routePrefix: input.source.routePrefix,
     });
-    const outputPath = getMarkdownOutputPath({
-      outputDir: input.outputDir,
-      routePath,
-    });
     const markdown = await fs.readFile(filePath, "utf8");
 
     if (markdown.trim().length === 0) {
@@ -140,13 +148,38 @@ export async function exportMarkdownSourceContent(input: {
       continue;
     }
 
-    await fs.mkdir(path.dirname(outputPath), { recursive: true });
-    await fs.writeFile(
-      outputPath,
-      markdown.endsWith("\n") ? markdown : `${markdown}\n`
-    );
-    exportedCount += 1;
+    entries.push({
+      assetPath: getMarkdownAssetPath(routePath),
+      filePath,
+      markdown: markdown.endsWith("\n") ? markdown : `${markdown}\n`,
+      routePath,
+    });
   }
 
-  return exportedCount;
+  return entries;
+}
+
+export async function exportMarkdownSourceContent(input: {
+  config: AstroConfig;
+  logger: AstroIntegrationLogger;
+  outputDir: string;
+  source: MarkdownSourceContentExport;
+}) {
+  const entries = await collectMarkdownSourceContent({
+    config: input.config,
+    logger: input.logger,
+    source: input.source,
+  });
+
+  for (const entry of entries) {
+    const outputPath = getMarkdownOutputPath({
+      outputDir: input.outputDir,
+      routePath: entry.routePath,
+    });
+
+    await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await fs.writeFile(outputPath, entry.markdown);
+  }
+
+  return entries.length;
 }

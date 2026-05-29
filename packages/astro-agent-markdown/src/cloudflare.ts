@@ -56,6 +56,29 @@ export function estimateMarkdownTokens(markdown: string) {
   return Math.ceil(trimmedMarkdown.length / 4);
 }
 
+export function createMarkdownResponse(input: {
+  headers?: HeadersInit;
+  markdown: string;
+  request: Request;
+  status?: number;
+  statusText?: string;
+}) {
+  const headers = new Headers(input.headers);
+
+  headers.set("Content-Type", MARKDOWN_CONTENT_TYPE);
+  headers.set(
+    "X-Markdown-Tokens",
+    String(estimateMarkdownTokens(input.markdown))
+  );
+  addVaryAccept(headers);
+
+  return new Response(input.request.method === "HEAD" ? null : input.markdown, {
+    headers,
+    status: input.status,
+    statusText: input.statusText,
+  });
+}
+
 export async function createNegotiatedMarkdownResponse(input: {
   assets: AssetFetcher;
   request: Request;
@@ -83,14 +106,10 @@ export async function createNegotiatedMarkdownResponse(input: {
   }
 
   const markdown = await assetResponse.text();
-  const headers = new Headers(assetResponse.headers);
-
-  headers.set("Content-Type", MARKDOWN_CONTENT_TYPE);
-  headers.set("X-Markdown-Tokens", String(estimateMarkdownTokens(markdown)));
-  addVaryAccept(headers);
-
-  return new Response(input.request.method === "HEAD" ? null : markdown, {
-    headers,
+  return createMarkdownResponse({
+    headers: assetResponse.headers,
+    markdown,
+    request: input.request,
     status: assetResponse.status,
     statusText: assetResponse.statusText,
   });

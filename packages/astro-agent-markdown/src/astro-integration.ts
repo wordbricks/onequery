@@ -9,7 +9,10 @@ import type {
 } from "astro";
 
 import { htmlToMarkdown } from "./html-to-markdown";
-import { exportMarkdownSourceContent } from "./source-content";
+import {
+  collectMarkdownSourceContent,
+  exportMarkdownSourceContent,
+} from "./source-content";
 import type { MarkdownSourceContentExport } from "./source-content";
 
 export type AgentMarkdownOptions = {
@@ -83,6 +86,47 @@ async function exportHtmlFile(input: {
   return true;
 }
 
+async function writeDevMiddlewareEntrypoint(input: {
+  addWatchFile: (path: string | URL) => void;
+  config: AstroConfig;
+  entrypoint: URL;
+  logger: AstroIntegrationLogger;
+  options: AgentMarkdownOptions;
+}) {
+  const sourceContentByAssetPath: Record<string, string> = {};
+
+  for (const source of input.options.sourceContent ?? []) {
+    const entries = await collectMarkdownSourceContent({
+      config: input.config,
+      logger: input.logger,
+      source,
+    });
+
+    for (const entry of entries) {
+      sourceContentByAssetPath[entry.assetPath] = entry.markdown;
+      input.addWatchFile(entry.filePath);
+    }
+  }
+
+  const middlewareOptions = {
+    exclude: input.options.exclude?.map((pattern) => [
+      pattern.source,
+      pattern.flags,
+    ]),
+    sourceContentByAssetPath,
+  };
+  const code = `import { createDevMarkdownMiddleware } from "@onequery/astro-agent-markdown/dev-middleware";
+
+export const onRequest = createDevMarkdownMiddleware(${JSON.stringify(
+    middlewareOptions,
+    null,
+    2
+  )});
+`;
+
+  await fs.writeFile(input.entrypoint, code);
+}
+
 export function agentMarkdown(
   options: AgentMarkdownOptions = {}
 ): AstroIntegration {
@@ -91,6 +135,33 @@ export function agentMarkdown(
   return {
     name: "onequery-agent-markdown",
     hooks: {
+      "astro:config:setup": async ({
+        addMiddleware,
+        addWatchFile,
+        command,
+        config: setupConfig,
+        createCodegenDir,
+        logger,
+      }) => {
+        if (command !== "dev") {
+          return;
+        }
+
+        const entrypoint = new URL("dev-middleware.mjs", createCodegenDir());
+
+        await writeDevMiddlewareEntrypoint({
+          addWatchFile,
+          config: setupConfig,
+          entrypoint,
+          logger,
+          options,
+        });
+
+        addMiddleware({
+          entrypoint,
+          order: "pre",
+        });
+      },
       "astro:config:done": ({ config: resolvedConfig }) => {
         config = resolvedConfig;
       },
