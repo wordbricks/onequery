@@ -12,7 +12,7 @@ import { htmlToMarkdown } from "./html-to-markdown";
 import { exportMarkdownSourceContent } from "./source-content";
 import type { MarkdownSourceContentExport } from "./source-content";
 
-export type MarkdownForAgentsOptions = {
+export type AgentMarkdownOptions = {
   exclude?: readonly RegExp[];
   sourceContent?: readonly MarkdownSourceContentExport[];
 };
@@ -83,13 +83,13 @@ async function exportHtmlFile(input: {
   return true;
 }
 
-export function markdownForAgents(
-  options: MarkdownForAgentsOptions = {}
+export function agentMarkdown(
+  options: AgentMarkdownOptions = {}
 ): AstroIntegration {
   let config: AstroConfig | undefined;
 
   return {
-    name: "onequery-markdown-for-agents",
+    name: "onequery-agent-markdown",
     hooks: {
       "astro:config:done": ({ config: resolvedConfig }) => {
         config = resolvedConfig;

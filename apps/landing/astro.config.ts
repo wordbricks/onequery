@@ -5,7 +5,7 @@ import mdx from "@astrojs/mdx";
 import partytown from "@astrojs/partytown";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
-import { markdownForAgents } from "@onequery/astro-markdown-for-agents";
+import { agentMarkdown } from "@onequery/astro-agent-markdown";
 import { defineConfig, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
@@ -83,7 +83,7 @@ export default defineConfig({
     react(),
     mdx(),
     sitemap(),
-    markdownForAgents({
+    agentMarkdown({
       sourceContent: [
         {
           routePrefix: "/blog",

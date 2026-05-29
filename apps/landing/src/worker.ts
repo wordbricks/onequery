@@ -2,7 +2,7 @@ import { handle } from "@astrojs/cloudflare/handler";
 import {
   addVaryAccept,
   createNegotiatedMarkdownResponse,
-} from "@onequery/astro-markdown-for-agents/cloudflare";
+} from "@onequery/astro-agent-markdown/cloudflare";
 
 export default {
   async fetch(request, env, context) {

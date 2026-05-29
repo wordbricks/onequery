@@ -43,4 +43,15 @@ Give agents **context**, not keys.
 | PostgreSQL | Query \\| read-only |
 `);
   });
+
+  it("drops empty icon links after unreadable nodes are removed", () => {
+    expect(
+      htmlToMarkdown(`<main>
+        <a href="/docs/">Docs <svg aria-hidden="true"></svg></a>
+        <a href="https://github.com/wordbricks/onequery" aria-label="GitHub">
+          <svg aria-hidden="true"></svg>
+        </a>
+      </main>`)
+    ).toBe("[Docs](/docs/)\n");
+  });
 });

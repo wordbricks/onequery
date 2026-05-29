@@ -24,7 +24,7 @@
     "@astrojs/react": "catalog:",
     "@astrojs/sitemap": "catalog:",
     "@nanostores/react": "catalog:",
-    "@onequery/astro-markdown-for-agents": "workspace:*",
+    "@onequery/astro-agent-markdown": "workspace:*",
     "@onequery/db": "workspace:*",
     "@onequery/ui": "workspace:*",
     "astro": "catalog:",

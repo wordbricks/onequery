@@ -1,5 +1,5 @@
 {
-  "name": "@onequery/astro-markdown-for-agents",
+  "name": "@onequery/astro-agent-markdown",
   "version": "0.0.0",
   "private": false,
   "type": "module",
@@ -12,6 +12,15 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "@types/hast": "catalog:",
+    "rehype-minify-whitespace": "catalog:",
+    "rehype-parse": "catalog:",
+    "rehype-remark": "catalog:",
+    "remark-gfm": "catalog:",
+    "remark-stringify": "catalog:",
+    "unified": "catalog:"
   },
   "devDependencies": {
     "astro": "catalog:",
