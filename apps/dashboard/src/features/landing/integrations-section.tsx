@@ -7,6 +7,7 @@ const integrations = [
   "Mixpanel",
   "PostHog",
   "GitHub",
+  "Vercel",
   "Linear",
 ];
 

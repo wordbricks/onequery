@@ -489,6 +489,23 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
     },
   },
   {
+    provider: "vercel",
+    summary:
+      "Connect Vercel with an API token for deployments, projects, teams, and runtime observability endpoints.",
+    steps: [
+      "Create a Vercel API token with read access to the account or team OneQuery should inspect.",
+      "Copy the token into `credentials.apiToken`.",
+      "Use `params[teamId]` in Source API requests when calling team-scoped Vercel endpoints.",
+      "Only include `apiBaseUrl` when you need a non-default Vercel-compatible API origin.",
+    ],
+    exampleInput: {
+      sourceKey: "vercel_main",
+      credentials: {
+        apiToken: "vercel_api_token",
+      },
+    },
+  },
+  {
     provider: "linear",
     summary:
       "Connect Linear with either an API key or a full OAuth token bundle.",

@@ -12,6 +12,7 @@ import { jiraSourceApiAdapter } from "./jira";
 import { linkedInAdsSourceApiAdapter } from "./linkedin-ads";
 import { sendGridSourceApiAdapter } from "./sendgrid";
 import { tiktokMarketingSourceApiAdapter } from "./tiktok-marketing";
+import { vercelSourceApiAdapter } from "./vercel";
 
 const originalFetch = globalThis.fetch;
 
@@ -665,6 +666,67 @@ describe("simple REST source API providers", () => {
     );
     expect(calledInit?.headers).toMatchObject({
       Authorization: `Basic ${btoa("reader@example.com:jira_token")}`,
+    });
+  });
+
+  it("executes Vercel requests with bearer auth and query params", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ deployments: [] }), {
+        headers: {
+          "content-type": "application/json",
+          "x-ratelimit-remaining": "42",
+        },
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        apiToken: "vercel_token",
+        type: "vercel",
+      },
+      displayName: "Vercel",
+      id: "source_12",
+      provider: "vercel",
+      sourceKey: "vercel-main",
+    };
+
+    const response = await vercelSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        body: { kind: "none" },
+        bodyKind: "none",
+        bodyPaths: [],
+        descriptorVersion: "vercel.v1",
+        headerNames: [],
+        headers: [],
+        kind: "http_request",
+        method: "GET",
+        operation: "fetch_api",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
+        provider: "vercel",
+        query: {
+          limit: 20,
+          teamId: "team_123",
+        },
+        selector: "/v6/deployments",
+        selectorTemplate: "/{path}",
+        sourceId: "source_12",
+        sourceKey: "vercel-main",
+        url: "https://api.vercel.com/v6/deployments?limit=20&teamId=team_123",
+      },
+      source,
+    });
+
+    expect(response.status).toBe(200);
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(calledUrl)).toBe(
+      "https://api.vercel.com/v6/deployments?limit=20&teamId=team_123"
+    );
+    expect(calledInit?.headers).toMatchObject({
+      Authorization: "Bearer vercel_token",
     });
   });
 });

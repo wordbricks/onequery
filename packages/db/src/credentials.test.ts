@@ -38,6 +38,7 @@ import {
   SentryCredentialsSchema,
   SnowflakeCredentialsSchema,
   TikTokMarketingCredentialsSchema,
+  VercelCredentialsSchema,
   safeValidateCredentials,
   validateCredentials,
 } from "./credentials";
@@ -70,6 +71,7 @@ import type {
   SentryCredentials,
   SnowflakeCredentials,
   TikTokMarketingCredentials,
+  VercelCredentials,
 } from "./credentials";
 
 describe("credentials schemas", () => {
@@ -1634,6 +1636,26 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("VercelCredentialsSchema", () => {
+    it("validates Vercel credentials", () => {
+      const credentials: VercelCredentials = {
+        apiToken: "vercel_api_token",
+        type: "vercel",
+      };
+
+      const result = VercelCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects missing API token", () => {
+      const result = VercelCredentialsSchema.safeParse({
+        type: "vercel",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("LinearCredentialsSchema", () => {
     it("should validate valid Linear credentials", () => {
       const credentials: LinearCredentials = {
@@ -1849,6 +1871,10 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.tiktok_marketing).toBe(
         TikTokMarketingCredentialsSchema
       );
+    });
+
+    it("should map vercel to VercelCredentialsSchema", () => {
+      expect(credentialSchemaMap.vercel).toBe(VercelCredentialsSchema);
     });
 
     it("matches supported provider keys", () => {
