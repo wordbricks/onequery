@@ -3,7 +3,7 @@
 # Note: This Worker name must match the Cloudflare Worker project name
 # configured in Workers Builds for automatic GitHub deployments.
 name = "onequery-landing"
-main = "@astrojs/cloudflare/entrypoints/server"
+main = "./src/worker.ts"
 compatibility_date = "2026-04-14"
 logpush = true
 preview_urls = true
@@ -16,6 +16,7 @@ id = "4eae4e6551dc4042950bd2270b09f772"
 [assets]
 directory = "./dist"
 binding = "ASSETS"
+run_worker_first = ["/", "/connectors/*", "/blog/*"]
 
 [observability]
 enabled = true

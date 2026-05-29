@@ -1,0 +1,23 @@
+{
+  "name": "@onequery/astro-markdown-for-agents",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./cloudflare": "./src/cloudflare.ts",
+    "./html-to-markdown": "./src/html-to-markdown.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsgo --noEmit"
+  },
+  "devDependencies": {
+    "astro": "catalog:",
+    "vitest": "catalog:testing"
+  },
+  "peerDependencies": {
+    "astro": "^6.3.0"
+  }
+}

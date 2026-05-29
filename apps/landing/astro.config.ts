@@ -4,6 +4,7 @@ import cloudflare from "@astrojs/cloudflare";
 import partytown from "@astrojs/partytown";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
+import { markdownForAgents } from "@onequery/astro-markdown-for-agents";
 import { defineConfig, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
@@ -80,6 +81,7 @@ export default defineConfig({
     }),
     react(),
     sitemap(),
+    markdownForAgents(),
   ],
   server: {
     host: DEV_SERVER_HOST,
