@@ -3,6 +3,26 @@ import { describe, expect, it, vi } from "vitest";
 import { ProviderHttpClient } from "./provider-http-client";
 
 describe("ProviderHttpClient", () => {
+  it("calls the default fetch with the global receiver", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn(async function defaultFetchMock(this: unknown) {
+      expect(this).toBe(globalThis);
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    try {
+      const client = new ProviderHttpClient({
+        auth: { token: "token", type: "bearer" },
+        baseUrl: "https://api.example.com",
+        providerName: "Example",
+      });
+
+      await client.get("/events");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("sanitizes provider error responses", async () => {
     const client = new ProviderHttpClient({
       auth: { token: "secret-token", type: "bearer" },

@@ -89,7 +89,9 @@ export class ProviderHttpClient {
     this.#defaultTimeoutMs = normalizeProviderRequestTimeout(
       options.defaultTimeoutMs
     );
-    this.#fetchImpl = options.fetchImpl ?? fetch;
+    this.#fetchImpl =
+      options.fetchImpl ??
+      (((input, init) => globalThis.fetch(input, init)) as typeof fetch);
     this.#providerName = options.providerName;
     this.#sanitize = options.sanitize ?? ((text) => text);
   }
