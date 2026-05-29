@@ -2,6 +2,7 @@ import type { APIContext, MiddlewareNext } from "astro";
 import { describe, expect, it, vi } from "vitest";
 
 import { MARKDOWN_CONTENT_TYPE } from "./cloudflare";
+import { contentEntryToMarkdown } from "./content";
 import { createDevMarkdownMiddleware } from "./dev-middleware";
 
 function createContext(request: Request): APIContext {
@@ -12,12 +13,23 @@ function createContext(request: Request): APIContext {
 }
 
 describe("createDevMarkdownMiddleware", () => {
-  it("returns source Markdown before rendering when a source sidecar exists", async () => {
+  it("returns content collection Markdown before rendering when an entry matches", async () => {
     const onRequest = createDevMarkdownMiddleware({
-      sourceContentByAssetPath: {
-        "/blog/debug-production-agent-runs-with-onequery/index.md":
-          "---\ntitle: Debugging production\n---\n\n## Evidence\n",
-      },
+      contentCollections: [
+        {
+          getEntries: async () => [
+            {
+              body: "## Evidence\n",
+              id: "debug-production-agent-runs-with-onequery",
+            },
+          ],
+          getMarkdown: async (entry) =>
+            contentEntryToMarkdown(entry, {
+              frontmatter: { title: "Debugging production" },
+            }),
+          routePrefix: "/blog",
+        },
+      ],
     });
     const next = vi.fn(async () => new Response("should not render"));
 

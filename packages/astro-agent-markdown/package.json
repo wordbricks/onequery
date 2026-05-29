@@ -8,8 +8,10 @@
     ".": "./src/index.ts",
     "./astro": "./src/astro.ts",
     "./cloudflare": "./src/cloudflare.ts",
+    "./content": "./src/content.ts",
     "./dev-middleware": "./src/dev-middleware.ts",
-    "./html-to-markdown": "./src/html-to-markdown.ts"
+    "./html-to-markdown": "./src/html-to-markdown.ts",
+    "./negotiation": "./src/negotiation.ts"
   },
   "scripts": {
     "test": "vitest run",
@@ -22,7 +24,8 @@
     "rehype-remark": "catalog:",
     "remark-gfm": "catalog:",
     "remark-stringify": "catalog:",
-    "unified": "catalog:"
+    "unified": "catalog:",
+    "yaml": "catalog:"
   },
   "devDependencies": {
     "astro": "catalog:",

@@ -175,6 +175,7 @@
         "remark-gfm": "catalog:",
         "remark-stringify": "catalog:",
         "unified": "catalog:",
+        "yaml": "catalog:",
       },
       "devDependencies": {
         "astro": "catalog:",
@@ -478,6 +479,7 @@
     "unified": "11.0.5",
     "unstorage": "1.17.4",
     "xstate": "5.31.0",
+    "yaml": "2.8.3",
     "zod": "4.4.2",
   },
   "catalogs": {

@@ -1,18 +1,19 @@
 import type { MiddlewareHandler } from "astro";
 
+import { getContentMarkdownForPath } from "./content";
+import type { ContentMarkdownCollection } from "./content";
+import { htmlToMarkdown } from "./html-to-markdown";
 import {
   acceptsMarkdown,
   addVaryAccept,
   createMarkdownResponse,
-  getMarkdownAssetPath,
-} from "./cloudflare";
-import { htmlToMarkdown } from "./html-to-markdown";
+} from "./negotiation";
 
 type SerializedRegExp = readonly [source: string, flags: string];
 
 export type DevMarkdownMiddlewareOptions = {
+  contentCollections?: readonly ContentMarkdownCollection[];
   exclude?: readonly SerializedRegExp[];
-  sourceContentByAssetPath?: Readonly<Record<string, string>>;
 };
 
 const DEFAULT_EXCLUDES = [/^\/404(?:\/|$)/u, /^\/_astro(?:\/|$)/u];
@@ -48,23 +49,24 @@ export function createDevMarkdownMiddleware(
   options: DevMarkdownMiddlewareOptions = {}
 ): MiddlewareHandler {
   const excludePatterns = createExcludePatterns(options.exclude);
-  const sourceContentByAssetPath = options.sourceContentByAssetPath ?? {};
+  const contentCollections = options.contentCollections ?? [];
 
   return async (context, next) => {
     const { request, url } = context;
-    const markdownPath = getMarkdownAssetPath(url.pathname);
     const canNegotiate =
       MARKDOWN_METHODS.has(request.method) &&
       acceptsMarkdown(request.headers.get("Accept")) &&
-      markdownPath !== undefined &&
       !isExcluded(url.pathname, excludePatterns);
 
     if (canNegotiate) {
-      const sourceMarkdown = sourceContentByAssetPath[markdownPath];
+      const contentMarkdown = await getContentMarkdownForPath({
+        contentCollections,
+        pathname: url.pathname,
+      });
 
-      if (sourceMarkdown !== undefined) {
+      if (contentMarkdown !== undefined) {
         return createMarkdownResponse({
-          markdown: sourceMarkdown,
+          markdown: contentMarkdown,
           request,
         });
       }

@@ -1,127 +1,129 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type {
-  AstroConfig,
-  AstroIntegration,
-  AstroIntegrationLogger,
-} from "astro";
+import type { AstroIntegration } from "astro";
 
-import { htmlToMarkdown } from "./html-to-markdown";
-import {
-  collectMarkdownSourceContent,
-  exportMarkdownSourceContent,
-} from "./source-content";
-import type { MarkdownSourceContentExport } from "./source-content";
+import { exportHtmlMarkdownSidecars } from "./html-sidecars";
+
+export type AgentMarkdownContentCollection = {
+  collection: string;
+  routePrefix: string;
+};
+
+export type AgentMarkdownHtmlOptions = {
+  exclude?: readonly RegExp[];
+};
 
 export type AgentMarkdownOptions = {
+  content?: readonly AgentMarkdownContentCollection[];
+  html?: false | AgentMarkdownHtmlOptions;
   exclude?: readonly RegExp[];
-  sourceContent?: readonly MarkdownSourceContentExport[];
 };
 
 const DEFAULT_EXCLUDES = [/^\/404(?:\/|$)/u, /^\/_astro(?:\/|$)/u];
+const CONTENT_ROUTE_PARAM = "agentMarkdownSlug";
 
-async function* walkFiles(directory: string): AsyncGenerator<string> {
-  const entries = await fs.readdir(directory, { withFileTypes: true });
+function normalizeRoutePrefix(routePrefix: string) {
+  const prefixed = routePrefix.startsWith("/")
+    ? routePrefix
+    : `/${routePrefix}`;
 
-  for (const entry of entries) {
-    const entryPath = path.join(directory, entry.name);
-
-    if (entry.isDirectory()) {
-      yield* walkFiles(entryPath);
-      continue;
-    }
-
-    if (entry.isFile()) {
-      yield entryPath;
-    }
-  }
+  return prefixed === "/" ? "" : prefixed.replace(/\/+$/u, "");
 }
 
-function toRoutePath(input: { htmlPath: string; outputDir: string }) {
-  const relativePath = path
-    .relative(input.outputDir, input.htmlPath)
-    .split(path.sep)
-    .join("/");
-
-  if (relativePath === "index.html") {
-    return "/";
-  }
-
-  if (relativePath.endsWith("/index.html")) {
-    return `/${relativePath.slice(0, -"index.html".length)}`;
-  }
-
-  return `/${relativePath.replace(/\.html$/u, "/")}`;
+function getContentRoutePattern(content: AgentMarkdownContentCollection) {
+  const routePrefix = normalizeRoutePrefix(content.routePrefix);
+  return `${routePrefix}/[...${CONTENT_ROUTE_PARAM}]/index.md`;
 }
 
-function shouldExportRoute(
-  routePath: string,
-  excludes: readonly RegExp[] = DEFAULT_EXCLUDES
+function getContentEndpointFilename(
+  content: AgentMarkdownContentCollection,
+  index: number
 ) {
-  return excludes.every((pattern) => !pattern.test(routePath));
+  const safeName = `${content.collection}-${content.routePrefix}`
+    .replace(/[^a-z0-9]+/giu, "-")
+    .replace(/^-|-$/gu, "")
+    .toLowerCase();
+
+  return `content-${index}-${safeName || "collection"}.ts`;
 }
 
-async function exportHtmlFile(input: {
-  htmlPath: string;
-  logger: AstroIntegrationLogger;
-  outputDir: string;
+async function writeContentEndpointEntrypoint(input: {
+  content: AgentMarkdownContentCollection;
+  entrypoint: URL;
 }) {
-  const routePath = toRoutePath(input);
+  const code = `import { getCollection, render } from "astro:content";
+import {
+  createContentCollectionStaticPaths,
+  createContentEntryMarkdownResponse,
+} from "@onequery/astro-agent-markdown/content";
 
-  if (!shouldExportRoute(routePath)) {
-    return false;
-  }
+export const prerender = true;
 
-  const html = await fs.readFile(input.htmlPath, "utf8");
-  const markdown = htmlToMarkdown(html);
+export async function getStaticPaths() {
+  return createContentCollectionStaticPaths(
+    await getCollection(${JSON.stringify(input.content.collection)})
+  );
+}
 
-  if (markdown.trim().length === 0) {
-    input.logger.warn(`Skipping empty Markdown export for ${routePath}`);
-    return false;
-  }
+export async function GET({ props, request }) {
+  const { remarkPluginFrontmatter } = await render(props.entry);
 
-  await fs.writeFile(input.htmlPath.replace(/\.html$/u, ".md"), markdown);
-  return true;
+  return createContentEntryMarkdownResponse({
+    entry: props.entry,
+    frontmatter: remarkPluginFrontmatter,
+    request,
+  });
+}
+
+export async function HEAD({ props, request }) {
+  const { remarkPluginFrontmatter } = await render(props.entry);
+
+  return createContentEntryMarkdownResponse({
+    entry: props.entry,
+    frontmatter: remarkPluginFrontmatter,
+    request,
+  });
+}
+`;
+
+  await fs.writeFile(input.entrypoint, code);
 }
 
 async function writeDevMiddlewareEntrypoint(input: {
-  addWatchFile: (path: string | URL) => void;
-  config: AstroConfig;
+  content: readonly AgentMarkdownContentCollection[];
   entrypoint: URL;
-  logger: AstroIntegrationLogger;
   options: AgentMarkdownOptions;
 }) {
-  const sourceContentByAssetPath: Record<string, string> = {};
-
-  for (const source of input.options.sourceContent ?? []) {
-    const entries = await collectMarkdownSourceContent({
-      config: input.config,
-      logger: input.logger,
-      source,
-    });
-
-    for (const entry of entries) {
-      sourceContentByAssetPath[entry.assetPath] = entry.markdown;
-      input.addWatchFile(entry.filePath);
-    }
-  }
+  const contentCollections = input.content
+    .map(
+      (content) => `    {
+      routePrefix: ${JSON.stringify(content.routePrefix)},
+      getEntries: () => getCollection(${JSON.stringify(content.collection)}),
+      getMarkdown: async (entry) => {
+        const { remarkPluginFrontmatter } = await render(entry);
+        return contentEntryToMarkdown(entry, {
+          frontmatter: remarkPluginFrontmatter,
+        });
+      },
+    }`
+    )
+    .join(",\n");
 
   const middlewareOptions = {
     exclude: input.options.exclude?.map((pattern) => [
       pattern.source,
       pattern.flags,
     ]),
-    sourceContentByAssetPath,
   };
-  const code = `import { createDevMarkdownMiddleware } from "@onequery/astro-agent-markdown/dev-middleware";
+  const code = `${input.content.length > 0 ? 'import { getCollection, render } from "astro:content";\nimport { contentEntryToMarkdown } from "@onequery/astro-agent-markdown/content";\n' : ""}import { createDevMarkdownMiddleware } from "@onequery/astro-agent-markdown/dev-middleware";
 
-export const onRequest = createDevMarkdownMiddleware(${JSON.stringify(
-    middlewareOptions,
-    null,
-    2
-  )});
+const options = ${JSON.stringify(middlewareOptions, null, 2)};
+options.contentCollections = [
+${contentCollections}
+];
+
+export const onRequest = createDevMarkdownMiddleware(options);
 `;
 
   await fs.writeFile(input.entrypoint, code);
@@ -130,30 +132,48 @@ export const onRequest = createDevMarkdownMiddleware(${JSON.stringify(
 export function agentMarkdown(
   options: AgentMarkdownOptions = {}
 ): AstroIntegration {
-  let config: AstroConfig | undefined;
+  const content = options.content ?? [];
 
   return {
     name: "onequery-agent-markdown",
     hooks: {
       "astro:config:setup": async ({
         addMiddleware,
-        addWatchFile,
         command,
-        config: setupConfig,
         createCodegenDir,
-        logger,
+        injectRoute,
       }) => {
+        const codegenDir = createCodegenDir();
+
+        await Promise.all(
+          content.map(async (contentCollection, index) => {
+            const entrypoint = new URL(
+              getContentEndpointFilename(contentCollection, index),
+              codegenDir
+            );
+
+            await writeContentEndpointEntrypoint({
+              content: contentCollection,
+              entrypoint,
+            });
+
+            injectRoute({
+              entrypoint,
+              pattern: getContentRoutePattern(contentCollection),
+              prerender: true,
+            });
+          })
+        );
+
         if (command !== "dev") {
           return;
         }
 
-        const entrypoint = new URL("dev-middleware.mjs", createCodegenDir());
+        const entrypoint = new URL("dev-middleware.mjs", codegenDir);
 
         await writeDevMiddlewareEntrypoint({
-          addWatchFile,
-          config: setupConfig,
+          content,
           entrypoint,
-          logger,
           options,
         });
 
@@ -162,79 +182,22 @@ export function agentMarkdown(
           order: "pre",
         });
       },
-      "astro:config:done": ({ config: resolvedConfig }) => {
-        config = resolvedConfig;
-      },
-      "astro:build:done": async ({ dir, logger }) => {
-        if (!config) {
-          throw new Error(
-            "Astro config was not available during Markdown export."
-          );
-        }
-
+      "astro:build:done": async ({ dir, logger, pages }) => {
         const outputDir = fileURLToPath(dir);
-        let exportedCount = 0;
-
-        for await (const htmlPath of walkFiles(outputDir)) {
-          if (!htmlPath.endsWith(".html")) {
-            continue;
-          }
-
-          const routePath = toRoutePath({ htmlPath, outputDir });
-          if (
-            !shouldExportRoute(routePath, [
-              ...DEFAULT_EXCLUDES,
-              ...(options.exclude ?? []),
-            ])
-          ) {
-            continue;
-          }
-
-          try {
-            const exported = await exportHtmlFile({
-              htmlPath,
+        const htmlOptions =
+          options.html === false ? undefined : (options.html ?? {});
+        const exportedCount = htmlOptions
+          ? await exportHtmlMarkdownSidecars({
+              exclude: [
+                ...DEFAULT_EXCLUDES,
+                ...(options.exclude ?? []),
+                ...(htmlOptions.exclude ?? []),
+              ],
               logger,
               outputDir,
-            });
-
-            if (exported) {
-              exportedCount += 1;
-            }
-          } catch (error) {
-            const message =
-              error instanceof Error ? error.message : String(error);
-            throw new Error(
-              `Failed to export Markdown for ${routePath}: ${message}`,
-              { cause: error }
-            );
-          }
-        }
-
-        if (options.sourceContent) {
-          let sourceExportedCount = 0;
-
-          for (const source of options.sourceContent) {
-            try {
-              sourceExportedCount += await exportMarkdownSourceContent({
-                config,
-                logger,
-                outputDir,
-                source,
-              });
-            } catch (error) {
-              const message =
-                error instanceof Error ? error.message : String(error);
-              throw new Error(
-                `Failed to export Markdown source content from ${source.sourceDirectory}: ${message}`,
-                { cause: error }
-              );
-            }
-          }
-
-          logger.info(
-            `Exported ${sourceExportedCount} source Markdown page sidecars`
-          );
-        }
+              pages,
+            })
+          : 0;
 
         logger.info(
           `Exported ${exportedCount} HTML-derived Markdown page sidecars`

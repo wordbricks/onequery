@@ -84,10 +84,10 @@ export default defineConfig({
     mdx(),
     sitemap(),
     agentMarkdown({
-      sourceContent: [
+      content: [
         {
+          collection: "blog",
           routePrefix: "/blog",
-          sourceDirectory: "src/content/blog",
         },
       ],
     }),
