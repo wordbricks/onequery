@@ -5,7 +5,7 @@ import mdx from "@astrojs/mdx";
 import partytown from "@astrojs/partytown";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
-import { agentMarkdown } from "@onequery/astro-agent-markdown";
+import { agentMarkdown } from "@onequery/astro-agent-markdown/astro";
 import { defineConfig, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
