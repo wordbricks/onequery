@@ -1,9 +1,13 @@
-import { defineConfig } from "vitest/config";
+/// <reference types="vitest/config" />
+import { getViteConfig } from "astro/config";
+import type { TestUserConfig } from "vitest/config";
 
-export default defineConfig({
-  test: {
-    hideSkippedTests: true,
-    include: ["src/**/*.test.ts"],
-    name: "astro-agent-markdown",
-  },
-});
+const test = {
+  hideSkippedTests: true,
+  include: ["src/**/*.test.ts"],
+  name: "astro-agent-markdown",
+} satisfies TestUserConfig;
+
+export default getViteConfig({
+  test,
+} as Parameters<typeof getViteConfig>[0]);
