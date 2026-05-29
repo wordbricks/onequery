@@ -451,7 +451,7 @@ export function createBlogPostStructuredData(
   const blogUrl = createCanonicalUrl("/blog", siteUrl);
   const postUrl = createCanonicalUrl(`/blog/${post.slug}`, siteUrl);
   const publishedTime = toIsoDateTime(post.publishedAt);
-  const postSections = post.sections;
+  const postSections = post.headings.filter((heading) => heading.depth === 2);
 
   return createGraph([
     ...createSiteGraph(siteUrl),
@@ -502,11 +502,11 @@ export function createBlogPostStructuredData(
       timeRequired: readTimeToDuration(post.readTime),
       wordCount: countWords(getPostText(post)),
       about: [...CORE_TOPICS],
-      hasPart: postSections.map((section) => ({
+      hasPart: postSections.map((heading) => ({
         "@type": "WebPageElement",
-        "@id": `${postUrl}#${section.id}`,
-        name: section.title,
-        url: `${postUrl}#${section.id}`,
+        "@id": `${postUrl}#${heading.slug}`,
+        name: heading.text,
+        url: `${postUrl}#${heading.slug}`,
       })),
     },
     {
@@ -594,15 +594,7 @@ function createBlogPostSummaryStructuredData(
 }
 
 function getPostText(post: BlogPost) {
-  const sectionText = post.sections.flatMap((section) => [
-    section.title,
-    ...section.paragraphs,
-    ...(section.table
-      ? [...section.table.headers, ...section.table.rows.flatMap((row) => row)]
-      : []),
-  ]);
-
-  return [post.title, post.description, ...sectionText].join(" ");
+  return [post.title, post.description, post.body].join(" ");
 }
 
 function countWords(text: string) {

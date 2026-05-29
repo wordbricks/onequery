@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@astrojs/cloudflare": "catalog:",
+    "@astrojs/mdx": "catalog:",
     "@astrojs/partytown": "catalog:",
     "@astrojs/react": "catalog:",
     "@astrojs/sitemap": "catalog:",

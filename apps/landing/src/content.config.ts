@@ -4,7 +4,7 @@ import { defineCollection } from "astro:content";
 import { createBlogPostContentSchema } from "./landing/blog/blog-content-schema";
 
 const blog = defineCollection({
-  loader: glob({ base: "./src/content/blog", pattern: "**/*.json" }),
+  loader: glob({ base: "./src/content/blog", pattern: "**/*.mdx" }),
   schema: createBlogPostContentSchema,
 });
 

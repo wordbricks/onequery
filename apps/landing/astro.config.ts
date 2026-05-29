@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import cloudflare from "@astrojs/cloudflare";
+import mdx from "@astrojs/mdx";
 import partytown from "@astrojs/partytown";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
@@ -80,8 +81,16 @@ export default defineConfig({
       },
     }),
     react(),
+    mdx(),
     sitemap(),
-    markdownForAgents(),
+    markdownForAgents({
+      sourceContent: [
+        {
+          routePrefix: "/blog",
+          sourceDirectory: "src/content/blog",
+        },
+      ],
+    }),
   ],
   server: {
     host: DEV_SERVER_HOST,

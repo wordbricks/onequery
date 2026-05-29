@@ -2,12 +2,19 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { AstroIntegration, AstroIntegrationLogger } from "astro";
+import type {
+  AstroConfig,
+  AstroIntegration,
+  AstroIntegrationLogger,
+} from "astro";
 
 import { htmlToMarkdown } from "./html-to-markdown";
+import { exportMarkdownSourceContent } from "./source-content";
+import type { MarkdownSourceContentExport } from "./source-content";
 
 export type MarkdownForAgentsOptions = {
   exclude?: readonly RegExp[];
+  sourceContent?: readonly MarkdownSourceContentExport[];
 };
 
 const DEFAULT_EXCLUDES = [/^\/404(?:\/|$)/u, /^\/_astro(?:\/|$)/u];
@@ -79,10 +86,21 @@ async function exportHtmlFile(input: {
 export function markdownForAgents(
   options: MarkdownForAgentsOptions = {}
 ): AstroIntegration {
+  let config: AstroConfig | undefined;
+
   return {
     name: "onequery-markdown-for-agents",
     hooks: {
+      "astro:config:done": ({ config: resolvedConfig }) => {
+        config = resolvedConfig;
+      },
       "astro:build:done": async ({ dir, logger }) => {
+        if (!config) {
+          throw new Error(
+            "Astro config was not available during Markdown export."
+          );
+        }
+
         const outputDir = fileURLToPath(dir);
         let exportedCount = 0;
 
@@ -121,7 +139,35 @@ export function markdownForAgents(
           }
         }
 
-        logger.info(`Exported ${exportedCount} Markdown page sidecars`);
+        if (options.sourceContent) {
+          let sourceExportedCount = 0;
+
+          for (const source of options.sourceContent) {
+            try {
+              sourceExportedCount += await exportMarkdownSourceContent({
+                config,
+                logger,
+                outputDir,
+                source,
+              });
+            } catch (error) {
+              const message =
+                error instanceof Error ? error.message : String(error);
+              throw new Error(
+                `Failed to export Markdown source content from ${source.sourceDirectory}: ${message}`,
+                { cause: error }
+              );
+            }
+          }
+
+          logger.info(
+            `Exported ${sourceExportedCount} source Markdown page sidecars`
+          );
+        }
+
+        logger.info(
+          `Exported ${exportedCount} HTML-derived Markdown page sidecars`
+        );
       },
     },
   };

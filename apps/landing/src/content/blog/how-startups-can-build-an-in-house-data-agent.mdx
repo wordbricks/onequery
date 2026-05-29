@@ -1,0 +1,73 @@
+---
+category: "Product"
+title: "How startups can build an in-house data agent"
+description: "A practical startup playbook for turning an AI data agent from a risky demo into a safe, contextual, auditable workflow."
+coverImage:
+  src: "../../assets/blog/how-startups-can-build-an-in-house-data-agent-icon.png"
+  alt: "How startups can build an in-house data agent - OneQuery blog cover image."
+publishedAt: "2026-04-28"
+readTime: "10 min read"
+---
+## What OpenAI actually built
+
+OpenAI's internal data agent helps employees move from a natural-language question to a working analysis. It can inspect available data, draft SQL, execute queries, look at intermediate results, revise its approach, and summarize the answer in the same places employees already work.
+
+The important detail is that it is not just a text-to-SQL box. It behaves more like an analytical teammate inside an internal data system. If a query returns no rows, a join looks suspicious, or a filter is ambiguous, the workflow can recover instead of stopping at the first generated query.
+
+That is the practical bar for startups. A useful data agent should not only produce plausible SQL. It should help the team reason through data with enough context, guardrails, and traceability to trust the result.
+
+## The hard part is context, not chat
+
+The hardest part is not generating syntactically valid SQL. The hard part is knowing what the data means. A table named users might include deleted users, internal test accounts, anonymous visitors, or only fully onboarded customers. A revenue metric might mean invoices, payments, bookings, recognized revenue, or net revenue after refunds.
+
+Those definitions rarely live in one clean place. They are spread across schemas, prior queries, dashboard logic, transformation code, product docs, support investigations, Slack threads, and the memory of domain experts.
+
+Startups do not need a perfect catalog on day one. They need the top tables, the top metrics, common joins, known caveats, and a small set of canonical queries. The best seed set is usually the last month of questions people repeatedly asked in Slack, dashboards, notebooks, and customer investigations.
+
+## The hidden risk of direct source access
+
+A data agent becomes useful when it can access real systems. It also becomes dangerous at exactly the same moment. To answer meaningful business questions, the agent often needs access to production databases, warehouses, product analytics, billing tools, observability systems, CRMs, support platforms, and internal APIs.
+
+Without a safety layer, direct access creates obvious failure modes. A model can generate destructive SQL against a write-capable connection. It can expose customer emails, billing records, employee data, support conversations, or security logs through an overprivileged shared credential. It can leak API keys, OAuth tokens, database passwords, or warehouse credentials if secrets are visible inside the agent runtime.
+
+It can also create operational and financial risk. A bad BigQuery, Athena, or Snowflake query can scan too much data. A repeated retry loop can overload a production database. If the system does not record who asked the question, which source was used, what SQL ran, and what result came back, the team cannot investigate incidents or improve the workflow.
+
+## A startup-friendly blueprint
+
+The startup version should start with secure access. Use read-only credentials by default, separate permissions by source and role, and avoid exposing raw secrets to the model. The agent should ask a controlled execution layer to run a query; it should not freely connect to databases from its own runtime.
+
+Next, make query execution safe. Enforce single-statement queries, block destructive SQL, apply row limits, set timeouts, cap query cost where the provider supports it, and return structured failures that the agent can reason about. Permission denials, budget limits, empty results, stale data, and syntax errors should be normal lifecycle states.
+
+Then keep the agent loop small. The workflow should classify the question, retrieve table and metric context, draft SQL, validate it, execute it through a safe layer, inspect the result, retry only when the failure is understood, and return the answer with the SQL, assumptions, source, and caveats attached.
+
+## Where OneQuery fits
+
+OneQuery gives teams the layer an in-house data agent needs before it becomes useful: safe connections, controlled execution, permissions, and an audit trail. Instead of wiring an agent directly into every database and SaaS API, teams can put OneQuery between the agent and their external data sources.
+
+The agent handles intent, planning, SQL generation, summarization, and repair. OneQuery handles the dangerous middle: centralized credential management, read-only validation, single-statement enforcement, query cost limits for supported providers, organization and role-based access control, and audit logs.
+
+This division makes the product easier to trust. Teams can improve the agent's prompts, retrieval, memory, and evaluations without giving the model unchecked access to the data stack. When an answer is wrong, they can review the exact query path instead of guessing what happened inside an agent transcript.
+
+## Reference architecture
+
+In this architecture, the agent does not hold credentials to every external data source. The user interacts through Slack, web, an IDE, or another agent interface. The agent orchestrator interprets the request and plans the analysis. When it needs data, it goes through OneQuery.
+
+OneQuery becomes the trusted query layer. It applies permissions, audit logging, safety checks, execution limits, and source-specific controls before any query reaches a connected database, warehouse, or SaaS API. The result flows back to the agent, which summarizes the answer with the SQL, assumptions, caveats, and result context.
+
+![Diagram showing a user interface, agent orchestrator, OneQuery trusted query layer, connectors, external data sources, risks, and result assumptions.](../../assets/blog/how-startups-can-build-an-in-house-data-agent-diagram.png)
+
+## What not to do first
+
+Do not give an agent production database write credentials. Do not connect every data source on day one. Do not expose every internal API and tool just because it is technically possible. Do not use one shared admin credential for all users.
+
+Do not run warehouse queries without cost limits, row limits, or timeouts. Do not let the model see raw tokens, passwords, or API keys. Do not ship an agent without audit logs. Do not assume that a fluent answer is a correct answer.
+
+The fastest way to lose trust in a data agent is to let it produce confident answers that nobody can inspect, reproduce, or constrain.
+
+## Better grounded and better guarded
+
+OpenAI's in-house data agent shows where data work is going. People should be able to ask complex questions in natural language and get useful, contextual, trustworthy answers without waiting days for manual analysis.
+
+The lesson for startups is not to copy OpenAI's entire internal system. The lesson is to build the right foundation first. A reliable in-house data agent needs access to real company data, but that access must be controlled. It needs context, but that context must be maintained. It needs autonomy, but that autonomy must run inside clear safety boundaries.
+
+With a trusted query layer in place, teams can build data agents that are not only more powerful, but safer, more transparent, and easier to trust.

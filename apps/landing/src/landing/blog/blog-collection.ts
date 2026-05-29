@@ -34,20 +34,29 @@ function toBlogPostSummary(post: BlogPost): BlogPostSummary {
   };
 }
 
-function toBlogPost(entry: CollectionEntry<"blog">): BlogPost {
+export function toBlogPost(
+  entry: CollectionEntry<"blog">,
+  headings: BlogPost["headings"] = []
+): BlogPost {
   const data = entry.data as BlogPostContent;
 
   return {
     ...data,
+    body: entry.body ?? "",
     date: formatBlogPostDate(data.publishedAt),
+    headings,
     slug: entry.id,
   };
 }
 
+export async function getBlogPostEntries(): Promise<CollectionEntry<"blog">[]> {
+  return (await getCollection("blog")).toSorted((left, right) =>
+    comparePostDates(left.data, right.data)
+  );
+}
+
 export async function getBlogPosts(): Promise<BlogPost[]> {
-  return (await getCollection("blog"))
-    .map(toBlogPost)
-    .toSorted(comparePostDates);
+  return (await getBlogPostEntries()).map((entry) => toBlogPost(entry));
 }
 
 export async function getBlogPostSummaries(): Promise<BlogPostSummary[]> {

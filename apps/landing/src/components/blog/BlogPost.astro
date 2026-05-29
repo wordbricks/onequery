@@ -1,32 +1,19 @@
 ---
-import type {
-  BlogPost,
-  BlogPostSection,
-  BlogPostSummary,
-} from "../../landing/blog/blog-types";
-import {
-  BLOG_POST_IMAGE_SIZES,
-  BLOG_POST_IMAGE_WIDTHS,
-} from "./blog-image-presets";
-import BlogPostParagraph from "./BlogPostParagraph.astro";
-import LinkedText from "./LinkedText.astro";
-import OptimizedBlogImage from "./OptimizedBlogImage.astro";
+import type { MarkdownHeading } from "astro";
+import type { AstroComponentFactory } from "astro/runtime/server/index.js";
+import type { BlogPost, BlogPostSummary } from "../../landing/blog/blog-types";
 import TrackedLink from "../landing/TrackedLink.astro";
 
 interface Props {
+  Content: AstroComponentFactory;
+  headings: readonly MarkdownHeading[];
   post: BlogPost;
   postSummaries: readonly BlogPostSummary[];
 }
 
-const { post, postSummaries } = Astro.props;
+const { Content, headings, post, postSummaries } = Astro.props;
 
-function getFigureClass(section: BlogPostSection) {
-  return section.imagePlacement === "after-title"
-    ? "blog-post-figure blog-post-figure-after-title"
-    : "blog-post-figure";
-}
-
-const sections = post.sections;
+const sectionHeadings = headings.filter((heading) => heading.depth === 2);
 const relatedPosts = postSummaries
   .filter(
     (relatedPost) =>
@@ -65,78 +52,17 @@ const visibleRelatedPosts =
           <h2>Table of Contents</h2>
           <nav>
             <a href="#top">Up</a>
-            {sections.map((section) => <a href={`#${section.id}`}>{section.title}</a>)}
+            {
+              sectionHeadings.map((heading) => (
+                <a href={`#${heading.slug}`}>{heading.text}</a>
+              ))
+            }
           </nav>
         </aside>
 
         <div class="blog-post-body">
           <p class="blog-post-deck">{post.description}</p>
-          {
-            sections.map((section) => (
-              <section id={section.id}>
-                <h2>{section.title}</h2>
-                {section.imagePlacement === "after-title" && section.image ? (
-                  <figure class={getFigureClass(section)}>
-                    <OptimizedBlogImage
-                      src={section.image.src}
-                      alt={section.image.alt}
-                      sizes={BLOG_POST_IMAGE_SIZES}
-                      widths={BLOG_POST_IMAGE_WIDTHS}
-                    />
-                  </figure>
-                ) : null}
-                {section.paragraphs.map((paragraph, paragraphIndex) => (
-                  <BlogPostParagraph
-                    section={section}
-                    paragraph={paragraph}
-                    paragraphIndex={paragraphIndex}
-                  />
-                ))}
-                {section.table ? (
-                  <div class="blog-post-table-wrap">
-                    <table class="blog-post-table">
-                      <thead>
-                        <tr>
-                          {section.table.headers.map((header) => (
-                            <th>{header}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {section.table.rows.map((row) => (
-                          <tr>
-                            {row.map((cell) => (
-                              <td><LinkedText text={cell} /></td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : null}
-                {section.images.map((image) => (
-                  <figure class="blog-post-figure">
-                    <OptimizedBlogImage
-                      src={image.src}
-                      alt={image.alt}
-                      sizes={BLOG_POST_IMAGE_SIZES}
-                      widths={BLOG_POST_IMAGE_WIDTHS}
-                    />
-                  </figure>
-                ))}
-                {section.imagePlacement !== "after-title" && section.image ? (
-                  <figure class={getFigureClass(section)}>
-                    <OptimizedBlogImage
-                      src={section.image.src}
-                      alt={section.image.alt}
-                      sizes={BLOG_POST_IMAGE_SIZES}
-                      widths={BLOG_POST_IMAGE_WIDTHS}
-                    />
-                  </figure>
-                ) : null}
-              </section>
-            ))
-          }
+          <Content />
         </div>
       </div>
     </article>
