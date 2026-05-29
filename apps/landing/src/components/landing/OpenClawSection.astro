@@ -53,7 +53,7 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
     1,
   ];
 
-  function getVisibleRatio(element) {
+  function getFallbackVisibleRatio(element) {
     const rect = element.getBoundingClientRect();
     const elementArea = rect.width * rect.height;
 
@@ -77,10 +77,6 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
     return (visibleWidth * visibleHeight) / elementArea;
   }
 
-  function isReadyForAutoplay(element) {
-    return getVisibleRatio(element) >= autoplayVisibilityThreshold;
-  }
-
   for (const frame of document.querySelectorAll("[data-openclaw-demo-frame]")) {
     const video = frame.querySelector("[data-openclaw-demo-video]");
 
@@ -89,8 +85,10 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
     }
 
     let hasStartedVisibilityAutoplay = false;
+    let isVisibleForAutoplay = false;
     let pauseRequestedByVisibility = false;
     let userPaused = false;
+    let fallbackVisibilityFrame = 0;
 
     const playForVisibility = () => {
       if (document.visibilityState !== "visible") {
@@ -101,7 +99,7 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
         return;
       }
 
-      if (!isReadyForAutoplay(frame)) {
+      if (!isVisibleForAutoplay) {
         return;
       }
 
@@ -138,15 +136,30 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
     };
 
     const syncVisibilityPlayback = () => {
-      if (
-        document.visibilityState === "visible" &&
-        isReadyForAutoplay(frame)
-      ) {
+      if (document.visibilityState === "visible" && isVisibleForAutoplay) {
         playForVisibility();
         return;
       }
 
       pauseForVisibility();
+    };
+
+    const setVisibilityForAutoplay = (isVisible) => {
+      isVisibleForAutoplay = isVisible;
+      syncVisibilityPlayback();
+    };
+
+    const queueFallbackVisibilitySync = () => {
+      if (fallbackVisibilityFrame) {
+        return;
+      }
+
+      fallbackVisibilityFrame = window.requestAnimationFrame(() => {
+        fallbackVisibilityFrame = 0;
+        setVisibilityForAutoplay(
+          getFallbackVisibleRatio(frame) >= autoplayVisibilityThreshold
+        );
+      });
     };
 
     video.addEventListener("play", () => {
@@ -161,7 +174,7 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
         return;
       }
 
-      if (isReadyForAutoplay(frame)) {
+      if (isVisibleForAutoplay) {
         userPaused = true;
       }
     });
@@ -169,17 +182,31 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
     document.addEventListener("visibilitychange", syncVisibilityPlayback);
 
     if ("IntersectionObserver" in window) {
-      const observer = new IntersectionObserver(syncVisibilityPlayback, {
-        threshold: playbackObserverThresholds,
-      });
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries.find(
+            (candidate) => candidate.target === frame
+          );
+
+          if (!entry) {
+            return;
+          }
+
+          setVisibilityForAutoplay(
+            entry.intersectionRatio >= autoplayVisibilityThreshold
+          );
+        },
+        {
+          threshold: playbackObserverThresholds,
+        }
+      );
       observer.observe(frame);
     } else {
-      window.addEventListener("scroll", syncVisibilityPlayback, {
+      window.addEventListener("scroll", queueFallbackVisibilitySync, {
         passive: true,
       });
-      window.addEventListener("resize", syncVisibilityPlayback);
+      window.addEventListener("resize", queueFallbackVisibilitySync);
+      queueFallbackVisibilitySync();
     }
-
-    window.requestAnimationFrame(syncVisibilityPlayback);
   }
 </script>
