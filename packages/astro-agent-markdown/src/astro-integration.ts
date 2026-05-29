@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 
 import type { AstroIntegration } from "astro";
 
@@ -52,7 +51,10 @@ async function writeContentEndpointEntrypoint(input: {
   content: AgentMarkdownContentCollection;
   entrypoint: URL;
 }) {
-  const code = `import { getCollection, render } from "astro:content";
+  const collection = JSON.stringify(input.content.collection);
+  const code = `import type { APIRoute, GetStaticPaths } from "astro";
+import { getCollection, render } from "astro:content";
+import type { CollectionEntry } from "astro:content";
 import {
   createContentCollectionStaticPaths,
   createContentEntryMarkdownResponse,
@@ -60,34 +62,90 @@ import {
 
 export const prerender = true;
 
-export async function getStaticPaths() {
+const collection = ${collection};
+type Entry = CollectionEntry<typeof collection>;
+type Props = { entry: Entry };
+
+function getRetainedBody(entry: Entry) {
+  if (entry.body === undefined) {
+    throw new Error(
+      \`@onequery/astro-agent-markdown requires retained raw body for "\${entry.id}" in "\${collection}". Set retainBody: true on the Astro glob loader.\`
+    );
+  }
+
+  return entry.body;
+}
+
+export const getStaticPaths = (async () => {
   return createContentCollectionStaticPaths(
-    await getCollection(${JSON.stringify(input.content.collection)})
+    await getCollection(collection)
   );
-}
+}) satisfies GetStaticPaths;
 
-export async function GET({ props, request }) {
+const respond: APIRoute<Props> = async ({ props, request }) => {
   const { remarkPluginFrontmatter } = await render(props.entry);
 
   return createContentEntryMarkdownResponse({
-    entry: props.entry,
+    body: getRetainedBody(props.entry),
     frontmatter: remarkPluginFrontmatter,
     request,
   });
-}
+};
 
-export async function HEAD({ props, request }) {
-  const { remarkPluginFrontmatter } = await render(props.entry);
-
-  return createContentEntryMarkdownResponse({
-    entry: props.entry,
-    frontmatter: remarkPluginFrontmatter,
-    request,
-  });
-}
+export const GET = respond;
+export const HEAD = respond;
 `;
 
   await fs.writeFile(input.entrypoint, code);
+}
+
+function getContentDevPrelude(
+  content: readonly AgentMarkdownContentCollection[]
+) {
+  return content
+    .map((contentCollection, index) => {
+      const collectionName = JSON.stringify(contentCollection.collection);
+      return `const collection${index} = ${collectionName};
+type Entry${index} = CollectionEntry<typeof collection${index}>;
+
+function getRetainedBody${index}(entry: Entry${index}) {
+  if (entry.body === undefined) {
+    throw new Error(
+      \`@onequery/astro-agent-markdown requires retained raw body for "\${entry.id}" in "\${collection${index}}". Set retainBody: true on the Astro glob loader.\`
+    );
+  }
+
+  return entry.body;
+}
+`;
+    })
+    .join("\n");
+}
+
+function getContentDevRouteDefinitions(
+  content: readonly AgentMarkdownContentCollection[]
+) {
+  return content
+    .map(
+      (contentCollection, index) => `    {
+      routePrefix: ${JSON.stringify(contentCollection.routePrefix)},
+      getMarkdown: async (entryId: string) => {
+        const entry = await getEntry(collection${index}, entryId);
+
+        if (entry === undefined) {
+          return undefined;
+        }
+
+        const { remarkPluginFrontmatter } = await render(entry);
+
+        return contentEntryToMarkdown({
+          body: getRetainedBody${index}(entry),
+          frontmatter: remarkPluginFrontmatter,
+        });
+      },
+    }`
+    )
+    .join(",\n");
 }
 
 async function writeDevMiddlewareEntrypoint(input: {
@@ -95,33 +153,24 @@ async function writeDevMiddlewareEntrypoint(input: {
   entrypoint: URL;
   options: AgentMarkdownOptions;
 }) {
-  const contentCollections = input.content
-    .map(
-      (content) => `    {
-      routePrefix: ${JSON.stringify(content.routePrefix)},
-      getEntries: () => getCollection(${JSON.stringify(content.collection)}),
-      getMarkdown: async (entry) => {
-        const { remarkPluginFrontmatter } = await render(entry);
-        return contentEntryToMarkdown(entry, {
-          frontmatter: remarkPluginFrontmatter,
-        });
-      },
-    }`
-    )
-    .join(",\n");
-
-  const middlewareOptions = {
-    exclude: input.options.exclude?.map((pattern) => [
+  const exclude = JSON.stringify(
+    (input.options.exclude ?? []).map((pattern) => [
       pattern.source,
       pattern.flags,
     ]),
-  };
-  const code = `${input.content.length > 0 ? 'import { getCollection, render } from "astro:content";\nimport { contentEntryToMarkdown } from "@onequery/astro-agent-markdown/content";\n' : ""}import { createDevMarkdownMiddleware } from "@onequery/astro-agent-markdown/dev-middleware";
+    null,
+    2
+  );
+  const code = `${input.content.length > 0 ? 'import { getEntry, render } from "astro:content";\nimport type { CollectionEntry } from "astro:content";\nimport { contentEntryToMarkdown } from "@onequery/astro-agent-markdown/content";\n' : ""}import { createDevMarkdownMiddleware } from "@onequery/astro-agent-markdown/dev-middleware";
+import type { DevMarkdownMiddlewareOptions } from "@onequery/astro-agent-markdown/dev-middleware";
 
-const options = ${JSON.stringify(middlewareOptions, null, 2)};
-options.contentCollections = [
-${contentCollections}
-];
+${getContentDevPrelude(input.content)}
+const options = {
+  contentRoutes: [
+${getContentDevRouteDefinitions(input.content)}
+  ],
+  exclude: ${exclude},
+} satisfies DevMarkdownMiddlewareOptions;
 
 export const onRequest = createDevMarkdownMiddleware(options);
 `;
@@ -169,7 +218,7 @@ export function agentMarkdown(
           return;
         }
 
-        const entrypoint = new URL("dev-middleware.mjs", codegenDir);
+        const entrypoint = new URL("dev-middleware.ts", codegenDir);
 
         await writeDevMiddlewareEntrypoint({
           content,
@@ -182,20 +231,19 @@ export function agentMarkdown(
           order: "pre",
         });
       },
-      "astro:build:done": async ({ dir, logger, pages }) => {
-        const outputDir = fileURLToPath(dir);
+      "astro:build:done": async ({ assets, dir, logger }) => {
         const htmlOptions =
           options.html === false ? undefined : (options.html ?? {});
         const exportedCount = htmlOptions
           ? await exportHtmlMarkdownSidecars({
+              assets,
+              dir,
               exclude: [
                 ...DEFAULT_EXCLUDES,
                 ...(options.exclude ?? []),
                 ...(htmlOptions.exclude ?? []),
               ],
               logger,
-              outputDir,
-              pages,
             })
           : 0;
 

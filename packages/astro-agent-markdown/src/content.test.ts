@@ -3,25 +3,20 @@ import { describe, expect, it } from "vitest";
 import {
   contentEntryToMarkdown,
   createContentCollectionStaticPaths,
+  getContentEntryIdForMarkdownPath,
   getContentEntryMarkdownAssetPath,
   getContentMarkdownForPath,
 } from "./content";
 
 describe("content collection Markdown", () => {
-  it("reconstructs Markdown from an Astro content entry", async () => {
-    const markdown = await contentEntryToMarkdown(
-      {
-        body: "## Evidence\n",
-        data: { title: "Parsed title" },
-        id: "debug-production-agent-runs-with-onequery",
+  it("reconstructs Markdown from source body and frontmatter", () => {
+    const markdown = contentEntryToMarkdown({
+      body: "## Evidence\n",
+      frontmatter: {
+        category: "Engineering",
+        title: "Debugging production",
       },
-      {
-        frontmatter: {
-          category: "Engineering",
-          title: "Debugging production",
-        },
-      }
-    );
+    });
 
     expect(markdown).toBe(`---
 category: Engineering
@@ -32,23 +27,13 @@ title: Debugging production
 `);
   });
 
-  it("falls back to rendered HTML when a loader does not retain source body", async () => {
-    await expect(
+  it("omits frontmatter when the source has no frontmatter fields", () => {
+    expect(
       contentEntryToMarkdown({
-        data: { title: "Rendered entry" },
-        id: "rendered-entry",
-        rendered: {
-          html: "<main><h2>Rendered</h2><p>HTML body.</p></main>",
-        },
+        body: "## Evidence",
+        frontmatter: {},
       })
-    ).resolves.toBe(`---
-title: Rendered entry
----
-
-## Rendered
-
-HTML body.
-`);
+    ).toBe("## Evidence\n");
   });
 
   it("creates Astro static paths from collection entry ids", () => {
@@ -80,17 +65,25 @@ HTML body.
     ).toBe("/blog/debug-production-agent-runs-with-onequery/index.md");
   });
 
+  it("maps a Markdown asset path back to a content entry id", () => {
+    expect(
+      getContentEntryIdForMarkdownPath({
+        markdownPath:
+          "/blog/debug-production-agent-runs-with-onequery/index.md",
+        routePrefix: "/blog",
+      })
+    ).toBe("debug-production-agent-runs-with-onequery");
+  });
+
   it("finds a content entry by negotiated page pathname", async () => {
     await expect(
       getContentMarkdownForPath({
-        contentCollections: [
+        contentRoutes: [
           {
-            getEntries: async () => [
-              {
-                body: "## Evidence\n",
-                id: "debug-production-agent-runs-with-onequery",
-              },
-            ],
+            getMarkdown: async (entryId) =>
+              entryId === "debug-production-agent-runs-with-onequery"
+                ? "## Evidence\n"
+                : undefined,
             routePrefix: "/blog",
           },
         ],

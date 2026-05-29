@@ -15,18 +15,15 @@ function createContext(request: Request): APIContext {
 describe("createDevMarkdownMiddleware", () => {
   it("returns content collection Markdown before rendering when an entry matches", async () => {
     const onRequest = createDevMarkdownMiddleware({
-      contentCollections: [
+      contentRoutes: [
         {
-          getEntries: async () => [
-            {
-              body: "## Evidence\n",
-              id: "debug-production-agent-runs-with-onequery",
-            },
-          ],
-          getMarkdown: async (entry) =>
-            contentEntryToMarkdown(entry, {
-              frontmatter: { title: "Debugging production" },
-            }),
+          getMarkdown: async (entryId) =>
+            entryId === "debug-production-agent-runs-with-onequery"
+              ? contentEntryToMarkdown({
+                  body: "## Evidence\n",
+                  frontmatter: { title: "Debugging production" },
+                })
+              : undefined,
           routePrefix: "/blog",
         },
       ],

@@ -4,27 +4,19 @@ import { createMarkdownResponse, getMarkdownAssetPath } from "./negotiation";
 
 export const CONTENT_COLLECTION_ROUTE_PARAM = "agentMarkdownSlug";
 
-export type ContentMarkdownEntry = {
-  body?: string;
-  data?: Readonly<Record<string, unknown>>;
-  id: string;
-  rendered?: {
-    html?: string;
-    metadata?: {
-      frontmatter?: Readonly<Record<string, unknown>>;
-    };
-  };
+export type ContentMarkdownSource = {
+  body: string;
+  frontmatter?: Readonly<Record<string, unknown>>;
 };
 
-export type ContentMarkdownCollection = {
-  getEntries: () => Promise<readonly ContentMarkdownEntry[]>;
-  getMarkdown?: (entry: ContentMarkdownEntry) => Promise<string>;
+export type ContentMarkdownPathEntry = {
+  id: string;
+};
+
+export type ContentMarkdownRoute = {
+  getMarkdown: (entryId: string) => Promise<string | undefined>;
   routePrefix: string;
 };
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function isEmptyRecord(value: Readonly<Record<string, unknown>>) {
   return Object.keys(value).length === 0;
@@ -32,19 +24,6 @@ function isEmptyRecord(value: Readonly<Record<string, unknown>>) {
 
 function normalizeBody(body: string) {
   return body.endsWith("\n") ? body : `${body}\n`;
-}
-
-async function getEntryMarkdownBody(entry: ContentMarkdownEntry) {
-  if (entry.body !== undefined) {
-    return normalizeBody(entry.body);
-  }
-
-  if (entry.rendered?.html) {
-    const { htmlToMarkdown } = await import("./html-to-markdown");
-    return htmlToMarkdown(entry.rendered.html);
-  }
-
-  return "";
 }
 
 function normalizeRoutePrefix(routePrefix: string) {
@@ -59,7 +38,7 @@ function normalizeEntryId(id: string) {
 }
 
 function getContentEntryRoutePath(input: {
-  entry: Pick<ContentMarkdownEntry, "id">;
+  entry: ContentMarkdownPathEntry;
   routePrefix: string;
 }) {
   const routePrefix = normalizeRoutePrefix(input.routePrefix);
@@ -68,32 +47,11 @@ function getContentEntryRoutePath(input: {
   return `${routePrefix}/${entryId}/`.replace(/\/{2,}/gu, "/");
 }
 
-function getEntryFrontmatter(entry: ContentMarkdownEntry) {
-  const rawFrontmatter = entry.rendered?.metadata?.frontmatter;
+export function contentEntryToMarkdown(source: ContentMarkdownSource) {
+  const body = normalizeBody(source.body);
+  const frontmatter = source.frontmatter;
 
-  if (isRecord(rawFrontmatter) && !isEmptyRecord(rawFrontmatter)) {
-    return rawFrontmatter;
-  }
-
-  if (isRecord(entry.data) && !isEmptyRecord(entry.data)) {
-    return entry.data;
-  }
-
-  return undefined;
-}
-
-export async function contentEntryToMarkdown(
-  entry: ContentMarkdownEntry,
-  options: {
-    frontmatter?: Readonly<Record<string, unknown>>;
-  } = {}
-) {
-  const body = await getEntryMarkdownBody(entry);
-  const frontmatter = isRecord(options.frontmatter)
-    ? options.frontmatter
-    : getEntryFrontmatter(entry);
-
-  if (!frontmatter) {
+  if (!frontmatter || isEmptyRecord(frontmatter)) {
     return body;
   }
 
@@ -105,7 +63,7 @@ export async function contentEntryToMarkdown(
 }
 
 export function createContentCollectionStaticPaths<
-  Entry extends ContentMarkdownEntry,
+  Entry extends ContentMarkdownPathEntry,
 >(entries: readonly Entry[]) {
   return entries.map((entry) => ({
     params: {
@@ -118,14 +76,32 @@ export function createContentCollectionStaticPaths<
 }
 
 export function getContentEntryMarkdownAssetPath(input: {
-  entry: Pick<ContentMarkdownEntry, "id">;
+  entry: ContentMarkdownPathEntry;
   routePrefix: string;
 }) {
   return getMarkdownAssetPath(getContentEntryRoutePath(input));
 }
 
+export function getContentEntryIdForMarkdownPath(input: {
+  markdownPath: string;
+  routePrefix: string;
+}) {
+  const routePrefix = normalizeRoutePrefix(input.routePrefix);
+  const routeBase = `${routePrefix}/`.replace(/\/{2,}/gu, "/");
+  const markdownSuffix = "/index.md";
+
+  if (
+    !input.markdownPath.startsWith(routeBase) ||
+    !input.markdownPath.endsWith(markdownSuffix)
+  ) {
+    return undefined;
+  }
+
+  return input.markdownPath.slice(routeBase.length, -markdownSuffix.length);
+}
+
 export async function getContentMarkdownForPath(input: {
-  contentCollections: readonly ContentMarkdownCollection[];
+  contentRoutes: readonly ContentMarkdownRoute[];
   pathname: string;
 }) {
   const markdownPath = getMarkdownAssetPath(input.pathname);
@@ -134,33 +110,28 @@ export async function getContentMarkdownForPath(input: {
     return undefined;
   }
 
-  for (const collection of input.contentCollections) {
-    const entries = await collection.getEntries();
+  for (const route of input.contentRoutes) {
+    const entryId = getContentEntryIdForMarkdownPath({
+      markdownPath,
+      routePrefix: route.routePrefix,
+    });
 
-    for (const entry of entries) {
-      if (
-        getContentEntryMarkdownAssetPath({
-          entry,
-          routePrefix: collection.routePrefix,
-        }) === markdownPath
-      ) {
-        return collection.getMarkdown
-          ? await collection.getMarkdown(entry)
-          : await contentEntryToMarkdown(entry);
-      }
+    if (entryId !== undefined) {
+      return route.getMarkdown(entryId);
     }
   }
 
   return undefined;
 }
 
-export async function createContentEntryMarkdownResponse(input: {
-  entry: ContentMarkdownEntry;
+export function createContentEntryMarkdownResponse(input: {
+  body: string;
   frontmatter?: Readonly<Record<string, unknown>>;
   request: Request;
 }) {
   return createMarkdownResponse({
-    markdown: await contentEntryToMarkdown(input.entry, {
+    markdown: contentEntryToMarkdown({
+      body: input.body,
       frontmatter: input.frontmatter,
     }),
     request: input.request,

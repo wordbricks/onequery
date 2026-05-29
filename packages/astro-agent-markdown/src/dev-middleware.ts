@@ -1,8 +1,7 @@
 import type { MiddlewareHandler } from "astro";
 
 import { getContentMarkdownForPath } from "./content";
-import type { ContentMarkdownCollection } from "./content";
-import { htmlToMarkdown } from "./html-to-markdown";
+import type { ContentMarkdownRoute } from "./content";
 import {
   acceptsMarkdown,
   addVaryAccept,
@@ -12,7 +11,7 @@ import {
 type SerializedRegExp = readonly [source: string, flags: string];
 
 export type DevMarkdownMiddlewareOptions = {
-  contentCollections?: readonly ContentMarkdownCollection[];
+  contentRoutes?: readonly ContentMarkdownRoute[];
   exclude?: readonly SerializedRegExp[];
 };
 
@@ -45,11 +44,16 @@ function withVaryAccept(response: Response) {
   });
 }
 
+async function htmlResponseToMarkdown(response: Response) {
+  const { htmlToMarkdown } = await import("./html-to-markdown");
+  return htmlToMarkdown(await response.text());
+}
+
 export function createDevMarkdownMiddleware(
   options: DevMarkdownMiddlewareOptions = {}
 ): MiddlewareHandler {
   const excludePatterns = createExcludePatterns(options.exclude);
-  const contentCollections = options.contentCollections ?? [];
+  const contentRoutes = options.contentRoutes ?? [];
 
   return async (context, next) => {
     const { request, url } = context;
@@ -60,7 +64,7 @@ export function createDevMarkdownMiddleware(
 
     if (canNegotiate) {
       const contentMarkdown = await getContentMarkdownForPath({
-        contentCollections,
+        contentRoutes,
         pathname: url.pathname,
       });
 
@@ -82,7 +86,7 @@ export function createDevMarkdownMiddleware(
       return withVaryAccept(response);
     }
 
-    const markdown = htmlToMarkdown(await response.text());
+    const markdown = await htmlResponseToMarkdown(response);
 
     return createMarkdownResponse({
       headers: response.headers,

@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import type { AstroIntegrationLogger } from "astro";
 import { describe, expect, it } from "vitest";
@@ -14,11 +15,11 @@ function createLogger(): AstroIntegrationLogger {
 }
 
 describe("HTML Markdown sidecars", () => {
-  it("normalizes generated page pathnames to route paths", () => {
-    expect(getHtmlRoutePath("/")).toBe("/");
-    expect(getHtmlRoutePath("/connectors/")).toBe("/connectors/");
-    expect(getHtmlRoutePath("/404.html")).toBe("/404/");
-    expect(getHtmlRoutePath("/hello.world/")).toBe("/hello.world/");
+  it("normalizes generated HTML asset paths to route paths", () => {
+    expect(getHtmlRoutePath("index.html")).toBe("/");
+    expect(getHtmlRoutePath("connectors/index.html")).toBe("/connectors/");
+    expect(getHtmlRoutePath("404.html")).toBe("/404/");
+    expect(getHtmlRoutePath("hello.world/index.html")).toBe("/hello.world/");
   });
 
   it("exports Markdown sidecars for generated HTML pages", async () => {
@@ -39,14 +40,19 @@ describe("HTML Markdown sidecars", () => {
     );
 
     const count = await exportHtmlMarkdownSidecars({
+      assets: new Map([
+        [
+          "/",
+          [
+            pathToFileURL(path.join(outputDir, "index.html")),
+            pathToFileURL(path.join(outputDir, "connectors/index.html")),
+            pathToFileURL(path.join(outputDir, "404.html")),
+          ],
+        ],
+      ]),
+      dir: pathToFileURL(`${outputDir}/`),
       exclude: [/^\/404(?:\/|$)/u],
       logger: createLogger(),
-      outputDir,
-      pages: [
-        { pathname: "/" },
-        { pathname: "/connectors/" },
-        { pathname: "/404.html" },
-      ],
     });
 
     await expect(
@@ -73,9 +79,11 @@ describe("HTML Markdown sidecars", () => {
     await fs.writeFile(path.join(blogDir, "index.md"), "# Source Blog\n");
 
     const count = await exportHtmlMarkdownSidecars({
+      assets: new Map([
+        ["/blog/[post]", [pathToFileURL(path.join(blogDir, "index.html"))]],
+      ]),
+      dir: pathToFileURL(`${outputDir}/`),
       logger: createLogger(),
-      outputDir,
-      pages: [{ pathname: "/blog/post/" }],
     });
 
     await expect(
