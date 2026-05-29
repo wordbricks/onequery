@@ -25,14 +25,14 @@ export function createHandleDescribeSourceApi(
           dependencies: resolvedDependencies,
           orgSlug: request.orgSlug,
           requestContext,
-          sourceKey: request.sourceKey,
+          source: request.source,
         })
       );
       const descriptor = yield* Result.await(
         runDescribeSourceApiWorkflowResult({
           ...workflowContext,
           dependencies: resolvedDependencies,
-          sourceKey: request.sourceKey,
+          sourceKey: workflowContext.sourceKey,
         })
       );
 

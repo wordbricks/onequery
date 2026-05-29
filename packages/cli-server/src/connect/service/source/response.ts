@@ -35,7 +35,7 @@ function toCliSourceStatus(value: BuildCliSourceInput["status"]) {
 
 export function buildCliSource(source: BuildCliSourceInput): CliSourceInit {
   const response: CliSourceInit = {
-    interfaces: getCliSourceInterfaceTypes(source.provider, source.status).map(
+    interfaces: getCliSourceInterfaceTypes(source.provider).map(
       toCliSourceInterface
     ),
     sourceKey: source.sourceKey,

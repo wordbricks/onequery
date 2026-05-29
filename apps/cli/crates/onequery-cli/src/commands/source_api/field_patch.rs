@@ -479,7 +479,7 @@ mod tests {
 
     fn context() -> CommandContext {
         CommandContext {
-            command_line: "onequery api --source github-prod".to_owned(),
+            command_line: "onequery api --source github://github-prod".to_owned(),
             base_url: default_base_url(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),

@@ -406,7 +406,7 @@ mod tests {
     use crate::commands::CommandContext;
     use crate::commands::ResolvedOrgSource;
     use crate::identifiers::test_org_slug;
-    use crate::identifiers::test_source_key;
+    use crate::identifiers::test_source_reference;
     use crate::transport::source_api::SourceApiDraft;
     use crate::transport::source_api::SourceApiPreview;
     use crate::transport::source_api::SourceApiSource;
@@ -438,7 +438,7 @@ mod tests {
 
     fn sample_context() -> CommandContext {
         CommandContext {
-            command_line: "onequery api --source stripe customers".to_owned(),
+            command_line: "onequery api --source stripe://stripe customers".to_owned(),
             base_url: "https://example.com".to_owned(),
             request_id: None,
             resolved_org: Some("acme".to_owned()),
@@ -449,7 +449,7 @@ mod tests {
 
     fn sample_args() -> ApiArgs {
         ApiArgs {
-            source: test_source_key("stripe"),
+            source: test_source_reference("stripe://stripe"),
             op: None,
             target: Some("customers".to_owned()),
             method: None,
@@ -535,7 +535,7 @@ mod tests {
             TransitionProgress::Continue {
                 next_state: SourceApiState::CheckingAuth(CheckingAuthState { args }),
                 effect: SourceApiEffect::EnsureAuthenticatedOrg,
-            } => assert_eq!(args.source.as_str(), "stripe"),
+            } => assert_eq!(args.source.as_str(), "stripe://stripe"),
             other => panic!("expected auth transition, got {other:?}"),
         }
     }
@@ -558,7 +558,7 @@ mod tests {
                 effect: SourceApiEffect::DescribeSourceApi { attempt, request },
             } => {
                 assert_eq!(state.request.org.as_str(), "acme");
-                assert_eq!(request.args.source.as_str(), "stripe");
+                assert_eq!(request.args.source.as_str(), "stripe://stripe");
                 assert_eq!(attempt, 1);
             }
             other => panic!("expected describe transition, got {other:?}"),

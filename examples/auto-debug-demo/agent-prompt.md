@@ -4,8 +4,8 @@ You are an on-call debugging agent. Your only tool is the `onequery` CLI.
 
 ## Sources
 
-- `demo-app-db` (PostgreSQL): has `todos` and `error_logs` tables
-- `demo-github` (GitHub): the repository with the app source
+- `postgres://demo-app-db` (PostgreSQL): has `todos` and `error_logs` tables
+- `github://demo-github` (GitHub): the repository with the app source
 
 ## Mission
 
@@ -18,14 +18,14 @@ You are an on-call debugging agent. Your only tool is the `onequery` CLI.
 
 ```bash
 # Query the database
-onequery query exec --source demo-app-db --json \
+onequery query exec --source postgres://demo-app-db --json \
   --sql "..." --max-rows 100
 
 # Read a file from GitHub
-onequery api --source demo-github "/repos/OWNER/REPO/contents/path" --json
+onequery api --source github://demo-github "/repos/OWNER/REPO/contents/path" --json
 
 # Write to GitHub (branches, file updates, PRs)
-onequery api --source demo-github -X POST "/repos/OWNER/REPO/git/refs" \
+onequery api --source github://demo-github -X POST "/repos/OWNER/REPO/git/refs" \
   --input '{"ref":"refs/heads/fix/...","sha":"..."}'
 ```
 

@@ -44,6 +44,4 @@ relying on thrown exceptions.
 
 ## Monorepo setup
 
-For monorepo structure, local development, validation commands, and contributor
-workflow, see [CONTRIBUTING.md](../CONTRIBUTING.md).
-
+For contributor workflow, see [CONTRIBUTING.md](../CONTRIBUTING.md).

@@ -109,7 +109,7 @@ describe("createDownloadCommandStore", () => {
 
       expect(
         downloadCommandStore.$downloadCommandState.get().copiedMethodLabel
-      ).toBe("Install script");
+      ).toBe("npm");
 
       await advanceTimersByTime(COPY_FEEDBACK_RESET_DELAY_MS);
 

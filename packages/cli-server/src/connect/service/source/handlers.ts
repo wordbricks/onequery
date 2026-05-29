@@ -32,6 +32,7 @@ import {
   getCliSourceInterfaceTypes,
   sortCliSourceRecords,
 } from "../../../source/model";
+import { parseCliSourceSelector } from "../../../source/reference";
 import { requireCliConnectRequestContext } from "../../context";
 import {
   createCliSourceNameConflictFailure,
@@ -143,6 +144,14 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
   context
 ) =>
   Result.gen(async function* handleGetSourceFlow() {
+    const sourceSelector = parseCliSourceSelector(request.source);
+    if (!sourceSelector) {
+      return yield* cliServiceErr({
+        detail: "source must include provider and sourceKey",
+        key: "SOURCE_REQUEST_INVALID",
+      });
+    }
+
     const access = yield* Result.await(
       resolveAuthorizedSourceRequestState(
         "source.read",
@@ -155,7 +164,8 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
       effect: {
         kind: "load_source",
         organizationId: access.authorizedOrg.org.id,
-        sourceKey: request.sourceKey,
+        sourceKey: sourceSelector.sourceKey,
+        sourceProvider: sourceSelector.sourceProvider,
       },
     });
 
@@ -164,7 +174,7 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
         details: buildCliRequestLogDetails(access.c, {
           orgSlug: access.authorizedOrg.org.slug,
           roles: access.authorizedOrg.membershipRoles,
-          sourceKey: request.sourceKey,
+          sourceKey: sourceSelector.sourceKey,
         }),
         event: "source.lookup.not_found",
         level: "warn",
@@ -173,21 +183,18 @@ const handleGetSourceImpl: CliResultServiceMethod<"getSource"> = async (
       return Result.err(
         createCliSourceNotFoundFailure(
           access.authorizedOrg.org.slug,
-          request.sourceKey
+          sourceSelector.sourceKey
         )
       );
     }
 
-    const interfaces = getCliSourceInterfaceTypes(
-      source.source.provider,
-      source.source.status
-    );
+    const interfaces = getCliSourceInterfaceTypes(source.source.provider);
 
     logCliEvent({
       details: buildCliRequestLogDetails(access.c, {
         orgSlug: access.authorizedOrg.org.slug,
         roles: access.authorizedOrg.membershipRoles,
-        sourceKey: request.sourceKey,
+        sourceKey: sourceSelector.sourceKey,
         provider: source.source.provider,
         interfaces,
       }),
@@ -203,6 +210,14 @@ const handleTestSourceImpl: CliResultServiceMethod<"testSource"> = async (
   context
 ) =>
   Result.gen(async function* handleTestSourceFlow() {
+    const sourceSelector = parseCliSourceSelector(request.source);
+    if (!sourceSelector) {
+      return yield* cliServiceErr({
+        detail: "source must include provider and sourceKey",
+        key: "SOURCE_REQUEST_INVALID",
+      });
+    }
+
     const access = yield* Result.await(
       resolveAuthorizedSourceRequestState(
         "source.read",
@@ -215,7 +230,8 @@ const handleTestSourceImpl: CliResultServiceMethod<"testSource"> = async (
       effect: {
         kind: "load_source",
         organizationId: access.authorizedOrg.org.id,
-        sourceKey: request.sourceKey,
+        sourceKey: sourceSelector.sourceKey,
+        sourceProvider: sourceSelector.sourceProvider,
       },
     });
 
@@ -224,7 +240,7 @@ const handleTestSourceImpl: CliResultServiceMethod<"testSource"> = async (
         details: buildCliRequestLogDetails(access.c, {
           orgSlug: access.authorizedOrg.org.slug,
           roles: access.authorizedOrg.membershipRoles,
-          sourceKey: request.sourceKey,
+          sourceKey: sourceSelector.sourceKey,
         }),
         event: "source.test.not_found",
         level: "warn",
@@ -233,7 +249,7 @@ const handleTestSourceImpl: CliResultServiceMethod<"testSource"> = async (
       return Result.err(
         createCliSourceNotFoundFailure(
           access.authorizedOrg.org.slug,
-          request.sourceKey
+          sourceSelector.sourceKey
         )
       );
     }
@@ -253,7 +269,7 @@ const handleTestSourceImpl: CliResultServiceMethod<"testSource"> = async (
         orgSlug: access.authorizedOrg.org.slug,
         provider: source.source.provider,
         roles: access.authorizedOrg.membershipRoles,
-        sourceKey: request.sourceKey,
+        sourceKey: sourceSelector.sourceKey,
         success: outcome.kind === "supported" ? outcome.success : "unsupported",
       }),
       event: "source.test.completed",

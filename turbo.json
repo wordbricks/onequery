@@ -3,11 +3,7 @@
   "remoteCache": {
     "signature": true
   },
-  "globalEnv": [
-    "NODE_ENV",
-    "ONEQUERY_PGLITE_DIR",
-    "PUBLIC_GOOGLE_TAG_MANAGER_ID"
-  ],
+  "globalEnv": ["NODE_ENV", "ONEQUERY_PGLITE_DIR"],
   "globalPassThroughEnv": ["npm_config_user_agent", "npm_execpath", "PATH"],
   "tasks": {
     "build": {

@@ -28,6 +28,7 @@ import type {
 import { canonicalizeSourceApiHeaderNames } from "@onequery/server/source-api/header-policy";
 import { Result } from "better-result";
 
+import { formatCliSourceReference } from "../../../source/reference";
 import { cliServiceErr } from "../result";
 import type { CliServiceResult } from "../result";
 import type {
@@ -86,11 +87,14 @@ export function resolveSourceApiResumeCommand(
 
 function buildSourceApiTarget(input: {
   orgSlug: string;
-  sourceKey: string;
+  source?: {
+    provider?: string;
+    sourceKey?: string;
+  };
 }): SourceApiTarget {
   return {
     orgSlug: input.orgSlug,
-    sourceKey: input.sourceKey,
+    source: input.source,
   };
 }
 
@@ -117,11 +121,27 @@ export function buildSourceApiDraft(
 export function buildCliDescribeSourceApiResponse(
   value: SourceApiDescriptor
 ): DescribeSourceApiResponseInit {
+  const sourceReference = formatCliSourceReference(
+    value.source.provider,
+    value.source.sourceKey
+  );
   return {
     descriptorVersion: value.descriptorVersion,
-    examples: value.examples.map(buildCliSourceApiExample),
+    examples: value.examples.map((example) =>
+      buildCliSourceApiExampleWithSourceReference({
+        example,
+        sourceKey: value.source.sourceKey,
+        sourceReference,
+      })
+    ),
     notes: [...value.notes],
-    operations: value.operations.map(buildCliSourceApiOperation),
+    operations: value.operations.map((operation) =>
+      buildCliSourceApiOperation({
+        operation,
+        sourceKey: value.source.sourceKey,
+        sourceReference,
+      })
+    ),
     source: buildCliSourceApiSource(value.source),
     ...(value.defaultPathOperation
       ? { defaultPathOperationName: value.defaultPathOperation }
@@ -297,10 +317,21 @@ function buildCliSourceApiExecutionResult(
   };
 }
 
-function buildCliSourceApiOperation(value: SourceApiOperation) {
+function buildCliSourceApiOperation(input: {
+  operation: SourceApiOperation;
+  sourceKey: string;
+  sourceReference: string;
+}) {
+  const value = input.operation;
   return {
     description: value.description,
-    examples: value.examples.map(buildCliSourceApiExample),
+    examples: value.examples.map((example) =>
+      buildCliSourceApiExampleWithSourceReference({
+        example,
+        sourceKey: input.sourceKey,
+        sourceReference: input.sourceReference,
+      })
+    ),
     fieldPolicy: buildCliSourceApiFieldPolicy(value.fieldPolicy),
     headerPolicy: {
       allowedRequestHeaderNames: canonicalizeSourceApiHeaderNames(
@@ -354,6 +385,20 @@ function buildCliSourceApiExample(
     description: value.description,
     label: value.label,
   };
+}
+
+function buildCliSourceApiExampleWithSourceReference(input: {
+  example: SourceApiOperation["examples"][number];
+  sourceKey: string;
+  sourceReference: string;
+}) {
+  return buildCliSourceApiExample({
+    ...input.example,
+    command: input.example.command.replace(
+      `--source ${input.sourceKey}`,
+      `--source ${input.sourceReference}`
+    ),
+  });
 }
 
 function buildCliSourceApiResponseBody(

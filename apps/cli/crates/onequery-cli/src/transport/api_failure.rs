@@ -238,8 +238,7 @@ fn parse_connect_problem_details(
                     bad_request
                         .field_violations
                         .into_iter()
-                        .map(validation_issue_from_generated)
-                        .collect::<Vec<_>>(),
+                        .map(validation_issue_from_generated),
                 );
             }
             error_details::RESOURCE_INFO_DETAIL_TYPE => {
@@ -391,7 +390,7 @@ fn connect_transport_retryable(code: ErrorCode) -> bool {
 }
 
 fn connect_request_id(error: &ConnectError) -> Option<String> {
-    response_request_id(&error.response_headers).or_else(|| response_request_id(&error.trailers))
+    response_request_id(error.response_headers()).or_else(|| response_request_id(error.trailers()))
 }
 
 fn connect_error_message(error: &ConnectError) -> String {
@@ -444,7 +443,7 @@ mod tests {
     #[test]
     fn failure_from_connect_parses_typed_cli_problem_details() {
         let mut error = ConnectError::new(ErrorCode::ResourceExhausted, "polling is rate limited");
-        error.response_headers.insert(
+        error.response_headers_mut().insert(
             "x-request-id",
             http::HeaderValue::from_static("req_header_fallback"),
         );
@@ -548,7 +547,7 @@ mod tests {
             ErrorCode::PermissionDenied,
             "stored credentials are invalid",
         );
-        error.response_headers.insert(
+        error.response_headers_mut().insert(
             "x-request-id",
             http::HeaderValue::from_static("req_header_fallback"),
         );
@@ -582,7 +581,7 @@ mod tests {
     #[test]
     fn failure_from_connect_treats_wrong_error_info_domain_as_untyped() {
         let mut error = ConnectError::new(ErrorCode::PermissionDenied, "forbidden");
-        error.response_headers.insert(
+        error.response_headers_mut().insert(
             "x-request-id",
             http::HeaderValue::from_static("req_header_fallback"),
         );
@@ -609,7 +608,7 @@ mod tests {
     #[test]
     fn failure_from_connect_treats_untyped_transient_errors_as_transport_failures() {
         let mut error = ConnectError::new(ErrorCode::Unavailable, "server temporarily unavailable");
-        error.response_headers.insert(
+        error.response_headers_mut().insert(
             "x-request-id",
             http::HeaderValue::from_static("req_unavailable"),
         );
@@ -628,7 +627,7 @@ mod tests {
     #[test]
     fn failure_from_connect_preserves_trailer_request_id_on_untyped_transient_errors() {
         let mut error = ConnectError::new(ErrorCode::Unavailable, "server temporarily unavailable");
-        error.trailers.insert(
+        error.trailers_mut().insert(
             "x-request-id",
             http::HeaderValue::from_static("req_trailer"),
         );
@@ -647,7 +646,7 @@ mod tests {
     #[test]
     fn failure_from_connect_rejects_untyped_non_transient_errors() {
         let mut error = ConnectError::new(ErrorCode::PermissionDenied, "forbidden");
-        error.response_headers.insert(
+        error.response_headers_mut().insert(
             "x-request-id",
             http::HeaderValue::from_static("req_forbidden"),
         );

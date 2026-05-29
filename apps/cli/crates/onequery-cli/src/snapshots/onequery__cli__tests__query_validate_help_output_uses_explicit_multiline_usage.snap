@@ -1,19 +1,18 @@
 ---
 source: crates/onequery-cli/src/cli/../cli_tests.rs
-assertion_line: 170
 expression: "rendered_display(&[\"onequery\", \"query\", \"validate\", \"--help\"])"
 ---
 Validate a query without executing it
 
-Usage: onequery query validate [OPTIONS] --source <SOURCE_KEY> --input <PATH|->
-       onequery query validate [OPTIONS] --source <SOURCE_KEY> --sql <SQL>
-       onequery query validate [OPTIONS] --source <SOURCE_KEY> --file <PATH>
-       onequery query validate [OPTIONS] --source <SOURCE_KEY> --stdin
+Usage: onequery query validate [OPTIONS] --source <SOURCE> --input <PATH|->
+       onequery query validate [OPTIONS] --source <SOURCE> --sql <SQL>
+       onequery query validate [OPTIONS] --source <SOURCE> --file <PATH>
+       onequery query validate [OPTIONS] --source <SOURCE> --stdin
 
 Options:
-      --source <SOURCE_KEY>  Validate the query against this source key
-  -h, --help                 Print help
-  -V, --version              Print version
+      --source <SOURCE>  Validate the query against this source
+  -h, --help             Print help
+  -V, --version          Print version
 
 Read Controls:
       --fields <FIELDS>  Project only the requested response fields

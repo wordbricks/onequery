@@ -16,7 +16,7 @@ Agent workflow:
 
 Use a CLI-safe \`sourceKey\` such as \`warehouse\` or \`github_main\`.
 Run: \`onequery source connect --source postgres --input '<json>'\`
-Verify: \`onequery source show <source_key>\`
+Verify: \`onequery source show <provider>://<source_key>\`
 Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
 The JSON input shape is always \`{ "sourceKey": string, "credentials": { ...provider-specific fields... } }\`.
 
@@ -59,7 +59,7 @@ Agent workflow:
 
 Use a CLI-safe \`sourceKey\` such as \`warehouse\` or \`github_main\`.
 Run: \`onequery source connect --source posthog --input '<json>'\`
-Verify: \`onequery source show <source_key>\`
+Verify: \`onequery source show <provider>://<source_key>\`
 Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
 The JSON input shape is always \`{ "sourceKey": string, "credentials": { ...provider-specific fields... } }\`.
 
@@ -102,7 +102,7 @@ Agent workflow:
 
 Use a CLI-safe \`sourceKey\` such as \`warehouse\` or \`github_main\`.
 Run: \`onequery source connect --source supabase --input '<json>'\`
-Verify: \`onequery source show <source_key>\`
+Verify: \`onequery source show <provider>://<source_key>\`
 Do not include \`organizationId\` or \`organizationSlug\`; the CLI injects org context automatically.
 The JSON input shape is always \`{ "sourceKey": string, "credentials": { ...provider-specific fields... } }\`.
 
@@ -137,7 +137,7 @@ Example input:
 
 exports[`source connect guide > reuses the canonical show command in connect results 1`] = `
 {
-  "nextCommand": "onequery source show warehouse",
+  "nextCommand": "onequery source show postgres://warehouse",
   "source": {
     "displayName": null,
     "id": "source_123",

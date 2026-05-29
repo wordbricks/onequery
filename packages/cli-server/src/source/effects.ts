@@ -46,6 +46,16 @@ export async function runCliLoadSourceEffect(input: {
   db: Database;
   effect: CliLoadSourceEffect;
 }): Promise<CliLoadSourceEffectResult> {
+  const sourceConditions = [
+    eq(dataSources.organizationId, input.effect.organizationId),
+    eq(dataSources.name, input.effect.sourceKey),
+  ];
+  if (input.effect.sourceProvider) {
+    sourceConditions.push(
+      eq(dataSources.provider, input.effect.sourceProvider)
+    );
+  }
+
   const row = await input.db.query.dataSources.findFirst({
     columns: {
       id: true,
@@ -56,10 +66,7 @@ export async function runCliLoadSourceEffect(input: {
       credentialsEncrypted: true,
       credentialsIv: true,
     },
-    where: and(
-      eq(dataSources.organizationId, input.effect.organizationId),
-      eq(dataSources.name, input.effect.sourceKey)
-    ),
+    where: and(...sourceConditions),
   });
 
   if (!row) {

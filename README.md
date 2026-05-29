@@ -1,12 +1,14 @@
 # OneQuery
 
 <p align="center">
-  <a href="./README.md">English</a> | <a href="./README.zh-CN.md">中文</a>
+  <strong>English</strong> | <a href="./README.zh-CN.md">中文</a>
 </p>
 
 <p align="center">
-  <a href="https://onequery.dev"><img src="https://img.shields.io/badge/Site-onequery.dev-blue?style=for-the-badge" alt="Site"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge" alt="License: Apache 2.0"></a>
+  <a href="https://www.npmjs.com/package/@onequery/cli"><img src="https://img.shields.io/npm/dm/@onequery/cli?style=flat-square" alt="npm downloads"></a>
+  <a href="https://onequery.dev"><img src="https://img.shields.io/badge/Site-onequery.dev-blue?style=flat-square" alt="Site"></a>
+  <a href="https://github.com/wordbricks/onequery/releases"><img src="https://img.shields.io/github/v/release/wordbricks/onequery?display_name=release&style=flat-square" alt="Release"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/wordbricks/onequery?style=flat-square" alt="License"></a>
 </p>
 
 **Self-host OneQuery to connect databases, analytics tools, and APIs, manage credentials centrally, and run safe, auditable queries from a CLI and web UI.**
@@ -34,15 +36,15 @@ One interface for your whole data stack, with built-in safeguards and a simpler 
 ## Quick Install
 
 ```bash
-curl -fsSL https://onequery.dev/install.sh | sh
+npm install -g @onequery/cli
 ```
 
-Or use a package manager:
+Other install options:
 
 ```bash
 brew install wordbricks/tap/onequery    # Homebrew
-npm install -g @onequery/cli            # npm
 bun add -g @onequery/cli                # Bun
+curl -fsSL https://onequery.dev/install.sh | sh    # install script
 ```
 
 Without a global install: `npx @onequery/cli --help` or `bunx @onequery/cli --help`.
@@ -63,8 +65,11 @@ Add a source and run a query:
 ```bash
 onequery source connect --source postgres \
   --input '{"name":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery","password":"secret"}}'
-onequery query execute --source warehouse --sql "select 1"
+onequery query execute --source postgres://warehouse --sql "select 1"
 ```
+
+Connected sources are referenced as `<provider>://<source-key>`, for example
+`postgres://warehouse`.
 
 ### Option B: Connect to an existing server
 
@@ -72,7 +77,7 @@ onequery query execute --source warehouse --sql "select 1"
 onequery config set server https://onequery.example.com
 onequery auth login
 onequery source list
-onequery query execute --source <source-key> --sql "select 1"
+onequery query execute --source <provider>://<source-key> --sql "select 1"
 ```
 
 ---
@@ -185,16 +190,20 @@ Load skill onequery-cli.
 
 ## Built With
 
-Two libraries that make OneQuery more reliable:
+Libraries that make OneQuery more reliable:
 
 - [better-result](https://github.com/dmmulroy/better-result): Forces every failure to be handled explicitly, so errors never silently slip through.
 - [antiox](https://github.com/rivet-dev/antiox): Keeps concurrent queries, timeouts, and cancellations predictable, with no leaked tasks or hanging connections.
+- [XState](https://github.com/statelyai/xstate): Models complex dashboard workflows as explicit state machines, keeping UI transitions testable and predictable.
+- [proptest](https://github.com/proptest-rs/proptest): Exercises Rust runtime state machines and path invariants with generated cases instead of hand-picked examples.
+- [connect-rust](https://github.com/anthropics/connect-rust): Provides Tower-based Rust Connect RPC support across Connect, gRPC, and gRPC-Web.
+- [polyglot](https://github.com/tobilg/polyglot): Parses, transpiles, and formats SQL across 32+ dialects, keeping cross-database query handling consistent.
 
 ---
 
 ## Contributing
 
-We welcome data source integration contributions. See [CONTRIBUTING.md](./CONTRIBUTING.md) for structure and PR process.
+We welcome contributions across the project. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the PR process.
 
 ---
 

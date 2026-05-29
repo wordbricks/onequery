@@ -73,11 +73,21 @@ message GetSourceRequest {
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
+  CliSourceSelector source = 2 [(buf.validate.field).required = true];
+}
+
+message CliSourceSelector {
+  string provider = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
   string source_key = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$"
   ];
 }
 
@@ -86,7 +96,7 @@ message CliSource {
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$"
   ];
   string display_name = 2 [
     (buf.validate.field).string.min_len = 1,
@@ -123,12 +133,7 @@ message TestSourceRequest {
     (buf.validate.field).string.max_len = 255,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
   ];
-  string source_key = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 255,
-    (buf.validate.field).string.pattern = "^[A-Za-z0-9][A-Za-z0-9._-]*[A-Za-z0-9]$|^[A-Za-z0-9]$"
-  ];
+  CliSourceSelector source = 2 [(buf.validate.field).required = true];
 }
 
 message TestSourceResponse {

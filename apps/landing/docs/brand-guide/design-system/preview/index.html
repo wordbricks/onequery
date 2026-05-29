@@ -77,8 +77,8 @@
             description:
               "Product UI should prove a real state, not imply a generic dashboard.",
             content: terminal([
-              '<span class="oq-muted">$</span> onequery gateway start --source warehouse',
-              '<span class="oq-muted">source</span> analytics-prod connected as read-only',
+              '<span class="oq-muted">$</span> onequery query exec --source postgres://warehouse --sql "SELECT 1"',
+              '<span class="oq-muted">source</span> bigquery://analytics-prod connected as read-only',
               '<span class="oq-muted">policy</span> cost limit: $5.00, approval required for agents',
               '<span class="oq-muted">audit</span> record created: qry_4Z9K2',
             ]),

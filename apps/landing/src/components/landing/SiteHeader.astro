@@ -49,7 +49,6 @@ const navigationItems = NAVIGATION_ITEMS.map((item) => ({
     href="/"
     class="brand-mark"
     aria-label="OneQuery landing homepage"
-    prefetch
   >
     <Image
       src={onequeryIcon}
@@ -73,7 +72,6 @@ const navigationItems = NAVIGATION_ITEMS.map((item) => ({
             { "site-nav-link-active": item.isActive },
           ]}
           aria-current={item.isActive ? "page" : undefined}
-          prefetch
           trackingName="nav_section_link"
           trackingSection="header_nav"
         >

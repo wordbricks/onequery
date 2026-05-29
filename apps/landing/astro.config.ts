@@ -3,9 +3,8 @@ import { fileURLToPath } from "node:url";
 import cloudflare from "@astrojs/cloudflare";
 import partytown from "@astrojs/partytown";
 import react from "@astrojs/react";
-import { defineConfig, envField, fontProviders } from "astro/config";
+import { defineConfig, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
-import { loadEnv } from "vite";
 
 import {
   DEFAULT_DEV_PORT,
@@ -14,16 +13,6 @@ import {
 
 const BUNDLE_REPORT_TEMPLATES = ["markdown", "list", "raw-data"] as const;
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
-// `astro:env` is unavailable in config files, so use Vite's loadEnv only
-// to avoid registering Partytown when GTM is not configured.
-const BUILD_ENV = loadEnv(
-  process.env.NODE_ENV ?? "development",
-  process.cwd(),
-  "PUBLIC_"
-);
-const HAS_GOOGLE_TAG_MANAGER_ID = Boolean(
-  BUILD_ENV.PUBLIC_GOOGLE_TAG_MANAGER_ID?.trim()
-);
 
 type BundleReportTemplate = (typeof BUNDLE_REPORT_TEMPLATES)[number];
 
@@ -65,22 +54,12 @@ function createBundleReportPlugin() {
 export default defineConfig({
   adapter: cloudflare({
     imageService: { build: "compile", runtime: "cloudflare-binding" },
+    // Keep Shiki-backed Astro code rendering out of workerd's prerender path.
+    prerenderEnvironment: "node",
   }),
   build: {
     // Keep page CSS out of a separate render-blocking request for first-load LCP.
     inlineStylesheets: "always",
-  },
-  prefetch: {
-    defaultStrategy: "hover",
-  },
-  env: {
-    schema: {
-      PUBLIC_GOOGLE_TAG_MANAGER_ID: envField.string({
-        access: "public",
-        context: "client",
-        optional: true,
-      }),
-    },
   },
   fonts: [
     {
@@ -93,15 +72,11 @@ export default defineConfig({
     },
   ],
   integrations: [
-    ...(HAS_GOOGLE_TAG_MANAGER_ID
-      ? [
-          partytown({
-            config: {
-              forward: ["dataLayer.push"],
-            },
-          }),
-        ]
-      : []),
+    partytown({
+      config: {
+        forward: ["dataLayer.push"],
+      },
+    }),
     react(),
   ],
   server: {
@@ -117,10 +92,8 @@ export default defineConfig({
       exclude: ["@nanostores/react"],
     },
     plugins: [
-      visualizer({
-        emitFile: true,
-        filename: "stats.html",
-      }) as never,
+      // Bundle reports are opt-in so internal analyzer HTML is not published
+      // as a crawlable page.
       ...(process.env.ONEQUERY_BUNDLE_REPORT === "1"
         ? [createBundleReportPlugin()]
         : []),

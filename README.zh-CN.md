@@ -1,12 +1,14 @@
 # OneQuery
 
 <p align="center">
-  <a href="./README.md">English</a> | <a href="./README.zh-CN.md">中文</a>
+  <a href="./README.md">English</a> | <strong>中文</strong>
 </p>
 
 <p align="center">
-  <a href="https://onequery.dev"><img src="https://img.shields.io/badge/Site-onequery.dev-blue?style=for-the-badge" alt="Site"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-green?style=for-the-badge" alt="License: Apache 2.0"></a>
+  <a href="https://www.npmjs.com/package/@onequery/cli"><img src="https://img.shields.io/npm/dm/@onequery/cli?style=flat-square" alt="npm downloads"></a>
+  <a href="https://onequery.dev"><img src="https://img.shields.io/badge/Site-onequery.dev-blue?style=flat-square" alt="Site"></a>
+  <a href="https://github.com/wordbricks/onequery/releases"><img src="https://img.shields.io/github/v/release/wordbricks/onequery?display_name=release&style=flat-square" alt="Release"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/wordbricks/onequery?style=flat-square" alt="License"></a>
 </p>
 
 **自部署 OneQuery，把数据库、分析工具和 API 接入同一个入口，统一管理凭证，在 CLI 和 Web 上跑安全、可审计的查询。**
@@ -34,15 +36,15 @@
 ## 快速安装
 
 ```bash
-curl -fsSL https://onequery.dev/install.sh | sh
+npm install -g @onequery/cli
 ```
 
-也可以用包管理器装：
+其他安装方式：
 
 ```bash
 brew install wordbricks/tap/onequery    # Homebrew
-npm install -g @onequery/cli            # npm
 bun add -g @onequery/cli                # Bun
+curl -fsSL https://onequery.dev/install.sh | sh    # 安装脚本
 ```
 
 不想全局安装也可以直接跑：`npx @onequery/cli --help` 或 `bunx @onequery/cli --help`。
@@ -63,8 +65,11 @@ onequery auth login
 ```bash
 onequery source connect --source postgres \
   --input '{"name":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery","password":"secret"}}'
-onequery query execute --source warehouse --sql "select 1"
+onequery query execute --source postgres://warehouse --sql "select 1"
 ```
+
+在 CLI 中引用已连接的数据源时使用 `<provider>://<source-key>`，例如
+`postgres://warehouse`。
 
 ### 方案 B：连到已有的服务器
 
@@ -72,7 +77,7 @@ onequery query execute --source warehouse --sql "select 1"
 onequery config set server https://onequery.example.com
 onequery auth login
 onequery source list
-onequery query execute --source <source-key> --sql "select 1"
+onequery query execute --source <provider>://<source-key> --sql "select 1"
 ```
 
 ---
@@ -182,16 +187,20 @@ Load skill onequery-cli.
 
 ## 技术栈
 
-撑起 OneQuery 可靠性的两个库：
+撑起 OneQuery 可靠性的库：
 
 - [better-result](https://github.com/dmmulroy/better-result)：每个错误都得显式处理，异常不会被悄悄吞掉。
 - [antiox](https://github.com/rivet-dev/antiox)：并发查询、超时、取消都行为可控，不会漏任务、也不会挂住连接。
+- [XState](https://github.com/statelyai/xstate)：把复杂的 Dashboard 流程建模为显式状态机，让 UI 状态转换可测试、可预测。
+- [proptest](https://github.com/proptest-rs/proptest)：用生成式属性测试覆盖 Rust 运行时状态机和路径不变量，减少只靠手写样例留下的盲区。
+- [connect-rust](https://github.com/anthropics/connect-rust)：提供基于 Tower 的 Rust Connect RPC 支持，覆盖 Connect、gRPC 和 gRPC-Web。
+- [polyglot](https://github.com/tobilg/polyglot)：解析、转译、格式化 32+ 种 SQL 方言，让跨数据库查询处理保持一致。
 
 ---
 
 ## 贡献
 
-欢迎贡献新的数据源接入。项目结构和 PR 流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+欢迎为项目贡献改进。PR 流程见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
 ---
 

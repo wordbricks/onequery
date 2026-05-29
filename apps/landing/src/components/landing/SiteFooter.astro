@@ -1,7 +1,7 @@
 ---
 import { FOOTER_LINKS } from "../../data/footer";
 import type { FooterLink } from "../../data/footer";
-import { FooterContactButton } from "../../landing/marketing/footer-contact-button";
+import FooterContactButton from "./FooterContactButton.astro";
 import TrackedLink from "./TrackedLink.astro";
 
 interface Props {
@@ -38,9 +38,7 @@ const {
       )
     }
     {
-      showContact ? (
-        <FooterContactButton client:visible={{ rootMargin: "400px 0px" }} />
-      ) : null
+      showContact ? <FooterContactButton /> : null
     }
   </div>
 </footer>

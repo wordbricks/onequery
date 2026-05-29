@@ -1,10 +1,7 @@
 ---
 import "../styles/base.css";
 import { Font } from "astro:assets";
-import GoogleTagManager from "../components/landing/GoogleTagManager.astro";
-import GoogleTagManagerNoscript from "../components/landing/GoogleTagManagerNoscript.astro";
-import { landingAnalyticsEnv } from "../landing/analytics/landing-analytics-env";
-import { readGoogleTagManagerConfig } from "../landing/analytics/google-tag-manager-config";
+import GoogleTag from "../components/landing/GoogleTag.astro";
 import {
   createCanonicalUrl,
   createLandingPageStructuredData,
@@ -63,7 +60,6 @@ const structuredDataItems =
     : Array.isArray(structuredData)
       ? structuredData
       : [structuredData];
-const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
 ---
 
 <!doctype html>
@@ -72,46 +68,39 @@ const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
-    {
-      googleTagManagerConfig ? (
-        <>
-          <GoogleTagManager {...googleTagManagerConfig} />
-          <script is:inline>
-            document.addEventListener("click", (event) => {
-              if (!(event.target instanceof Element)) {
-                return;
-              }
+    <GoogleTag />
+    <script is:inline>
+      document.addEventListener("click", (event) => {
+        if (!(event.target instanceof Element)) {
+          return;
+        }
 
-              const target = event.target.closest("[data-landing-cta]");
-              if (!(target instanceof HTMLElement)) {
-                return;
-              }
+        const target = event.target.closest("[data-landing-cta]");
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
 
-              const ctaId = target.dataset.landingCta;
-              const ctaLocation = target.dataset.landingCtaSection;
-              if (!ctaId || !ctaLocation) {
-                return;
-              }
+        const ctaId = target.dataset.landingCta;
+        const ctaLocation = target.dataset.landingCtaSection;
+        if (!ctaId || !ctaLocation) {
+          return;
+        }
 
-              const destination =
-                target.dataset.landingCtaHref ||
-                (target instanceof HTMLAnchorElement ? target.href : undefined);
+        const destination =
+          target.dataset.landingCtaHref ||
+          (target instanceof HTMLAnchorElement ? target.href : undefined);
 
-              if (!Array.isArray(window.dataLayer)) {
-                return;
-              }
+        if (typeof window.gtag !== "function") {
+          return;
+        }
 
-              window.dataLayer.push({
-                event: "landing_cta_click",
-                cta_id: ctaId,
-                destination,
-                location: ctaLocation,
-              });
-            });
-          </script>
-        </>
-      ) : null
-    }
+        window.gtag("event", "landing_cta_click", {
+          cta_id: ctaId,
+          destination,
+          location: ctaLocation,
+        });
+      });
+    </script>
     <meta name="robots" content={robots} />
     <meta name="author" content="OneQuery Maintainers" />
     <meta name="application-name" content="OneQuery" />
@@ -161,11 +150,6 @@ const googleTagManagerConfig = readGoogleTagManagerConfig(landingAnalyticsEnv);
     }
   </head>
   <body>
-    {
-      googleTagManagerConfig ? (
-        <GoogleTagManagerNoscript {...googleTagManagerConfig} />
-      ) : null
-    }
     <slot />
   </body>
 </html>

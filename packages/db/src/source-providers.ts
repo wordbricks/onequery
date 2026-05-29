@@ -42,6 +42,15 @@ type SourceProviderGuide = {
   };
 };
 
+export type SourceProviderPublicCategory =
+  | "Databases"
+  | "Developer workflow"
+  | "Marketing"
+  | "Observability"
+  | "Product analytics"
+  | "Productivity"
+  | "Warehouses";
+
 type SourceProviderDefinition = {
   label: string;
   credentialSchema: ProviderCredentialSchema;
@@ -53,6 +62,7 @@ type SourceProviderDefinition = {
   testable: boolean;
   dashboardConnectable: boolean;
   dashboardCredentialForm: string;
+  publicCategory: SourceProviderPublicCategory;
   guide: SourceProviderGuide;
 };
 
@@ -68,6 +78,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "database",
+    publicCategory: "Databases",
     guide: {
       summary:
         "Connect a Postgres database with a direct host, database, and login.",
@@ -99,6 +110,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "database",
+    publicCategory: "Databases",
     guide: {
       summary:
         "Connect Supabase with the session pooler host, database, and login credentials over the Postgres wire protocol.",
@@ -131,6 +143,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "database",
+    publicCategory: "Databases",
     guide: {
       summary:
         "Connect a MySQL database with host, schema, and login credentials.",
@@ -162,6 +175,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "snowflake",
+    publicCategory: "Warehouses",
     guide: {
       summary:
         "Connect Snowflake with an account identifier, warehouse, database, and login credentials.",
@@ -195,6 +209,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "mongodb",
+    publicCategory: "Databases",
     guide: {
       summary:
         "Connect MongoDB with one connection string plus database selection.",
@@ -222,6 +237,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "google_service_account",
+    publicCategory: "Warehouses",
     guide: {
       summary:
         "Connect BigQuery with either Google OAuth tokens or a Google Cloud service account JSON key.",
@@ -256,6 +272,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "cloudflare_d1",
+    publicCategory: "Warehouses",
     guide: {
       summary:
         "Connect Cloudflare D1 with an account ID, D1 database ID, and account-scoped API token.",
@@ -286,6 +303,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "laminar",
+    publicCategory: "Observability",
     guide: {
       summary:
         "Connect Laminar with an API key and optional non-default base URL.",
@@ -312,6 +330,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "database",
+    publicCategory: "Warehouses",
     guide: {
       summary:
         "Connect MotherDuck through its PostgreSQL wire protocol endpoint with a service token.",
@@ -340,6 +359,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "aws_athena_connector",
+    publicCategory: "Warehouses",
     guide: {
       summary:
         "Connect an Athena connector already registered with this org in OneQuery.",
@@ -368,6 +388,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "google_service_account",
+    publicCategory: "Product analytics",
     guide: {
       summary:
         "Connect Google Analytics with either Google OAuth tokens or a Google Cloud service account JSON key.",
@@ -402,6 +423,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "amplitude",
+    publicCategory: "Product analytics",
     guide: {
       summary:
         "Connect Amplitude with a project API key, secret key, and region.",
@@ -431,6 +453,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "mixpanel",
+    publicCategory: "Product analytics",
     guide: {
       summary:
         "Connect Mixpanel with an org-level service account, project ID, and region.",
@@ -461,6 +484,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "posthog",
+    publicCategory: "Product analytics",
     guide: {
       summary:
         "Connect PostHog with the PostHog app host URL, a personal API key, and project ID.",
@@ -490,6 +514,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "sentry",
+    publicCategory: "Observability",
     guide: {
       summary:
         "Connect Sentry with a Personal Token, organization slug, optional project slug, and optional self-hosted API base URL.",
@@ -519,6 +544,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "github",
+    publicCategory: "Developer workflow",
     guide: {
       summary:
         "Connect GitHub with a fine-grained personal access token and optional repository or installation scoping.",
@@ -547,6 +573,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Productivity",
     guide: {
       summary:
         "Connect Airtable with a Personal Access Token and optional default base ID.",
@@ -575,6 +602,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
     guide: {
       summary:
         "Connect Discord with a bot token or OAuth bearer token for Discord REST API access.",
@@ -604,6 +632,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Productivity",
     guide: {
       summary:
         "Connect Cal.com API v2 with an API key or compatible bearer token.",
@@ -632,6 +661,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Productivity",
     guide: {
       summary:
         "Connect Granola with an API key that has access to the note scopes you want to query.",
@@ -659,6 +689,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Marketing",
     guide: {
       summary:
         "Connect Google Search Console with an OAuth access token and optional default site URL.",
@@ -687,6 +718,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
     guide: {
       summary:
         "Connect Confluence Cloud with an Atlassian account email and API token.",
@@ -716,6 +748,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Marketing",
     guide: {
       summary:
         "Connect Amazon Ads with a Login with Amazon access token, client ID, region, and optional profile ID.",
@@ -746,6 +779,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Marketing",
     guide: {
       summary:
         "Connect LinkedIn Ads with a Marketing API OAuth access token and version header.",
@@ -774,6 +808,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Marketing",
     guide: {
       summary:
         "Connect TikTok Marketing API with an API for Business access token.",
@@ -802,6 +837,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Marketing",
     guide: {
       summary: "Connect SendGrid with a v3 Web API key.",
       steps: [
@@ -828,6 +864,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
     guide: {
       summary:
         "Connect Jira Cloud with an Atlassian account email and API token.",
@@ -857,6 +894,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: false,
     dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
     guide: {
       summary:
         "Connect Linear with either an API key or a full OAuth token bundle.",
@@ -883,6 +921,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "cloudflare_workers_observability",
+    publicCategory: "Observability",
     guide: {
       summary:
         "Connect Cloudflare Workers Observability with an account-scoped API token and account ID.",
@@ -948,6 +987,7 @@ export function doesSourceProviderMatchCredentials(input: {
 export type PublicSourceProvider = {
   id: SourceProviderId;
   label: string;
+  publicCategory: SourceProviderPublicCategory;
   connectable: boolean;
   dashboardConnectable: boolean;
   dashboardCredentialForm: string;
@@ -965,6 +1005,7 @@ export function listPublicSourceProviders(): PublicSourceProvider[] {
     return {
       id,
       label: provider.label,
+      publicCategory: provider.publicCategory,
       connectable: provider.connectable,
       dashboardConnectable: provider.dashboardConnectable,
       dashboardCredentialForm: provider.dashboardCredentialForm,

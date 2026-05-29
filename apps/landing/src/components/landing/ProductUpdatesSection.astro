@@ -126,9 +126,8 @@
           "success"
         );
 
-        if (Array.isArray(window.dataLayer)) {
-          window.dataLayer.push({
-            event: "sign_up",
+        if (typeof window.gtag === "function") {
+          window.gtag("event", "sign_up", {
             method: "product_updates",
           });
         }

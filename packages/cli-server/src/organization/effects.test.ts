@@ -43,6 +43,7 @@ async function insertDataSource(
     id: string;
     name: string;
     organizationId: string;
+    provider?: "github" | "postgres";
   }
 ) {
   await db.insert(dataSources).values({
@@ -51,7 +52,7 @@ async function insertDataSource(
     id: input.id,
     name: input.name,
     organizationId: input.organizationId,
-    provider: "github",
+    provider: input.provider ?? "github",
     status: "active",
   });
 }
@@ -196,6 +197,7 @@ describe("runCliLoadOrgAccessWithSource", { timeout: 60_000 }, () => {
         db,
         orgSlug: "source-org",
         sourceKey: "github-prod",
+        sourceProvider: "github",
         userId: "user-source-found",
       })
     ).resolves.toEqual({
@@ -244,6 +246,7 @@ describe("runCliLoadOrgAccessWithSource", { timeout: 60_000 }, () => {
         db,
         orgSlug: "source-forbidden",
         sourceKey: "github-prod",
+        sourceProvider: "github",
         userId: "user-without-source-access",
       })
     ).resolves.toEqual({
@@ -275,6 +278,7 @@ describe("runCliLoadOrgAccessWithSource", { timeout: 60_000 }, () => {
         db,
         orgSlug: "source-missing",
         sourceKey: "github-prod",
+        sourceProvider: "github",
         userId: "user-source-missing",
       })
     ).resolves.toMatchObject({
@@ -283,6 +287,48 @@ describe("runCliLoadOrgAccessWithSource", { timeout: 60_000 }, () => {
         org: {
           id: "org-source-missing",
           slug: "source-missing",
+        },
+      },
+      source: {
+        kind: "not_found",
+      },
+    });
+  });
+
+  it("requires the requested source provider to match", async ({ db }) => {
+    await insertUser(db, "user-source-provider");
+    await insertOrganization(db, {
+      id: "org-source-provider",
+      name: "Provider Source Org",
+      slug: "source-provider",
+    });
+    await insertMember(db, {
+      id: "member-source-provider",
+      organizationId: "org-source-provider",
+      role: "owner",
+      userId: "user-source-provider",
+    });
+    await insertDataSource(db, {
+      id: "source-provider",
+      name: "warehouse",
+      organizationId: "org-source-provider",
+      provider: "postgres",
+    });
+
+    await expect(
+      runCliLoadOrgAccessWithSource({
+        db,
+        orgSlug: "source-provider",
+        sourceKey: "warehouse",
+        sourceProvider: "github",
+        userId: "user-source-provider",
+      })
+    ).resolves.toMatchObject({
+      access: {
+        kind: "found",
+        org: {
+          id: "org-source-provider",
+          slug: "source-provider",
         },
       },
       source: {

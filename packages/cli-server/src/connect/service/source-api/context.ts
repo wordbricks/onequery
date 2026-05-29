@@ -4,9 +4,11 @@ import { Result } from "better-result";
 import type { WorkflowActorSnapshot } from "../../../audit";
 import type { AuthorizedCliOrgContext } from "../../../authorization";
 import type { CliLoadSourceEffectResult } from "../../../domain/effects";
+import { parseCliSourceSelector } from "../../../source/reference";
 import type { AuthenticatedCliConnectRequestContext } from "../../context";
 import { resolveAuthorizedCliOrgFromAccess } from "../access";
 import type { CliServiceResult } from "../result";
+import { cliServiceErr } from "../result";
 import type { CliHonoContext } from "../types";
 import type { SourceApiServiceDependencies } from "./dependencies";
 import {
@@ -23,6 +25,7 @@ type ResolvedSourceApiWorkflowContext = {
   orgSlug: string;
   requestId: string;
   resourceCache: SourceApiWorkflowResourceCache;
+  sourceKey: string;
 };
 
 export async function resolveSourceApiWorkflowContext(input: {
@@ -33,13 +36,25 @@ export async function resolveSourceApiWorkflowContext(input: {
   >;
   orgSlug: string;
   requestContext: AuthenticatedCliConnectRequestContext;
-  sourceKey: string;
+  source?: {
+    provider?: string;
+    sourceKey?: string;
+  };
 }): Promise<CliServiceResult<ResolvedSourceApiWorkflowContext>> {
   return Result.gen(async function* resolveSourceApiWorkflowContextFlow() {
+    const source = parseCliSourceSelector(input.source);
+    if (!source) {
+      return yield* cliServiceErr({
+        detail: "source must include provider and sourceKey",
+        key: "SOURCE_API_REQUEST_INVALID",
+      });
+    }
+
     const access = await input.dependencies.runCliLoadOrgAccessWithSource({
       db: input.requestContext.honoContext.var.storage.db,
       orgSlug: input.orgSlug,
-      sourceKey: input.sourceKey,
+      sourceKey: source.sourceKey,
+      sourceProvider: source.sourceProvider,
       userId: input.requestContext.session.user.id,
     });
     const authorizedOrg = yield* resolveAuthorizedCliOrgFromAccess({
@@ -56,7 +71,7 @@ export async function resolveSourceApiWorkflowContext(input: {
         c: input.requestContext.honoContext,
         requestId: input.requestContext.requestId,
         session: input.requestContext.session,
-        sourceKey: input.sourceKey,
+        sourceKey: source.sourceKey,
         sourceLookup: access.source,
       })
     );
@@ -93,6 +108,7 @@ function buildResolvedSourceApiWorkflowContext(input: {
             sourceKey: input.sourceKey,
             sourceLookup: input.sourceLookup,
           }),
+    sourceKey: input.sourceKey,
   };
 }
 

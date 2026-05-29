@@ -1,10 +1,13 @@
 use buffa::EnumValue;
+use buffa::MessageField;
 use onequery_core::error::ErrorStage;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::identifiers::normalize_source_reference;
 use crate::transport::api_failure::ApiFailure;
 use crate::transport::api_failure::ApiSuccess;
+use crate::transport::api_failure::conversion_failure;
 use crate::transport::api_failure::decode_failure;
 use crate::transport::api_failure::failure_from_connect;
 use crate::transport::api_failure::success_response_request_id;
@@ -28,6 +31,44 @@ pub(crate) struct SourceSummary {
     pub(crate) provider: String,
     pub(crate) status: String,
     pub(crate) interfaces: Vec<String>,
+}
+
+impl SourceSummary {
+    pub(crate) fn reference(&self) -> String {
+        format_source_reference(&self.provider, &self.source_key)
+    }
+}
+
+pub(crate) fn format_source_reference(provider: &str, source_key: &str) -> String {
+    if source_key.contains("://") {
+        return source_key.to_owned();
+    }
+
+    format!("{provider}://{source_key}")
+}
+
+pub(crate) fn source_selector_from_reference(
+    source: &str,
+    stage: ErrorStage,
+) -> Result<types::CliSourceSelector, ApiFailure> {
+    let normalized = normalize_source_reference(source).ok_or_else(|| {
+        conversion_failure(
+            stage,
+            "source must look like provider://source-key and use a CLI-safe source key",
+        )
+    })?;
+    let (provider, source_key) = normalized.split_once("://").ok_or_else(|| {
+        conversion_failure(
+            stage,
+            "source must look like provider://source-key and use a CLI-safe source key",
+        )
+    })?;
+
+    Ok(types::CliSourceSelector {
+        provider: Some(try_into_value(provider, stage)?),
+        source_key: Some(try_into_value(source_key, stage)?),
+        ..Default::default()
+    })
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
@@ -214,7 +255,10 @@ pub(crate) async fn get_source_by_key_with_controls(
         .source()
         .get_source(types::GetSourceRequest {
             org_slug: Some(org_slug),
-            source_key: Some(source_key),
+            source: MessageField::some(source_selector_from_reference(
+                &source_key,
+                ErrorStage::ResolveSource,
+            )?),
             ..Default::default()
         })
         .await
@@ -250,7 +294,10 @@ pub(crate) async fn test_source(
         .source()
         .test_source(types::TestSourceRequest {
             org_slug: Some(org_slug),
-            source_key: Some(source_key),
+            source: MessageField::some(source_selector_from_reference(
+                &source_key,
+                ErrorStage::ResolveSource,
+            )?),
             ..Default::default()
         })
         .await

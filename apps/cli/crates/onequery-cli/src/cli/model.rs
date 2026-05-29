@@ -238,9 +238,9 @@ pub(crate) enum Command {
     GatewaySupervisor(GatewaySupervisorArgs),
     /// Describe or execute a connected source API.
     #[command(override_usage = "\
-onequery api [OPTIONS] --source <SOURCE_KEY>
-       onequery api [OPTIONS] --source <SOURCE_KEY> [<TARGET>]
-       onequery api [OPTIONS] --source <SOURCE_KEY> --op <OPERATION> [<TARGET>]")]
+onequery api [OPTIONS] --source <SOURCE>
+       onequery api [OPTIONS] --source <SOURCE> [<TARGET>]
+       onequery api [OPTIONS] --source <SOURCE> --op <OPERATION> [<TARGET>]")]
     Api(ApiArgs),
     /// Explain a stable CLI error code.
     #[command(arg_required_else_help = true)]

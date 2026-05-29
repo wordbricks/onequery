@@ -138,7 +138,7 @@ async fn load_sql_text(
                 "no piped stdin input detected. --stdin requires data from a pipe or redirect.",
                 vec![
                     format!(
-                        "cat query.sql | {} --source <source_key> --stdin",
+                        "cat query.sql | {} --source <source> --stdin",
                         intent.command()
                     ),
                     format!(
@@ -261,12 +261,9 @@ impl QueryIntent {
 
 fn query_input_examples(intent: QueryIntent) -> Vec<String> {
     vec![
+        format!("{} --source <source> --sql \"select 1\"", intent.command()),
         format!(
-            "{} --source <source_key> --sql \"select 1\"",
-            intent.command()
-        ),
-        format!(
-            "cat query.json | {} --source <source_key> --input -",
+            "cat query.json | {} --source <source> --input -",
             intent.command()
         ),
     ]

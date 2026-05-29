@@ -22,6 +22,7 @@
     "@astrojs/partytown": "catalog:",
     "@astrojs/react": "catalog:",
     "@nanostores/react": "catalog:",
+    "@onequery/db": "workspace:*",
     "@onequery/ui": "workspace:*",
     "astro": "catalog:",
     "better-result": "catalog:",

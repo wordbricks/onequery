@@ -60,7 +60,7 @@ check-proto:
     git diff --exit-code -- crates/proto-cli/src/generated crates/proto-runtime/src/generated
 
 regen-rust-proto:
-    mise exec -- bun run --cwd {{justfile_directory()}}/../.. proto:generate:rust
+    mise exec cargo:connectrpc-codegen@0.6.0 cargo:protoc-gen-buffa@0.6.0 cargo:protoc-gen-buffa-packaging@0.6.0 -- bun run --cwd {{justfile_directory()}}/../.. proto:generate:rust
 
 insta-pending *args:
     cargo insta pending-snapshots "$@"

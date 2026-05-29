@@ -1,5 +1,6 @@
 use crate::output::CommandOutput;
 use crate::output::pretty_json_lines;
+use crate::transport::source::format_source_reference;
 use crate::transport::source_api::ProtoJsonValue;
 use crate::transport::source_api::SourceApiDescriptor;
 use crate::transport::source_api::SourceApiFieldEncoding;
@@ -54,8 +55,9 @@ pub(super) fn render_descriptor_output(
         .and_then(|value| value.provider.as_deref())
         .map(str::to_owned)
         .unwrap_or_else(|| "unspecified".to_owned());
+    let source_reference = format_source_reference(&source_provider, source_key);
 
-    let mut lines = vec![format!("Source: {} ({})", source_key, source_provider)];
+    let mut lines = vec![format!("Source: {source_reference}")];
     if let Some(display_name) = source.and_then(|value| value.display_name.as_deref()) {
         lines.push(format!("Display name: {display_name}"));
     }
@@ -717,10 +719,12 @@ fn operation_json(operation: &SourceApiOperation) -> Result<serde_json::Value, C
 fn source_json(source: &crate::transport::source_api::SourceApiSource) -> serde_json::Value {
     let mut object = serde_json::Map::new();
     if let Some(source_key) = source.source_key.as_ref() {
-        object.insert(
-            "key".to_owned(),
-            serde_json::Value::String(source_key.clone()),
-        );
+        let source_key = source
+            .provider
+            .as_deref()
+            .map(|provider| format_source_reference(provider, source_key))
+            .unwrap_or_else(|| source_key.clone());
+        object.insert("key".to_owned(), serde_json::Value::String(source_key));
     }
     if let Some(provider) = source.provider.as_ref() {
         object.insert(
@@ -1221,7 +1225,7 @@ mod tests {
             .expect("expected raw JSON output"),
             json!({
                 "source": {
-                    "key": "github-prod",
+                    "key": "github://github-prod",
                     "provider": "github",
                     "displayName": "GitHub Prod",
                 },
@@ -1516,7 +1520,7 @@ mod tests {
             json!({
                 "preview": {
                     "source": {
-                        "key": "github-prod",
+                        "key": "github://github-prod",
                         "provider": "github",
                         "displayName": "GitHub Prod",
                     },
@@ -1532,7 +1536,7 @@ mod tests {
                     "paginationPolicy": "none"
                 },
                 "source": {
-                    "key": "github-prod",
+                    "key": "github://github-prod",
                     "provider": "github",
                 },
                 "operation": "fetch",
@@ -1585,13 +1589,13 @@ mod tests {
             "selector": "/pulls",
             "source": {
               "displayName": "GitHub Prod",
-              "key": "github-prod",
+              "key": "github://github-prod",
               "provider": "github"
             },
             "url": "https://api.github.com/pulls"
           },
           "source": {
-            "key": "github-prod",
+            "key": "github://github-prod",
             "provider": "github"
           },
           "status": 200

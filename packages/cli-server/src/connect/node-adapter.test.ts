@@ -212,7 +212,10 @@ describe("cli connect node integration", () => {
             sql: "select 1",
             timeout: durationFromMs(1000),
           },
-          sourceKey: "source-1",
+          source: {
+            provider: "postgres",
+            sourceKey: "source-1",
+          },
         },
         {
           headers: {
@@ -275,7 +278,10 @@ describe("cli connect node integration", () => {
             sql: "select 1",
             timeout: durationFromMs(1000),
           },
-          sourceKey: "source-1",
+          source: {
+            provider: "postgres",
+            sourceKey: "source-1",
+          },
         },
         {
           headers: {
@@ -352,7 +358,10 @@ describe("cli connect node integration", () => {
           },
           target: {
             orgSlug: "Bad!",
-            sourceKey: "source-1",
+            source: {
+              provider: "github",
+              sourceKey: "source-1",
+            },
           },
         },
         {

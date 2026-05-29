@@ -1,78 +1,690 @@
+///Shorthand for `OwnedView<GetSessionRequestView<'static>>`.
+pub type OwnedGetSessionRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetSessionRequestView<'static>,
+>;
+///Shorthand for `OwnedView<GetSessionResponseView<'static>>`.
+pub type OwnedGetSessionResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetSessionResponseView<'static>,
+>;
+///Shorthand for `OwnedView<RefreshSessionRequestView<'static>>`.
+pub type OwnedRefreshSessionRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::RefreshSessionRequestView<'static>,
+>;
+///Shorthand for `OwnedView<RefreshSessionResponseView<'static>>`.
+pub type OwnedRefreshSessionResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::RefreshSessionResponseView<'static>,
+>;
+///Shorthand for `OwnedView<StartDeviceAuthorizationRequestView<'static>>`.
+pub type OwnedStartDeviceAuthorizationRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::StartDeviceAuthorizationRequestView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<StartDeviceAuthorizationResponseView<'static>>`.
+pub type OwnedStartDeviceAuthorizationResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::StartDeviceAuthorizationResponseView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<PollDeviceAuthorizationRequestView<'static>>`.
+pub type OwnedPollDeviceAuthorizationRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::PollDeviceAuthorizationRequestView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<PollDeviceAuthorizationResponseView<'static>>`.
+pub type OwnedPollDeviceAuthorizationResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::PollDeviceAuthorizationResponseView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<ListOrganizationsRequestView<'static>>`.
+pub type OwnedListOrganizationsRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ListOrganizationsRequestView<'static>,
+>;
+///Shorthand for `OwnedView<ListOrganizationsResponseView<'static>>`.
+pub type OwnedListOrganizationsResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ListOrganizationsResponseView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<GetOrganizationRequestView<'static>>`.
+pub type OwnedGetOrganizationRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetOrganizationRequestView<'static>,
+>;
+///Shorthand for `OwnedView<GetOrganizationResponseView<'static>>`.
+pub type OwnedGetOrganizationResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetOrganizationResponseView<'static>,
+>;
+///Shorthand for `OwnedView<ListSourceProvidersRequestView<'static>>`.
+pub type OwnedListSourceProvidersRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ListSourceProvidersRequestView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<ListSourceProvidersResponseView<'static>>`.
+pub type OwnedListSourceProvidersResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ListSourceProvidersResponseView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<ListSourcesRequestView<'static>>`.
+pub type OwnedListSourcesRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ListSourcesRequestView<'static>,
+>;
+///Shorthand for `OwnedView<ListSourcesResponseView<'static>>`.
+pub type OwnedListSourcesResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ListSourcesResponseView<'static>,
+>;
+///Shorthand for `OwnedView<GetSourceConnectGuideRequestView<'static>>`.
+pub type OwnedGetSourceConnectGuideRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetSourceConnectGuideRequestView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<GetSourceConnectGuideResponseView<'static>>`.
+pub type OwnedGetSourceConnectGuideResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetSourceConnectGuideResponseView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<ConnectSourceRequestView<'static>>`.
+pub type OwnedConnectSourceRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ConnectSourceRequestView<'static>,
+>;
+///Shorthand for `OwnedView<ConnectSourceResponseView<'static>>`.
+pub type OwnedConnectSourceResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ConnectSourceResponseView<'static>,
+>;
+///Shorthand for `OwnedView<GetSourceRequestView<'static>>`.
+pub type OwnedGetSourceRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetSourceRequestView<'static>,
+>;
+///Shorthand for `OwnedView<GetSourceResponseView<'static>>`.
+pub type OwnedGetSourceResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetSourceResponseView<'static>,
+>;
+///Shorthand for `OwnedView<TestSourceRequestView<'static>>`.
+pub type OwnedTestSourceRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::TestSourceRequestView<'static>,
+>;
+///Shorthand for `OwnedView<TestSourceResponseView<'static>>`.
+pub type OwnedTestSourceResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::TestSourceResponseView<'static>,
+>;
+///Shorthand for `OwnedView<DescribeSourceApiRequestView<'static>>`.
+pub type OwnedDescribeSourceApiRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::DescribeSourceApiRequestView<'static>,
+>;
+///Shorthand for `OwnedView<DescribeSourceApiResponseView<'static>>`.
+pub type OwnedDescribeSourceApiResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::DescribeSourceApiResponseView<
+        'static,
+    >,
+>;
+///Shorthand for `OwnedView<PreviewSourceApiRequestView<'static>>`.
+pub type OwnedPreviewSourceApiRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::PreviewSourceApiRequestView<'static>,
+>;
+///Shorthand for `OwnedView<PreviewSourceApiResponseView<'static>>`.
+pub type OwnedPreviewSourceApiResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::PreviewSourceApiResponseView<'static>,
+>;
+///Shorthand for `OwnedView<ExecuteSourceApiRequestView<'static>>`.
+pub type OwnedExecuteSourceApiRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ExecuteSourceApiRequestView<'static>,
+>;
+///Shorthand for `OwnedView<ExecuteSourceApiResponseView<'static>>`.
+pub type OwnedExecuteSourceApiResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ExecuteSourceApiResponseView<'static>,
+>;
+///Shorthand for `OwnedView<ResumeSourceApiRequestView<'static>>`.
+pub type OwnedResumeSourceApiRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ResumeSourceApiRequestView<'static>,
+>;
+///Shorthand for `OwnedView<ResumeSourceApiResponseView<'static>>`.
+pub type OwnedResumeSourceApiResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ResumeSourceApiResponseView<'static>,
+>;
+///Shorthand for `OwnedView<ValidateQueryRequestView<'static>>`.
+pub type OwnedValidateQueryRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ValidateQueryRequestView<'static>,
+>;
+///Shorthand for `OwnedView<ValidateQueryResponseView<'static>>`.
+pub type OwnedValidateQueryResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ValidateQueryResponseView<'static>,
+>;
+///Shorthand for `OwnedView<ExecuteQueryRequestView<'static>>`.
+pub type OwnedExecuteQueryRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ExecuteQueryRequestView<'static>,
+>;
+///Shorthand for `OwnedView<ExecuteQueryResponseView<'static>>`.
+pub type OwnedExecuteQueryResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ExecuteQueryResponseView<'static>,
+>;
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::GetSessionResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::GetSessionResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::GetSessionResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetSessionResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::RefreshSessionResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::RefreshSessionResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::RefreshSessionResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::RefreshSessionResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::cli::v1::StartDeviceAuthorizationResponse,
+>
+for crate::proto::onequery::cli::v1::__buffa::view::StartDeviceAuthorizationResponseView<
+    '_,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::cli::v1::StartDeviceAuthorizationResponse,
+>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::StartDeviceAuthorizationResponseView<
+        'static,
+    >,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::cli::v1::PollDeviceAuthorizationResponse,
+>
+for crate::proto::onequery::cli::v1::__buffa::view::PollDeviceAuthorizationResponseView<
+    '_,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::cli::v1::PollDeviceAuthorizationResponse,
+>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::PollDeviceAuthorizationResponseView<
+        'static,
+    >,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ListOrganizationsResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::ListOrganizationsResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ListOrganizationsResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ListOrganizationsResponseView<
+        'static,
+    >,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::GetOrganizationResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::GetOrganizationResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::GetOrganizationResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetOrganizationResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::cli::v1::ListSourceProvidersResponse,
+>
+for crate::proto::onequery::cli::v1::__buffa::view::ListSourceProvidersResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::cli::v1::ListSourceProvidersResponse,
+>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ListSourceProvidersResponseView<
+        'static,
+    >,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ListSourcesResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::ListSourcesResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ListSourcesResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ListSourcesResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::cli::v1::GetSourceConnectGuideResponse,
+>
+for crate::proto::onequery::cli::v1::__buffa::view::GetSourceConnectGuideResponseView<
+    '_,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<
+    crate::proto::onequery::cli::v1::GetSourceConnectGuideResponse,
+>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetSourceConnectGuideResponseView<
+        'static,
+    >,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ConnectSourceResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::ConnectSourceResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ConnectSourceResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ConnectSourceResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::GetSourceResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::GetSourceResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::GetSourceResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::GetSourceResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::TestSourceResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::TestSourceResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::TestSourceResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::TestSourceResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::DescribeSourceApiResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::DescribeSourceApiResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::DescribeSourceApiResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::DescribeSourceApiResponseView<
+        'static,
+    >,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::PreviewSourceApiResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::PreviewSourceApiResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::PreviewSourceApiResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::PreviewSourceApiResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ExecuteSourceApiResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::ExecuteSourceApiResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ExecuteSourceApiResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ExecuteSourceApiResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ResumeSourceApiResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::ResumeSourceApiResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ResumeSourceApiResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ResumeSourceApiResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ValidateQueryResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::ValidateQueryResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ValidateQueryResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ValidateQueryResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ExecuteQueryResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::ExecuteQueryResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::ExecuteQueryResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::ExecuteQueryResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
 /// Full service name for this service.
 pub const CLI_AUTH_SERVICE_SERVICE_NAME: &str = "onequery.cli.v1.CliAuthService";
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `GetSession` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_AUTH_SERVICE_GET_SESSION_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliAuthService/GetSession",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::NoSideEffects);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `RefreshSession` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_AUTH_SERVICE_REFRESH_SESSION_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliAuthService/RefreshSession",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `StartDeviceAuthorization` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_AUTH_SERVICE_START_DEVICE_AUTHORIZATION_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliAuthService/StartDeviceAuthorization",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `PollDeviceAuthorization` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_AUTH_SERVICE_POLL_DEVICE_AUTHORIZATION_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliAuthService/PollDeviceAuthorization",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
 /// Server trait for CliAuthService.
 ///
 /// # Implementing handlers
 ///
-/// Handlers receive requests as `OwnedView<FooView<'static>>`, which gives
-/// zero-copy borrowed access to fields (e.g. `request.name` is a `&str`
-/// into the decoded buffer). The view can be held across `.await` points.
+/// Handlers receive requests as `OwnedFooView` (an alias for
+/// `OwnedView<FooView<'static>>`), which gives zero-copy borrowed access
+/// to fields (e.g. `request.name` is a `&str` into the decoded buffer).
+/// The view can be held across `.await` points. When two RPC types in
+/// the same package would alias to the same `Owned<…>View` name (e.g.
+/// a local message plus an imported one with the same short name), the
+/// alias is suppressed for both and the request type is spelled as
+/// `OwnedView<…View<'static>>` directly in the trait signature.
 ///
 /// Implement methods with plain `async fn`; the returned future satisfies
 /// the `Send` bound automatically. See the
 /// [buffa user guide](https://github.com/anthropics/buffa/blob/main/docs/guide.md#ownedview-in-async-trait-implementations)
 /// for zero-copy access patterns and when `to_owned_message()` is needed.
+///
+/// The `impl Encodable<Out>` return bound accepts the owned `Out`, the
+/// generated `OutView<'_>` / `OwnedOutView`,
+/// [`MaybeBorrowed`](::connectrpc::MaybeBorrowed), or
+/// [`PreEncoded`](::connectrpc::PreEncoded) for handlers that encode a
+/// non-`'static` view internally and pass the bytes across the handler
+/// boundary. View bodies are not emitted for output types mapped via
+/// `extern_path` (the impl would be an orphan); return owned for
+/// WKT/extern outputs.
+///
+/// Server-streaming and bidi-streaming methods return
+/// `ServiceStream<impl Encodable<Out> + Send + use<Self>>`. The
+/// `use<Self>` precise-capturing clause excludes `&self`'s lifetime
+/// (unary methods use `use<'a, Self>` and may borrow), so stream items
+/// must be `'static`. To stream view-encoded data, encode each item
+/// inside the stream body and yield
+/// [`PreEncoded`](::connectrpc::PreEncoded) — see its `# Streaming
+/// example` doc.
 #[allow(clippy::type_complexity)]
 pub trait CliAuthService: Send + Sync + 'static {
     /// Handle the GetSession RPC.
-    fn get_session(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::GetSessionRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn get_session<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedGetSessionRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (crate::proto::onequery::cli::v1::GetSessionResponse, ::connectrpc::Context),
-            ::connectrpc::ConnectError,
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
+                crate::proto::onequery::cli::v1::GetSessionResponse,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the RefreshSession RPC.
-    fn refresh_session(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::RefreshSessionRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn refresh_session<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedRefreshSessionRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::RefreshSessionResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the StartDeviceAuthorization RPC.
-    fn start_device_authorization(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::StartDeviceAuthorizationRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn start_device_authorization<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedStartDeviceAuthorizationRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::StartDeviceAuthorizationResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the PollDeviceAuthorization RPC.
-    fn poll_device_authorization(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::PollDeviceAuthorizationRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn poll_device_authorization<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedPollDeviceAuthorizationRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::PollDeviceAuthorizationResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
 }
@@ -109,45 +721,73 @@ impl<S: CliAuthService> CliAuthServiceExt for S {
                 "GetSession",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.get_session(ctx, req).await }
+                        async move {
+                            svc.get_session(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::GetSessionResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_AUTH_SERVICE_GET_SESSION_SPEC)
             .route_view(
                 CLI_AUTH_SERVICE_SERVICE_NAME,
                 "RefreshSession",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.refresh_session(ctx, req).await }
+                        async move {
+                            svc.refresh_session(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::RefreshSessionResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_AUTH_SERVICE_REFRESH_SESSION_SPEC)
             .route_view(
                 CLI_AUTH_SERVICE_SERVICE_NAME,
                 "StartDeviceAuthorization",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.start_device_authorization(ctx, req).await }
+                        async move {
+                            svc.start_device_authorization(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::StartDeviceAuthorizationResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_AUTH_SERVICE_START_DEVICE_AUTHORIZATION_SPEC)
             .route_view(
                 CLI_AUTH_SERVICE_SERVICE_NAME,
                 "PollDeviceAuthorization",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.poll_device_authorization(ctx, req).await }
+                        async move {
+                            svc.poll_device_authorization(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::PollDeviceAuthorizationResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_AUTH_SERVICE_POLL_DEVICE_AUTHORIZATION_SPEC)
     }
 }
 /// Monomorphic dispatcher for `CliAuthService`.
@@ -194,16 +834,28 @@ impl<T: CliAuthService> ::connectrpc::Dispatcher for CliAuthServiceServer<T> {
         let method = path.strip_prefix("onequery.cli.v1.CliAuthService/")?;
         match method {
             "GetSession" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true)
+                        .with_spec(CLI_AUTH_SERVICE_GET_SESSION_SPEC),
+                )
             }
             "RefreshSession" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_AUTH_SERVICE_REFRESH_SESSION_SPEC),
+                )
             }
             "StartDeviceAuthorization" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_AUTH_SERVICE_START_DEVICE_AUTHORIZATION_SPEC),
+                )
             }
             "PollDeviceAuthorization" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_AUTH_SERVICE_POLL_DEVICE_AUTHORIZATION_SPEC),
+                )
             }
             _ => None,
         }
@@ -211,8 +863,8 @@ impl<T: CliAuthService> ::connectrpc::Dispatcher for CliAuthServiceServer<T> {
     fn call_unary(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::bytes::Bytes,
+        ctx: ::connectrpc::RequestContext,
+        request: ::connectrpc::Payload,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
         let Some(method) = path.strip_prefix("onequery.cli.v1.CliAuthService/") else {
@@ -224,56 +876,52 @@ impl<T: CliAuthService> ::connectrpc::Dispatcher for CliAuthServiceServer<T> {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::GetSessionRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.get_session(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::GetSessionRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.get_session(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::GetSessionResponse,
+                        >(format)
                 })
             }
             "RefreshSession" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::RefreshSessionRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.refresh_session(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::RefreshSessionRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.refresh_session(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::RefreshSessionResponse,
+                        >(format)
                 })
             }
             "StartDeviceAuthorization" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::StartDeviceAuthorizationRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.start_device_authorization(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::StartDeviceAuthorizationRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.start_device_authorization(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::StartDeviceAuthorizationResponse,
+                        >(format)
                 })
             }
             "PollDeviceAuthorization" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::PollDeviceAuthorizationRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.poll_device_authorization(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::PollDeviceAuthorizationRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.poll_device_authorization(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::PollDeviceAuthorizationResponse,
+                        >(format)
                 })
             }
             _ => ::connectrpc::dispatcher::codegen::unimplemented_unary(path),
@@ -282,7 +930,7 @@ impl<T: CliAuthService> ::connectrpc::Dispatcher for CliAuthServiceServer<T> {
     fn call_server_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         request: ::buffa::bytes::Bytes,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -297,7 +945,7 @@ impl<T: CliAuthService> ::connectrpc::Dispatcher for CliAuthServiceServer<T> {
     fn call_client_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
@@ -312,7 +960,7 @@ impl<T: CliAuthService> ::connectrpc::Dispatcher for CliAuthServiceServer<T> {
     fn call_bidi_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -340,7 +988,7 @@ impl<T: CliAuthService> ::connectrpc::Dispatcher for CliAuthServiceServer<T> {
 ///
 /// let uri: http::Uri = "http://localhost:8080".parse()?;
 /// let conn = Http2Connection::connect_plaintext(uri.clone()).await?.shared(1024);
-/// let config = ClientConfig::new(uri).protocol(Protocol::Grpc);
+/// let config = ClientConfig::new(uri).with_protocol(Protocol::Grpc);
 ///
 /// let client = CliAuthServiceClient::new(conn, config);
 /// let response = client.get_session(request).await?;
@@ -403,7 +1051,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::GetSessionResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::GetSessionResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -422,7 +1072,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::GetSessionResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::GetSessionResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -444,7 +1096,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::RefreshSessionResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::RefreshSessionResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -463,7 +1117,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::RefreshSessionResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::RefreshSessionResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -485,7 +1141,7 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::StartDeviceAuthorizationResponseView<
+                crate::proto::onequery::cli::v1::__buffa::view::StartDeviceAuthorizationResponseView<
                     'static,
                 >,
             >,
@@ -506,7 +1162,7 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::StartDeviceAuthorizationResponseView<
+                crate::proto::onequery::cli::v1::__buffa::view::StartDeviceAuthorizationResponseView<
                     'static,
                 >,
             >,
@@ -530,7 +1186,7 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::PollDeviceAuthorizationResponseView<
+                crate::proto::onequery::cli::v1::__buffa::view::PollDeviceAuthorizationResponseView<
                     'static,
                 >,
             >,
@@ -551,7 +1207,7 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::PollDeviceAuthorizationResponseView<
+                crate::proto::onequery::cli::v1::__buffa::view::PollDeviceAuthorizationResponseView<
                     'static,
                 >,
             >,
@@ -571,50 +1227,87 @@ where
 }
 /// Full service name for this service.
 pub const CLI_ORGANIZATION_SERVICE_SERVICE_NAME: &str = "onequery.cli.v1.CliOrganizationService";
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `ListOrganizations` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_ORGANIZATION_SERVICE_LIST_ORGANIZATIONS_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliOrganizationService/ListOrganizations",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::NoSideEffects);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `GetOrganization` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_ORGANIZATION_SERVICE_GET_ORGANIZATION_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliOrganizationService/GetOrganization",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::NoSideEffects);
 /// Server trait for CliOrganizationService.
 ///
 /// # Implementing handlers
 ///
-/// Handlers receive requests as `OwnedView<FooView<'static>>`, which gives
-/// zero-copy borrowed access to fields (e.g. `request.name` is a `&str`
-/// into the decoded buffer). The view can be held across `.await` points.
+/// Handlers receive requests as `OwnedFooView` (an alias for
+/// `OwnedView<FooView<'static>>`), which gives zero-copy borrowed access
+/// to fields (e.g. `request.name` is a `&str` into the decoded buffer).
+/// The view can be held across `.await` points. When two RPC types in
+/// the same package would alias to the same `Owned<…>View` name (e.g.
+/// a local message plus an imported one with the same short name), the
+/// alias is suppressed for both and the request type is spelled as
+/// `OwnedView<…View<'static>>` directly in the trait signature.
 ///
 /// Implement methods with plain `async fn`; the returned future satisfies
 /// the `Send` bound automatically. See the
 /// [buffa user guide](https://github.com/anthropics/buffa/blob/main/docs/guide.md#ownedview-in-async-trait-implementations)
 /// for zero-copy access patterns and when `to_owned_message()` is needed.
+///
+/// The `impl Encodable<Out>` return bound accepts the owned `Out`, the
+/// generated `OutView<'_>` / `OwnedOutView`,
+/// [`MaybeBorrowed`](::connectrpc::MaybeBorrowed), or
+/// [`PreEncoded`](::connectrpc::PreEncoded) for handlers that encode a
+/// non-`'static` view internally and pass the bytes across the handler
+/// boundary. View bodies are not emitted for output types mapped via
+/// `extern_path` (the impl would be an orphan); return owned for
+/// WKT/extern outputs.
+///
+/// Server-streaming and bidi-streaming methods return
+/// `ServiceStream<impl Encodable<Out> + Send + use<Self>>`. The
+/// `use<Self>` precise-capturing clause excludes `&self`'s lifetime
+/// (unary methods use `use<'a, Self>` and may borrow), so stream items
+/// must be `'static`. To stream view-encoded data, encode each item
+/// inside the stream body and yield
+/// [`PreEncoded`](::connectrpc::PreEncoded) — see its `# Streaming
+/// example` doc.
 #[allow(clippy::type_complexity)]
 pub trait CliOrganizationService: Send + Sync + 'static {
     /// Handle the ListOrganizations RPC.
-    fn list_organizations(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::ListOrganizationsRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn list_organizations<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedListOrganizationsRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::ListOrganizationsResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the GetOrganization RPC.
-    fn get_organization(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::GetOrganizationRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn get_organization<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedGetOrganizationRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::GetOrganizationResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
 }
@@ -651,23 +1344,37 @@ impl<S: CliOrganizationService> CliOrganizationServiceExt for S {
                 "ListOrganizations",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.list_organizations(ctx, req).await }
+                        async move {
+                            svc.list_organizations(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::ListOrganizationsResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_ORGANIZATION_SERVICE_LIST_ORGANIZATIONS_SPEC)
             .route_view_idempotent(
                 CLI_ORGANIZATION_SERVICE_SERVICE_NAME,
                 "GetOrganization",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.get_organization(ctx, req).await }
+                        async move {
+                            svc.get_organization(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::GetOrganizationResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_ORGANIZATION_SERVICE_GET_ORGANIZATION_SPEC)
     }
 }
 /// Monomorphic dispatcher for `CliOrganizationService`.
@@ -715,10 +1422,16 @@ for CliOrganizationServiceServer<T> {
         let method = path.strip_prefix("onequery.cli.v1.CliOrganizationService/")?;
         match method {
             "ListOrganizations" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true)
+                        .with_spec(CLI_ORGANIZATION_SERVICE_LIST_ORGANIZATIONS_SPEC),
+                )
             }
             "GetOrganization" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true)
+                        .with_spec(CLI_ORGANIZATION_SERVICE_GET_ORGANIZATION_SPEC),
+                )
             }
             _ => None,
         }
@@ -726,8 +1439,8 @@ for CliOrganizationServiceServer<T> {
     fn call_unary(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::bytes::Bytes,
+        ctx: ::connectrpc::RequestContext,
+        request: ::connectrpc::Payload,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
         let Some(method) = path.strip_prefix("onequery.cli.v1.CliOrganizationService/")
@@ -740,28 +1453,26 @@ for CliOrganizationServiceServer<T> {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::ListOrganizationsRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.list_organizations(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::ListOrganizationsRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.list_organizations(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::ListOrganizationsResponse,
+                        >(format)
                 })
             }
             "GetOrganization" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::GetOrganizationRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.get_organization(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::GetOrganizationRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.get_organization(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::GetOrganizationResponse,
+                        >(format)
                 })
             }
             _ => ::connectrpc::dispatcher::codegen::unimplemented_unary(path),
@@ -770,7 +1481,7 @@ for CliOrganizationServiceServer<T> {
     fn call_server_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         request: ::buffa::bytes::Bytes,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -786,7 +1497,7 @@ for CliOrganizationServiceServer<T> {
     fn call_client_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
@@ -802,7 +1513,7 @@ for CliOrganizationServiceServer<T> {
     fn call_bidi_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -831,7 +1542,7 @@ for CliOrganizationServiceServer<T> {
 ///
 /// let uri: http::Uri = "http://localhost:8080".parse()?;
 /// let conn = Http2Connection::connect_plaintext(uri.clone()).await?.shared(1024);
-/// let config = ClientConfig::new(uri).protocol(Protocol::Grpc);
+/// let config = ClientConfig::new(uri).with_protocol(Protocol::Grpc);
 ///
 /// let client = CliOrganizationServiceClient::new(conn, config);
 /// let response = client.list_organizations(request).await?;
@@ -894,7 +1605,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ListOrganizationsResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ListOrganizationsResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -913,7 +1626,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ListOrganizationsResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ListOrganizationsResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -935,7 +1650,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::GetOrganizationResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::GetOrganizationResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -954,7 +1671,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::GetOrganizationResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::GetOrganizationResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -972,108 +1691,179 @@ where
 }
 /// Full service name for this service.
 pub const CLI_SOURCE_SERVICE_SERVICE_NAME: &str = "onequery.cli.v1.CliSourceService";
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `ListSourceProviders` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_SERVICE_LIST_SOURCE_PROVIDERS_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceService/ListSourceProviders",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::NoSideEffects);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `ListSources` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_SERVICE_LIST_SOURCES_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceService/ListSources",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::NoSideEffects);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `GetSourceConnectGuide` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_SERVICE_GET_SOURCE_CONNECT_GUIDE_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceService/GetSourceConnectGuide",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::NoSideEffects);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `ConnectSource` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_SERVICE_CONNECT_SOURCE_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceService/ConnectSource",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `GetSource` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_SERVICE_GET_SOURCE_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceService/GetSource",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::NoSideEffects);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `TestSource` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_SERVICE_TEST_SOURCE_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceService/TestSource",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
 /// Server trait for CliSourceService.
 ///
 /// # Implementing handlers
 ///
-/// Handlers receive requests as `OwnedView<FooView<'static>>`, which gives
-/// zero-copy borrowed access to fields (e.g. `request.name` is a `&str`
-/// into the decoded buffer). The view can be held across `.await` points.
+/// Handlers receive requests as `OwnedFooView` (an alias for
+/// `OwnedView<FooView<'static>>`), which gives zero-copy borrowed access
+/// to fields (e.g. `request.name` is a `&str` into the decoded buffer).
+/// The view can be held across `.await` points. When two RPC types in
+/// the same package would alias to the same `Owned<…>View` name (e.g.
+/// a local message plus an imported one with the same short name), the
+/// alias is suppressed for both and the request type is spelled as
+/// `OwnedView<…View<'static>>` directly in the trait signature.
 ///
 /// Implement methods with plain `async fn`; the returned future satisfies
 /// the `Send` bound automatically. See the
 /// [buffa user guide](https://github.com/anthropics/buffa/blob/main/docs/guide.md#ownedview-in-async-trait-implementations)
 /// for zero-copy access patterns and when `to_owned_message()` is needed.
+///
+/// The `impl Encodable<Out>` return bound accepts the owned `Out`, the
+/// generated `OutView<'_>` / `OwnedOutView`,
+/// [`MaybeBorrowed`](::connectrpc::MaybeBorrowed), or
+/// [`PreEncoded`](::connectrpc::PreEncoded) for handlers that encode a
+/// non-`'static` view internally and pass the bytes across the handler
+/// boundary. View bodies are not emitted for output types mapped via
+/// `extern_path` (the impl would be an orphan); return owned for
+/// WKT/extern outputs.
+///
+/// Server-streaming and bidi-streaming methods return
+/// `ServiceStream<impl Encodable<Out> + Send + use<Self>>`. The
+/// `use<Self>` precise-capturing clause excludes `&self`'s lifetime
+/// (unary methods use `use<'a, Self>` and may borrow), so stream items
+/// must be `'static`. To stream view-encoded data, encode each item
+/// inside the stream body and yield
+/// [`PreEncoded`](::connectrpc::PreEncoded) — see its `# Streaming
+/// example` doc.
 #[allow(clippy::type_complexity)]
 pub trait CliSourceService: Send + Sync + 'static {
     /// Handle the ListSourceProviders RPC.
-    fn list_source_providers(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::ListSourceProvidersRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn list_source_providers<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedListSourceProvidersRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::ListSourceProvidersResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the ListSources RPC.
-    fn list_sources(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::ListSourcesRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn list_sources<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedListSourcesRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::ListSourcesResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the GetSourceConnectGuide RPC.
-    fn get_source_connect_guide(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::GetSourceConnectGuideRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn get_source_connect_guide<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedGetSourceConnectGuideRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::GetSourceConnectGuideResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the ConnectSource RPC.
-    fn connect_source(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::ConnectSourceRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn connect_source<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedConnectSourceRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::ConnectSourceResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the GetSource RPC.
-    fn get_source(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::GetSourceRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn get_source<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedGetSourceRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (crate::proto::onequery::cli::v1::GetSourceResponse, ::connectrpc::Context),
-            ::connectrpc::ConnectError,
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
+                crate::proto::onequery::cli::v1::GetSourceResponse,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the TestSource RPC.
-    fn test_source(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::TestSourceRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn test_source<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedTestSourceRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (crate::proto::onequery::cli::v1::TestSourceResponse, ::connectrpc::Context),
-            ::connectrpc::ConnectError,
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
+                crate::proto::onequery::cli::v1::TestSourceResponse,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
 }
@@ -1110,67 +1900,109 @@ impl<S: CliSourceService> CliSourceServiceExt for S {
                 "ListSourceProviders",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.list_source_providers(ctx, req).await }
+                        async move {
+                            svc.list_source_providers(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::ListSourceProvidersResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_SOURCE_SERVICE_LIST_SOURCE_PROVIDERS_SPEC)
             .route_view_idempotent(
                 CLI_SOURCE_SERVICE_SERVICE_NAME,
                 "ListSources",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.list_sources(ctx, req).await }
+                        async move {
+                            svc.list_sources(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::ListSourcesResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_SOURCE_SERVICE_LIST_SOURCES_SPEC)
             .route_view_idempotent(
                 CLI_SOURCE_SERVICE_SERVICE_NAME,
                 "GetSourceConnectGuide",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.get_source_connect_guide(ctx, req).await }
+                        async move {
+                            svc.get_source_connect_guide(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::GetSourceConnectGuideResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_SOURCE_SERVICE_GET_SOURCE_CONNECT_GUIDE_SPEC)
             .route_view(
                 CLI_SOURCE_SERVICE_SERVICE_NAME,
                 "ConnectSource",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.connect_source(ctx, req).await }
+                        async move {
+                            svc.connect_source(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::ConnectSourceResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_SOURCE_SERVICE_CONNECT_SOURCE_SPEC)
             .route_view_idempotent(
                 CLI_SOURCE_SERVICE_SERVICE_NAME,
                 "GetSource",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.get_source(ctx, req).await }
+                        async move {
+                            svc.get_source(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::GetSourceResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_SOURCE_SERVICE_GET_SOURCE_SPEC)
             .route_view(
                 CLI_SOURCE_SERVICE_SERVICE_NAME,
                 "TestSource",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.test_source(ctx, req).await }
+                        async move {
+                            svc.test_source(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::TestSourceResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_SOURCE_SERVICE_TEST_SOURCE_SPEC)
     }
 }
 /// Monomorphic dispatcher for `CliSourceService`.
@@ -1217,22 +2049,40 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
         let method = path.strip_prefix("onequery.cli.v1.CliSourceService/")?;
         match method {
             "ListSourceProviders" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true)
+                        .with_spec(CLI_SOURCE_SERVICE_LIST_SOURCE_PROVIDERS_SPEC),
+                )
             }
             "ListSources" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true)
+                        .with_spec(CLI_SOURCE_SERVICE_LIST_SOURCES_SPEC),
+                )
             }
             "GetSourceConnectGuide" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true)
+                        .with_spec(CLI_SOURCE_SERVICE_GET_SOURCE_CONNECT_GUIDE_SPEC),
+                )
             }
             "ConnectSource" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_SOURCE_SERVICE_CONNECT_SOURCE_SPEC),
+                )
             }
             "GetSource" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(true)
+                        .with_spec(CLI_SOURCE_SERVICE_GET_SOURCE_SPEC),
+                )
             }
             "TestSource" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_SOURCE_SERVICE_TEST_SOURCE_SPEC),
+                )
             }
             _ => None,
         }
@@ -1240,8 +2090,8 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
     fn call_unary(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::bytes::Bytes,
+        ctx: ::connectrpc::RequestContext,
+        request: ::connectrpc::Payload,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
         let Some(method) = path.strip_prefix("onequery.cli.v1.CliSourceService/") else {
@@ -1253,84 +2103,78 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::ListSourceProvidersRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.list_source_providers(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::ListSourceProvidersRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.list_source_providers(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::ListSourceProvidersResponse,
+                        >(format)
                 })
             }
             "ListSources" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::ListSourcesRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.list_sources(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::ListSourcesRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.list_sources(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::ListSourcesResponse,
+                        >(format)
                 })
             }
             "GetSourceConnectGuide" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::GetSourceConnectGuideRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.get_source_connect_guide(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::GetSourceConnectGuideRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.get_source_connect_guide(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::GetSourceConnectGuideResponse,
+                        >(format)
                 })
             }
             "ConnectSource" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::ConnectSourceRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.connect_source(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::ConnectSourceRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.connect_source(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::ConnectSourceResponse,
+                        >(format)
                 })
             }
             "GetSource" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::GetSourceRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.get_source(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::GetSourceRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.get_source(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::GetSourceResponse,
+                        >(format)
                 })
             }
             "TestSource" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::TestSourceRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.test_source(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::TestSourceRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.test_source(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::TestSourceResponse,
+                        >(format)
                 })
             }
             _ => ::connectrpc::dispatcher::codegen::unimplemented_unary(path),
@@ -1339,7 +2183,7 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
     fn call_server_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         request: ::buffa::bytes::Bytes,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -1354,7 +2198,7 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
     fn call_client_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
@@ -1369,7 +2213,7 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
     fn call_bidi_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -1397,7 +2241,7 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
 ///
 /// let uri: http::Uri = "http://localhost:8080".parse()?;
 /// let conn = Http2Connection::connect_plaintext(uri.clone()).await?.shared(1024);
-/// let config = ClientConfig::new(uri).protocol(Protocol::Grpc);
+/// let config = ClientConfig::new(uri).with_protocol(Protocol::Grpc);
 ///
 /// let client = CliSourceServiceClient::new(conn, config);
 /// let response = client.list_source_providers(request).await?;
@@ -1460,7 +2304,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ListSourceProvidersResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ListSourceProvidersResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -1479,7 +2325,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ListSourceProvidersResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ListSourceProvidersResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -1501,7 +2349,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ListSourcesResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ListSourcesResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -1520,7 +2370,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ListSourcesResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ListSourcesResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -1542,7 +2394,7 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::GetSourceConnectGuideResponseView<
+                crate::proto::onequery::cli::v1::__buffa::view::GetSourceConnectGuideResponseView<
                     'static,
                 >,
             >,
@@ -1563,7 +2415,7 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::GetSourceConnectGuideResponseView<
+                crate::proto::onequery::cli::v1::__buffa::view::GetSourceConnectGuideResponseView<
                     'static,
                 >,
             >,
@@ -1587,7 +2439,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ConnectSourceResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ConnectSourceResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -1606,7 +2460,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ConnectSourceResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ConnectSourceResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -1628,7 +2484,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::GetSourceResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::GetSourceResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -1647,7 +2505,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::GetSourceResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::GetSourceResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -1669,7 +2529,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::TestSourceResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::TestSourceResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -1688,7 +2550,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::TestSourceResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::TestSourceResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -1706,82 +2570,133 @@ where
 }
 /// Full service name for this service.
 pub const CLI_SOURCE_API_SERVICE_SERVICE_NAME: &str = "onequery.cli.v1.CliSourceApiService";
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `DescribeSourceApi` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_API_SERVICE_DESCRIBE_SOURCE_API_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceApiService/DescribeSourceApi",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `PreviewSourceApi` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_API_SERVICE_PREVIEW_SOURCE_API_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceApiService/PreviewSourceApi",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `ExecuteSourceApi` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_API_SERVICE_EXECUTE_SOURCE_API_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceApiService/ExecuteSourceApi",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `ResumeSourceApi` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_API_SERVICE_RESUME_SOURCE_API_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceApiService/ResumeSourceApi",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
 /// Server trait for CliSourceApiService.
 ///
 /// # Implementing handlers
 ///
-/// Handlers receive requests as `OwnedView<FooView<'static>>`, which gives
-/// zero-copy borrowed access to fields (e.g. `request.name` is a `&str`
-/// into the decoded buffer). The view can be held across `.await` points.
+/// Handlers receive requests as `OwnedFooView` (an alias for
+/// `OwnedView<FooView<'static>>`), which gives zero-copy borrowed access
+/// to fields (e.g. `request.name` is a `&str` into the decoded buffer).
+/// The view can be held across `.await` points. When two RPC types in
+/// the same package would alias to the same `Owned<…>View` name (e.g.
+/// a local message plus an imported one with the same short name), the
+/// alias is suppressed for both and the request type is spelled as
+/// `OwnedView<…View<'static>>` directly in the trait signature.
 ///
 /// Implement methods with plain `async fn`; the returned future satisfies
 /// the `Send` bound automatically. See the
 /// [buffa user guide](https://github.com/anthropics/buffa/blob/main/docs/guide.md#ownedview-in-async-trait-implementations)
 /// for zero-copy access patterns and when `to_owned_message()` is needed.
+///
+/// The `impl Encodable<Out>` return bound accepts the owned `Out`, the
+/// generated `OutView<'_>` / `OwnedOutView`,
+/// [`MaybeBorrowed`](::connectrpc::MaybeBorrowed), or
+/// [`PreEncoded`](::connectrpc::PreEncoded) for handlers that encode a
+/// non-`'static` view internally and pass the bytes across the handler
+/// boundary. View bodies are not emitted for output types mapped via
+/// `extern_path` (the impl would be an orphan); return owned for
+/// WKT/extern outputs.
+///
+/// Server-streaming and bidi-streaming methods return
+/// `ServiceStream<impl Encodable<Out> + Send + use<Self>>`. The
+/// `use<Self>` precise-capturing clause excludes `&self`'s lifetime
+/// (unary methods use `use<'a, Self>` and may borrow), so stream items
+/// must be `'static`. To stream view-encoded data, encode each item
+/// inside the stream body and yield
+/// [`PreEncoded`](::connectrpc::PreEncoded) — see its `# Streaming
+/// example` doc.
 #[allow(clippy::type_complexity)]
 pub trait CliSourceApiService: Send + Sync + 'static {
     /// Handle the DescribeSourceApi RPC.
-    fn describe_source_api(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::DescribeSourceApiRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn describe_source_api<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedDescribeSourceApiRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::DescribeSourceApiResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the PreviewSourceApi RPC.
-    fn preview_source_api(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::PreviewSourceApiRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn preview_source_api<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedPreviewSourceApiRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::PreviewSourceApiResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the ExecuteSourceApi RPC.
-    fn execute_source_api(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::ExecuteSourceApiRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn execute_source_api<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedExecuteSourceApiRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::ExecuteSourceApiResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the ResumeSourceApi RPC.
-    fn resume_source_api(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::ResumeSourceApiRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn resume_source_api<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedResumeSourceApiRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::ResumeSourceApiResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
 }
@@ -1818,45 +2733,73 @@ impl<S: CliSourceApiService> CliSourceApiServiceExt for S {
                 "DescribeSourceApi",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.describe_source_api(ctx, req).await }
+                        async move {
+                            svc.describe_source_api(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::DescribeSourceApiResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_SOURCE_API_SERVICE_DESCRIBE_SOURCE_API_SPEC)
             .route_view(
                 CLI_SOURCE_API_SERVICE_SERVICE_NAME,
                 "PreviewSourceApi",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.preview_source_api(ctx, req).await }
+                        async move {
+                            svc.preview_source_api(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::PreviewSourceApiResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_SOURCE_API_SERVICE_PREVIEW_SOURCE_API_SPEC)
             .route_view(
                 CLI_SOURCE_API_SERVICE_SERVICE_NAME,
                 "ExecuteSourceApi",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.execute_source_api(ctx, req).await }
+                        async move {
+                            svc.execute_source_api(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::ExecuteSourceApiResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_SOURCE_API_SERVICE_EXECUTE_SOURCE_API_SPEC)
             .route_view(
                 CLI_SOURCE_API_SERVICE_SERVICE_NAME,
                 "ResumeSourceApi",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.resume_source_api(ctx, req).await }
+                        async move {
+                            svc.resume_source_api(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::ResumeSourceApiResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_SOURCE_API_SERVICE_RESUME_SOURCE_API_SPEC)
     }
 }
 /// Monomorphic dispatcher for `CliSourceApiService`.
@@ -1903,16 +2846,28 @@ impl<T: CliSourceApiService> ::connectrpc::Dispatcher for CliSourceApiServiceSer
         let method = path.strip_prefix("onequery.cli.v1.CliSourceApiService/")?;
         match method {
             "DescribeSourceApi" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_SOURCE_API_SERVICE_DESCRIBE_SOURCE_API_SPEC),
+                )
             }
             "PreviewSourceApi" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_SOURCE_API_SERVICE_PREVIEW_SOURCE_API_SPEC),
+                )
             }
             "ExecuteSourceApi" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_SOURCE_API_SERVICE_EXECUTE_SOURCE_API_SPEC),
+                )
             }
             "ResumeSourceApi" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_SOURCE_API_SERVICE_RESUME_SOURCE_API_SPEC),
+                )
             }
             _ => None,
         }
@@ -1920,8 +2875,8 @@ impl<T: CliSourceApiService> ::connectrpc::Dispatcher for CliSourceApiServiceSer
     fn call_unary(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::bytes::Bytes,
+        ctx: ::connectrpc::RequestContext,
+        request: ::connectrpc::Payload,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
         let Some(method) = path.strip_prefix("onequery.cli.v1.CliSourceApiService/")
@@ -1934,56 +2889,52 @@ impl<T: CliSourceApiService> ::connectrpc::Dispatcher for CliSourceApiServiceSer
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::DescribeSourceApiRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.describe_source_api(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::DescribeSourceApiRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.describe_source_api(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::DescribeSourceApiResponse,
+                        >(format)
                 })
             }
             "PreviewSourceApi" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::PreviewSourceApiRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.preview_source_api(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::PreviewSourceApiRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.preview_source_api(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::PreviewSourceApiResponse,
+                        >(format)
                 })
             }
             "ExecuteSourceApi" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::ExecuteSourceApiRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.execute_source_api(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::ExecuteSourceApiRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.execute_source_api(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::ExecuteSourceApiResponse,
+                        >(format)
                 })
             }
             "ResumeSourceApi" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::ResumeSourceApiRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.resume_source_api(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::ResumeSourceApiRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.resume_source_api(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::ResumeSourceApiResponse,
+                        >(format)
                 })
             }
             _ => ::connectrpc::dispatcher::codegen::unimplemented_unary(path),
@@ -1992,7 +2943,7 @@ impl<T: CliSourceApiService> ::connectrpc::Dispatcher for CliSourceApiServiceSer
     fn call_server_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         request: ::buffa::bytes::Bytes,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -2008,7 +2959,7 @@ impl<T: CliSourceApiService> ::connectrpc::Dispatcher for CliSourceApiServiceSer
     fn call_client_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
@@ -2024,7 +2975,7 @@ impl<T: CliSourceApiService> ::connectrpc::Dispatcher for CliSourceApiServiceSer
     fn call_bidi_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -2053,7 +3004,7 @@ impl<T: CliSourceApiService> ::connectrpc::Dispatcher for CliSourceApiServiceSer
 ///
 /// let uri: http::Uri = "http://localhost:8080".parse()?;
 /// let conn = Http2Connection::connect_plaintext(uri.clone()).await?.shared(1024);
-/// let config = ClientConfig::new(uri).protocol(Protocol::Grpc);
+/// let config = ClientConfig::new(uri).with_protocol(Protocol::Grpc);
 ///
 /// let client = CliSourceApiServiceClient::new(conn, config);
 /// let response = client.describe_source_api(request).await?;
@@ -2116,7 +3067,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::DescribeSourceApiResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::DescribeSourceApiResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2135,7 +3088,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::DescribeSourceApiResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::DescribeSourceApiResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2157,7 +3112,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::PreviewSourceApiResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::PreviewSourceApiResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2176,7 +3133,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::PreviewSourceApiResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::PreviewSourceApiResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2198,7 +3157,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ExecuteSourceApiResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ExecuteSourceApiResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2217,7 +3178,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ExecuteSourceApiResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ExecuteSourceApiResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2239,7 +3202,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ResumeSourceApiResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ResumeSourceApiResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2258,7 +3223,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ResumeSourceApiResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ResumeSourceApiResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2276,50 +3243,87 @@ where
 }
 /// Full service name for this service.
 pub const CLI_QUERY_SERVICE_SERVICE_NAME: &str = "onequery.cli.v1.CliQueryService";
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `ValidateQuery` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_QUERY_SERVICE_VALIDATE_QUERY_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliQueryService/ValidateQuery",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `ExecuteQuery` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_QUERY_SERVICE_EXECUTE_QUERY_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliQueryService/ExecuteQuery",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
 /// Server trait for CliQueryService.
 ///
 /// # Implementing handlers
 ///
-/// Handlers receive requests as `OwnedView<FooView<'static>>`, which gives
-/// zero-copy borrowed access to fields (e.g. `request.name` is a `&str`
-/// into the decoded buffer). The view can be held across `.await` points.
+/// Handlers receive requests as `OwnedFooView` (an alias for
+/// `OwnedView<FooView<'static>>`), which gives zero-copy borrowed access
+/// to fields (e.g. `request.name` is a `&str` into the decoded buffer).
+/// The view can be held across `.await` points. When two RPC types in
+/// the same package would alias to the same `Owned<…>View` name (e.g.
+/// a local message plus an imported one with the same short name), the
+/// alias is suppressed for both and the request type is spelled as
+/// `OwnedView<…View<'static>>` directly in the trait signature.
 ///
 /// Implement methods with plain `async fn`; the returned future satisfies
 /// the `Send` bound automatically. See the
 /// [buffa user guide](https://github.com/anthropics/buffa/blob/main/docs/guide.md#ownedview-in-async-trait-implementations)
 /// for zero-copy access patterns and when `to_owned_message()` is needed.
+///
+/// The `impl Encodable<Out>` return bound accepts the owned `Out`, the
+/// generated `OutView<'_>` / `OwnedOutView`,
+/// [`MaybeBorrowed`](::connectrpc::MaybeBorrowed), or
+/// [`PreEncoded`](::connectrpc::PreEncoded) for handlers that encode a
+/// non-`'static` view internally and pass the bytes across the handler
+/// boundary. View bodies are not emitted for output types mapped via
+/// `extern_path` (the impl would be an orphan); return owned for
+/// WKT/extern outputs.
+///
+/// Server-streaming and bidi-streaming methods return
+/// `ServiceStream<impl Encodable<Out> + Send + use<Self>>`. The
+/// `use<Self>` precise-capturing clause excludes `&self`'s lifetime
+/// (unary methods use `use<'a, Self>` and may borrow), so stream items
+/// must be `'static`. To stream view-encoded data, encode each item
+/// inside the stream body and yield
+/// [`PreEncoded`](::connectrpc::PreEncoded) — see its `# Streaming
+/// example` doc.
 #[allow(clippy::type_complexity)]
 pub trait CliQueryService: Send + Sync + 'static {
     /// Handle the ValidateQuery RPC.
-    fn validate_query(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::ValidateQueryRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn validate_query<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedValidateQueryRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::ValidateQueryResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
     /// Handle the ExecuteQuery RPC.
-    fn execute_query(
-        &self,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::view::OwnedView<
-            crate::proto::onequery::cli::v1::ExecuteQueryRequestView<'static>,
-        >,
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn execute_query<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedExecuteQueryRequestView,
     ) -> impl ::std::future::Future<
-        Output = Result<
-            (
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::ExecuteQueryResponse,
-                ::connectrpc::Context,
-            ),
-            ::connectrpc::ConnectError,
+            > + Send + use<'a, Self>,
         >,
     > + Send;
 }
@@ -2356,23 +3360,37 @@ impl<S: CliQueryService> CliQueryServiceExt for S {
                 "ValidateQuery",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.validate_query(ctx, req).await }
+                        async move {
+                            svc.validate_query(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::ValidateQueryResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_QUERY_SERVICE_VALIDATE_QUERY_SPEC)
             .route_view(
                 CLI_QUERY_SERVICE_SERVICE_NAME,
                 "ExecuteQuery",
                 {
                     let svc = ::std::sync::Arc::clone(&self);
-                    ::connectrpc::view_handler_fn(move |ctx, req| {
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
                         let svc = ::std::sync::Arc::clone(&svc);
-                        async move { svc.execute_query(ctx, req).await }
+                        async move {
+                            svc.execute_query(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::ExecuteQueryResponse,
+                                >(format)
+                        }
                     })
                 },
             )
+            .with_spec(CLI_QUERY_SERVICE_EXECUTE_QUERY_SPEC)
     }
 }
 /// Monomorphic dispatcher for `CliQueryService`.
@@ -2419,10 +3437,16 @@ impl<T: CliQueryService> ::connectrpc::Dispatcher for CliQueryServiceServer<T> {
         let method = path.strip_prefix("onequery.cli.v1.CliQueryService/")?;
         match method {
             "ValidateQuery" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_QUERY_SERVICE_VALIDATE_QUERY_SPEC),
+                )
             }
             "ExecuteQuery" => {
-                Some(::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false))
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_QUERY_SERVICE_EXECUTE_QUERY_SPEC),
+                )
             }
             _ => None,
         }
@@ -2430,8 +3454,8 @@ impl<T: CliQueryService> ::connectrpc::Dispatcher for CliQueryServiceServer<T> {
     fn call_unary(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
-        request: ::buffa::bytes::Bytes,
+        ctx: ::connectrpc::RequestContext,
+        request: ::connectrpc::Payload,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
         let Some(method) = path.strip_prefix("onequery.cli.v1.CliQueryService/") else {
@@ -2443,28 +3467,26 @@ impl<T: CliQueryService> ::connectrpc::Dispatcher for CliQueryServiceServer<T> {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::ValidateQueryRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.validate_query(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::ValidateQueryRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.validate_query(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::ValidateQueryResponse,
+                        >(format)
                 })
             }
             "ExecuteQuery" => {
                 let svc = ::std::sync::Arc::clone(&self.inner);
                 Box::pin(async move {
                     let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
-                        crate::proto::onequery::cli::v1::ExecuteQueryRequestView,
-                    >(request, format)?;
-                    let (res, ctx) = svc.execute_query(ctx, req).await?;
-                    let bytes = ::connectrpc::dispatcher::codegen::encode_response(
-                        &res,
-                        format,
-                    )?;
-                    Ok((bytes, ctx))
+                        crate::proto::onequery::cli::v1::__buffa::view::ExecuteQueryRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.execute_query(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::ExecuteQueryResponse,
+                        >(format)
                 })
             }
             _ => ::connectrpc::dispatcher::codegen::unimplemented_unary(path),
@@ -2473,7 +3495,7 @@ impl<T: CliQueryService> ::connectrpc::Dispatcher for CliQueryServiceServer<T> {
     fn call_server_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         request: ::buffa::bytes::Bytes,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -2488,7 +3510,7 @@ impl<T: CliQueryService> ::connectrpc::Dispatcher for CliQueryServiceServer<T> {
     fn call_client_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::UnaryResult {
@@ -2503,7 +3525,7 @@ impl<T: CliQueryService> ::connectrpc::Dispatcher for CliQueryServiceServer<T> {
     fn call_bidi_streaming(
         &self,
         path: &str,
-        ctx: ::connectrpc::Context,
+        ctx: ::connectrpc::RequestContext,
         requests: ::connectrpc::dispatcher::codegen::RequestStream,
         format: ::connectrpc::CodecFormat,
     ) -> ::connectrpc::dispatcher::codegen::StreamingResult {
@@ -2531,7 +3553,7 @@ impl<T: CliQueryService> ::connectrpc::Dispatcher for CliQueryServiceServer<T> {
 ///
 /// let uri: http::Uri = "http://localhost:8080".parse()?;
 /// let conn = Http2Connection::connect_plaintext(uri.clone()).await?.shared(1024);
-/// let config = ClientConfig::new(uri).protocol(Protocol::Grpc);
+/// let config = ClientConfig::new(uri).with_protocol(Protocol::Grpc);
 ///
 /// let client = CliQueryServiceClient::new(conn, config);
 /// let response = client.validate_query(request).await?;
@@ -2594,7 +3616,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ValidateQueryResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ValidateQueryResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2613,7 +3637,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ValidateQueryResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ValidateQueryResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2635,7 +3661,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ExecuteQueryResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ExecuteQueryResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,
@@ -2654,7 +3682,9 @@ where
     ) -> Result<
         ::connectrpc::client::UnaryResponse<
             ::buffa::view::OwnedView<
-                crate::proto::onequery::cli::v1::ExecuteQueryResponseView<'static>,
+                crate::proto::onequery::cli::v1::__buffa::view::ExecuteQueryResponseView<
+                    'static,
+                >,
             >,
         >,
         ::connectrpc::ConnectError,

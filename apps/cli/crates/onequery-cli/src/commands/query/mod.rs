@@ -14,7 +14,7 @@ use crate::cli::QuerySubcommand;
 use crate::cli::QueryValidateArgs;
 use crate::cli::ReadArgs;
 use crate::identifiers::OrgSlug;
-use crate::identifiers::SourceKey;
+use crate::identifiers::SourceReference;
 use crate::output::CommandOutput;
 use crate::output::TerminalOutput;
 use crate::transport::query::QueryRequestPayload;
@@ -55,14 +55,14 @@ struct CheckingAuthState {
 
 #[derive(Debug)]
 struct PendingQueryRequest {
-    source_key: SourceKey,
+    source_key: SourceReference,
     read: ListReadArgs,
     payload: QueryRequestPayload,
 }
 
 #[derive(Debug, Clone)]
 struct LoadingQueryInputState {
-    pub(super) source_key: SourceKey,
+    pub(super) source_key: SourceReference,
     pub(super) read: ListReadArgs,
 }
 
@@ -80,7 +80,7 @@ struct WaitingToRetryQueryState {
 #[derive(Debug)]
 struct QueryRequest {
     org: OrgSlug,
-    source_key: SourceKey,
+    source_key: SourceReference,
     read: ListReadArgs,
     payload: QueryRequestPayload,
 }
@@ -92,7 +92,7 @@ pub(super) struct ValidateIdleState {
 
 #[derive(Debug, Clone)]
 pub(super) struct ValidateLoadingQueryInputState {
-    source_key: SourceKey,
+    source_key: SourceReference,
     read: ReadArgs,
 }
 
@@ -103,7 +103,7 @@ pub(super) struct ValidateCheckingAuthState {
 
 #[derive(Debug)]
 struct PendingValidateQueryRequest {
-    source_key: SourceKey,
+    source_key: SourceReference,
     read: ReadArgs,
     payload: QueryRequestPayload,
 }
@@ -116,7 +116,7 @@ pub(super) struct ValidatingQueryState {
 #[derive(Debug)]
 pub(super) struct ValidateQueryRequest {
     org: OrgSlug,
-    source_key: SourceKey,
+    source_key: SourceReference,
     read: ReadArgs,
     payload: QueryRequestPayload,
 }

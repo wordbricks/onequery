@@ -13,7 +13,7 @@ const oneQueryApiSegments = [
   { text: " --request-id ", color: surfaceTokens.terminalFlag },
   { text: "openclaw-org-scan", color: surfaceTokens.terminalPath },
   { text: " --source ", color: surfaceTokens.terminalFlag },
-  { text: "github", color: surfaceTokens.terminalPath },
+  { text: "github://wordbricks", color: surfaceTokens.terminalPath },
 ] as const satisfies readonly CommandSegment[];
 
 const createStringFlagSegments = (flag: string, value: string) =>
