@@ -21,6 +21,7 @@
     "@astrojs/cloudflare": "catalog:",
     "@astrojs/partytown": "catalog:",
     "@astrojs/react": "catalog:",
+    "@astrojs/sitemap": "catalog:",
     "@nanostores/react": "catalog:",
     "@onequery/db": "workspace:*",
     "@onequery/ui": "workspace:*",

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import cloudflare from "@astrojs/cloudflare";
 import partytown from "@astrojs/partytown";
 import react from "@astrojs/react";
+import sitemap from "@astrojs/sitemap";
 import { defineConfig, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
@@ -78,6 +79,7 @@ export default defineConfig({
       },
     }),
     react(),
+    sitemap(),
   ],
   server: {
     host: DEV_SERVER_HOST,
