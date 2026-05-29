@@ -8,6 +8,7 @@ coverImage:
 publishedAt: "2026-05-01"
 readTime: "10 min read"
 ---
+
 ## From Context Enrichment to Implementation
 
 OpenAI's writeup on its in-house data agent describes context enrichment as a layer that derives code-level definitions of tables, captures usage context from systems beyond SQL, and helps an agent distinguish between tables that look similar but differ in critical ways: https://openai.com/index/inside-our-in-house-data-agent/
@@ -38,13 +39,13 @@ A table memo describes the role of a table, important lifecycle rules, confidenc
 
 The key requirement is provenance. Every high-confidence claim should be traceable to a schema query, a bounded data sample, or a code reference. Claims without evidence should stay low confidence or remain explicitly unknown.
 
-| Artifact | Purpose |
-| --- | --- |
-| tables.json | Normalized table and column inventory from the selected OneQuery source. |
-| table_memos.json | Human-readable table descriptions, lifecycle notes, confidence, caveats, and evidence links. |
-| column_memos.json | Column-level semantics, joins, privacy notes, usage patterns, and uncertainty. |
-| code_evidence.jsonl | File and line references showing how application code reads or names the database objects. |
-| context_documents.jsonl | Chunked documents suitable for retrieval, review, or agent context injection. |
+| Artifact                | Purpose                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
+| tables.json             | Normalized table and column inventory from the selected OneQuery source.                     |
+| table_memos.json        | Human-readable table descriptions, lifecycle notes, confidence, caveats, and evidence links. |
+| column_memos.json       | Column-level semantics, joins, privacy notes, usage patterns, and uncertainty.               |
+| code_evidence.jsonl     | File and line references showing how application code reads or names the database objects.   |
+| context_documents.jsonl | Chunked documents suitable for retrieval, review, or agent context injection.                |
 
 ## Use OneQuery as the Boundary
 

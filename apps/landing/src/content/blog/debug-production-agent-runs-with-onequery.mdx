@@ -8,6 +8,7 @@ coverImage:
 publishedAt: "2026-05-06"
 readTime: "7 min read"
 ---
+
 ## The Concept: Connect Cloudflare Logs to Codex
 
 ![Diagram showing Codex querying Cloudflare Worker logs through OneQuery and turning evidence into a pull request.](../../assets/blog/debug-production-agent-runs-with-onequery-access-path.png)
@@ -48,12 +49,12 @@ Once the example root cause was clear, the code change was small. Codex moved th
 
 The important part is not that every team should make the same model choice. The important part is that the agent used production evidence to choose the right class of fix before touching code.
 
-| Change | Why it mattered |
-| --- | --- |
-| DEFAULT_AGENT_LLM_MODEL -> Gemini Flash | New runs without an override avoid the Fireworks quota path. |
-| Model option added to the UI | Operators can choose the same model explicitly instead of relying only on the shared default. |
-| Truncation policy updated | The type union stays exhaustive when a new model is introduced. |
-| PR created with auto-merge | The debugging session ended as a reviewable production change, not a loose diagnosis. |
+| Change                                  | Why it mattered                                                                               |
+| --------------------------------------- | --------------------------------------------------------------------------------------------- |
+| DEFAULT_AGENT_LLM_MODEL -> Gemini Flash | New runs without an override avoid the Fireworks quota path.                                  |
+| Model option added to the UI            | Operators can choose the same model explicitly instead of relying only on the shared default. |
+| Truncation policy updated               | The type union stays exhaustive when a new model is introduced.                               |
+| PR created with auto-merge              | The debugging session ended as a reviewable production change, not a loose diagnosis.         |
 
 ## The Debugging Loop We Want
 

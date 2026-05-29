@@ -8,6 +8,7 @@ coverImage:
 publishedAt: "2026-04-30"
 readTime: "9 min read"
 ---
+
 ## What is GEPA?
 
 GEPA, short for Genetic-Pareto, is a text evolution engine for optimizing prompts, code, agent architectures, configurations, policies, and other artifacts that can be represented as text. The core idea is to use LLM-based reflection over execution traces, then keep candidates through a Pareto-efficient search process instead of collapsing everything into one aggregate score.
@@ -50,14 +51,14 @@ In one run, the reflection agent used OneQuery to inspect spans for a failed or 
 
 ## A sample setup
 
-| Setting | Value |
-| --- | --- |
-| Task | AIME-style math problems with solve and review LLM calls |
-| Dataset split | 24 train examples, 12 validation examples, 15 test examples |
-| Optimization budget | max-metric-calls set to 72 |
-| Telemetry | DSPy cache disabled so Laminar received fresh solve and review traces |
-| OneQuery access | Reflection agent enabled for the onequery-demo org and laminar-aime-gepa source |
-| Artifacts | Experiment repo, result JSON, markdown report, progress plot, and reflection transcripts: https://github.com/wordbricks/onequery-gepa |
+| Setting             | Value                                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Task                | AIME-style math problems with solve and review LLM calls                                                                              |
+| Dataset split       | 24 train examples, 12 validation examples, 15 test examples                                                                           |
+| Optimization budget | max-metric-calls set to 72                                                                                                            |
+| Telemetry           | DSPy cache disabled so Laminar received fresh solve and review traces                                                                 |
+| OneQuery access     | Reflection agent enabled for the onequery-demo org and laminar-aime-gepa source                                                       |
+| Artifacts           | Experiment repo, result JSON, markdown report, progress plot, and reflection transcripts: https://github.com/wordbricks/onequery-gepa |
 
 ## Results
 
@@ -69,12 +70,12 @@ The prompt changes were not generic rewrites. The base solve prompt simply asked
 
 The final test result was 5 out of 15, or 33.33 percent. That is still modest, but it is the useful signal for this use case: telemetry did not make AIME easy, but it gave GEPA better evidence for diagnosing failures and producing targeted prompt candidates.
 
-| Checkpoint | Result |
-| --- | --- |
-| Base validation | 3/12 correct, 25% |
-| First accepted candidate | 4/12 correct, 33% |
+| Checkpoint               | Result                  |
+| ------------------------ | ----------------------- |
+| Base validation          | 3/12 correct, 25%       |
+| First accepted candidate | 4/12 correct, 33%       |
 | Later accepted candidate | 5/12 correct, about 42% |
-| Final test report | 5/15 correct, 33.33% |
+| Final test report        | 5/15 correct, 33.33%    |
 
 ![Graph showing best validation score rising from 25.00 to 33.33 to 41.67 percent across metric calls, with selected test score at 33.33 percent.](../../assets/blog/gepa-result-summary.png)
 
