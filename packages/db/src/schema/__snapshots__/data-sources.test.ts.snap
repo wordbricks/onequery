@@ -31,8 +31,10 @@ exports[`data-sources schema > matches provider type snapshots 1`] = `
     "sendgrid",
     "jira",
     "vercel",
+    "microsoft_clarity",
     "linear",
     "cloudflare_workers_observability",
+    "cloudflare_web_analytics",
   ],
   "providers": [
     "postgres",
@@ -63,8 +65,10 @@ exports[`data-sources schema > matches provider type snapshots 1`] = `
     "sendgrid",
     "jira",
     "vercel",
+    "microsoft_clarity",
     "linear",
     "cloudflare_workers_observability",
+    "cloudflare_web_analytics",
   ],
 }
 `;

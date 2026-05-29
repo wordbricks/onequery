@@ -4,12 +4,14 @@ import type { SourceApiActorContext, PreparedSourceConnection } from "../types";
 import { airtableSourceApiAdapter } from "./airtable";
 import { amazonAdsSourceApiAdapter } from "./amazon-ads";
 import { calSourceApiAdapter } from "./cal";
+import { cloudflareWebAnalyticsSourceApiAdapter } from "./cloudflare-web-analytics";
 import { confluenceSourceApiAdapter } from "./confluence";
 import { discordSourceApiAdapter } from "./discord";
 import { googleSearchConsoleSourceApiAdapter } from "./google-search-console";
 import { granolaSourceApiAdapter } from "./granola";
 import { jiraSourceApiAdapter } from "./jira";
 import { linkedInAdsSourceApiAdapter } from "./linkedin-ads";
+import { microsoftClaritySourceApiAdapter } from "./microsoft-clarity";
 import { sendGridSourceApiAdapter } from "./sendgrid";
 import { tiktokMarketingSourceApiAdapter } from "./tiktok-marketing";
 import { vercelSourceApiAdapter } from "./vercel";
@@ -727,6 +729,107 @@ describe("simple REST source API providers", () => {
     );
     expect(calledInit?.headers).toMatchObject({
       Authorization: "Bearer vercel_token",
+    });
+  });
+
+  it("normalizes Microsoft Clarity live insights requests", async () => {
+    const source: PreparedSourceConnection = {
+      credentials: {
+        apiToken: "clarity_token",
+        type: "microsoft_clarity",
+      },
+      displayName: "Microsoft Clarity",
+      id: "source_13",
+      provider: "microsoft_clarity",
+      sourceKey: "clarity-main",
+    };
+    const descriptor = await microsoftClaritySourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    const plan = await microsoftClaritySourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        fieldPatch: {
+          params: {
+            dimension1: "OS",
+            numOfDays: 1,
+          },
+        },
+        headers: [],
+        operation: "fetch_api",
+        selector: "/project-live-insights",
+      },
+      source,
+    });
+
+    expect(plan.kind).toBe("http_request");
+    if (plan.kind !== "http_request") {
+      throw new Error("expected HTTP request plan");
+    }
+    expect(plan.url).toBe(
+      "https://www.clarity.ms/export-data/api/v1/project-live-insights?dimension1=OS&numOfDays=1"
+    );
+  });
+
+  it("executes Cloudflare Web Analytics requests with placeholder expansion", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ success: true, result: [] }), {
+        headers: {
+          "content-type": "application/json",
+        },
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        accountId: "account_123",
+        apiToken: "cloudflare_token",
+        siteTag: "site_456",
+        type: "cloudflare_web_analytics",
+      },
+      displayName: "Cloudflare Web Analytics",
+      id: "source_14",
+      provider: "cloudflare_web_analytics",
+      sourceKey: "cf-web-analytics",
+    };
+
+    await cloudflareWebAnalyticsSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        body: { kind: "none" },
+        bodyKind: "none",
+        bodyPaths: [],
+        descriptorVersion: "cloudflare-web-analytics.v1",
+        headerNames: [],
+        headers: [],
+        kind: "http_request",
+        method: "GET",
+        operation: "fetch_api",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
+        provider: "cloudflare_web_analytics",
+        selector: "/accounts/{accountId}/rum/v2/{siteTag}",
+        selectorTemplate: "/{path}",
+        sourceId: "source_14",
+        sourceKey: "cf-web-analytics",
+        url: "https://api.cloudflare.com/client/v4/accounts/account_123/rum/v2/site_456",
+      },
+      source,
+    });
+
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(calledUrl)).toBe(
+      "https://api.cloudflare.com/client/v4/accounts/account_123/rum/v2/site_456"
+    );
+    expect(calledInit?.headers).toMatchObject({
+      Authorization: "Bearer cloudflare_token",
+      "Content-Type": "application/json",
     });
   });
 });

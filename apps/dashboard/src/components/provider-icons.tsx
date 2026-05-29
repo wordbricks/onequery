@@ -209,6 +209,20 @@ function GranolaIcon(props: ProviderIconProps) {
   );
 }
 
+function MicrosoftClarityIcon({ size = 24, ...props }: ProviderIconProps) {
+  return (
+    <SvgIcon
+      {...props}
+      defaultLabel="Microsoft Clarity"
+      fill="currentColor"
+      size={size}
+      viewBox="0 0 24 24"
+    >
+      <path d="M4.5 4A2.5 2.5 0 0 0 2 6.5v11A2.5 2.5 0 0 0 4.5 20h15a2.5 2.5 0 0 0 2.5-2.5v-11A2.5 2.5 0 0 0 19.5 4h-15Zm0 2h15a.5.5 0 0 1 .5.5v11a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5Zm3.25 3A1.25 1.25 0 0 0 6.5 10.25v4.5a1.25 1.25 0 1 0 2.5 0v-4.5A1.25 1.25 0 0 0 7.75 9Zm4.25-1a1.25 1.25 0 0 0-1.25 1.25v5.5a1.25 1.25 0 1 0 2.5 0v-5.5A1.25 1.25 0 0 0 12 8Zm4.25 3a1.25 1.25 0 0 0-1.25 1.25v2.5a1.25 1.25 0 1 0 2.5 0v-2.5A1.25 1.25 0 0 0 16.25 11Z" />
+    </SvgIcon>
+  );
+}
+
 function AmazonAdsIcon({ size = 24, ...props }: ProviderIconProps) {
   return (
     <SvgIcon
@@ -262,6 +276,7 @@ export const ProviderIcons = {
   bigquery: createSimpleProviderIcon(siGooglebigquery),
   cal: createSimpleProviderIcon(siCaldotcom),
   cloudflare_d1: CloudflareD1Icon,
+  cloudflare_web_analytics: createSimpleProviderIcon(siCloudflareworkers),
   cloudflare_workers_observability:
     createSimpleProviderIcon(siCloudflareworkers),
   confluence: createSimpleProviderIcon(siConfluence),
@@ -275,6 +290,7 @@ export const ProviderIcons = {
   laminar: LaminarIcon,
   linear: createSimpleProviderIcon(siLinear),
   linkedin_ads: LinkedInAdsIcon,
+  microsoft_clarity: MicrosoftClarityIcon,
   mixpanel: createSimpleProviderIcon(siMixpanel),
   motherduck: MotherDuckIcon,
   mongodb: createSimpleProviderIcon(siMongodb),

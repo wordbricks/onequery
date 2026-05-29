@@ -7,6 +7,7 @@ import {
   BigQueryCredentialsSchema,
   CalCredentialsSchema,
   CloudflareD1CredentialsSchema,
+  CloudflareWebAnalyticsCredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   ConfluenceCredentialsSchema,
   ConnectorCredentialsSchema,
@@ -19,6 +20,7 @@ import {
   LaminarCredentialsSchema,
   LinkedInAdsCredentialsSchema,
   LinearCredentialsSchema,
+  MicrosoftClarityCredentialsSchema,
   MixpanelCredentialsSchema,
   MotherDuckCredentialsSchema,
   MongoDBCredentialsSchema,
@@ -908,7 +910,37 @@ export const SOURCE_PROVIDER_REGISTRY = {
       exampleInput: {
         sourceKey: "vercel_main",
         credentials: {
+          type: "vercel",
           apiToken: "vercel_api_token",
+        },
+      },
+    },
+  },
+  microsoft_clarity: {
+    label: "Microsoft Clarity",
+    credentialSchema: MicrosoftClarityCredentialsSchema,
+    credentialType: "microsoft_clarity",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Product analytics",
+    guide: {
+      summary:
+        "Connect Microsoft Clarity with a project Data Export API token.",
+      steps: [
+        "Open the target Clarity project and generate a Data Export API token from Settings > Data Export.",
+        "Copy the token into `credentials.apiToken`.",
+        "Only include `apiBaseUrl` when you need a non-default Clarity-compatible export API origin.",
+      ],
+      exampleInput: {
+        sourceKey: "microsoft_clarity_main",
+        credentials: {
+          type: "microsoft_clarity",
+          apiToken: "clarity_api_token",
         },
       },
     },
@@ -964,9 +996,42 @@ export const SOURCE_PROVIDER_REGISTRY = {
       exampleInput: {
         sourceKey: "cloudflare_workers",
         credentials: {
+          type: "cloudflare_workers_observability",
           accountId: "023e105f4ecef8ad9ca31a8372d0c353",
           apiToken: "cloudflare_api_token",
           scriptName: "api-production",
+        },
+      },
+    },
+  },
+  cloudflare_web_analytics: {
+    label: "Cloudflare Web Analytics",
+    credentialSchema: CloudflareWebAnalyticsCredentialsSchema,
+    credentialType: "cloudflare_web_analytics",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Product analytics",
+    guide: {
+      summary:
+        "Connect Cloudflare Web Analytics with an account-scoped API token, account ID, and optional site tag.",
+      steps: [
+        "Copy the Cloudflare Account ID from the dashboard.",
+        "Create a Cloudflare API token that can read Analytics GraphQL data and Web Analytics RUM site configuration for the account.",
+        "Optionally copy the Web Analytics site tag from the Web Analytics site details; Source API examples use it as the default GraphQL filter.",
+        "Use Cloudflare Workers Observability as a separate source when you need Worker telemetry logs. It uses a different API surface even when it shares the same account and token.",
+      ],
+      exampleInput: {
+        sourceKey: "cloudflare_web_analytics",
+        credentials: {
+          type: "cloudflare_web_analytics",
+          accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+          apiToken: "cloudflare_api_token",
+          siteTag: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
         },
       },
     },

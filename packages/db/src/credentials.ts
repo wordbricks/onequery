@@ -382,6 +382,16 @@ export const VercelCredentialsSchema = z.object({
 
 export type VercelCredentials = z.infer<typeof VercelCredentialsSchema>;
 
+export const MicrosoftClarityCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiToken: requiredOpaqueString("API token is required"),
+  type: z.literal("microsoft_clarity"),
+});
+
+export type MicrosoftClarityCredentials = z.infer<
+  typeof MicrosoftClarityCredentialsSchema
+>;
+
 export const CloudflareD1CredentialsSchema = z.object({
   accountId: trimmedString("Account ID is required"),
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
@@ -404,6 +414,18 @@ export const CloudflareWorkersObservabilityCredentialsSchema = z.object({
 
 export type CloudflareWorkersObservabilityCredentials = z.infer<
   typeof CloudflareWorkersObservabilityCredentialsSchema
+>;
+
+export const CloudflareWebAnalyticsCredentialsSchema = z.object({
+  accountId: trimmedString("Account ID is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiToken: requiredOpaqueString("API token is required"),
+  siteTag: optionalTrimmedString("Web Analytics site tag is required"),
+  type: z.literal("cloudflare_web_analytics"),
+});
+
+export type CloudflareWebAnalyticsCredentials = z.infer<
+  typeof CloudflareWebAnalyticsCredentialsSchema
 >;
 
 export const LinearApiKeyCredentialsSchema = z.object({
@@ -459,8 +481,10 @@ export const CredentialsSchema = z.union([
   SendGridCredentialsSchema,
   JiraCredentialsSchema,
   VercelCredentialsSchema,
+  MicrosoftClarityCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
+  CloudflareWebAnalyticsCredentialsSchema,
   LinearCredentialsSchema,
 ]);
 
@@ -516,8 +540,10 @@ export const credentialSchemaMap = {
   linkedin_ads: LinkedInAdsCredentialsSchema,
   cloudflare_workers_observability:
     CloudflareWorkersObservabilityCredentialsSchema,
+  cloudflare_web_analytics: CloudflareWebAnalyticsCredentialsSchema,
   laminar: LaminarCredentialsSchema,
   linear: LinearCredentialsSchema,
+  microsoft_clarity: MicrosoftClarityCredentialsSchema,
   mixpanel: MixpanelCredentialsSchema,
   motherduck: MotherDuckCredentialsSchema,
   mongodb: MongoDBCredentialsSchema,

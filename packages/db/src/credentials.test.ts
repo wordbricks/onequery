@@ -7,6 +7,7 @@ import {
   BigQueryCredentialsSchema,
   CalCredentialsSchema,
   CloudflareD1CredentialsSchema,
+  CloudflareWebAnalyticsCredentialsSchema,
   ConfluenceCredentialsSchema,
   ConnectorCredentialsSchema,
   credentialSchemaMap,
@@ -27,6 +28,7 @@ import {
   isTokenExpired,
   LaminarCredentialsSchema,
   LinearCredentialsSchema,
+  MicrosoftClarityCredentialsSchema,
   MixpanelCredentialsSchema,
   MotherDuckCredentialsSchema,
   MongoDBCredentialsSchema,
@@ -49,6 +51,7 @@ import type {
   BigQueryCredentials,
   CalCredentials,
   CloudflareD1Credentials,
+  CloudflareWebAnalyticsCredentials,
   ConfluenceCredentials,
   ConnectorCredentials,
   Credentials,
@@ -61,6 +64,7 @@ import type {
   LaminarCredentials,
   LinkedInAdsCredentials,
   LinearCredentials,
+  MicrosoftClarityCredentials,
   MixpanelCredentials,
   MotherDuckCredentials,
   MongoDBCredentials,
@@ -1656,6 +1660,50 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("MicrosoftClarityCredentialsSchema", () => {
+    it("validates Microsoft Clarity credentials", () => {
+      const credentials: MicrosoftClarityCredentials = {
+        apiToken: "clarity_api_token",
+        type: "microsoft_clarity",
+      };
+
+      const result = MicrosoftClarityCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects missing API token", () => {
+      const result = MicrosoftClarityCredentialsSchema.safeParse({
+        type: "microsoft_clarity",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("CloudflareWebAnalyticsCredentialsSchema", () => {
+    it("validates Cloudflare Web Analytics credentials", () => {
+      const credentials: CloudflareWebAnalyticsCredentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_api_token",
+        siteTag: "site_tag",
+        type: "cloudflare_web_analytics",
+      };
+
+      const result =
+        CloudflareWebAnalyticsCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects missing account ID", () => {
+      const result = CloudflareWebAnalyticsCredentialsSchema.safeParse({
+        apiToken: "cf_api_token",
+        type: "cloudflare_web_analytics",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("LinearCredentialsSchema", () => {
     it("should validate valid Linear credentials", () => {
       const credentials: LinearCredentials = {
@@ -1863,8 +1911,20 @@ describe("credentials schemas", () => {
       );
     });
 
+    it("should map cloudflare_web_analytics to CloudflareWebAnalyticsCredentialsSchema", () => {
+      expect(credentialSchemaMap.cloudflare_web_analytics).toBe(
+        CloudflareWebAnalyticsCredentialsSchema
+      );
+    });
+
     it("should map linear to LinearCredentialsSchema", () => {
       expect(credentialSchemaMap.linear).toBe(LinearCredentialsSchema);
+    });
+
+    it("should map microsoft_clarity to MicrosoftClarityCredentialsSchema", () => {
+      expect(credentialSchemaMap.microsoft_clarity).toBe(
+        MicrosoftClarityCredentialsSchema
+      );
     });
 
     it("should map tiktok_marketing to TikTokMarketingCredentialsSchema", () => {
@@ -2046,6 +2106,27 @@ describe("credentials schemas", () => {
 
       const result = validateCredentials(credentials);
       expect(result.type).toBe("sendgrid");
+    });
+
+    it("should validate Microsoft Clarity credentials", () => {
+      const credentials = {
+        apiToken: "clarity_api_token",
+        type: "microsoft_clarity",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("microsoft_clarity");
+    });
+
+    it("should validate Cloudflare Web Analytics credentials", () => {
+      const credentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_api_token",
+        type: "cloudflare_web_analytics",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("cloudflare_web_analytics");
     });
 
     it("should validate MongoDB credentials", () => {
