@@ -43,7 +43,6 @@
     "@types/react-dom": "catalog:",
     "rollup-plugin-visualizer": "catalog:tooling",
     "typescript": "catalog:tooling",
-    "vite": "7.3.3",
     "vitest": "catalog:testing",
     "wrangler": "catalog:tooling"
   }
