@@ -32,6 +32,7 @@ import {
   siSnowflake,
   siSupabase,
   siTiktok,
+  siVercel,
 } from "simple-icons";
 
 type ProviderIconProps = IconSvgProps;
@@ -285,6 +286,7 @@ export const ProviderIcons = {
   sentry: createSimpleProviderIcon(siSentry),
   snowflake: createSimpleProviderIcon(siSnowflake),
   tiktok_marketing: createSimpleProviderIcon(siTiktok),
+  vercel: createSimpleProviderIcon(siVercel),
 } as const satisfies Record<string, ProviderIconComponent>;
 
 function hasProviderIcon(
