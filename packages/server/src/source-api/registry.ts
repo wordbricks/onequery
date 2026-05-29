@@ -20,6 +20,7 @@ import { postHogSourceApiAdapter } from "./adapters/posthog";
 import { sendGridSourceApiAdapter } from "./adapters/sendgrid";
 import { sentrySourceApiAdapter } from "./adapters/sentry";
 import { tiktokMarketingSourceApiAdapter } from "./adapters/tiktok-marketing";
+import { vercelSourceApiAdapter } from "./adapters/vercel";
 import {
   SourceApiAdapterNotRegisteredError,
   SourceApiRegistryConfigurationError,
@@ -84,4 +85,5 @@ export const sourceApiRegistry = createSourceApiRegistry([
   sendGridSourceApiAdapter,
   sentrySourceApiAdapter,
   tiktokMarketingSourceApiAdapter,
+  vercelSourceApiAdapter,
 ]);

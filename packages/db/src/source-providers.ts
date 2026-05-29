@@ -29,6 +29,7 @@ import {
   SentryCredentialsSchema,
   SnowflakeCredentialsSchema,
   TikTokMarketingCredentialsSchema,
+  VercelCredentialsSchema,
 } from "./credentials";
 
 type ProviderCredentialSchema = z.ZodType<{ type: string }>;
@@ -879,6 +880,35 @@ export const SOURCE_PROVIDER_REGISTRY = {
           siteUrl: "https://example.atlassian.net",
           email: "reader@example.com",
           apiToken: "atlassian_api_token",
+        },
+      },
+    },
+  },
+  vercel: {
+    label: "Vercel",
+    credentialSchema: VercelCredentialsSchema,
+    credentialType: "vercel",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
+    guide: {
+      summary:
+        "Connect Vercel with an API token for deployments, projects, teams, and runtime observability endpoints.",
+      steps: [
+        "Create a Vercel API token with read access to the account or team OneQuery should inspect.",
+        "Copy the token into `credentials.apiToken`.",
+        "Use `params[teamId]` in Source API requests when calling team-scoped Vercel endpoints.",
+        "Only include `apiBaseUrl` when you need a non-default Vercel-compatible API origin.",
+      ],
+      exampleInput: {
+        sourceKey: "vercel_main",
+        credentials: {
+          apiToken: "vercel_api_token",
         },
       },
     },

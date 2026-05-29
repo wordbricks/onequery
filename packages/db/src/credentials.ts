@@ -374,6 +374,14 @@ export const JiraCredentialsSchema = z.object({
 
 export type JiraCredentials = z.infer<typeof JiraCredentialsSchema>;
 
+export const VercelCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiToken: requiredOpaqueString("API token is required"),
+  type: z.literal("vercel"),
+});
+
+export type VercelCredentials = z.infer<typeof VercelCredentialsSchema>;
+
 export const CloudflareD1CredentialsSchema = z.object({
   accountId: trimmedString("Account ID is required"),
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
@@ -450,6 +458,7 @@ export const CredentialsSchema = z.union([
   TikTokMarketingCredentialsSchema,
   SendGridCredentialsSchema,
   JiraCredentialsSchema,
+  VercelCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   LinearCredentialsSchema,
@@ -519,6 +528,7 @@ export const credentialSchemaMap = {
   sentry: SentryCredentialsSchema,
   snowflake: SnowflakeCredentialsSchema,
   tiktok_marketing: TikTokMarketingCredentialsSchema,
+  vercel: VercelCredentialsSchema,
 } as const;
 
 export function validateCredentials(credentials: unknown): Credentials {
