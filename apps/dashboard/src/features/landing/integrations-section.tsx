@@ -6,8 +6,10 @@ const integrations = [
   "Amplitude",
   "Mixpanel",
   "PostHog",
+  "Microsoft Clarity",
   "GitHub",
   "Vercel",
+  "Cloudflare Web Analytics",
   "Linear",
 ];
 

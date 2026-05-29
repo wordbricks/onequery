@@ -5,6 +5,7 @@ import { amazonAdsSourceApiAdapter } from "./adapters/amazon-ads";
 import { amplitudeSourceApiAdapter } from "./adapters/amplitude";
 import { bigQuerySourceApiAdapter } from "./adapters/bigquery";
 import { calSourceApiAdapter } from "./adapters/cal";
+import { cloudflareWebAnalyticsSourceApiAdapter } from "./adapters/cloudflare-web-analytics";
 import { cloudflareWorkersObservabilitySourceApiAdapter } from "./adapters/cloudflare-workers-observability";
 import { confluenceSourceApiAdapter } from "./adapters/confluence";
 import { discordSourceApiAdapter } from "./adapters/discord";
@@ -14,6 +15,7 @@ import { googleSearchConsoleSourceApiAdapter } from "./adapters/google-search-co
 import { granolaSourceApiAdapter } from "./adapters/granola";
 import { jiraSourceApiAdapter } from "./adapters/jira";
 import { linkedInAdsSourceApiAdapter } from "./adapters/linkedin-ads";
+import { microsoftClaritySourceApiAdapter } from "./adapters/microsoft-clarity";
 import { mixpanelSourceApiAdapter } from "./adapters/mixpanel";
 import { mongodbSourceApiAdapter } from "./adapters/mongodb";
 import { postHogSourceApiAdapter } from "./adapters/posthog";
@@ -70,6 +72,7 @@ export const sourceApiRegistry = createSourceApiRegistry([
   airtableSourceApiAdapter,
   bigQuerySourceApiAdapter,
   calSourceApiAdapter,
+  cloudflareWebAnalyticsSourceApiAdapter,
   cloudflareWorkersObservabilitySourceApiAdapter,
   confluenceSourceApiAdapter,
   discordSourceApiAdapter,
@@ -79,6 +82,7 @@ export const sourceApiRegistry = createSourceApiRegistry([
   granolaSourceApiAdapter,
   jiraSourceApiAdapter,
   linkedInAdsSourceApiAdapter,
+  microsoftClaritySourceApiAdapter,
   mixpanelSourceApiAdapter,
   mongodbSourceApiAdapter,
   postHogSourceApiAdapter,
