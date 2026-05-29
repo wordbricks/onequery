@@ -92,10 +92,8 @@ export default defineConfig({
       exclude: ["@nanostores/react"],
     },
     plugins: [
-      visualizer({
-        emitFile: true,
-        filename: "stats.html",
-      }) as never,
+      // Bundle reports are opt-in so internal analyzer HTML is not published
+      // as a crawlable page.
       ...(process.env.ONEQUERY_BUNDLE_REPORT === "1"
         ? [createBundleReportPlugin()]
         : []),
