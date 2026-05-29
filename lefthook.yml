@@ -7,7 +7,7 @@ pre-commit:
         - "*.astro"
         - "*.{json,jsonc,json5}"
         - "*.{yaml,yml,toml}"
-        # - "*.{md,mdx}"
+        - "*.{md,mdx}"
         - "*.{css,scss,less}"
         - "*.{html,gql,graphql,hbs}"
       stage_fixed: true
@@ -18,7 +18,7 @@ pre-commit:
         - "*.astro"
         - "*.{json,jsonc,json5}"
         - "*.{yaml,yml,toml}"
-        # - "*.{md,mdx}"
+        - "*.{md,mdx}"
         - "*.{css,scss,less}"
         - "*.{html,gql,graphql,hbs}"
       stage_fixed: true

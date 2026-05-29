@@ -192,11 +192,11 @@ Load skill onequery-cli.
 
 Libraries that make OneQuery more reliable:
 
-- [better-result](https://github.com/dmmulroy/better-result): Forces every failure to be handled explicitly, so errors never silently slip through.
-- [antiox](https://github.com/rivet-dev/antiox): Keeps concurrent queries, timeouts, and cancellations predictable, with no leaked tasks or hanging connections.
+- [better-result](https://github.com/dmmulroy/better-result) by [Dillon Mulroy](https://x.com/dillon_mulroy): Forces every failure to be handled explicitly, so errors never silently slip through.
+- [antiox](https://github.com/rivet-dev/antiox) by [Rivet](https://rivet.dev/): Keeps concurrent queries, timeouts, and cancellations predictable, with no leaked tasks or hanging connections.
 - [XState](https://github.com/statelyai/xstate): Models complex dashboard workflows as explicit state machines, keeping UI transitions testable and predictable.
 - [proptest](https://github.com/proptest-rs/proptest): Exercises Rust runtime state machines and path invariants with generated cases instead of hand-picked examples.
-- [connect-rust](https://github.com/anthropics/connect-rust): Provides Tower-based Rust Connect RPC support across Connect, gRPC, and gRPC-Web.
+- [connect-rust](https://github.com/anthropics/connect-rust) by [Anthropic](https://www.anthropic.com/): Provides Tower-based Rust Connect RPC support across Connect, gRPC, and gRPC-Web.
 - [polyglot](https://github.com/tobilg/polyglot): Parses, transpiles, and formats SQL across 32+ dialects, keeping cross-database query handling consistent.
 
 ---

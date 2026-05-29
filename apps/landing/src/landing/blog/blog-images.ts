@@ -14,17 +14,9 @@ const MIN_SHARE_IMAGE_WIDTH = 1200;
 const MIN_SHARE_IMAGE_RATIO = 1.45;
 const MAX_SHARE_IMAGE_RATIO = 2.2;
 
-function getBlogPostImageSources(
-  post: Pick<BlogPost, "coverImage" | "sections">
-) {
-  const sectionSources = post.sections.flatMap((section) => [
-    section.image?.src,
-    ...section.inlineImages.map((image) => image.src),
-    ...section.images.map((image) => image.src),
-  ]);
-
-  return [...sectionSources, post.coverImage.src].filter(
-    (image): image is ImageMetadata => Boolean(image)
+function getBlogPostImageSources(post: Pick<BlogPost, "coverImage">) {
+  return [post.coverImage.src].filter((image): image is ImageMetadata =>
+    Boolean(image)
   );
 }
 
@@ -38,9 +30,7 @@ function isPreferredShareImage(image: ImageMetadata) {
   );
 }
 
-export function getPreferredBlogShareImage(
-  post: Pick<BlogPost, "coverImage" | "sections">
-) {
+export function getPreferredBlogShareImage(post: Pick<BlogPost, "coverImage">) {
   return getBlogPostImageSources(post).find(isPreferredShareImage);
 }
 
@@ -68,7 +58,7 @@ export async function getBlogShareImageMetadata(
 }
 
 export function getBlogPostShareImageMetadata(
-  post: Pick<BlogPost, "coverImage" | "sections">,
+  post: Pick<BlogPost, "coverImage">,
   site?: string | URL | null
 ) {
   return getBlogShareImageMetadata(getPreferredBlogShareImage(post), site);

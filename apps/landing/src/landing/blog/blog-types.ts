@@ -1,3 +1,4 @@
+import type { MarkdownHeading } from "astro";
 import type { z } from "astro/zod";
 
 import type { createBlogPostContentSchema } from "./blog-content-schema";
@@ -5,10 +6,11 @@ import type { createBlogPostContentSchema } from "./blog-content-schema";
 export type BlogPostContent = z.infer<
   ReturnType<typeof createBlogPostContentSchema>
 >;
-export type BlogPostSection = BlogPostContent["sections"][number];
 
 export type BlogPost = BlogPostContent & {
+  body: string;
   date: string;
+  headings: readonly MarkdownHeading[];
   slug: string;
 };
 

@@ -76,6 +76,7 @@ describe("createBlogPostStructuredData", () => {
       width: 1200,
     } as ImageMetadata;
     const post: BlogPost = {
+      body: "## Evidence loop\n\nEvidence paragraph",
       category: "Engineering",
       coverImage: {
         alt: "Debugging production on Cloudflare with Codex cover image.",
@@ -84,17 +85,15 @@ describe("createBlogPostStructuredData", () => {
       date: "May 6, 2026",
       description:
         "How Codex can use OneQuery-connected Cloudflare logs to inspect production failures, separate evidence from guesses, and make targeted code changes.",
-      publishedAt: "2026-05-06",
-      readTime: "7 min read",
-      sections: [
+      headings: [
         {
-          id: "evidence-loop",
-          images: [],
-          inlineImages: [],
-          paragraphs: ["Evidence paragraph"],
-          title: "Evidence loop",
+          depth: 2,
+          slug: "evidence-loop",
+          text: "Evidence loop",
         },
       ],
+      publishedAt: "2026-05-06",
+      readTime: "7 min read",
       slug: "debug-production-agent-runs-with-onequery",
       title: "Debugging production on Cloudflare with Codex.",
     };

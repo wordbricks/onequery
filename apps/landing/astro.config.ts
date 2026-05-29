@@ -1,8 +1,11 @@
 import { fileURLToPath } from "node:url";
 
 import cloudflare from "@astrojs/cloudflare";
+import mdx from "@astrojs/mdx";
 import partytown from "@astrojs/partytown";
 import react from "@astrojs/react";
+import sitemap from "@astrojs/sitemap";
+import { agentMarkdown } from "@onequery/astro-agent-markdown/astro";
 import { defineConfig, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
@@ -78,6 +81,16 @@ export default defineConfig({
       },
     }),
     react(),
+    mdx(),
+    sitemap(),
+    agentMarkdown({
+      content: [
+        {
+          collection: "blog",
+          routePrefix: "/blog",
+        },
+      ],
+    }),
   ],
   server: {
     host: DEV_SERVER_HOST,

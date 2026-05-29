@@ -1,11 +1,13 @@
 ---
+import type { CollectionEntry } from "astro:content";
+import { render } from "astro:content";
 import BlogPostView from "../../components/blog/BlogPost.astro";
 import BlogLayout from "../../layouts/BlogLayout.astro";
 import {
-  getBlogPosts,
+  getBlogPostEntries,
   getBlogPostSummaries,
+  toBlogPost,
 } from "../../landing/blog/blog-collection";
-import type { BlogPost as BlogPostData } from "../../landing/blog/blog-types";
 import { getBlogPostShareImageMetadata } from "../../landing/blog/blog-images";
 import { getBlogPostShareMetadata } from "../../landing/blog/blog-share-metadata";
 import {
@@ -14,17 +16,19 @@ import {
 } from "../../landing/seo/structured-data";
 
 interface Props {
-  post: BlogPostData;
+  entry: CollectionEntry<"blog">;
 }
 
 export async function getStaticPaths() {
-  return (await getBlogPosts()).map((post) => ({
-    params: { postSlug: post.slug },
-    props: { post },
+  return (await getBlogPostEntries()).map((entry) => ({
+    params: { postSlug: entry.id },
+    props: { entry },
   }));
 }
 
-const { post } = Astro.props;
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const post = toBlogPost(entry, headings);
 const postSummaries = await getBlogPostSummaries();
 const imageMetadata = await getBlogPostShareImageMetadata(post, Astro.site);
 const metadata = getBlogPostShareMetadata(post, Astro.site, imageMetadata);
@@ -67,5 +71,10 @@ const articleMetaTags = [
   title={metadata.title}
   twitterTitle={metadata.twitterTitle}
 >
-  <BlogPostView post={post} postSummaries={postSummaries} />
+  <BlogPostView
+    Content={Content}
+    headings={headings}
+    post={post}
+    postSummaries={postSummaries}
+  />
 </BlogLayout>

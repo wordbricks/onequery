@@ -48,6 +48,6 @@ export * from "./pending-workflow-effects";
 export * from "./query-actions";
 export * from "./relations";
 export * from "./source-api-actions";
-export { isValidUlid, ulid, ulidSchema } from "./ulid";
+export { ulid, ulidSchema } from "./ulid";
 export * from "./user-profiles";
 export * from "./workflow-journal";

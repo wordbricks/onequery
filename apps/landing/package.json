@@ -19,9 +19,12 @@
   },
   "dependencies": {
     "@astrojs/cloudflare": "catalog:",
+    "@astrojs/mdx": "catalog:",
     "@astrojs/partytown": "catalog:",
     "@astrojs/react": "catalog:",
+    "@astrojs/sitemap": "catalog:",
     "@nanostores/react": "catalog:",
+    "@onequery/astro-agent-markdown": "workspace:*",
     "@onequery/db": "workspace:*",
     "@onequery/ui": "workspace:*",
     "astro": "catalog:",
@@ -40,7 +43,6 @@
     "@types/react-dom": "catalog:",
     "rollup-plugin-visualizer": "catalog:tooling",
     "typescript": "catalog:tooling",
-    "vite": "7.3.3",
     "vitest": "catalog:testing",
     "wrangler": "catalog:tooling"
   }
