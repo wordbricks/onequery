@@ -1,0 +1,26 @@
+---
+title: Terminology
+description: Definitions for common OneQuery documentation terms.
+sidebar:
+  order: 4
+---
+
+## Terms
+
+| Term                 | Means                                                                   | Example                                     |
+| -------------------- | ----------------------------------------------------------------------- | ------------------------------------------- |
+| Agent                | A tool that can invoke OneQuery commands for approved context.          | Coding agent, CI assistant                  |
+| Audit history        | Records of who asked, which source was used, what ran, and when.        | Query and Source API records                |
+| Gateway              | The OneQuery server runtime for local or self-hosted deployments.       | `onequery gateway start`                    |
+| Provider ID          | The integration type passed to source setup.                            | `postgres`, `github`, `sentry`              |
+| Local name           | The name you choose for one connection.                                 | `warehouse`, `github_main`, `sentry_prod`   |
+| Source               | A named connection to a provider.                                       | PostgreSQL warehouse                        |
+| `sourceKey`          | The JSON field for the local name during source setup.                  | `"sourceKey": "warehouse"`                  |
+| Source identifier    | The address used by the CLI and agents.                                 | `postgres://warehouse`                      |
+| Query-capable source | A source that supports SQL-oriented query execution.                    | PostgreSQL, Snowflake, BigQuery             |
+| Source API source    | A source where the useful operation is a provider API request.          | GitHub pull requests, Sentry issues         |
+| Read-only            | Access intended for inspection, not mutation.                           | `select 1`, limited API tokens              |
+| Profile              | A named CLI state selection for separate environments or organizations. | `onequery --profile work auth login`        |
+| OneQuery home        | The local directory where CLI state and gateway runtime state live.     | `~/.onequery/`, or a custom `ONEQUERY_HOME` |
+| Shared server        | A OneQuery server operated for a team or organization.                  | `https://onequery.example.com`              |
+| Local gateway        | A OneQuery gateway process you run yourself.                            | `onequery gateway start`                    |

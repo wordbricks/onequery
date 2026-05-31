@@ -1,0 +1,52 @@
+---
+title: Security Architecture
+description: Understand where credentials live, how source requests flow, and what OneQuery records during governed agent access.
+sidebar:
+  order: 2
+---
+
+OneQuery separates the caller from the underlying provider credential. The caller invokes a command against a named source; OneQuery resolves the source, uses the stored credential, executes the bounded operation, and returns the result.
+
+## Request Flow
+
+```text
+agent or developer
+  -> onequery CLI
+  -> OneQuery gateway or server
+  -> named source configuration
+  -> provider credential
+  -> database, warehouse, or provider API
+  -> bounded result
+  -> audit record
+```
+
+## Credential Boundary
+
+The provider credential belongs to the OneQuery source configuration. It should not be copied into:
+
+- Agent prompts.
+- Local task descriptions.
+- CI logs.
+- Issue comments.
+- `AGENTS.md` or tool setup files.
+- Shell environment variables available to the agent.
+
+## Gateway Placement
+
+For self-hosted deployments, the gateway is the control point between local tools and connected sources. Run it where it can reach the sources it needs while still giving operators access to logs, runtime state, and configuration.
+
+Common placements:
+
+| Placement                  | Use it for                                                                   |
+| -------------------------- | ---------------------------------------------------------------------------- |
+| Local developer gateway    | Evaluation, development, and private source testing.                         |
+| Shared team gateway        | Team-wide CLI and agent workflows.                                           |
+| Production-managed gateway | Repeatable production source access with operator-owned runtime and storage. |
+
+## What Leaves the Source
+
+The result payload returns to the caller. Keep result shape small and task-specific. For SQL, select explicit columns and limits. For Source API, use pagination limits and `--jq` filtering where possible.
+
+## What Gets Reviewed
+
+Operators should be able to review source activity by actor, source, operation, outcome, and time. See [Audit review](/docs/operations/audit-review/) for a lightweight review workflow.

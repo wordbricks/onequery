@@ -27,7 +27,6 @@ One interface for your whole data stack, with built-in safeguards and a simpler 
 | **Auth / Org / RBAC** | Organization-level access control | SSO, SAML |
 | **Connection vault** | Centralized credential management | ✓ |
 | **Connectors** | 15+ sources | ✓ |
-| **NL → SQL** | — | ✓ |
 | **Insights** | — | ✓ |
 | **SLA / Compliance** | — | ✓ |
 
@@ -64,20 +63,20 @@ Add a source and run a query:
 
 ```bash
 onequery source connect --source postgres \
-  --input '{"name":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery","password":"secret"}}'
-onequery query execute --source postgres://warehouse --sql "select 1"
+  --input '{"sourceKey":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery_readonly","password":"<read-only-password>"}}'
+onequery query exec --source postgres://warehouse --sql "select 1"
 ```
 
-Connected sources are referenced as `<provider>://<source-key>`, for example
+Connected sources are referenced as `<provider>://<local-name>`, for example
 `postgres://warehouse`.
 
 ### Option B: Connect to an existing server
 
 ```bash
-onequery config set server https://onequery.example.com
+onequery config set api.server_url https://onequery.example.com
 onequery auth login
 onequery source list
-onequery query execute --source <provider>://<source-key> --sql "select 1"
+onequery query exec --source <provider>://<local-name> --sql "select 1"
 ```
 
 ---

@@ -5,7 +5,7 @@ const API_CATALOG_CONTENT_TYPE =
   'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"';
 const ONEQUERY_REPOSITORY_URL = "https://github.com/wordbricks/onequery";
 const ONEQUERY_README_URL = `${ONEQUERY_REPOSITORY_URL}/blob/main/README.md`;
-const ONEQUERY_DOCS_URL = `${ONEQUERY_README_URL}#documentation`;
+const ONEQUERY_DOCS_URL = "https://onequery.dev/docs/";
 const ONEQUERY_PROTO_README_URL = `${ONEQUERY_REPOSITORY_URL}/blob/main/proto/README.md`;
 const ONEQUERY_CLI_PROTO_URL =
   "https://raw.githubusercontent.com/wordbricks/onequery/main/proto/onequery/cli/v1/cli.proto";

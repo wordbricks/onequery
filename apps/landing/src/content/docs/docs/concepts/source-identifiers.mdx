@@ -1,0 +1,37 @@
+---
+title: Source Identifiers
+description: Learn how OneQuery addresses connected data sources.
+sidebar:
+  order: 3
+---
+
+Connected sources are addressed as:
+
+```text
+<provider-id>://<local-name>
+```
+
+The provider ID is the integration type. The local name is the `sourceKey` value you choose during setup.
+
+## Examples
+
+| Identifier                                              | Meaning                                                           |
+| ------------------------------------------------------- | ----------------------------------------------------------------- |
+| `postgres://warehouse`                                  | PostgreSQL connection `warehouse`.                                |
+| `snowflake://analytics_prod`                            | Snowflake connection `analytics_prod`.                            |
+| `github://github_main`                                  | GitHub connection `github_main`.                                  |
+| `sentry://sentry_prod`                                  | Sentry connection `sentry_prod`.                                  |
+| `cloudflare_workers_observability://cloudflare_workers` | Cloudflare Workers Observability connection `cloudflare_workers`. |
+
+## Naming
+
+Choose stable names. Use environment-specific names like `warehouse_prod` or `sentry_checkout_prod` when ambiguity would be risky.
+
+## Usage
+
+```sh
+onequery query exec --source postgres://warehouse --sql "select 1"
+onequery api --source github://github_main /repos/acme/web/pulls --json
+```
+
+Some providers support SQL queries; others expose provider API calls. See [integrations](/docs/integrations/) for provider families.

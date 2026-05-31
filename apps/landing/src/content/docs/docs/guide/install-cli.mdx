@@ -1,0 +1,76 @@
+---
+title: Install the CLI
+description: Install the OneQuery CLI using npm, Homebrew, Bun, the install script, or direct package execution.
+sidebar:
+  order: 2
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+
+The CLI is the main local surface for setup and source access.
+
+## Install Options
+
+<Tabs syncKey="install-method">
+<TabItem label="npm">
+
+```sh
+npm install -g @onequery/cli
+```
+
+</TabItem>
+<TabItem label="Homebrew">
+
+```sh
+brew install wordbricks/tap/onequery
+```
+
+</TabItem>
+<TabItem label="Bun">
+
+```sh
+bun add -g @onequery/cli
+```
+
+</TabItem>
+<TabItem label="Script">
+
+```sh
+curl -fsSL https://onequery.dev/install.sh | sh
+```
+
+</TabItem>
+</Tabs>
+
+## Run Without Installing Globally
+
+```sh
+npx @onequery/cli --help
+```
+
+## Verify
+
+```sh
+onequery --version
+onequery --help
+```
+
+## Auth
+
+```sh
+onequery auth login
+onequery auth whoami
+```
+
+## CLI State
+
+The CLI stores the default auth session and config under `~/.onequery/`. Set `ONEQUERY_HOME` when you need an isolated state directory for a test environment or agent runtime.
+
+Named profiles keep separate state:
+
+```sh
+onequery --profile work auth login
+ONEQUERY_PROFILE=work onequery auth whoami
+```
+
+Use profiles for separate production, staging, or customer environments.

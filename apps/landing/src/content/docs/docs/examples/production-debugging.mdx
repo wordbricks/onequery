@@ -1,0 +1,57 @@
+---
+title: Production Debugging
+description: Use OneQuery to give an agent production evidence without handing it production credentials.
+sidebar:
+  order: 2
+---
+
+This example gives an agent access to approved observability and repository sources during a production investigation.
+
+## Allowed Sources
+
+```text
+sentry://sentry_prod
+cloudflare_workers_observability://cloudflare_workers
+github://github_main
+```
+
+## Prompt
+
+```text
+Investigate the failing scheduled job. Use OneQuery for production evidence.
+Allowed sources are sentry://sentry_prod, cloudflare_workers_observability://cloudflare_workers, and github://github_main.
+Use narrow time windows. Summarize evidence before editing code.
+```
+
+## Start With Open Errors
+
+```sh
+onequery api \
+  --source sentry://sentry_prod \
+  /organizations/acme/issues/ \
+  -f 'params[query]=is:unresolved' \
+  --json
+```
+
+## Inspect Recent Commits
+
+```sh
+onequery api \
+  --source github://github_main \
+  /repos/acme/web/commits?sha=main \
+  --json
+```
+
+## Evidence Summary
+
+Ask the agent to produce a summary like:
+
+```text
+Evidence:
+- sentry://sentry_prod shows issue WEB-123 started after 2026-05-30 09:10 UTC.
+- github://github_main shows commit abc123 changed the retry window in the scheduled job.
+- cloudflare_workers_observability://cloudflare_workers shows failures only on scheduled runs, not manual runs.
+Next step: inspect scheduler retry policy in src/jobs.
+```
+
+The summary should name the sources so a reviewer can match the claim to audit history.

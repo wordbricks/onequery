@@ -5,6 +5,7 @@ import mdx from "@astrojs/mdx";
 import partytown from "@astrojs/partytown";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
+import starlight from "@astrojs/starlight";
 import { agentMarkdown } from "@onequery/astro-agent-markdown/astro";
 import { defineConfig, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
@@ -12,6 +13,7 @@ import { visualizer } from "rollup-plugin-visualizer";
 import {
   DEFAULT_DEV_PORT,
   DEV_SERVER_HOST,
+  REPOSITORY_URL,
 } from "./src/landing/config/landing-config";
 
 const BUNDLE_REPORT_TEMPLATES = ["markdown", "list", "raw-data"] as const;
@@ -81,6 +83,66 @@ export default defineConfig({
       },
     }),
     react(),
+    starlight({
+      description:
+        "Documentation for setting up and operating OneQuery's governed agent access layer.",
+      // Keep the existing marketing 404 route; Starlight otherwise injects one too.
+      disable404Route: true,
+      editLink: {
+        baseUrl: `${REPOSITORY_URL}/edit/main/apps/landing/`,
+      },
+      favicon: "/onequery-icon.png",
+      logo: {
+        alt: "OneQuery",
+        src: "/src/assets/onequery-icon.png",
+      },
+      sidebar: [
+        {
+          items: ["docs", "docs/getting-started"],
+          label: "Start Here",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/concepts" } }],
+          label: "Concepts",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/guide" } }],
+          label: "Guide",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/integrations" } }],
+          label: "Integrations",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/examples" } }],
+          label: "Examples",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/operations" } }],
+          label: "Operations",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/security" } }],
+          label: "Security",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/reference" } }],
+          label: "Reference",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/support" } }],
+          label: "Support",
+        },
+      ],
+      social: [
+        {
+          href: REPOSITORY_URL,
+          icon: "github",
+          label: "GitHub",
+        },
+      ],
+      title: "OneQuery Docs",
+    }),
     mdx(),
     sitemap(),
     agentMarkdown({

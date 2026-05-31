@@ -1,0 +1,40 @@
+---
+title: Concepts
+description: Core OneQuery concepts for governed access, source identity, query boundaries, and audit history.
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+OneQuery keeps production credentials behind a governed interface. Callers use source identifiers; OneQuery handles credentials, limits, execution, and audit history.
+
+The mental model is:
+
+```text
+caller -> source identifier -> OneQuery gateway -> provider -> bounded result
+```
+
+<CardGrid>
+  <LinkCard
+    title="Governed access"
+    href="/docs/concepts/governed-access/"
+    description="How OneQuery separates agents from credentials and production authority."
+  />
+  <LinkCard
+    title="Source identifiers"
+    href="/docs/concepts/source-identifiers/"
+    description="How connected sources become addresses like postgres://warehouse."
+  />
+  <LinkCard
+    title="Query boundaries"
+    href="/docs/concepts/query-boundaries/"
+    description="What OneQuery validates and limits before a query reaches a source."
+  />
+  <LinkCard
+    title="Audit history"
+    href="/docs/concepts/audit-history/"
+    description="What operators should expect to review after a query or API request runs."
+  />
+</CardGrid>

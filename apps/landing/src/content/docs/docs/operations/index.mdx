@@ -1,0 +1,39 @@
+---
+title: Operations
+description: Operate OneQuery with self-hosting, credential management, audit review, troubleshooting, and production readiness checks.
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+Use these pages when OneQuery becomes part of a production workflow.
+
+<CardGrid>
+  <LinkCard
+    title="Self-host OneQuery"
+    href="/docs/operations/self-host/"
+    description="Run the gateway, connect the CLI, and understand lifecycle commands."
+  />
+  <LinkCard
+    title="Credential management"
+    href="/docs/operations/credential-management/"
+    description="Keep source credentials centralized, scoped, rotated, and out of agent runtimes."
+  />
+  <LinkCard
+    title="Audit review"
+    href="/docs/operations/audit-review/"
+    description="Review source activity after human and agent runs."
+  />
+  <LinkCard
+    title="Security checklist"
+    href="/docs/operations/security-checklist/"
+    description="Use a production checklist before exposing sources to agents."
+  />
+  <LinkCard
+    title="Troubleshooting"
+    href="/docs/operations/troubleshooting/"
+    description="Debug gateway, auth, source, query, and provider failures."
+  />
+</CardGrid>

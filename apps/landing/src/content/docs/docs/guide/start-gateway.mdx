@@ -1,0 +1,49 @@
+---
+title: Choose Server Path
+description: Configure the CLI for a shared OneQuery server or run a local self-hosted gateway.
+sidebar:
+  order: 3
+---
+
+OneQuery commands need a server path. Use a shared or hosted server URL when your team provides one. Start a local gateway only when you operate OneQuery yourself.
+
+## Shared or Hosted Server
+
+```sh
+onequery config set api.server_url https://onequery.example.com
+onequery config get api.server_url
+onequery auth login
+```
+
+Use this when your team has a shared OneQuery deployment and you do not need a local gateway.
+
+## Start in the Background
+
+```sh
+onequery gateway start
+```
+
+Use this when the shell should return after startup.
+
+## Run in the Foreground
+
+```sh
+onequery gateway
+```
+
+Use this when a process manager owns the lifecycle or you want logs in the terminal.
+
+## Inspect Status
+
+```sh
+onequery gateway status
+onequery gateway logs
+```
+
+## Stop
+
+```sh
+onequery gateway stop
+```
+
+For deeper operations detail, see [Self-host OneQuery](/docs/operations/self-host/).

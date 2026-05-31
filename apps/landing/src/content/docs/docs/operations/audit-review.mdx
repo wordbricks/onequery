@@ -1,0 +1,41 @@
+---
+title: Audit Review
+description: Review OneQuery activity after source setup, agent runs, and production investigations.
+sidebar:
+  order: 4
+---
+
+Audit review turns OneQuery from a convenience tool into an operational control.
+
+## Review After These Events
+
+- A new production source is connected.
+- A provider credential changes.
+- An agent runs against a production source for the first time.
+- A query is blocked or fails repeatedly.
+- A production change cites evidence from OneQuery.
+
+## What to Check
+
+| Question                           | Why it matters                                               |
+| ---------------------------------- | ------------------------------------------------------------ |
+| Which actor initiated the request? | Separates human, agent, and automation activity.             |
+| Which source was used?             | Confirms the request stayed inside the approved boundary.    |
+| What operation ran?                | Shows whether the request was narrow and task-relevant.      |
+| What was the outcome?              | Distinguishes success, provider failure, and policy failure. |
+| When did it happen?                | Links source activity to incidents, deployments, or PRs.     |
+
+## Agent Review Template
+
+```text
+Agent run:
+- Task:
+- Allowed sources:
+- Sources actually used:
+- Queries or endpoints:
+- Blocked requests:
+- Production change created:
+- Reviewer:
+```
+
+Keep review notes short enough that operators will actually write them.

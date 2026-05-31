@@ -1,0 +1,48 @@
+---
+title: Agent Tool Setup
+description: Copy bounded OneQuery instructions into coding agent and automation environments.
+sidebar:
+  order: 8
+---
+
+Use this page when adding OneQuery instructions to a coding agent, CI assistant, or local automation tool.
+
+| Source type         | Allowed shape                                                                   |
+| ------------------- | ------------------------------------------------------------------------------- |
+| SQL source          | `onequery query exec --source <provider>://<sourceKey> --sql "<read-only SQL>"` |
+| Provider API source | `onequery api --source <provider>://<sourceKey> <provider-path> --json`         |
+
+## Minimal Agent Instruction
+
+```text
+Use OneQuery for production context. Do not ask for or use raw provider credentials.
+Allowed sources:
+- postgres://warehouse_prod
+- sentry://sentry_prod
+- github://github_main
+Use read-only queries, exact source identifiers, explicit time windows, and small result limits.
+Summarize source-backed evidence before editing code or recommending a production change.
+```
+
+## AGENTS.md
+
+```md
+## Production Evidence
+
+Use OneQuery for production evidence.
+
+- Do not request raw database credentials, SaaS tokens, or cloud keys.
+- Use only the source identifiers listed in the task.
+- Use `onequery query exec --source <provider>://<sourceKey> --sql "<read-only SQL>"` for SQL sources.
+- Use `onequery api --source <provider>://<sourceKey> <provider-path> --json` for provider API sources.
+- Keep queries read-only and bounded.
+- Summarize evidence with the source identifier before changing code.
+```
+
+## Smoke Test
+
+```sh
+onequery auth whoami
+onequery source list
+onequery query exec --source postgres://warehouse_prod --sql "select 1"
+```

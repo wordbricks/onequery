@@ -1,0 +1,123 @@
+---
+title: Getting Started
+description: Install OneQuery, connect one source, and run the first governed query.
+sidebar:
+  order: 2
+---
+
+import { Steps, Tabs, TabItem } from "@astrojs/starlight/components";
+
+This guide gets one source working from the CLI. OneQuery keeps credentials server-side; callers use source identifiers like `postgres://warehouse`.
+
+## Prerequisites
+
+Choose one install method. You only need the requirement for that method.
+
+| Install method | Requirement                                          |
+| -------------- | ---------------------------------------------------- |
+| npm or npx     | Node.js 22+                                          |
+| Bun or bunx    | Bun; Node.js 22+ if you run a local gateway          |
+| Homebrew       | Homebrew                                             |
+| Install script | `curl` and `tar`; the script manages Node.js runtime |
+
+For source setup, have a OneQuery server URL or local gateway, plus a read-only credential or limited provider token.
+
+## Install the CLI
+
+<Tabs syncKey="install-method">
+<TabItem label="npm">
+
+```sh
+npm install -g @onequery/cli
+```
+
+</TabItem>
+<TabItem label="Homebrew">
+
+```sh
+brew install wordbricks/tap/onequery
+```
+
+</TabItem>
+<TabItem label="Bun">
+
+```sh
+bun add -g @onequery/cli
+```
+
+</TabItem>
+<TabItem label="Script">
+
+```sh
+curl -fsSL https://onequery.dev/install.sh | sh
+```
+
+</TabItem>
+</Tabs>
+
+You can also run the CLI without a global install:
+
+```sh
+npx @onequery/cli --help
+```
+
+## Choose a Server
+
+Use a shared server URL if your team provides one:
+
+```sh
+onequery config set api.server_url https://onequery.example.com
+```
+
+Start a gateway only when you run OneQuery yourself:
+
+```sh
+onequery gateway start
+```
+
+## First Run
+
+<Steps>
+
+1. Verify and log in.
+
+   ```sh
+   onequery --version
+   onequery auth login
+   onequery auth whoami
+   ```
+
+2. Connect a source.
+
+   Replace the placeholders with read-only PostgreSQL credentials.
+
+   ```sh
+   onequery source connect --source postgres \
+     --input '{"sourceKey":"warehouse","credentials":{"host":"db.example.com","port":5432,"database":"app","username":"onequery_readonly","password":"<read-only-password>","sslMode":"require"}}'
+   ```
+
+3. Run a smoke query.
+
+   ```sh
+   onequery query exec --source postgres://warehouse --sql "select 1"
+   ```
+
+4. Confirm the source.
+
+   ```sh
+   onequery source list
+   ```
+
+</Steps>
+
+You are done when:
+
+- `onequery auth whoami` shows the expected user and organization.
+- `onequery source list` shows the source you connected.
+- The smoke query returns one row.
+
+## What to Read Next
+
+- [Source identifiers](/docs/concepts/source-identifiers/) explains `postgres://warehouse` and other source URI shapes.
+- [Run a query](/docs/guide/run-query/) covers read-only query execution.
+- [Agent workflows](/docs/guide/agent-workflows/) shows how to expose OneQuery to coding agents and automation.

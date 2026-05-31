@@ -1,0 +1,52 @@
+---
+title: Marketing and Productivity
+description: Connect marketing APIs and productivity tools to OneQuery through governed Source API access.
+sidebar:
+  order: 7
+---
+
+Marketing and productivity systems often contain sensitive operational context. Connect them with service accounts or narrow provider tokens, then expose only the source identifiers agents need.
+
+## Productivity Sources
+
+| Provider | Provider ID | Use it for                         |
+| -------- | ----------- | ---------------------------------- |
+| Airtable | `airtable`  | Base records and metadata.         |
+| Cal.com  | `cal`       | Booking and scheduling API access. |
+| Granola  | `granola`   | Meeting notes and note metadata.   |
+
+## Marketing Sources
+
+| Provider              | Provider ID             | Use it for                               |
+| --------------------- | ----------------------- | ---------------------------------------- |
+| Google Search Console | `google_search_console` | Search analytics and site data.          |
+| Amazon Ads            | `amazon_ads`            | Advertising account data.                |
+| LinkedIn Ads          | `linkedin_ads`          | Campaign and ad account data.            |
+| TikTok Marketing      | `tiktok_marketing`      | Advertiser and campaign data.            |
+| SendGrid              | `sendgrid`              | Email, account, and marketing endpoints. |
+
+## Airtable Example
+
+```sh
+onequery source connect --source airtable \
+  --input '{"sourceKey":"airtable_ops","credentials":{"personalAccessToken":"pat...","baseId":"appXXXXXXXXXXXXXX"}}'
+```
+
+## Search Console Example
+
+```json
+{
+  "sourceKey": "gsc_site",
+  "credentials": {
+    "accessToken": "ya29...",
+    "siteUrl": "https://www.example.com/"
+  }
+}
+```
+
+## Access Rules
+
+- Prefer provider tokens dedicated to OneQuery.
+- Limit scopes to read-only data when the provider supports it.
+- Use separate OneQuery sources for customer, internal, and production data.
+- Redact provider tokens from issue comments, prompts, and docs examples.

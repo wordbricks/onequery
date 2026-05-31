@@ -1,0 +1,60 @@
+---
+title: Release Review
+description: Use OneQuery to connect release metadata, repository changes, and production signals.
+sidebar:
+  order: 4
+---
+
+Release review is a good fit for Source API integrations. The agent can compare repository activity, deployment metadata, and observability signals without receiving provider tokens.
+
+## Allowed Sources
+
+```text
+github://github_main
+vercel://vercel_main
+sentry://sentry_prod
+```
+
+## Pull Requests
+
+```sh
+onequery api \
+  --source github://github_main \
+  /repos/acme/web/pulls?state=closed \
+  --paginate \
+  --max-pages 1 \
+  --jq '.[] | {number,title,merged_at,user}' \
+  --json
+```
+
+## Deployments
+
+```sh
+onequery api \
+  --source vercel://vercel_main \
+  /v6/deployments \
+  --json
+```
+
+## Open Production Issues
+
+```sh
+onequery api \
+  --source sentry://sentry_prod \
+  /organizations/acme/issues/ \
+  -f 'params[query]=is:unresolved' \
+  --json
+```
+
+## Review Output
+
+Ask the agent to separate facts from recommendations:
+
+```text
+Facts:
+- github://github_main: PR #418 merged at 16:42 UTC and touched checkout retry behavior.
+- vercel://vercel_main: deployment dpl_123 promoted at 16:49 UTC.
+- sentry://sentry_prod: checkout errors increased after 16:53 UTC.
+Recommendation:
+- Inspect retry behavior and payment provider response handling before rolling back.
+```

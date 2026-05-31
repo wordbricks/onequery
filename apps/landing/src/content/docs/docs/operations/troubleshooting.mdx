@@ -1,0 +1,69 @@
+---
+title: Troubleshooting
+description: Debug common OneQuery installation, gateway, auth, source, query, and provider issues.
+sidebar:
+  order: 6
+---
+
+Start with the failing layer. Most issues are install, gateway, auth, source, query, or provider-scope problems.
+
+## CLI Is Not Found
+
+```sh
+onequery --help
+```
+
+If the command is missing, reinstall with your chosen package manager:
+
+```sh
+npm install -g @onequery/cli
+```
+
+## Gateway Is Not Running
+
+```sh
+onequery gateway status
+onequery gateway logs
+onequery gateway start
+```
+
+If a remote team server should be used instead, confirm the configured server:
+
+```sh
+onequery config set api.server_url https://onequery.example.com
+```
+
+## Auth Fails
+
+Check that you are using the expected profile and server:
+
+```sh
+onequery --profile work auth whoami
+ONEQUERY_PROFILE=work onequery auth whoami
+```
+
+Re-authenticate if the token expired or was revoked.
+
+## Source Is Missing
+
+```sh
+onequery source list
+```
+
+If the source is missing, connect it or switch to the organization/profile where it exists.
+
+## Query Is Blocked
+
+Check whether the SQL is read-only, single-statement, and small enough for the source limits. Add explicit columns, a time window, and a limit.
+
+## Provider Request Fails
+
+Provider API failures usually come from:
+
+- Token scope mismatch.
+- Wrong organization, project, site, repository, or account ID.
+- Expired provider token.
+- Pagination or payload size.
+- Provider endpoint path mismatch.
+
+Run a smaller Source API request and expand only after the source and permission are confirmed.
