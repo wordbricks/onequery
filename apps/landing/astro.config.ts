@@ -62,8 +62,9 @@ export default defineConfig({
     prerenderEnvironment: "workerd",
   }),
   build: {
-    // Keep page CSS out of a separate render-blocking request for first-load LCP.
-    inlineStylesheets: "always",
+    // Let Astro externalize shared Starlight CSS instead of duplicating it in
+    // every docs HTML payload.
+    inlineStylesheets: "auto",
   },
   fonts: [
     {
