@@ -67,6 +67,29 @@ describe("HTML Markdown sidecars", () => {
     expect(count).toBe(2);
   });
 
+  it("exports Markdown sidecars for HTML pages missing from the assets map", async () => {
+    const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), "html-md-"));
+
+    await fs.mkdir(path.join(outputDir, "docs", "guide"), {
+      recursive: true,
+    });
+    await fs.writeFile(
+      path.join(outputDir, "docs", "guide", "index.html"),
+      "<main><h1>Guide</h1><p>Run bounded queries.</p></main>"
+    );
+
+    const count = await exportHtmlMarkdownSidecars({
+      assets: new Map(),
+      dir: pathToFileURL(`${outputDir}/`),
+      logger: createLogger(),
+    });
+
+    await expect(
+      fs.readFile(path.join(outputDir, "docs", "guide", "index.md"), "utf8")
+    ).resolves.toContain("# Guide");
+    expect(count).toBe(1);
+  });
+
   it("does not overwrite content collection Markdown sidecars", async () => {
     const outputDir = await fs.mkdtemp(path.join(os.tmpdir(), "html-md-"));
     const blogDir = path.join(outputDir, "blog/post");
