@@ -33,10 +33,7 @@ describe("createDevMarkdownMiddleware", () => {
     const response = await onRequest(
       createContext(
         new Request(
-          "http://localhost:4546/blog/debug-production-agent-runs-with-onequery/",
-          {
-            headers: { Accept: "text/markdown" },
-          }
+          "http://localhost:4546/blog/debug-production-agent-runs-with-onequery/index.md"
         )
       ),
       next as unknown as MiddlewareNext
@@ -53,7 +50,7 @@ describe("createDevMarkdownMiddleware", () => {
     expect(await markdownResponse.text()).toContain("## Evidence");
   });
 
-  it("converts HTML responses to Markdown during local development", async () => {
+  it("passes HTML responses through without request header negotiation", async () => {
     const onRequest = createDevMarkdownMiddleware();
     const next = vi.fn(
       async () =>
@@ -66,28 +63,24 @@ describe("createDevMarkdownMiddleware", () => {
     );
 
     const response = await onRequest(
-      createContext(
-        new Request("http://localhost:4546/connectors/", {
-          headers: { Accept: "text/markdown" },
-        })
-      ),
+      createContext(new Request("http://localhost:4546/connectors/")),
       next as unknown as MiddlewareNext
     );
 
     expect(response).toBeInstanceOf(Response);
+    expect(next).toHaveBeenCalledWith();
 
-    const markdownResponse = response as Response;
-    expect(markdownResponse.headers.get("Content-Type")).toBe(
-      MARKDOWN_CONTENT_TYPE
+    const htmlResponse = response as Response;
+    expect(htmlResponse.headers.get("Content-Type")).toBe(
+      "text/html; charset=utf-8"
     );
-    expect(markdownResponse.headers.get("X-Markdown-Tokens")).toBe("8");
-    expect(await markdownResponse.text()).toBe(`# OneQuery
-
-Context, not keys.
-`);
+    expect(htmlResponse.headers.get("Vary")).toBe("Accept");
+    expect(await htmlResponse.text()).toBe(
+      "<main><h1>OneQuery</h1><p>Context, not keys.</p></main>"
+    );
   });
 
-  it("renders HTML-derived HEAD requests with GET so token counts are available", async () => {
+  it("keeps HEAD responses as pass-through responses outside content routes", async () => {
     const onRequest = createDevMarkdownMiddleware();
     const next = vi.fn(
       async () =>
@@ -102,21 +95,45 @@ Context, not keys.
     const response = await onRequest(
       createContext(
         new Request("http://localhost:4546/", {
-          headers: { Accept: "text/markdown" },
           method: "HEAD",
         })
       ),
       next as unknown as MiddlewareNext
     );
 
-    expect(next).toHaveBeenCalledWith(expect.any(Request));
+    expect(next).toHaveBeenCalledWith();
     expect(response).toBeInstanceOf(Response);
 
-    const markdownResponse = response as Response;
-    expect(markdownResponse.headers.get("Content-Type")).toBe(
-      MARKDOWN_CONTENT_TYPE
+    const htmlResponse = response as Response;
+    expect(htmlResponse.headers.get("Content-Type")).toBe(
+      "text/html; charset=utf-8"
     );
-    expect(markdownResponse.headers.get("X-Markdown-Tokens")).toBe("8");
-    expect(await markdownResponse.text()).toBe("");
+    expect(htmlResponse.headers.get("Vary")).toBe("Accept");
+    expect(await htmlResponse.text()).toBe(
+      "<main><h1>OneQuery</h1><p>Context, not keys.</p></main>"
+    );
+  });
+
+  it("does not read prerendered request headers for ordinary HTML requests", async () => {
+    const onRequest = createDevMarkdownMiddleware();
+    const next = vi.fn(
+      async () => new Response("<main><h1>OneQuery</h1></main>")
+    );
+    const request = new Request("http://localhost:4546/docs/getting-started/");
+    Object.defineProperty(request, "headers", {
+      get() {
+        throw new Error(
+          "headers should not be read for ordinary HTML requests"
+        );
+      },
+    });
+
+    const response = await onRequest(
+      createContext(request),
+      next as unknown as MiddlewareNext
+    );
+
+    expect(response).toBeInstanceOf(Response);
+    expect(response?.headers.get("Vary")).toBe("Accept");
   });
 });

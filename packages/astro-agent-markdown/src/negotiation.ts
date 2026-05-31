@@ -55,11 +55,13 @@ export function estimateMarkdownTokens(markdown: string) {
 export function createMarkdownResponse(input: {
   headers?: HeadersInit;
   markdown: string;
-  request: Request;
+  method?: string;
+  request?: Pick<Request, "method">;
   status?: number;
   statusText?: string;
 }) {
   const headers = new Headers(input.headers);
+  const method = input.method ?? input.request?.method ?? "GET";
 
   headers.set("Content-Type", MARKDOWN_CONTENT_TYPE);
   headers.set(
@@ -68,7 +70,7 @@ export function createMarkdownResponse(input: {
   );
   addVaryAccept(headers);
 
-  return new Response(input.request.method === "HEAD" ? null : input.markdown, {
+  return new Response(method === "HEAD" ? null : input.markdown, {
     headers,
     status: input.status,
     statusText: input.statusText,

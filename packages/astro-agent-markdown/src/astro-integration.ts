@@ -88,7 +88,7 @@ const respond: APIRoute<Props> = async ({ props, request }) => {
   return createContentEntryMarkdownResponse({
     body: getRetainedBody(props.entry),
     frontmatter: remarkPluginFrontmatter,
-    request,
+    method: request.method,
   });
 };
 

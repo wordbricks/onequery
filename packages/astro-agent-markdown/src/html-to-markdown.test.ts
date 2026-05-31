@@ -54,4 +54,49 @@ Give agents **context**, not keys.
       </main>`)
     ).toBe("[Docs](/docs/)\n");
   });
+
+  it("prefers main content over Starlight navigation chrome", () => {
+    expect(
+      htmlToMarkdown(`<!doctype html>
+        <html>
+          <body>
+            <header><a href="/">OneQuery Docs</a></header>
+            <nav>
+              <a href="/docs/">Overview</a>
+              <a href="/docs/getting-started/">Getting Started</a>
+            </nav>
+            <main>
+              <h1>Getting Started</h1>
+              <div class="sl-heading-wrapper level-h2">
+                <h2 id="install">Install</h2>
+                <a class="sl-anchor-link" href="#install">
+                  <span aria-hidden="true">#</span>
+                  <span class="sr-only">Section titled “Install”</span>
+                </a>
+              </div>
+              <p>Install OneQuery and run one governed query.</p>
+              <figure>
+                <figcaption><span class="sr-only">Terminal window</span></figcaption>
+                <pre><code>onequery --version</code></pre>
+              </figure>
+            </main>
+            <aside>On this page</aside>
+            <footer>Previous Next</footer>
+          </body>
+        </html>`)
+    ).toBe(
+      [
+        "# Getting Started",
+        "",
+        "## Install",
+        "",
+        "Install OneQuery and run one governed query.",
+        "",
+        "```",
+        "onequery --version",
+        "```",
+        "",
+      ].join("\n")
+    );
+  });
 });

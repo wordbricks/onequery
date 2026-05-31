@@ -1,6 +1,26 @@
 ---
 title: OneQuery Docs
 description: Set up OneQuery as a governed access layer for agents and developer workflows.
+head:
+  - tag: title
+    content: OneQuery Documentation | Governed Agent Access
+template: splash
+editUrl: false
+lastUpdated: false
+tableOfContents: false
+hero:
+  title: OneQuery Docs
+  tagline: Connect approved sources once, use source identifiers in tools and agents, and keep raw credentials out of prompts and runtime environments.
+  image:
+    html: '<img src="/onequery-icon.png" alt="OneQuery icon" width="400" height="400" loading="eager" decoding="async" />'
+  actions:
+    - text: Get started
+      icon: right-arrow
+      link: /docs/getting-started/
+    - text: Learn the concept
+      icon: open-book
+      variant: minimal
+      link: /docs/concepts/governed-access/
 sidebar:
   label: Overview
   order: 1
@@ -8,14 +28,12 @@ sidebar:
 
 import { CardGrid, LinkCard } from "@astrojs/starlight/components";
 
-OneQuery gives developers and agents one governed path to approved data sources. Connect a source once, use an identifier like `postgres://warehouse`, and keep raw credentials out of prompts, scripts, and agent environments.
+## Mental Model
 
-## Fast Path
-
-1. [Get started](/docs/getting-started/) with the CLI and choose a shared, hosted, or local server path.
-2. Connect one read-only source.
-3. Run one query or provider API call.
-4. Give agents only the source identifiers they need.
+- OneQuery is an access layer, not a database, warehouse, or agent framework.
+- A server or local gateway holds credentials; prompts and agent runtimes do not.
+- Agents receive source identifiers like `postgres://warehouse`, then OneQuery enforces the request path.
+- Audit history shows which source was used, what was requested, and which workflow made the request.
 
 <CardGrid>
   <LinkCard
@@ -26,7 +44,7 @@ OneQuery gives developers and agents one governed path to approved data sources.
   <LinkCard
     title="Guide"
     href="/docs/guide/"
-    description="Step-by-step tasks for installing, choosing a server path, connecting, querying, and preparing agents."
+    description="Install, choose a server path, connect a source, query it, and prepare an agent workflow."
   />
   <LinkCard
     title="Concepts"
@@ -36,7 +54,7 @@ OneQuery gives developers and agents one governed path to approved data sources.
   <LinkCard
     title="Integrations"
     href="/docs/integrations/"
-    description="Connect databases, warehouses, observability tools, developer systems, and analytics sources."
+    description="Connect databases, warehouses, observability, developer tools, and analytics sources."
   />
   <LinkCard
     title="Examples"
@@ -46,12 +64,12 @@ OneQuery gives developers and agents one governed path to approved data sources.
   <LinkCard
     title="Operations"
     href="/docs/operations/"
-    description="Run the gateway, keep credentials scoped, and review the security checklist before rollout."
+    description="Run the gateway, scope credentials, and review production readiness."
   />
   <LinkCard
     title="Security"
     href="/docs/security/"
-    description="Review the architecture, threat model, data handling, and cost-control guidance for agent access."
+    description="Review architecture, threat model, data handling, and cost controls."
   />
   <LinkCard
     title="Support"
@@ -61,6 +79,6 @@ OneQuery gives developers and agents one governed path to approved data sources.
   <LinkCard
     title="Reference"
     href="/docs/reference/"
-    description="Look up CLI commands, provider IDs, terminology, and common error guidance."
+    description="Look up CLI commands, provider IDs, terminology, and common errors."
   />
 </CardGrid>

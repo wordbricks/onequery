@@ -2,11 +2,7 @@ import type { MiddlewareHandler } from "astro";
 
 import { getContentMarkdownForPath } from "./content";
 import type { ContentMarkdownRoute } from "./content";
-import {
-  acceptsMarkdown,
-  addVaryAccept,
-  createMarkdownResponse,
-} from "./negotiation";
+import { addVaryAccept, createMarkdownResponse } from "./negotiation";
 
 type SerializedRegExp = readonly [source: string, flags: string];
 
@@ -17,6 +13,7 @@ export type DevMarkdownMiddlewareOptions = {
 
 const DEFAULT_EXCLUDES = [/^\/404(?:\/|$)/u, /^\/_astro(?:\/|$)/u];
 const MARKDOWN_METHODS = new Set(["GET", "HEAD"]);
+const MARKDOWN_INDEX_SUFFIX = "/index.md";
 
 function createExcludePatterns(exclude: readonly SerializedRegExp[] = []) {
   return [
@@ -29,8 +26,16 @@ function isExcluded(pathname: string, excludePatterns: readonly RegExp[]) {
   return excludePatterns.some((pattern) => pattern.test(pathname));
 }
 
-function isHtmlResponse(response: Response) {
-  return response.headers.get("Content-Type")?.includes("text/html") ?? false;
+function getExplicitMarkdownPagePath(pathname: string) {
+  if (pathname === "/index.md") {
+    return "/";
+  }
+
+  if (!pathname.endsWith(MARKDOWN_INDEX_SUFFIX)) {
+    return undefined;
+  }
+
+  return pathname.slice(0, -MARKDOWN_INDEX_SUFFIX.length + 1);
 }
 
 function withVaryAccept(response: Response) {
@@ -44,11 +49,6 @@ function withVaryAccept(response: Response) {
   });
 }
 
-async function htmlResponseToMarkdown(response: Response) {
-  const { htmlToMarkdown } = await import("./html-to-markdown");
-  return htmlToMarkdown(await response.text());
-}
-
 export function createDevMarkdownMiddleware(
   options: DevMarkdownMiddlewareOptions = {}
 ): MiddlewareHandler {
@@ -57,43 +57,27 @@ export function createDevMarkdownMiddleware(
 
   return async (context, next) => {
     const { request, url } = context;
+    const pagePath = getExplicitMarkdownPagePath(url.pathname);
     const canNegotiate =
       MARKDOWN_METHODS.has(request.method) &&
-      acceptsMarkdown(request.headers.get("Accept")) &&
-      !isExcluded(url.pathname, excludePatterns);
+      pagePath !== undefined &&
+      !isExcluded(pagePath, excludePatterns);
 
     if (canNegotiate) {
       const contentMarkdown = await getContentMarkdownForPath({
         contentRoutes,
-        pathname: url.pathname,
+        pathname: pagePath,
       });
 
       if (contentMarkdown !== undefined) {
         return createMarkdownResponse({
           markdown: contentMarkdown,
-          request,
+          method: request.method,
         });
       }
     }
 
-    const renderRequest =
-      canNegotiate && request.method === "HEAD"
-        ? new Request(request, { method: "GET" })
-        : undefined;
-    const response = renderRequest ? await next(renderRequest) : await next();
-
-    if (!canNegotiate || !isHtmlResponse(response)) {
-      return withVaryAccept(response);
-    }
-
-    const markdown = await htmlResponseToMarkdown(response);
-
-    return createMarkdownResponse({
-      headers: response.headers,
-      markdown,
-      request,
-      status: response.status,
-      statusText: response.statusText,
-    });
+    const response = await next();
+    return withVaryAccept(response);
   };
 }

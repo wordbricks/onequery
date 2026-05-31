@@ -127,13 +127,15 @@ export async function getContentMarkdownForPath(input: {
 export function createContentEntryMarkdownResponse(input: {
   body: string;
   frontmatter?: Readonly<Record<string, unknown>>;
-  request: Request;
+  method?: string;
+  request?: Pick<Request, "method">;
 }) {
   return createMarkdownResponse({
     markdown: contentEntryToMarkdown({
       body: input.body,
       frontmatter: input.frontmatter,
     }),
+    method: input.method,
     request: input.request,
   });
 }

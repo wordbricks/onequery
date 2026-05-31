@@ -67,6 +67,25 @@ type BlogIndexStructuredDataInput = {
   title: string;
 };
 
+type DocsPageStructuredDataInput = {
+  description: string;
+  pathname?: string;
+  site?: SiteInput;
+  title: string;
+};
+
+const DOCS_SECTION_LINKS = [
+  { name: "Getting Started", pathname: "/docs/getting-started/" },
+  { name: "Concepts", pathname: "/docs/concepts/" },
+  { name: "Guide", pathname: "/docs/guide/" },
+  { name: "Integrations", pathname: "/docs/integrations/" },
+  { name: "Examples", pathname: "/docs/examples/" },
+  { name: "Operations", pathname: "/docs/operations/" },
+  { name: "Security", pathname: "/docs/security/" },
+  { name: "Support", pathname: "/docs/support/" },
+  { name: "Reference", pathname: "/docs/reference/" },
+] as const;
+
 export function normalizeSiteUrl(site: SiteInput = ONEQUERY_SITE_URL) {
   const rawSite = site instanceof URL ? site.toString() : site;
   const siteUrl = rawSite && rawSite.length > 0 ? rawSite : ONEQUERY_SITE_URL;
@@ -347,6 +366,120 @@ export function createLandingPageStructuredData(
           item: `${siteUrl}/`,
         },
       ],
+    },
+  ]);
+}
+
+export function createDocsPageStructuredData(
+  input: DocsPageStructuredDataInput
+): StructuredData {
+  const siteUrl = normalizeSiteUrl(input.site);
+  const docsUrl = createCanonicalUrl("/docs", siteUrl);
+  const pageUrl = createCanonicalUrl(input.pathname ?? "/docs", siteUrl);
+  const isDocsIndex = pageUrl === docsUrl;
+  const pageId = `${pageUrl}#webpage`;
+  const mainEntityId = isDocsIndex
+    ? `${docsUrl}#sections`
+    : `${pageUrl}#article`;
+  const breadcrumbItems = [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: ONEQUERY_SITE_NAME,
+      item: `${siteUrl}/`,
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: "Docs",
+      item: docsUrl,
+    },
+  ];
+
+  if (!isDocsIndex) {
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      position: 3,
+      name: input.title.replace(/\s+\|\s+OneQuery Docs$/u, ""),
+      item: pageUrl,
+    });
+  }
+
+  return createGraph([
+    ...createSiteGraph(siteUrl),
+    createOneQuerySoftwareApplication({
+      description: ONEQUERY_DEFAULT_DESCRIPTION,
+      site: siteUrl,
+    }),
+    {
+      "@type": isDocsIndex ? "CollectionPage" : "WebPage",
+      "@id": pageId,
+      url: pageUrl,
+      name: input.title,
+      description: input.description,
+      inLanguage: "en",
+      isPartOf: {
+        "@id": getWebsiteId(siteUrl),
+      },
+      about: {
+        "@id": getSoftwareApplicationId(siteUrl),
+      },
+      mainEntity: {
+        "@id": mainEntityId,
+      },
+      breadcrumb: {
+        "@id": `${pageUrl}#breadcrumb`,
+      },
+      significantLink: DOCS_SECTION_LINKS.map(({ pathname }) =>
+        createCanonicalUrl(pathname, siteUrl)
+      ),
+    },
+    ...(isDocsIndex
+      ? [
+          {
+            "@type": "ItemList",
+            "@id": mainEntityId,
+            name: "OneQuery documentation sections",
+            numberOfItems: DOCS_SECTION_LINKS.length,
+            itemListElement: DOCS_SECTION_LINKS.map(
+              ({ name, pathname }, index) => ({
+                "@type": "ListItem",
+                position: index + 1,
+                name,
+                item: createCanonicalUrl(pathname, siteUrl),
+              })
+            ),
+          },
+        ]
+      : [
+          {
+            "@type": "TechArticle",
+            "@id": mainEntityId,
+            headline: input.title.replace(/\s+\|\s+OneQuery Docs$/u, ""),
+            description: input.description,
+            url: pageUrl,
+            mainEntityOfPage: {
+              "@id": pageId,
+            },
+            author: {
+              "@id": getOrganizationId(siteUrl),
+              name: "OneQuery Maintainers",
+            },
+            publisher: {
+              "@id": getOrganizationId(siteUrl),
+            },
+            about: [
+              { "@id": getSoftwareApplicationId(siteUrl) },
+              ...CORE_TOPICS.map((name) => ({ "@type": "Thing", name })),
+            ],
+            inLanguage: "en",
+            isAccessibleForFree: true,
+          },
+        ]),
+    {
+      "@type": "BreadcrumbList",
+      "@id": `${pageUrl}#breadcrumb`,
+      itemListElement: breadcrumbItems,
     },
   ]);
 }

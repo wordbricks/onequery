@@ -1,0 +1,35 @@
+---
+import DefaultHead from "@astrojs/starlight/components/Head.astro";
+
+import { createDocsPageStructuredData } from "../../landing/seo/structured-data";
+
+const { entry, head, id, locale } = Astro.locals.starlightRoute;
+const titleTag = head.find((tag) => tag.tag === "title");
+const descriptionTag = head.find(
+  (tag) => tag.tag === "meta" && tag.attrs?.name === "description"
+);
+const routePath = locale ? `/${locale}/${id}/` : `/${id}/`;
+const title =
+  typeof titleTag?.content === "string"
+    ? titleTag.content
+    : `${entry.data.title} | OneQuery Docs`;
+const description =
+  typeof descriptionTag?.attrs?.content === "string"
+    ? descriptionTag.attrs.content
+    : entry.data.description ??
+      "Documentation for setting up and operating OneQuery's governed agent access layer.";
+const structuredData = createDocsPageStructuredData({
+  description,
+  pathname: routePath,
+  title,
+});
+---
+
+<DefaultHead />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<script
+  is:inline
+  type="application/ld+json"
+  set:html={JSON.stringify(structuredData)}
+/>

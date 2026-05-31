@@ -16,13 +16,18 @@ import { unified } from "unified";
 import type { Plugin } from "unified";
 
 const SKIPPED_TAGS = new Set([
+  "aside",
+  "footer",
   "head",
+  "header",
+  "nav",
   "noscript",
   "script",
   "style",
   "svg",
   "template",
 ]);
+const SKIPPED_CLASSES = new Set(["sl-anchor-link", "sr-only"]);
 
 function isElement(node: Nodes): node is Element {
   return node.type === "element";
@@ -34,6 +39,29 @@ function isLiteral(node: Nodes): node is Literals {
 
 function hasChildren(node: Nodes): node is Parents {
   return "children" in node && Array.isArray(node.children);
+}
+
+function getElementClassNames(element: Element) {
+  const className = element.properties?.className;
+
+  if (Array.isArray(className)) {
+    return className.flatMap((value) => String(value).split(/\s+/u));
+  }
+
+  if (typeof className === "string") {
+    return className.split(/\s+/u);
+  }
+
+  return [];
+}
+
+function shouldSkipElement(element: Element) {
+  return (
+    SKIPPED_TAGS.has(element.tagName) ||
+    getElementClassNames(element).some((className) =>
+      SKIPPED_CLASSES.has(className)
+    )
+  );
 }
 
 function findFirstElement(node: Nodes, tagName: string): Element | undefined {
@@ -82,7 +110,7 @@ function hasReadableLinkContent(element: Element) {
 }
 
 function pruneElementContent(node: ElementContent): ElementContent | undefined {
-  if (isElement(node) && SKIPPED_TAGS.has(node.tagName)) {
+  if (isElement(node) && shouldSkipElement(node)) {
     return undefined;
   }
 
@@ -104,7 +132,7 @@ function pruneElementContent(node: ElementContent): ElementContent | undefined {
 }
 
 function pruneRootContent(node: RootContent): RootContent | undefined {
-  if (isElement(node) && SKIPPED_TAGS.has(node.tagName)) {
+  if (isElement(node) && shouldSkipElement(node)) {
     return undefined;
   }
 
@@ -112,6 +140,14 @@ function pruneRootContent(node: RootContent): RootContent | undefined {
     node.children = node.children
       .map((child) => pruneElementContent(child))
       .filter(isDefined);
+  }
+
+  if (
+    isElement(node) &&
+    node.tagName === "a" &&
+    !hasReadableLinkContent(node)
+  ) {
+    return undefined;
   }
 
   return node;
@@ -125,8 +161,13 @@ function pruneRootChildren(root: Root) {
 
 const extractReadableBody: Plugin<[], Root> = () => (tree) => {
   const body = findFirstElement(tree, "body");
+  const main = body
+    ? findFirstElement(body, "main")
+    : findFirstElement(tree, "main");
 
-  if (body) {
+  if (main) {
+    tree.children = [...main.children] as RootContent[];
+  } else if (body) {
     tree.children = [...body.children] as RootContent[];
   }
 

@@ -5,65 +5,34 @@ sidebar:
   order: 2
 ---
 
-import { Steps, Tabs, TabItem } from "@astrojs/starlight/components";
+import { Steps } from "@astrojs/starlight/components";
 
 This guide gets one source working from the CLI. OneQuery keeps credentials server-side; callers use source identifiers like `postgres://warehouse`.
 
 ## Prerequisites
 
-Choose one install method. You only need the requirement for that method.
+For the default path:
 
-| Install method | Requirement                                          |
-| -------------- | ---------------------------------------------------- |
-| npm or npx     | Node.js 22+                                          |
-| Bun or bunx    | Bun; Node.js 22+ if you run a local gateway          |
-| Homebrew       | Homebrew                                             |
-| Install script | `curl` and `tar`; the script manages Node.js runtime |
-
-For source setup, have a OneQuery server URL or local gateway, plus a read-only credential or limited provider token.
+- Node.js 22+
+- A read-only credential or limited provider token for one source
 
 ## Install the CLI
-
-<Tabs syncKey="install-method">
-<TabItem label="npm">
 
 ```sh
 npm install -g @onequery/cli
 ```
 
-</TabItem>
-<TabItem label="Homebrew">
-
-```sh
-brew install wordbricks/tap/onequery
-```
-
-</TabItem>
-<TabItem label="Bun">
-
-```sh
-bun add -g @onequery/cli
-```
-
-</TabItem>
-<TabItem label="Script">
-
-```sh
-curl -fsSL https://onequery.dev/install.sh | sh
-```
-
-</TabItem>
-</Tabs>
-
-You can also run the CLI without a global install:
-
-```sh
-npx @onequery/cli --help
-```
+Use [Install the CLI](/docs/guide/install-cli/) for Homebrew, Bun, install script, or no-install commands.
 
 ## Choose a Server
 
-Use a shared server URL if your team provides one:
+| Situation                                  | Choose this path                                        |
+| ------------------------------------------ | ------------------------------------------------------- |
+| Your team gave you a OneQuery server URL   | Set that URL and continue.                              |
+| You are evaluating OneQuery alone          | Start a local gateway.                                  |
+| You are rolling out a private team gateway | Read [Self-Host OneQuery](/docs/operations/self-host/). |
+
+Set a shared server URL when you have one:
 
 ```sh
 onequery config set api.server_url https://onequery.example.com
@@ -74,6 +43,8 @@ Start a gateway only when you run OneQuery yourself:
 ```sh
 onequery gateway start
 ```
+
+See [Choose Server Path](/docs/guide/start-gateway/) for details.
 
 ## First Run
 

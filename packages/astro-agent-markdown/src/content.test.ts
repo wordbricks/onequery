@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   contentEntryToMarkdown,
   createContentCollectionStaticPaths,
+  createContentEntryMarkdownResponse,
   getContentEntryIdForMarkdownPath,
   getContentEntryMarkdownAssetPath,
   getContentMarkdownForPath,
@@ -90,5 +91,16 @@ title: Debugging production
         pathname: "/blog/debug-production-agent-runs-with-onequery/",
       })
     ).resolves.toBe("## Evidence\n");
+  });
+
+  it("creates static endpoint responses from the request method only", async () => {
+    const response = createContentEntryMarkdownResponse({
+      body: "## Evidence\n",
+      frontmatter: { title: "Debugging production" },
+      method: "HEAD",
+    });
+
+    expect(response.headers.get("X-Markdown-Tokens")).toBe("12");
+    expect(await response.text()).toBe("");
   });
 });

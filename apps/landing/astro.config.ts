@@ -18,6 +18,9 @@ import {
 
 const BUNDLE_REPORT_TEMPLATES = ["markdown", "list", "raw-data"] as const;
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+const ONEQUERY_SITE_URL = "https://onequery.dev";
+const DOCS_SHARE_IMAGE_URL = `${ONEQUERY_SITE_URL}/og.png`;
+const DOCS_SHARE_IMAGE_ALT = "OneQuery governed data access for AI agents";
 
 type BundleReportTemplate = (typeof BUNDLE_REPORT_TEMPLATES)[number];
 
@@ -92,6 +95,46 @@ export default defineConfig({
         baseUrl: `${REPOSITORY_URL}/edit/main/apps/landing/`,
       },
       favicon: "/onequery-icon.png",
+      components: {
+        Head: "./src/components/docs/Head.astro",
+      },
+      head: [
+        {
+          attrs: { property: "og:image", content: DOCS_SHARE_IMAGE_URL },
+          tag: "meta",
+        },
+        {
+          attrs: {
+            property: "og:image:secure_url",
+            content: DOCS_SHARE_IMAGE_URL,
+          },
+          tag: "meta",
+        },
+        {
+          attrs: { property: "og:image:type", content: "image/png" },
+          tag: "meta",
+        },
+        {
+          attrs: { property: "og:image:width", content: "1200" },
+          tag: "meta",
+        },
+        {
+          attrs: { property: "og:image:height", content: "630" },
+          tag: "meta",
+        },
+        {
+          attrs: { property: "og:image:alt", content: DOCS_SHARE_IMAGE_ALT },
+          tag: "meta",
+        },
+        {
+          attrs: { name: "twitter:image", content: DOCS_SHARE_IMAGE_URL },
+          tag: "meta",
+        },
+        {
+          attrs: { name: "twitter:image:alt", content: DOCS_SHARE_IMAGE_ALT },
+          tag: "meta",
+        },
+      ],
       logo: {
         alt: "OneQuery",
         src: "/src/assets/onequery-icon.png",
@@ -158,7 +201,7 @@ export default defineConfig({
     host: DEV_SERVER_HOST,
     port: DEFAULT_DEV_PORT,
   },
-  site: "https://onequery.dev",
+  site: ONEQUERY_SITE_URL,
   // Cloudflare normalizes extensionless page URLs with trailing slashes in
   // production, so keep Astro's generated route shape aligned with the edge.
   trailingSlash: "always",

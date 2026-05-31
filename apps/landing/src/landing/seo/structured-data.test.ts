@@ -6,6 +6,7 @@ import { NPM_PACKAGE_URL } from "../config/landing-config";
 import {
   createBlogPostStructuredData,
   createCanonicalUrl,
+  createDocsPageStructuredData,
   createLandingPageStructuredData,
 } from "./structured-data";
 
@@ -14,6 +15,96 @@ describe("createCanonicalUrl", () => {
     expect(createCanonicalUrl("/blog")).toBe("https://onequery.dev/blog/");
     expect(createCanonicalUrl("/sitemap.xml")).toBe(
       "https://onequery.dev/sitemap.xml"
+    );
+  });
+});
+
+describe("createDocsPageStructuredData", () => {
+  it("emits a collection graph for the docs index", () => {
+    const schema = createDocsPageStructuredData({
+      description: "Docs description",
+      pathname: "/docs/",
+      title: "OneQuery Documentation | Governed Agent Access",
+    });
+    const graph = schema["@graph"];
+
+    expect(Array.isArray(graph)).toBe(true);
+    expect(graph).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "@type": "CollectionPage",
+          "@id": "https://onequery.dev/docs/#webpage",
+          mainEntity: {
+            "@id": "https://onequery.dev/docs/#sections",
+          },
+        }),
+        expect.objectContaining({
+          "@type": "ItemList",
+          "@id": "https://onequery.dev/docs/#sections",
+          itemListElement: expect.arrayContaining([
+            expect.objectContaining({
+              name: "Getting Started",
+              item: "https://onequery.dev/docs/getting-started/",
+            }),
+            expect.objectContaining({
+              name: "Support",
+              item: "https://onequery.dev/docs/support/",
+            }),
+          ]),
+        }),
+        expect.objectContaining({
+          "@type": "BreadcrumbList",
+          "@id": "https://onequery.dev/docs/#breadcrumb",
+          itemListElement: [
+            expect.objectContaining({
+              position: 1,
+              item: "https://onequery.dev/",
+            }),
+            expect.objectContaining({
+              position: 2,
+              item: "https://onequery.dev/docs/",
+            }),
+          ],
+        }),
+      ])
+    );
+  });
+
+  it("emits a tech article graph for docs pages", () => {
+    const schema = createDocsPageStructuredData({
+      description: "Install description",
+      pathname: "/docs/getting-started/",
+      title: "Getting Started | OneQuery Docs",
+    });
+    const graph = schema["@graph"];
+
+    expect(Array.isArray(graph)).toBe(true);
+    expect(graph).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "@type": "WebPage",
+          "@id": "https://onequery.dev/docs/getting-started/#webpage",
+          mainEntity: {
+            "@id": "https://onequery.dev/docs/getting-started/#article",
+          },
+        }),
+        expect.objectContaining({
+          "@type": "TechArticle",
+          "@id": "https://onequery.dev/docs/getting-started/#article",
+          headline: "Getting Started",
+        }),
+        expect.objectContaining({
+          "@type": "BreadcrumbList",
+          "@id": "https://onequery.dev/docs/getting-started/#breadcrumb",
+          itemListElement: expect.arrayContaining([
+            expect.objectContaining({
+              position: 3,
+              name: "Getting Started",
+              item: "https://onequery.dev/docs/getting-started/",
+            }),
+          ]),
+        }),
+      ])
     );
   });
 });
