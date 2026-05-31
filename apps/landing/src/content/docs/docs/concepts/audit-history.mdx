@@ -1,0 +1,25 @@
+---
+title: Audit History
+description: Use OneQuery audit history to inspect source access, query behavior, and agent activity.
+sidebar:
+  order: 5
+---
+
+Audit history is the record operators use after a human or agent asks OneQuery for production context. It should show which source was used, which command or API path was requested, who initiated it, and when it happened.
+
+## What to Capture
+
+For each production-facing operation, expect enough detail to answer:
+
+- Who or what initiated the request?
+- Which organization and source were used?
+- Which query, endpoint, or operation ran?
+- Did the request succeed, fail, or get blocked?
+- What limits or validations were applied?
+- When did it happen?
+
+## Evidence Over Guesswork
+
+Audit records are part of the operational loop. They let a team confirm that an agent used approved evidence instead of guessing from stale logs, screenshots, or copied credentials.
+
+When a production change follows an agent run, link the change back to the OneQuery source and operation that supplied the evidence. Use [Audit review](/docs/operations/audit-review/) for the operational checklist.

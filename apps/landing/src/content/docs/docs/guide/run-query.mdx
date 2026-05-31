@@ -1,0 +1,56 @@
+---
+title: Run a Query
+description: Execute read-only SQL through a OneQuery source identifier.
+sidebar:
+  order: 5
+---
+
+Use this page after `onequery source list` shows the source you connected.
+
+## Confirm Context
+
+```sh
+onequery config get api.server_url
+onequery auth whoami
+onequery source list
+```
+
+## Execute a Smoke Query
+
+```sh
+onequery query exec --source postgres://warehouse --sql "select 1"
+```
+
+## Query Application Data
+
+```sh
+onequery query exec \
+  --source postgres://warehouse \
+  --sql "select id, email, created_at from users order by created_at desc limit 20"
+```
+
+## Warehouse Example
+
+```sh
+onequery query exec \
+  --source snowflake://analytics_prod \
+  --sql "select count(*) as events from analytics.events where event_date >= current_date - 1"
+```
+
+## Query Rules
+
+- Keep queries read-only.
+- Ask for the smallest result set needed.
+- Use explicit columns instead of `select *` for agent workflows.
+- Include time windows for logs, events, and analytics tables.
+- Prefer source-specific read replicas or service users for production data.
+
+## When a Query Fails
+
+Check these in order:
+
+1. Confirm the source exists: `onequery source list`.
+2. Confirm the CLI is pointed at the expected server: `onequery config get api.server_url`.
+3. Confirm your session and organization: `onequery auth whoami`.
+4. Retry the smoke query: `onequery query exec --source postgres://warehouse --sql "select 1"`.
+5. Check that the SQL is read-only and valid for the provider dialect.

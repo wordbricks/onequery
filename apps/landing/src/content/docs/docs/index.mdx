@@ -1,0 +1,66 @@
+---
+title: OneQuery Docs
+description: Set up OneQuery as a governed access layer for agents and developer workflows.
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+OneQuery gives developers and agents one governed path to approved data sources. Connect a source once, use an identifier like `postgres://warehouse`, and keep raw credentials out of prompts, scripts, and agent environments.
+
+## Fast Path
+
+1. [Get started](/docs/getting-started/) with the CLI and choose a shared, hosted, or local server path.
+2. Connect one read-only source.
+3. Run one query or provider API call.
+4. Give agents only the source identifiers they need.
+
+<CardGrid>
+  <LinkCard
+    title="Getting started"
+    href="/docs/getting-started/"
+    description="Install the CLI, choose a server path, connect a source, and run the first query."
+  />
+  <LinkCard
+    title="Guide"
+    href="/docs/guide/"
+    description="Step-by-step tasks for installing, choosing a server path, connecting, querying, and preparing agents."
+  />
+  <LinkCard
+    title="Concepts"
+    href="/docs/concepts/"
+    description="Understand governed access, source identifiers, query boundaries, and audit history."
+  />
+  <LinkCard
+    title="Integrations"
+    href="/docs/integrations/"
+    description="Connect databases, warehouses, observability tools, developer systems, and analytics sources."
+  />
+  <LinkCard
+    title="Examples"
+    href="/docs/examples/"
+    description="Apply OneQuery to production debugging, warehouse inspection, release review, and incident work."
+  />
+  <LinkCard
+    title="Operations"
+    href="/docs/operations/"
+    description="Run the gateway, keep credentials scoped, and review the security checklist before rollout."
+  />
+  <LinkCard
+    title="Security"
+    href="/docs/security/"
+    description="Review the architecture, threat model, data handling, and cost-control guidance for agent access."
+  />
+  <LinkCard
+    title="Support"
+    href="/docs/support/"
+    description="Collect the right troubleshooting context without sharing secrets or raw production data."
+  />
+  <LinkCard
+    title="Reference"
+    href="/docs/reference/"
+    description="Look up CLI commands, provider IDs, terminology, and common error guidance."
+  />
+</CardGrid>

@@ -1,0 +1,47 @@
+---
+title: Data Handling
+description: Handle provider credentials, query results, logs, and support artifacts safely when using OneQuery.
+sidebar:
+  order: 4
+---
+
+OneQuery keeps source credentials out of the agent runtime, but result data still matters. Treat returned rows, provider responses, logs, and support artifacts as production data unless you know otherwise.
+
+## Credentials
+
+- Store provider credentials only through the OneQuery source setup path.
+- Use dedicated provider credentials when possible.
+- Rotate credentials when a source owner changes or a provider token may have been exposed.
+- Never include real credentials in docs examples, prompts, issues, or screenshots.
+
+## Result Payloads
+
+Agents can still see whatever the approved query or API request returns. Reduce payloads before they reach the agent:
+
+- Select only needed columns.
+- Add time windows.
+- Add row limits.
+- Use aggregate queries before raw rows.
+- Use `--jq` to filter provider JSON responses.
+
+## Logs and Audit Records
+
+Keep command logs and audit records useful without turning them into a second sensitive data store. Avoid logging raw credentials. Keep command examples sanitized. Review whether query text or provider paths can reveal sensitive identifiers before sharing them outside the team.
+
+## Support Sharing
+
+When asking for help, share:
+
+- CLI version.
+- Gateway mode.
+- Sanitized command.
+- Source identifier.
+- Provider family.
+- Error output with secrets removed.
+
+Do not share:
+
+- Database passwords.
+- Provider tokens.
+- Service account private keys.
+- Raw user rows or customer records.

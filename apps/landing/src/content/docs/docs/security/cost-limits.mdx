@@ -1,0 +1,53 @@
+---
+title: Cost Limits
+description: Bound agent requests with query budgets, provider controls, result limits, and aggregate-first investigation patterns.
+sidebar:
+  order: 5
+---
+
+Agent workflows can accidentally ask expensive questions. Cost control should be part of the source setup and prompt, especially for warehouses and analytics systems.
+
+## Where Cost Comes From
+
+- Warehouse scan volume.
+- Provider API pagination.
+- Large JSON responses.
+- Repeated retries after ambiguous failures.
+- Raw event exports instead of aggregate checks.
+
+## Query Habits
+
+Use query shape as the first cost control:
+
+```sql
+select date_trunc('hour', occurred_at) as hour, count(*) as events
+from analytics.events
+where occurred_at >= current_timestamp - interval '24 hours'
+group by 1
+order by 1
+```
+
+Avoid open-ended raw exports:
+
+```sql
+select *
+from analytics.events
+```
+
+## Provider Controls
+
+Use provider-side budgets and role limits where available:
+
+- BigQuery job budgets and project-level controls.
+- Snowflake warehouse sizing and role scope.
+- Athena workgroup controls.
+- API pagination limits.
+- Analytics endpoint date ranges.
+
+## Agent Instruction
+
+Add cost language to agent prompts:
+
+```text
+Use aggregate queries first. Include explicit date windows and limits. Do not request raw event exports unless an operator approves the need.
+```

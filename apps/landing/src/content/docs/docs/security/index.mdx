@@ -1,0 +1,38 @@
+---
+title: Security
+description: Security architecture, threat model, data handling, and cost-control guidance for OneQuery agent access.
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+Security is the reason to put OneQuery between agents and production data. These pages explain what OneQuery is meant to control, what still belongs to operators, and how to avoid turning prompts into the only access boundary.
+
+<CardGrid>
+  <LinkCard
+    title="Security architecture"
+    href="/docs/security/security-architecture/"
+    description="Credential flow, source execution, gateway placement, and audit boundaries."
+  />
+  <LinkCard
+    title="Threat model"
+    href="/docs/security/threat-model/"
+    description="What OneQuery helps protect against and what it does not claim to solve."
+  />
+  <LinkCard
+    title="Data handling"
+    href="/docs/security/data-handling/"
+    description="How to reason about credentials, result payloads, logs, and support sharing."
+  />
+  <LinkCard
+    title="Cost limits"
+    href="/docs/security/cost-limits/"
+    description="Use budgets, query shape, and provider controls to keep agent requests bounded."
+  />
+</CardGrid>
+
+## Security Principle
+
+OneQuery should be the deterministic boundary. The agent prompt should explain the workflow, but source credentials, source permissions, query validation, result limits, and audit review should live outside the prompt.

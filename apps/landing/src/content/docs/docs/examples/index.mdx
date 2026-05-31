@@ -1,0 +1,49 @@
+---
+title: Examples
+description: Practical OneQuery examples for production debugging, warehouse review, release investigation, incident triage, and analytics analysis.
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+These examples show how to combine source identifiers, narrow requests, and audit-friendly investigation notes.
+
+<CardGrid>
+  <LinkCard
+    title="Production debugging"
+    href="/docs/examples/production-debugging/"
+    description="Use Sentry, Cloudflare, and code context without raw production tokens."
+  />
+  <LinkCard
+    title="Read-only warehouse review"
+    href="/docs/examples/warehouse-readonly/"
+    description="Ask bounded analytics questions with aggregate-first warehouse queries."
+  />
+  <LinkCard
+    title="Release review"
+    href="/docs/examples/release-review/"
+    description="Connect GitHub, deployments, and incident evidence around a release."
+  />
+  <LinkCard
+    title="Incident triage"
+    href="/docs/examples/incident-triage/"
+    description="Give an agent a controlled evidence loop during an outage."
+  />
+  <LinkCard
+    title="Analytics investigation"
+    href="/docs/examples/analytics-investigation/"
+    description="Inspect product analytics changes while keeping provider tokens centralized."
+  />
+</CardGrid>
+
+## Example Format
+
+Each example uses the same shape:
+
+1. Define the allowed sources.
+2. Run a narrow query or API request.
+3. Summarize evidence.
+4. Decide the next bounded request.
+5. Preserve the source identifiers in notes and changes.

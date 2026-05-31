@@ -1,0 +1,42 @@
+---
+title: Analytics Investigation
+description: Investigate traffic, funnel, or event changes with governed analytics source access.
+sidebar:
+  order: 6
+---
+
+Analytics investigations often require more than one source. OneQuery lets an agent compare product analytics, traffic data, and deploy history through named sources.
+
+## Allowed Sources
+
+```text
+posthog://posthog_main
+ga://ga_marketing
+github://github_main
+```
+
+## Product Event Check
+
+```sh
+onequery api \
+  --source posthog://posthog_main \
+  /api/projects/12345/events/ \
+  --json
+```
+
+## Traffic Check
+
+```sh
+onequery api \
+  --source ga://ga_marketing \
+  /v1beta/properties/123456789:runReport \
+  --json
+```
+
+## Investigation Rules
+
+- Use exact date ranges.
+- Ask for aggregate dimensions first.
+- Compare analytics changes with release history.
+- Avoid exporting user-level rows unless an operator approves the need.
+- Keep the source identifiers in the final summary.

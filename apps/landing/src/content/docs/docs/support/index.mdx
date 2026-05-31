@@ -1,0 +1,34 @@
+---
+title: Support
+description: Find next steps for troubleshooting, provider setup questions, and production rollout support.
+sidebar:
+  label: Overview
+  order: 1
+---
+
+Start with [Troubleshooting](/docs/operations/troubleshooting/) when a command fails. Use this page when you need to decide what information to collect before asking for help.
+
+## Before Asking for Help
+
+Collect:
+
+- CLI version and install method.
+- Gateway mode: local, foreground, background, or remote server.
+- Command that failed, with secrets removed.
+- Source identifier, such as `postgres://warehouse`.
+- Provider family, such as database, warehouse, observability, or developer tool.
+- Whether the failure is install, auth, source setup, query validation, provider permission, or provider response shape.
+
+## Do Not Share
+
+- Database passwords.
+- Provider tokens.
+- Service account private keys.
+- Raw production rows unless the support workflow explicitly requires them and an operator approves the share.
+
+## Useful Links
+
+- [Getting started](/docs/getting-started/)
+- [Connect a source](/docs/guide/connect-source/)
+- [Security checklist](/docs/operations/security-checklist/)
+- [Connectors](/connectors/)

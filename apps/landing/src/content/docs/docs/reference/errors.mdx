@@ -1,0 +1,35 @@
+---
+title: Errors and Blocked Requests
+description: Common OneQuery failure types, likely causes, and safe next actions.
+sidebar:
+  order: 5
+---
+
+Use blocked requests as feedback. Do not bypass OneQuery by giving an agent raw credentials.
+
+## Common Failures
+
+| Failure                    | Likely cause                                                    | Next action                                          |
+| -------------------------- | --------------------------------------------------------------- | ---------------------------------------------------- |
+| CLI command not found      | CLI not installed or not on `PATH`.                             | Reinstall the CLI and run `onequery --help`.         |
+| Gateway unavailable        | Local gateway is stopped or remote server is misconfigured.     | Run `onequery gateway status` or set the server URL. |
+| Unauthorized               | CLI session expired or wrong profile/server.                    | Run `onequery auth login` for the intended profile.  |
+| Source not found           | Source identifier is wrong or belongs to another org.           | Run `onequery source list`.                          |
+| Query blocked              | SQL is not read-only, has multiple statements, or is too broad. | Narrow the SQL, add limits, and retry.               |
+| Provider permission denied | Provider token lacks scope or points to the wrong account.      | Fix provider permissions in the source credential.   |
+| Pagination too large       | Source API request returns too much data.                       | Add `--max-pages`, provider filters, or `--jq`.      |
+
+## Safe Recovery Pattern
+
+1. Identify the layer: CLI, gateway, auth, source, query, or provider.
+2. Retry with a smaller request.
+3. Keep the source identifier the same unless it is wrong.
+4. Escalate to an operator if broader access appears necessary.
+5. Record the blocked request in the investigation notes when it affects the result.
+
+## What Not to Do
+
+- Do not paste provider tokens into the agent environment.
+- Do not switch to a broad production credential to save time.
+- Do not remove query limits just because the first request returned too little data.
+- Do not ignore repeated blocked requests from the same workflow.

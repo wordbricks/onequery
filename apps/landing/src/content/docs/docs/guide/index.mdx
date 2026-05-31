@@ -1,0 +1,49 @@
+---
+title: Guide
+description: Step-by-step OneQuery guides for installing the CLI, choosing a server path, connecting sources, querying data, and preparing agent workflows.
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+Task guides for setup, querying, provider APIs, and agent access. New users should start with [Getting started](/docs/getting-started/).
+
+<CardGrid>
+  <LinkCard
+    title="Install the CLI"
+    href="/docs/guide/install-cli/"
+    description="Choose npm, Homebrew, Bun, the install script, or direct npx usage."
+  />
+  <LinkCard
+    title="Choose server path"
+    href="/docs/guide/start-gateway/"
+    description="Use a shared OneQuery server or run and inspect a local gateway."
+  />
+  <LinkCard
+    title="Connect a source"
+    href="/docs/guide/connect-source/"
+    description="Create named source connections with provider-specific credentials."
+  />
+  <LinkCard
+    title="Run a query"
+    href="/docs/guide/run-query/"
+    description="Execute a read-only SQL query through a source identifier."
+  />
+  <LinkCard
+    title="Use Source API"
+    href="/docs/guide/source-api/"
+    description="Call provider APIs through OneQuery without handing tokens to agents."
+  />
+  <LinkCard
+    title="Agent workflows"
+    href="/docs/guide/agent-workflows/"
+    description="Expose a narrow OneQuery command surface to coding agents and automation."
+  />
+  <LinkCard
+    title="Agent tool setup"
+    href="/docs/guide/agent-tool-setup/"
+    description="Copy bounded OneQuery instructions into agent and automation environments."
+  />
+</CardGrid>

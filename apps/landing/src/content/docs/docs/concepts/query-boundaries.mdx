@@ -1,0 +1,41 @@
+---
+title: Query Boundaries
+description: Understand the safeguards OneQuery applies around SQL execution and source requests.
+sidebar:
+  order: 4
+---
+
+OneQuery should be used as a bounded execution path, not as a credential transport. The boundary is useful because it gives operators a place to enforce deterministic behavior before a request reaches the data source.
+
+## SQL Query Boundary
+
+For SQL-oriented sources, OneQuery is designed around read-only execution. A production query should be narrow, inspectable, and bounded.
+
+The expected safeguards are:
+
+- Read-only query validation.
+- Single-statement execution.
+- Source-specific timeout or cost controls where the provider supports them.
+- Result windows that keep responses usable for humans and agents.
+- Audit records that show the source and operation.
+
+## Source API Boundary
+
+Source API integrations call provider APIs such as GitHub, Sentry, Vercel, Cloudflare, and analytics systems. The credential you connect determines what the provider will allow, so the upstream token or account should still be scoped as tightly as possible.
+
+Use read-only provider tokens for agent-facing sources whenever the provider supports them.
+
+## Prompt Rules Are Not Boundaries
+
+Instructions like "only read production data" are useful guidance, but they are not an access control layer. The OneQuery boundary should be the enforcement point. Agent prompts should describe how to use OneQuery, while credentials and provider permissions stay outside the prompt.
+
+## Blocked Requests
+
+A blocked request should be treated as a useful signal. It usually means one of these is true:
+
+- The agent asked for a write or multi-step operation that is outside the allowed shape.
+- The source identifier is wrong.
+- The connected credential does not have provider access.
+- The query is too broad for the configured limits.
+
+Use the failure output to revise the query or source setup instead of giving the agent a broader credential.

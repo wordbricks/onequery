@@ -1,0 +1,50 @@
+---
+title: Observability
+description: Connect Sentry, Laminar, and Cloudflare observability sources for production debugging and agent evidence loops.
+sidebar:
+  order: 4
+---
+
+Observability integrations give agents production evidence without giving them direct access to provider tokens.
+
+## Common Sources
+
+| Provider                         | Provider ID                        | Use it for                                                     |
+| -------------------------------- | ---------------------------------- | -------------------------------------------------------------- |
+| Sentry                           | `sentry`                           | Issues, events, releases, and project-level production errors. |
+| Laminar                          | `laminar`                          | LLM telemetry and run traces.                                  |
+| Cloudflare Workers Observability | `cloudflare_workers_observability` | Worker telemetry and runtime investigation.                    |
+
+## Sentry Example
+
+Connect Sentry with a personal token scoped to organization and project read access.
+
+```sh
+onequery source connect --source sentry \
+  --input '{"sourceKey":"sentry_prod","credentials":{"authToken":"sntrys_...","organizationSlug":"acme","projectSlug":"web"}}'
+```
+
+Use [Source API](/docs/guide/source-api/) for issue, event, and release requests after the source is connected.
+
+## Cloudflare Workers Observability
+
+Enable Workers Logs for the target Worker before expecting useful telemetry. Connect the account ID and a token with the Workers Observability permission required by Cloudflare.
+
+```json
+{
+  "sourceKey": "cloudflare_workers",
+  "credentials": {
+    "type": "cloudflare_workers_observability",
+    "accountId": "023e105f4ecef8ad9ca31a8372d0c353",
+    "apiToken": "cloudflare_api_token",
+    "scriptName": "api-production"
+  }
+}
+```
+
+## Agent Debugging Rules
+
+- Start with a short time window.
+- Ask the provider for fields and status before assuming event shape.
+- Summarize evidence separately from hypotheses.
+- Link production changes to the source and query used for evidence.

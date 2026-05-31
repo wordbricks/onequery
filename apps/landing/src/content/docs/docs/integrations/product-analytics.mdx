@@ -1,0 +1,42 @@
+---
+title: Product Analytics
+description: Connect product analytics systems to OneQuery for governed funnel, event, and usage investigations.
+sidebar:
+  order: 6
+---
+
+Product analytics sources are commonly Source API integrations. They are useful for funnel checks, activation analysis, product telemetry review, and agent-assisted investigations.
+
+## Common Sources
+
+| Provider                 | Provider ID                | Connection notes                                           |
+| ------------------------ | -------------------------- | ---------------------------------------------------------- |
+| Google Analytics         | `ga`                       | GA4 property ID plus OAuth or service account credentials. |
+| Amplitude                | `amplitude`                | Project API key, secret key, and region.                   |
+| Mixpanel                 | `mixpanel`                 | Service account, project ID, and data residency region.    |
+| PostHog                  | `posthog`                  | Host URL, personal API key, and project ID.                |
+| Microsoft Clarity        | `microsoft_clarity`        | Project Data Export API token.                             |
+| Cloudflare Web Analytics | `cloudflare_web_analytics` | Account ID, API token, and optional site tag.              |
+
+## PostHog Example
+
+```sh
+onequery source connect --source posthog \
+  --input '{"sourceKey":"posthog_main","credentials":{"hostUrl":"https://us.posthog.com","personalApiKey":"phx_personal_key","projectId":"12345"}}'
+```
+
+## Analytics Query Habits
+
+- Ask for aggregate metrics before raw event lists.
+- Include exact date ranges.
+- Keep project IDs and source identifiers explicit in task notes.
+
+## Cross-Source Investigations
+
+Product analytics often becomes more useful when paired with developer or observability sources. For example:
+
+- PostHog event drop plus GitHub deployment history.
+- GA4 traffic drop plus Cloudflare Web Analytics.
+- Amplitude activation change plus Sentry release errors.
+
+Use OneQuery source identifiers in the investigation notes so each evidence source is traceable.

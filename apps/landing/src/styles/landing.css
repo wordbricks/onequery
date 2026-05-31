@@ -192,11 +192,12 @@
   display: none;
 }
 
-.download-command-value .astro-code {
+.download-command-code {
   display: block;
   min-width: 0;
   overflow: hidden;
   background: transparent !important;
+  color: inherit;
   font: inherit;
   line-height: inherit;
   white-space: inherit;
@@ -1901,7 +1902,7 @@
     word-break: break-word;
   }
 
-  .download-command-value .astro-code {
+  .download-command-code {
     overflow: visible;
     word-break: inherit;
   }

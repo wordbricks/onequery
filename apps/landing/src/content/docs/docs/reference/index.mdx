@@ -1,0 +1,34 @@
+---
+title: Reference
+description: OneQuery reference pages for CLI commands, source providers, terminology, and route conventions.
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+Reference pages are compact lookup material. Use the guides for task flows and these pages when you need exact names or conventions.
+
+<CardGrid>
+  <LinkCard
+    title="CLI commands"
+    href="/docs/reference/cli/"
+    description="Common OneQuery CLI commands grouped by task."
+  />
+  <LinkCard
+    title="Source providers"
+    href="/docs/reference/source-providers/"
+    description="Current public provider families and provider IDs."
+  />
+  <LinkCard
+    title="Terminology"
+    href="/docs/reference/terminology/"
+    description="Definitions for source, provider, query interface, Source API, gateway, and audit history."
+  />
+  <LinkCard
+    title="Errors and blocked requests"
+    href="/docs/reference/errors/"
+    description="Likely causes and safe next actions for common OneQuery failures."
+  />
+</CardGrid>

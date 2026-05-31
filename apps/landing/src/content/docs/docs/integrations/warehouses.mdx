@@ -1,0 +1,52 @@
+---
+title: Warehouses
+description: Connect Snowflake, BigQuery, Athena, MotherDuck, and related warehouse systems to OneQuery.
+sidebar:
+  order: 3
+---
+
+Warehouse sources are useful for analytics, operations review, and agent-assisted investigations where the agent needs broad context but narrow execution authority.
+
+## Supported Warehouse Patterns
+
+| Provider             | Provider ID            | Connection notes                                                                             |
+| -------------------- | ---------------------- | -------------------------------------------------------------------------------------------- |
+| Snowflake            | `snowflake`            | Account identifier, warehouse, database, optional schema, user, password, and optional role. |
+| BigQuery             | `bigquery`             | Project ID plus OAuth tokens or mapped service account fields.                               |
+| AWS Athena Connector | `aws_athena_connector` | Uses a registered OneQuery connector and Athena database details.                            |
+| MotherDuck           | `motherduck`           | PostgreSQL wire protocol endpoint with service token.                                        |
+| Cloudflare D1        | `cloudflare_d1`        | Serverless SQL source for edge application data.                                             |
+
+## Snowflake Setup Notes
+
+Create or choose a Snowflake role with read access to the target database and schemas. Grant `USAGE` on the warehouse, database, and schema, then grant `SELECT` on the tables or views OneQuery should query.
+
+```sh
+onequery source connect --source snowflake \
+  --input '{"sourceKey":"snowflake_prod","credentials":{"account":"xy12345.us-east-1","warehouse":"ANALYTICS_WH","database":"ANALYTICS","schema":"PUBLIC","username":"ONEQUERY_READER","password":"<read-only-password>","role":"ONEQUERY_READONLY"}}'
+```
+
+## BigQuery Setup Notes
+
+For service-account based access, map the Google Cloud JSON key into the fields OneQuery expects rather than pasting the raw JSON blob.
+
+```json
+{
+  "sourceKey": "bigquery_prod",
+  "credentials": {
+    "projectId": "analytics-project",
+    "serviceAccount": {
+      "projectId": "analytics-project",
+      "clientEmail": "onequery@analytics-project.iam.gserviceaccount.com",
+      "privateKey": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+    }
+  }
+}
+```
+
+## Warehouse Query Habits
+
+- Always include a time window.
+- Prefer aggregate queries before requesting raw rows.
+- Use provider cost controls where available.
+- Keep service accounts separate from human analyst accounts.

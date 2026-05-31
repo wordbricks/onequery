@@ -1,0 +1,46 @@
+---
+title: Developer Tools
+description: Connect GitHub, Linear, Jira, Confluence, Vercel, and Discord to OneQuery.
+sidebar:
+  order: 5
+---
+
+Developer tool integrations are usually Source API integrations. They let agents inspect pull requests, issues, releases, deployments, project metadata, and workflow context through approved provider tokens.
+
+## Common Sources
+
+| Provider   | Provider ID  | Use it for                                                                    |
+| ---------- | ------------ | ----------------------------------------------------------------------------- |
+| GitHub     | `github`     | Pull requests, commits, issues, repository metadata, and code review context. |
+| Linear     | `linear`     | Issue and workflow context.                                                   |
+| Jira       | `jira`       | Project and ticket context.                                                   |
+| Confluence | `confluence` | Internal documentation context.                                               |
+| Vercel     | `vercel`     | Deployments, projects, teams, and runtime observability endpoints.            |
+| Discord    | `discord`    | Workspace and channel context through bot or OAuth access.                    |
+
+## GitHub Example
+
+Connect GitHub with a fine-grained personal access token or compatible installation token.
+
+```sh
+onequery source connect --source github \
+  --input '{"sourceKey":"github_main","credentials":{"accessToken":"github_pat_or_installation_token","repositories":["octocat/Hello-World"]}}'
+```
+
+Use [Source API](/docs/guide/source-api/) for pull request, issue, deployment, and repository requests after the source is connected.
+
+## Token Scoping
+
+For agent-facing GitHub access, prefer fine-grained tokens limited to specific repositories and read-only permissions for contents, issues, pull requests, and metadata.
+
+For Jira and Confluence, create provider tokens for service accounts that have only the project or site access needed for the workflow.
+
+## Review Pattern
+
+Use developer tool sources to connect evidence to code changes:
+
+1. Inspect production issue or deployment context.
+2. Query the relevant source for details.
+3. Inspect local code.
+4. Create a small patch.
+5. Mention the OneQuery source and provider endpoint in the change summary.

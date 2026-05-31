@@ -1,0 +1,45 @@
+---
+title: Databases
+description: Connect operational databases to OneQuery with read-only credentials.
+sidebar:
+  order: 2
+---
+
+Database providers cover both SQL databases and document databases. SQL providers use `onequery query exec`; MongoDB uses the Source API path.
+
+## Supported Database Patterns
+
+| Provider   | Provider ID | Connection notes                                                                |
+| ---------- | ----------- | ------------------------------------------------------------------------------- |
+| PostgreSQL | `postgres`  | Host, port, database, username, password, and SSL mode.                         |
+| Supabase   | `supabase`  | Uses the Postgres wire protocol, typically through the Supabase session pooler. |
+| MySQL      | `mysql`     | Host, port, database, username, password, and SSL mode.                         |
+| MongoDB    | `mongodb`   | Connection string plus database selection.                                      |
+
+## PostgreSQL Example
+
+```sh
+onequery source connect --source postgres \
+  --input '{"sourceKey":"warehouse","credentials":{"host":"db.example.com","port":5432,"database":"app","username":"onequery_readonly","password":"<read-only-password>","sslMode":"require"}}'
+```
+
+Run a query:
+
+```sh
+onequery query exec \
+  --source postgres://warehouse \
+  --sql "select id, created_at from users order by created_at desc limit 20"
+```
+
+## Supabase Notes
+
+Use the session pooler host from the Supabase Connect panel. Keep SSL enabled and use a role with only the table or schema access required for the workflow.
+
+## SQL Database Safety Checklist
+
+- Use a read-only user for production.
+- Prefer replica or analytics databases when available.
+- Limit schemas and tables at the database permission layer.
+- Use explicit columns and `limit` clauses in agent queries.
+
+Cloudflare D1 is covered with warehouse-style SQL sources because its provider ID, `cloudflare_d1`, is grouped with OneQuery warehouse providers.

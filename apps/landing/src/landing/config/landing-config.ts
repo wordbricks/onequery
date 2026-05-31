@@ -10,7 +10,7 @@ export const SECTION_IDS = {
 export const REPOSITORY_URL = "https://github.com/wordbricks/onequery" as const;
 export const CLI_SOURCE_URL = `${REPOSITORY_URL}/tree/main/apps/cli` as const;
 export const SELF_HOST_DOCS_URL =
-  `${REPOSITORY_URL}/blob/main/docs/self-host.md` as const;
+  "https://onequery.dev/docs/operations/self-host/" as const;
 export const NPM_PACKAGE_URL =
   "https://www.npmjs.com/package/@onequery/cli" as const;
 export const INSTALL_SCRIPT_URL = "https://onequery.dev/install.sh" as const;
