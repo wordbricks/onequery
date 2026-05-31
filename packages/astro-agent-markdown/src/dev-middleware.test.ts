@@ -87,6 +87,46 @@ Context, not keys.
 `);
   });
 
+  it("falls back to HTML conversion for a content collection index route", async () => {
+    const getMarkdown = vi.fn(async () => "should not read content entry");
+    const onRequest = createDevMarkdownMiddleware({
+      contentRoutes: [
+        {
+          getMarkdown,
+          routePrefix: "/blog",
+        },
+      ],
+    });
+    const next = vi.fn(
+      async () =>
+        new Response("<main><h1>Blog</h1><p>Latest updates.</p></main>", {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        })
+    );
+
+    const response = await onRequest(
+      createContext(
+        new Request("http://localhost:4546/blog/", {
+          headers: { Accept: "text/markdown" },
+        })
+      ),
+      next as unknown as MiddlewareNext
+    );
+
+    expect(getMarkdown).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledOnce();
+    expect(response).toBeInstanceOf(Response);
+
+    const markdownResponse = response as Response;
+    expect(markdownResponse.headers.get("Content-Type")).toBe(
+      MARKDOWN_CONTENT_TYPE
+    );
+    expect(await markdownResponse.text()).toBe(`# Blog
+
+Latest updates.
+`);
+  });
+
   it("renders HTML-derived HEAD requests with GET so token counts are available", async () => {
     const onRequest = createDevMarkdownMiddleware();
     const next = vi.fn(

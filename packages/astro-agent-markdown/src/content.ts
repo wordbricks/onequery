@@ -97,7 +97,12 @@ export function getContentEntryIdForMarkdownPath(input: {
     return undefined;
   }
 
-  return input.markdownPath.slice(routeBase.length, -markdownSuffix.length);
+  const entryId = input.markdownPath.slice(
+    routeBase.length,
+    -markdownSuffix.length
+  );
+
+  return entryId.length > 0 ? entryId : undefined;
 }
 
 export async function getContentMarkdownForPath(input: {

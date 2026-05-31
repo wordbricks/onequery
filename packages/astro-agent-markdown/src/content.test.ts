@@ -75,6 +75,15 @@ title: Debugging production
     ).toBe("debug-production-agent-runs-with-onequery");
   });
 
+  it("does not treat a collection index route as a content entry", () => {
+    expect(
+      getContentEntryIdForMarkdownPath({
+        markdownPath: "/blog/index.md",
+        routePrefix: "/blog",
+      })
+    ).toBeUndefined();
+  });
+
   it("finds a content entry by negotiated page pathname", async () => {
     await expect(
       getContentMarkdownForPath({
