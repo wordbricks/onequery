@@ -1,6 +1,165 @@
 ---
 title: OneQuery Docs
-description: Set up OneQuery as a governed access layer for agents and developer workflows.
+description: OneQuery documentation for installing the CLI, connecting governed sources, running read-only queries, and giving agents safe production context.
+head:
+  - tag: title
+    content: OneQuery Documentation | Governed Agent Data Access
+  - tag: meta
+    attrs:
+      name: keywords
+      content: OneQuery documentation, AI agent data access, governed data access, read-only queries, Source API, source identifiers, production context, audit history, CLI install
+  - tag: meta
+    attrs:
+      name: robots
+      content: index, follow, max-image-preview:large
+  - tag: meta
+    attrs:
+      property: og:title
+      content: OneQuery Documentation | Governed Agent Data Access
+  - tag: meta
+    attrs:
+      property: og:type
+      content: website
+  - tag: meta
+    attrs:
+      property: og:site_name
+      content: OneQuery
+  - tag: meta
+    attrs:
+      property: og:locale
+      content: en_US
+  - tag: meta
+    attrs:
+      property: og:image
+      content: https://onequery.dev/og.png
+  - tag: meta
+    attrs:
+      property: og:image:secure_url
+      content: https://onequery.dev/og.png
+  - tag: meta
+    attrs:
+      property: og:image:type
+      content: image/png
+  - tag: meta
+    attrs:
+      property: og:image:width
+      content: "1200"
+  - tag: meta
+    attrs:
+      property: og:image:height
+      content: "630"
+  - tag: meta
+    attrs:
+      property: og:image:alt
+      content: OneQuery - Governed Data Access for AI Agents
+  - tag: meta
+    attrs:
+      name: twitter:title
+      content: OneQuery Documentation | Governed Agent Data Access
+  - tag: meta
+    attrs:
+      name: twitter:description
+      content: OneQuery documentation for installing the CLI, connecting governed sources, running read-only queries, and giving agents safe production context.
+  - tag: meta
+    attrs:
+      name: twitter:image
+      content: https://onequery.dev/og.png
+  - tag: meta
+    attrs:
+      name: twitter:image:alt
+      content: OneQuery - Governed Data Access for AI Agents
+  - tag: script
+    attrs:
+      type: application/ld+json
+    content: |
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://onequery.dev/#organization",
+            "name": "OneQuery",
+            "url": "https://onequery.dev/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://onequery.dev/onequery-icon.png",
+              "width": 512,
+              "height": 512,
+              "caption": "OneQuery icon"
+            },
+            "sameAs": ["https://github.com/wordbricks/onequery"]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://onequery.dev/#website",
+            "name": "OneQuery",
+            "url": "https://onequery.dev/",
+            "description": "OneQuery gives AI agents production context without production keys, using approved sources, centralized credentials, enforced limits, and full audit logs.",
+            "inLanguage": "en",
+            "publisher": {
+              "@id": "https://onequery.dev/#organization"
+            }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://onequery.dev/#software",
+            "name": "OneQuery",
+            "url": "https://onequery.dev/",
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "Web, CLI, Self-hosted gateway",
+            "description": "OneQuery gives AI agents production context without production keys, using approved sources, centralized credentials, enforced limits, and full audit logs.",
+            "image": {
+              "@type": "ImageObject",
+              "url": "https://onequery.dev/onequery-icon.png",
+              "width": 512,
+              "height": 512,
+              "caption": "OneQuery icon"
+            },
+            "publisher": {
+              "@id": "https://onequery.dev/#organization"
+            },
+            "sameAs": ["https://github.com/wordbricks/onequery"],
+            "codeRepository": "https://github.com/wordbricks/onequery",
+            "installUrl": "https://www.npmjs.com/package/@onequery/cli",
+            "softwareHelp": "https://onequery.dev/docs/operations/self-host/"
+          },
+          {
+            "@type": "WebPage",
+            "@id": "https://onequery.dev/docs/#webpage",
+            "url": "https://onequery.dev/docs/",
+            "name": "OneQuery Documentation",
+            "headline": "OneQuery Documentation",
+            "description": "OneQuery documentation for installing the CLI, connecting governed sources, running read-only queries, and giving agents safe production context.",
+            "isPartOf": {
+              "@id": "https://onequery.dev/#website"
+            },
+            "about": {
+              "@id": "https://onequery.dev/#software"
+            },
+            "breadcrumb": {
+              "@id": "https://onequery.dev/docs/#breadcrumb"
+            }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": "https://onequery.dev/docs/#breadcrumb",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "OneQuery",
+                "item": "https://onequery.dev/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Documentation",
+                "item": "https://onequery.dev/docs/"
+              }
+            ]
+          }
+        ]
+      }
 sidebar:
   label: Overview
   order: 1
