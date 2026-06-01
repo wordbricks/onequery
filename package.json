@@ -53,6 +53,7 @@
       "remotion": "4.0.448",
       "remark-gfm": "4.0.1",
       "remark-stringify": "11.0.0",
+      "schema-dts": "2.0.0",
       "simple-icons": "16.20.0",
       "smol-toml": "1.6.1",
       "sonner": "2.0.7",

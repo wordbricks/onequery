@@ -1,3 +1,4 @@
+import type { WebPage, WithContext } from "schema-dts";
 import { describe, expect, it } from "vitest";
 
 import { safeJsonLdStringify, toStructuredDataItems } from "./json-ld";
@@ -36,6 +37,17 @@ describe("safeJsonLdStringify", () => {
         keep: "value",
       },
     });
+  });
+
+  it("accepts schema-dts typed schema.org objects", () => {
+    const item = {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: "OneQuery Documentation",
+      url: "https://onequery.dev/docs/",
+    } satisfies WithContext<WebPage>;
+
+    expect(JSON.parse(safeJsonLdStringify(item))).toEqual(item);
   });
 });
 

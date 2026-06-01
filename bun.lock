@@ -191,10 +191,12 @@
       "version": "0.0.0",
       "devDependencies": {
         "astro": "catalog:",
+        "schema-dts": "catalog:",
         "vitest": "catalog:testing",
       },
       "peerDependencies": {
         "astro": "^6.3.0",
+        "schema-dts": "^2.0.0",
       },
     },
     "packages/audit-contracts": {
@@ -486,6 +488,7 @@
     "remark-gfm": "4.0.1",
     "remark-stringify": "11.0.0",
     "remotion": "4.0.448",
+    "schema-dts": "2.0.0",
     "simple-icons": "16.20.0",
     "smol-toml": "1.6.1",
     "sonner": "2.0.7",
@@ -3899,6 +3902,10 @@
     "sax": ["sax@1.6.0", "", {}, "sha512-6R3J5M4AcbtLUdZmRv2SygeVaM7IhrLXu9BmnOGmmACak8fiUtOsYNWUS4uK7upbmHIBbLBeFeI//477BKLBzA=="],
 
     "scheduler": ["scheduler@0.27.0", "", {}, "sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q=="],
+
+    "schema-dts": ["schema-dts@2.0.0", "", { "dependencies": { "schema-dts-lib": "^1.0.0" } }, "sha512-t7NoCy3Rn5GHGx6p7s1qIYK/AeIb8ZxJNR9WUNFkwMv2CiiGZBmqqYWc2FlZVm5ZbiHMY4OvBWhj7QtyrFO2Jw=="],
+
+    "schema-dts-lib": ["schema-dts-lib@1.0.0", "", { "peerDependencies": { "typescript": ">=4.9.5" } }, "sha512-9MEO5vpQH9JdBioUupqluzxSYxPLjhmqRUudk15adUl/ypnRsM2/M1kN3AmVJQeG7nZqcL68H8JlGqQQT6vy9A=="],
 
     "schema-utils": ["schema-utils@4.3.3", "", { "dependencies": { "@types/json-schema": "^7.0.9", "ajv": "^8.9.0", "ajv-formats": "^2.1.1", "ajv-keywords": "^5.1.0" } }, "sha512-eflK8wEtyOE6+hsaRVPxvUKYCpRgzLqDTb8krvAsRIwOGlHoSgYLgBXoubGgLd2fT41/OUYdb48v4k4WWHQurA=="],
 

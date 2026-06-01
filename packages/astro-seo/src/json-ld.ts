@@ -1,4 +1,20 @@
+import type {
+  Graph,
+  JsonLdObject as SchemaDtsJsonLdObject,
+  Thing,
+  WithContext,
+} from "schema-dts";
+
 export type JsonLdScalar = boolean | number | string;
+
+export type SchemaOrgStructuredData<
+  T extends SchemaDtsJsonLdObject | string = Thing,
+> = Graph | WithContext<T>;
+
+export type StructuredDataGraph = {
+  readonly "@context": "https://schema.org";
+  readonly "@graph": readonly StructuredData[];
+};
 
 export type JsonLdArray = readonly JsonLdValue[];
 
@@ -8,13 +24,14 @@ export type JsonLdObject = {
 
 export type JsonLdValue = JsonLdArray | JsonLdObject | JsonLdScalar | null;
 
-export type StructuredData = JsonLdObject;
+export type StructuredData<T extends SchemaDtsJsonLdObject | string = Thing> =
+  | JsonLdObject
+  | StructuredDataGraph
+  | SchemaOrgStructuredData<T>;
 
-export type StructuredDataInput =
-  | readonly StructuredData[]
-  | StructuredData
-  | null
-  | undefined;
+export type StructuredDataInput<
+  T extends SchemaDtsJsonLdObject | string = Thing,
+> = readonly StructuredData<T>[] | StructuredData<T> | null | undefined;
 
 const JSON_LD_SCRIPT_ESCAPE_PATTERN = /[<>&\u2028\u2029]/gu;
 
@@ -44,9 +61,11 @@ function omitNullValues(_key: string, value: unknown) {
   return value;
 }
 
-function isStructuredDataArray(
-  structuredData: StructuredDataInput
-): structuredData is readonly StructuredData[] {
+function isStructuredDataArray<
+  T extends SchemaDtsJsonLdObject | string = Thing,
+>(
+  structuredData: StructuredDataInput<T>
+): structuredData is readonly StructuredData<T>[] {
   return Array.isArray(structuredData);
 }
 
@@ -60,9 +79,9 @@ export function safeJsonLdStringify(
   );
 }
 
-export function toStructuredDataItems(
-  structuredData: StructuredDataInput
-): readonly StructuredData[] {
+export function toStructuredDataItems<
+  T extends SchemaDtsJsonLdObject | string = Thing,
+>(structuredData: StructuredDataInput<T>): readonly StructuredData<T>[] {
   if (!structuredData) {
     return [];
   }

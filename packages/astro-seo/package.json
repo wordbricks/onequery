@@ -18,9 +18,11 @@
   },
   "devDependencies": {
     "astro": "catalog:",
+    "schema-dts": "catalog:",
     "vitest": "catalog:testing"
   },
   "peerDependencies": {
-    "astro": "^6.3.0"
+    "astro": "^6.3.0",
+    "schema-dts": "^2.0.0"
   }
 }
