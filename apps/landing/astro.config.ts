@@ -10,6 +10,7 @@ import { agentMarkdown } from "@onequery/astro-agent-markdown/astro";
 import { defineConfig, envField, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
+import { remarkReadingTime } from "./src/features/blog/remark-reading-time";
 import {
   DEFAULT_DEV_PORT,
   DEV_SERVER_HOST,
@@ -171,6 +172,9 @@ export default defineConfig({
       ],
     }),
   ],
+  markdown: {
+    remarkPlugins: [remarkReadingTime],
+  },
   server: {
     host: DEV_SERVER_HOST,
     port: DEFAULT_DEV_PORT,

@@ -18,7 +18,6 @@ export function createBlogPostContentSchema(context: SchemaContext) {
     coverImage: blogImageSchema,
     description: z.string().min(1),
     publishedAt: z.iso.date(),
-    readTime: z.string().regex(/^\d+ min read$/u),
     title: z.string().min(1),
   });
 }
