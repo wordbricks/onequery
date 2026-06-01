@@ -9,7 +9,7 @@ import type { BlogPost } from "./blog-types";
 
 const DEFAULT_BLOG_SHARE_IMAGE = {
   height: 630,
-  url: "/og.png",
+  url: "/og.svg",
   width: 1200,
 } satisfies StructuredImageMetadata;
 
