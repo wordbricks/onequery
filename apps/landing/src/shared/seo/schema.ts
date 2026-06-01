@@ -36,7 +36,7 @@ const CORE_TOPICS = [
   "safe production debugging",
 ] as const;
 
-type SiteInput = string | URL | null | undefined;
+export type SiteInput = string | URL | null | undefined;
 
 type HomePageStructuredDataInput = {
   description: string;
@@ -92,6 +92,12 @@ type ConnectorPageStructuredDataInput = {
   description: string;
   faqs: readonly ConnectorFaq[];
   relatedConnectors: readonly DataSourceConnector[];
+  site?: SiteInput;
+  title: string;
+};
+
+type DocsIndexStructuredDataInput = {
+  description: string;
   site?: SiteInput;
   title: string;
 };
@@ -431,6 +437,57 @@ export function createHomePageStructuredData(
           position: 1,
           name: ONEQUERY.NAME,
           item: `${siteUrl}/`,
+        },
+      ],
+    },
+  ]);
+}
+
+export function createDocsIndexStructuredData(
+  input: DocsIndexStructuredDataInput
+): StructuredData {
+  const siteUrl = normalizeSiteUrl(input.site);
+  const docsUrl = createCanonicalUrl(SEO_PATHS.DOCS, siteUrl);
+
+  return createGraph([
+    ...createSiteGraph(siteUrl),
+    createOneQuerySoftwareApplication({
+      description: ONEQUERY.SITE_DESCRIPTION,
+      site: siteUrl,
+    }),
+    {
+      "@type": "WebPage",
+      "@id": getNodeId(docsUrl, SCHEMA_FRAGMENTS.WEBPAGE),
+      url: docsUrl,
+      name: input.title,
+      headline: input.title,
+      description: input.description,
+      inLanguage: "en",
+      isPartOf: {
+        "@id": getWebsiteId(siteUrl),
+      },
+      about: {
+        "@id": getSoftwareApplicationId(siteUrl),
+      },
+      breadcrumb: {
+        "@id": getNodeId(docsUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
+      },
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": getNodeId(docsUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: ONEQUERY.NAME,
+          item: `${siteUrl}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Documentation",
+          item: docsUrl,
         },
       ],
     },

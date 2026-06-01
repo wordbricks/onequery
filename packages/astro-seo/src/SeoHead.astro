@@ -1,116 +1,24 @@
 ---
-import JsonLd from "./JsonLd.astro";
-import { formatKeywords } from "./metadata";
-import { toStructuredDataItems } from "./json-ld";
+import { createSeoHeadEntries } from "./metadata";
 import type { SeoHeadMetadata } from "./metadata";
 
 type Props = SeoHeadMetadata;
 
-const {
-  applicationName,
-  appleMobileWebAppTitle,
-  author,
-  canonicalUrl,
-  description,
-  image,
-  keywords,
-  metaTags = [],
-  openGraph = {},
-  robots,
-  sitemapUrl,
-  structuredData,
-  themeColor,
-  title,
-  twitter = {},
-} = Astro.props;
-
-const keywordContent = formatKeywords(keywords);
-const ogTitle = openGraph.title ?? title;
-const ogDescription = openGraph.description ?? description;
-const ogUrl = openGraph.url ?? canonicalUrl;
-const ogImage = openGraph.image ?? image;
-const twitterTitle = twitter.title ?? title;
-const twitterDescription = twitter.description ?? description;
-const twitterImage = twitter.image ?? image;
-const structuredDataItems = toStructuredDataItems(structuredData);
+const headEntries = createSeoHeadEntries(Astro.props);
 ---
 
 <Fragment>
-  <title>{title}</title>
-  {themeColor ? <meta name="theme-color" content={themeColor} /> : null}
-  {robots ? <meta name="robots" content={robots} /> : null}
-  {author ? <meta name="author" content={author} /> : null}
   {
-    applicationName ? (
-      <meta name="application-name" content={applicationName} />
-    ) : null
-  }
-  {
-    appleMobileWebAppTitle ? (
-      <meta
-        name="apple-mobile-web-app-title"
-        content={appleMobileWebAppTitle}
-      />
-    ) : null
-  }
-  <link rel="canonical" href={canonicalUrl} />
-  {sitemapUrl ? <link rel="sitemap" href={sitemapUrl} /> : null}
-  <meta name="description" content={description} />
-  {keywordContent ? <meta name="keywords" content={keywordContent} /> : null}
-  <meta property="og:title" content={ogTitle} />
-  <meta property="og:description" content={ogDescription} />
-  {openGraph.type ? <meta property="og:type" content={openGraph.type} /> : null}
-  <meta property="og:url" content={ogUrl} />
-  {
-    openGraph.siteName ? (
-      <meta property="og:site_name" content={openGraph.siteName} />
-    ) : null
-  }
-  {
-    openGraph.locale ? (
-      <meta property="og:locale" content={openGraph.locale} />
-    ) : null
-  }
-  {ogImage ? <meta property="og:image" content={ogImage.url} /> : null}
-  {
-    ogImage?.secureUrl || ogImage?.url ? (
-      <meta property="og:image:secure_url" content={ogImage.secureUrl ?? ogImage.url} />
-    ) : null
-  }
-  {ogImage?.type ? <meta property="og:image:type" content={ogImage.type} /> : null}
-  {
-    ogImage?.width ? (
-      <meta property="og:image:width" content={String(ogImage.width)} />
-    ) : null
-  }
-  {
-    ogImage?.height ? (
-      <meta property="og:image:height" content={String(ogImage.height)} />
-    ) : null
-  }
-  {ogImage?.alt ? <meta property="og:image:alt" content={ogImage.alt} /> : null}
-  <meta name="twitter:card" content={twitter.card ?? "summary_large_image"} />
-  {twitter.site ? <meta name="twitter:site" content={twitter.site} /> : null}
-  <meta name="twitter:title" content={twitterTitle} />
-  <meta name="twitter:description" content={twitterDescription} />
-  {
-    twitterImage ? (
-      <meta name="twitter:image" content={twitterImage.url} />
-    ) : null
-  }
-  {
-    twitterImage?.alt ? (
-      <meta name="twitter:image:alt" content={twitterImage.alt} />
-    ) : null
-  }
-  {
-    metaTags.map((tag) =>
-      "name" in tag ? (
-        <meta name={tag.name} content={tag.content} />
+    headEntries.map((entry) =>
+      entry.tag === "title" ? (
+        <title>{entry.content}</title>
+      ) : entry.tag === "meta" ? (
+        <meta {...entry.attrs} />
+      ) : entry.tag === "link" ? (
+        <link {...entry.attrs} />
       ) : (
-        <meta property={tag.property} content={tag.content} />
+        <script is:inline {...entry.attrs} set:html={entry.content} />
       )
     )
   }
-  {structuredDataItems.map((item) => <JsonLd item={item} />)}
 </Fragment>

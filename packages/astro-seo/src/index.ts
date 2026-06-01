@@ -7,11 +7,13 @@ export type {
   StructuredData,
   StructuredDataInput,
 } from "./json-ld";
-export { formatKeywords } from "./metadata";
+export { createSeoHeadEntries, formatKeywords } from "./metadata";
 export type {
   MetaTag,
   OpenGraphMetadata,
   OpenGraphType,
+  SeoHeadAttrs,
+  SeoHeadEntry,
   SeoHeadMetadata,
   SeoImageMetadata,
   TwitterCardType,

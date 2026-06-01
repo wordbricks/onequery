@@ -112,6 +112,7 @@ export default defineConfig({
         alt: "OneQuery",
         src: "/src/assets/onequery-icon.svg",
       },
+      routeMiddleware: "./src/starlightRouteData.ts",
       sidebar: [
         {
           items: ["docs", "docs/getting-started"],
