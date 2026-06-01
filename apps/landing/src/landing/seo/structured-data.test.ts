@@ -23,7 +23,7 @@ describe("createLandingPageStructuredData", () => {
     const schema = createLandingPageStructuredData({
       description: "Landing description",
       imageAlt: "OneQuery share image",
-      imageUrl: "/og.svg",
+      imageUrl: "/og.png",
       title: "OneQuery",
       video: {
         contentUrl: "/_astro/openclaw-demo-video.hash.mp4",

@@ -443,7 +443,7 @@ export function createBlogPostStructuredData(
   site?: SiteInput,
   image: StructuredImageMetadata = {
     height: DEFAULT_IMAGE_HEIGHT,
-    url: "/og.svg",
+    url: "/og.png",
     width: DEFAULT_IMAGE_WIDTH,
   }
 ): StructuredData {
@@ -558,7 +558,7 @@ function createBlogPostSummaryStructuredData(
   site: SiteInput,
   image: StructuredImageMetadata = {
     height: DEFAULT_IMAGE_HEIGHT,
-    url: "/og.svg",
+    url: "/og.png",
     width: DEFAULT_IMAGE_WIDTH,
   }
 ): StructuredData {

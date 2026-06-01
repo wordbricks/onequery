@@ -11,8 +11,8 @@ export const ONEQUERY_DEFAULT_SHARE_IMAGE_ALT =
 
 export const ONEQUERY_PUBLIC_SHARE_IMAGE = {
   height: 630,
-  type: "image/svg+xml",
-  url: "/og.svg",
+  type: "image/png",
+  url: "/og.png",
   width: 1200,
 } as const satisfies TypedStructuredImageMetadata;
 

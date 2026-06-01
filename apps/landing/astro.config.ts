@@ -91,7 +91,7 @@ export default defineConfig({
       editLink: {
         baseUrl: `${REPOSITORY_URL}/edit/main/apps/landing/`,
       },
-      favicon: "/onequery-icon.png",
+      favicon: "/favicon-96x96.png",
       logo: {
         alt: "OneQuery",
         src: "/src/assets/onequery-icon.svg",
