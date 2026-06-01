@@ -1,7 +1,5 @@
 import type { MetaTag, StructuredData } from "@onequery/astro-seo";
 
-export type { MetaTag };
-
 export interface PageMetadata {
   canonicalUrl?: string;
   description?: string;

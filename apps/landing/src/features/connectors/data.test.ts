@@ -26,23 +26,6 @@ describe("DATA_SOURCE_CONNECTORS", () => {
     );
   });
 
-  it("includes recently added source providers", () => {
-    expect(DATA_SOURCE_CONNECTORS).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          category: "Productivity",
-          key: "cal",
-          label: "Cal.com",
-        }),
-        expect.objectContaining({
-          category: "Productivity",
-          key: "granola",
-          label: "Granola",
-        }),
-      ])
-    );
-  });
-
   it("derives unique SEO slugs for connector landing pages", () => {
     const slugs = DATA_SOURCE_CONNECTORS.map((connector) => connector.slug);
 

@@ -1,8 +1,4 @@
-import type {
-  JsonLdObject,
-  StructuredData,
-  StructuredDataGraph,
-} from "@onequery/astro-seo";
+import type { JsonLdObject, StructuredDataGraph } from "@onequery/astro-seo";
 
 import type { BlogPost, BlogPostSummary } from "@/features/blog/types";
 import type {
@@ -26,8 +22,6 @@ import {
   SEO_PATHS,
 } from "./constants";
 import type { SeoImage } from "./constants";
-
-export type { StructuredData };
 
 type StructuredDataNode = JsonLdObject;
 
