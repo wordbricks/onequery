@@ -1,0 +1,193 @@
+---
+import type { DataSourceConnector } from "@/features/connectors/data";
+import { getConnectorPath } from "@/features/connectors/data";
+import { BrandIcon, hasBrandIcon } from "@/shared/icons/brands";
+
+interface Props {
+  connectors: readonly DataSourceConnector[];
+}
+
+const { connectors } = Astro.props;
+const ALL_FILTER = "all";
+const connectorCategories = [
+  ...new Set(connectors.map((connector) => connector.category)),
+];
+const categoryOptions = [
+  { id: ALL_FILTER, label: "All" },
+  ...connectorCategories.map((category) => ({
+    id: category,
+    label: category,
+  })),
+] as const;
+---
+
+<section
+  class="connectors-browser"
+  aria-label="Data sources"
+  data-connectors-browser
+>
+  <aside class="connectors-filter-panel">
+    <div class="connectors-filter-title">
+      <div>
+        <h2>Filters</h2>
+        <p>
+          Showing <span data-connectors-visible-count>{connectors.length}</span>
+          of {connectors.length}
+        </p>
+      </div>
+      <button type="button" data-connectors-clear>Clear all</button>
+    </div>
+
+    <label class="connectors-search">
+      <span>Search</span>
+      <input type="search" placeholder="Search..." data-connectors-search />
+    </label>
+
+    <section class="connector-filter-group">
+      <h2>Use Case</h2>
+      <div class="connector-filter-options">
+        {
+          categoryOptions.map((option) => (
+            <label class="connector-filter-option">
+              <input
+                type="radio"
+                name="connector-filter-use-case"
+                value={option.id}
+                checked={option.id === ALL_FILTER}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))
+        }
+      </div>
+    </section>
+  </aside>
+
+  <div class="connector-grid">
+    {
+      connectors.map((connector) => (
+        <a
+          class="connector-card"
+          href={getConnectorPath(connector)}
+          data-connector-card
+          data-connector-category={connector.category}
+          data-connector-search={[
+            connector.label,
+            connector.category,
+            connector.description,
+            connector.key,
+            connector.slug,
+          ]
+            .join(" ")
+            .toLowerCase()}
+          aria-label={`${connector.label} connector details`}
+        >
+          <span class="connector-glyph" aria-hidden="true">
+            {hasBrandIcon(connector.key) ? (
+              <BrandIcon
+                aria-hidden="true"
+                className="connector-icon"
+                name={connector.key}
+              />
+            ) : (
+              <span class="connector-icon-fallback">
+                {connector.key.slice(0, 1).toUpperCase()}
+              </span>
+            )}
+          </span>
+          <div class="connector-card-copy">
+            <div class="connector-tags">
+              {connector.capabilities.map((capability) => <span>{capability}</span>)}
+            </div>
+            <h2>{connector.label}</h2>
+            <p>{connector.category}</p>
+          </div>
+        </a>
+      ))
+    }
+  </div>
+</section>
+
+<script>
+  for (const browser of document.querySelectorAll(
+    "[data-connectors-browser]"
+  )) {
+    if (!(browser instanceof HTMLElement)) {
+      continue;
+    }
+
+    const searchInput = browser.querySelector("[data-connectors-search]");
+    const clearButton = browser.querySelector("[data-connectors-clear]");
+    const visibleCount = browser.querySelector(
+      "[data-connectors-visible-count]"
+    );
+    const cards = Array.from(browser.querySelectorAll("[data-connector-card]"));
+    const categoryInputs = Array.from(
+      browser.querySelectorAll('input[name="connector-filter-use-case"]')
+    );
+
+    const getActiveCategory = () => {
+      const selectedInput = categoryInputs.find(
+        (input) => input instanceof HTMLInputElement && input.checked
+      );
+
+      return selectedInput instanceof HTMLInputElement
+        ? selectedInput.value
+        : "all";
+    };
+
+    const updateConnectors = () => {
+      const query =
+        searchInput instanceof HTMLInputElement
+          ? searchInput.value.trim().toLowerCase()
+          : "";
+      const activeCategory = getActiveCategory();
+      let nextVisibleCount = 0;
+
+      for (const card of cards) {
+        if (!(card instanceof HTMLElement)) {
+          continue;
+        }
+
+        const matchesSearch =
+          query.length === 0 ||
+          (card.dataset.connectorSearch ?? "").includes(query);
+        const matchesCategory =
+          activeCategory === "all" ||
+          card.dataset.connectorCategory === activeCategory;
+        const isVisible = matchesSearch && matchesCategory;
+
+        card.hidden = !isVisible;
+        if (isVisible) {
+          nextVisibleCount += 1;
+        }
+      }
+
+      if (visibleCount) {
+        visibleCount.textContent = String(nextVisibleCount);
+      }
+    };
+
+    searchInput?.addEventListener("input", updateConnectors);
+
+    for (const input of categoryInputs) {
+      input.addEventListener("change", updateConnectors);
+    }
+
+    clearButton?.addEventListener("click", () => {
+      if (searchInput instanceof HTMLInputElement) {
+        searchInput.value = "";
+      }
+
+      const allInput = categoryInputs.find(
+        (input) => input instanceof HTMLInputElement && input.value === "all"
+      );
+
+      if (allInput instanceof HTMLInputElement) {
+        allInput.checked = true;
+      }
+
+      updateConnectors();
+    });
+  }
+</script>

@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 
-import { handleProductUpdatesRequest } from "../../server/landing-api";
+import { handleProductUpdatesRequest } from "@/server/api";
 
 export const prerender = false;
 

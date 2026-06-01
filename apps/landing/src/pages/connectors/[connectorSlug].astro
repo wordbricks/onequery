@@ -1,5 +1,5 @@
 ---
-import type { DataSourceConnector } from "../../data/connectors";
+import type { DataSourceConnector } from "@/features/connectors/data";
 import {
   DATA_SOURCE_CONNECTORS,
   getConnectorFaqs,
@@ -9,14 +9,14 @@ import {
   getConnectorMetaDescription,
   getConnectorPath,
   getRelatedConnectors,
-} from "../../data/connectors";
-import MarketingLayout from "../../layouts/MarketingLayout.astro";
-import { BrandIcon, hasBrandIcon } from "../../landing/content/brand-icons";
+} from "@/features/connectors/data";
+import MarketingLayout from "@/layouts/MarketingLayout.astro";
+import { BrandIcon, hasBrandIcon } from "@/shared/icons/brands";
 import {
   createCanonicalUrl,
   createConnectorPageStructuredData,
-} from "../../landing/seo/structured-data";
-import "../../styles/connectors.css";
+} from "@/shared/seo/schema";
+import "@/features/connectors/styles.css";
 
 export function getStaticPaths() {
   return DATA_SOURCE_CONNECTORS.map((connector) => ({

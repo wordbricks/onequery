@@ -1,12 +1,12 @@
 ---
-import ConnectorBrowser from "../components/connectors/ConnectorBrowser.astro";
-import { DATA_SOURCE_CONNECTORS } from "../data/connectors";
-import MarketingLayout from "../layouts/MarketingLayout.astro";
+import ConnectorBrowser from "@/features/connectors/Browser.astro";
+import { DATA_SOURCE_CONNECTORS } from "@/features/connectors/data";
+import MarketingLayout from "@/layouts/MarketingLayout.astro";
 import {
   createCanonicalUrl,
   createConnectorIndexStructuredData,
-} from "../landing/seo/structured-data";
-import "../styles/connectors.css";
+} from "@/shared/seo/schema";
+import "@/features/connectors/styles.css";
 
 const title = "OneQuery Connectors | Supported Data Sources";
 const description =

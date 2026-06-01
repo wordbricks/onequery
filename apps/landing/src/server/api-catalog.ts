@@ -1,4 +1,4 @@
-import { LANDING_API_PREFIX } from "../landing/config/landing-api";
+import { API_PREFIX } from "@/shared/config/api";
 
 const API_CATALOG_PATH = "/.well-known/api-catalog";
 const API_CATALOG_CONTENT_TYPE =
@@ -20,8 +20,8 @@ export const AGENT_DISCOVERY_LINK_HEADER = [
 export function buildApiCatalogLinkset(origin: string) {
   const homepageUrl = `${origin}/`;
   const catalogUrl = `${origin}${API_CATALOG_PATH}`;
-  const productUpdatesApiUrl = `${origin}${LANDING_API_PREFIX}/product-updates/`;
-  const contactApiUrl = `${origin}${LANDING_API_PREFIX}/contact/`;
+  const productUpdatesApiUrl = `${origin}${API_PREFIX}/product-updates/`;
+  const contactApiUrl = `${origin}${API_PREFIX}/contact/`;
 
   return {
     linkset: [

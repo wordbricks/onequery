@@ -1,0 +1,41 @@
+---
+import type { TerminalLine } from "@/features/home/terminal/types";
+
+interface Props {
+  footer: string;
+  lines: readonly TerminalLine[];
+  title: string;
+}
+
+const { footer, lines, title } = Astro.props;
+---
+
+<div class="terminal-surface" role="img" aria-label={title}>
+  <div class="terminal-surface-toolbar">
+    <div class="terminal-surface-dots" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+    <span class="terminal-surface-title">{title}</span>
+  </div>
+
+  <div class="terminal-surface-body">
+    {
+      lines.map((line) => (
+        <div class={`terminal-line terminal-line-${line.kind}`}>
+          {line.kind === "output" ? null : (
+            <span class="terminal-line-prefix" aria-hidden="true">
+              {line.kind === "prompt" ? "$" : ">"}
+            </span>
+          )}
+          <code>{line.text}</code>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="terminal-surface-footer">
+    <span>{footer}</span>
+  </div>
+</div>

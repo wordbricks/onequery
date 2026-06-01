@@ -1,0 +1,70 @@
+---
+import {
+  getBlogIndexPath,
+} from "@/features/blog/taxonomy";
+import type { BlogCategoryFilter } from "@/features/blog/taxonomy";
+import type { BlogPostSummary } from "@/features/blog/types";
+import TrackedLink from "@/shared/components/TrackedLink.astro";
+import Thumbnail from "./Thumbnail.astro";
+
+interface Props {
+  activeCategory: BlogCategoryFilter;
+  categories: readonly BlogCategoryFilter[];
+  posts: readonly BlogPostSummary[];
+}
+
+const { activeCategory, categories, posts } = Astro.props;
+---
+
+<main class="blog-main">
+    <section class="blog-index-hero">
+      <p class="eyebrow">OneQuery</p>
+      <h1>Blog</h1>
+      <nav aria-label="Blog categories" class="blog-categories">
+        {
+          categories.map((category) => (
+            <TrackedLink
+              href={getBlogIndexPath({ category })}
+              class={
+                activeCategory === category
+                  ? "blog-category blog-category-active"
+                  : "blog-category"
+              }
+              aria-current={activeCategory === category ? "page" : undefined}
+            >
+              {category}
+            </TrackedLink>
+          ))
+        }
+      </nav>
+    </section>
+
+    <div class="blog-toolbar">
+      <span class="blog-toolbar-button">{posts.length} posts</span>
+    </div>
+
+    <section>
+      <div class="blog-grid">
+        {
+          posts.map((post, postIndex) => (
+            <article class="blog-card">
+              <TrackedLink href={`/blog/${post.slug}/`}>
+                <Thumbnail post={post} priority={postIndex === 0} />
+                <div class="blog-card-meta">
+                  <span>{post.category}</span>
+                  <span aria-hidden="true">/</span>
+                  <span>{post.date}</span>
+                </div>
+                <h2>{post.title}</h2>
+                <p>{post.description}</p>
+                <span class="blog-card-read-more">
+                  {post.readTime}
+                  <span aria-hidden="true">→</span>
+                </span>
+              </TrackedLink>
+            </article>
+          ))
+        }
+      </div>
+    </section>
+ </main>

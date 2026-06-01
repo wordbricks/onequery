@@ -1,0 +1,44 @@
+---
+import { FOOTER_LINKS } from "@/shared/navigation/footer";
+import type { FooterLink } from "@/shared/navigation/footer";
+import FooterContactButton from "./FooterContactButton.astro";
+import TrackedLink from "./TrackedLink.astro";
+
+interface Props {
+  links?: ReadonlyArray<FooterLink>;
+  showContact?: boolean;
+}
+
+const {
+  links = FOOTER_LINKS,
+  showContact = true,
+} = Astro.props;
+---
+
+<footer class="site-footer">
+  <p>OneQuery</p>
+  <div class="footer-links">
+    {
+      links.map((link) =>
+        link.trackingName ? (
+          <TrackedLink
+            href={link.href}
+            target="_blank"
+            rel="noreferrer"
+            trackingName={link.trackingName}
+            trackingSection="footer"
+          >
+            {link.label}
+          </TrackedLink>
+        ) : (
+          <a href={link.href} target="_blank" rel="noreferrer">
+            {link.label}
+          </a>
+        )
+      )
+    }
+    {
+      showContact ? <FooterContactButton /> : null
+    }
+  </div>
+</footer>

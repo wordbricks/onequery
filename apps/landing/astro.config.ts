@@ -14,7 +14,7 @@ import {
   DEFAULT_DEV_PORT,
   DEV_SERVER_HOST,
   REPOSITORY_URL,
-} from "./src/landing/config/landing-config";
+} from "./src/shared/config/site";
 
 const BUNDLE_REPORT_TEMPLATES = ["markdown", "list", "raw-data"] as const;
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -174,6 +174,9 @@ export default defineConfig({
         : []),
     ],
     resolve: {
+      alias: {
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+      },
       dedupe: ["react", "react-dom"],
     },
     server: {

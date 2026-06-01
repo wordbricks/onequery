@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 
-import { createInstallScriptResponse } from "../tooling/install-script";
+import { createInstallScriptResponse } from "@/tooling/install";
 
 export const prerender = false;
 

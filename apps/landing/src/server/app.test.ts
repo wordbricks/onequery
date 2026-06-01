@@ -1,18 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  handleContactRequest,
-  handleProductUpdatesRequest,
-} from "./landing-api";
+import { handleContactRequest, handleProductUpdatesRequest } from "./api";
 import type {
-  LandingServiceUnavailableErrorResponse,
-  LandingValidationErrorResponse,
-  LandingWorkerBindings,
-} from "./landing-api";
+  ServiceUnavailableErrorResponse,
+  ValidationErrorResponse,
+  WorkerBindings,
+} from "./api";
 import {
   createContactNotification,
   createProductUpdatesNotification,
-} from "./landing/landing-notifications";
+} from "./notifications";
 
 const originalFetch = globalThis.fetch;
 
@@ -34,7 +31,7 @@ describe("landing API handlers", () => {
     const response = await handleProductUpdatesRequest({
       bindings: {
         LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
-      } satisfies LandingWorkerBindings,
+      } satisfies WorkerBindings,
       request: new Request("https://landing.onequery.dev/api/product-updates", {
         body: JSON.stringify({ email: "team@example.com" }),
         headers: { "content-type": "application/json" },
@@ -160,7 +157,7 @@ describe("landing API handlers", () => {
     });
 
     expect(response.status).toBe(400);
-    const body = (await response.json()) as LandingValidationErrorResponse;
+    const body = (await response.json()) as ValidationErrorResponse;
     expect(body).toEqual({
       code: "validation_error",
       fieldErrors: {
@@ -186,8 +183,7 @@ describe("landing API handlers", () => {
     });
 
     expect(response.status).toBe(503);
-    const body =
-      (await response.json()) as LandingServiceUnavailableErrorResponse;
+    const body = (await response.json()) as ServiceUnavailableErrorResponse;
     expect(body).toEqual({
       code: "service_unavailable",
       message: "Landing ingest is not configured",

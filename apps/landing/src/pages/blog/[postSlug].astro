@@ -1,19 +1,19 @@
 ---
 import type { CollectionEntry } from "astro:content";
 import { render } from "astro:content";
-import BlogPostView from "../../components/blog/BlogPost.astro";
-import BlogLayout from "../../layouts/BlogLayout.astro";
+import BlogPostView from "@/features/blog/components/Post.astro";
+import BlogLayout from "@/layouts/BlogLayout.astro";
 import {
   getBlogPostEntries,
   getBlogPostSummaries,
   toBlogPost,
-} from "../../landing/blog/blog-collection";
-import { getBlogPostShareImageMetadata } from "../../landing/blog/blog-images";
-import { getBlogPostShareMetadata } from "../../landing/blog/blog-share-metadata";
+} from "@/features/blog/collection";
+import { getBlogPostShareImageMetadata } from "@/features/blog/images";
+import { getBlogPostShareMetadata } from "@/features/blog/share";
 import {
   createBlogPostStructuredData,
   getBlogPostKeywords,
-} from "../../landing/seo/structured-data";
+} from "@/shared/seo/schema";
 
 interface Props {
   entry: CollectionEntry<"blog">;

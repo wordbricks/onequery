@@ -1,76 +1,76 @@
 ---
-import ControlPlaneDiagram from "../components/landing/ControlPlaneDiagram.astro";
-import DownloadCommand from "../components/landing/DownloadCommand.astro";
-import HeroProductSurface from "../components/landing/HeroProductSurface.astro";
-import OpenClawSection from "../components/landing/OpenClawSection.astro";
-import ProductUpdatesSection from "../components/landing/ProductUpdatesSection.astro";
-import RoadmapSection from "../components/landing/RoadmapSection.astro";
-import TerminalSurface from "../components/landing/TerminalSurface.astro";
-import TrackedLink from "../components/landing/TrackedLink.astro";
-import MarketingLayout from "../layouts/MarketingLayout.astro";
-import "../styles/landing.css";
+import ControlPlaneDiagram from "@/features/home/components/ControlPlaneDiagram.astro";
+import DownloadCommand from "@/features/home/components/DownloadCommand.astro";
+import HeroProductSurface from "@/features/home/components/HeroProductSurface.astro";
+import OpenClawSection from "@/features/home/components/OpenClawSection.astro";
+import ProductUpdatesSection from "@/features/home/components/ProductUpdatesSection.astro";
+import RoadmapSection from "@/features/home/components/RoadmapSection.astro";
+import TerminalSurface from "@/features/home/components/TerminalSurface.astro";
+import TrackedLink from "@/shared/components/TrackedLink.astro";
+import MarketingLayout from "@/layouts/MarketingLayout.astro";
+import "@/features/home/styles.css";
 import {
   getOpenClawDemoPosterImage,
   OPEN_CLAW_DEMO_VIDEO,
-} from "../landing/openclaw-demo-video";
+} from "@/features/home/demo-video";
 import {
   NPM_PACKAGE_URL,
   SECTION_IDS,
   SELF_HOST_DOCS_URL,
-} from "../landing/config/landing-config";
+} from "@/shared/config/site";
 import {
   createCanonicalUrl,
-  createLandingPageStructuredData,
+  createHomePageStructuredData,
   normalizeSiteUrl,
   ONEQUERY_DEFAULT_DESCRIPTION,
   toAbsoluteSiteUrl,
-} from "../landing/seo/structured-data";
+} from "@/shared/seo/schema";
 import {
   getOneQueryPublicShareImageMetadata,
   getOneQueryStructuredShareImageMetadata,
   ONEQUERY_DEFAULT_SHARE_IMAGE_ALT,
-} from "../landing/seo/site-images";
+} from "@/shared/seo/images";
 import {
   HERO_SIGNALS,
   INSTALL_STEPS,
   QUERY_DETAILS_SNIPPET,
   QUERY_TERMINAL_LINES,
   QUICKSTART_TERMINAL_LINES,
-} from "../data/home";
+} from "@/features/home/content";
 
-// Keep the SEO landing page prerendered; dynamic signup posts to the API route.
+// Keep the home page prerendered; dynamic signup posts to the API route.
 export const prerender = true;
 
-const landingTitle = "OneQuery | Governed Data Access for AI Agents";
-const landingImageAlt = ONEQUERY_DEFAULT_SHARE_IMAGE_ALT;
+const title = "OneQuery | Governed Data Access for AI Agents";
+const imageAlt = ONEQUERY_DEFAULT_SHARE_IMAGE_ALT;
 const siteUrl = normalizeSiteUrl(Astro.site);
-const landingCanonicalUrl = createCanonicalUrl("/", siteUrl);
-const landingShareImage = getOneQueryPublicShareImageMetadata(siteUrl);
-const landingStructuredShareImage =
+const canonicalUrl = createCanonicalUrl("/", siteUrl);
+const shareImage = getOneQueryPublicShareImageMetadata(siteUrl);
+const structuredShareImage =
   getOneQueryStructuredShareImageMetadata(siteUrl);
-const landingImageUrl = landingShareImage.url;
+const imageUrl = shareImage.url;
 const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
-const landingStructuredData = createLandingPageStructuredData({
+const structuredData = createHomePageStructuredData({
   description: ONEQUERY_DEFAULT_DESCRIPTION,
-  imageAlt: landingImageAlt,
-  imageHeight: landingStructuredShareImage.height,
-  imageUrl: landingStructuredShareImage.url,
-  imageWidth: landingStructuredShareImage.width,
+  imageAlt,
+  imageHeight: structuredShareImage.height,
+  imageUrl: structuredShareImage.url,
+  imageWidth: structuredShareImage.width,
   site: siteUrl,
-  title: landingTitle,
+  title,
   video: {
     contentUrl: OPEN_CLAW_DEMO_VIDEO.mp4Src,
     description: OPEN_CLAW_DEMO_VIDEO.description,
     duration: OPEN_CLAW_DEMO_VIDEO.duration,
     name: OPEN_CLAW_DEMO_VIDEO.name,
-    pageUrl: `${landingCanonicalUrl}#demo`,
+    pageUrl: `${canonicalUrl}#demo`,
     thumbnailHeight: OPEN_CLAW_DEMO_VIDEO.posterHeight,
     thumbnailUrl: openClawDemoPosterImage.src,
     thumbnailWidth: OPEN_CLAW_DEMO_VIDEO.posterWidth,
     uploadDate: OPEN_CLAW_DEMO_VIDEO.uploadDate,
   },
 });
-const landingMetaTags = [
+const metaTags = [
   {
     content: toAbsoluteSiteUrl(OPEN_CLAW_DEMO_VIDEO.mp4Src, siteUrl),
     property: "og:video",
@@ -93,7 +93,7 @@ const landingMetaTags = [
   },
 ];
 
-type LandingCtaAction = {
+type CtaAction = {
   className: string;
   href: string;
   label: string;
@@ -103,7 +103,7 @@ type LandingCtaAction = {
   trackingSection: string;
 };
 
-const heroActions: ReadonlyArray<LandingCtaAction> = [
+const heroActions: ReadonlyArray<CtaAction> = [
   {
     className: "button button-primary",
     href: `#${SECTION_IDS.install}`,
@@ -120,7 +120,7 @@ const heroActions: ReadonlyArray<LandingCtaAction> = [
   },
 ] as const;
 
-const finalCtaActions: ReadonlyArray<LandingCtaAction> = [
+const finalCtaActions: ReadonlyArray<CtaAction> = [
   {
     className: "button button-primary",
     href: NPM_PACKAGE_URL,
@@ -143,16 +143,16 @@ const finalCtaActions: ReadonlyArray<LandingCtaAction> = [
 ---
 
 <MarketingLayout
-  canonicalUrl={landingCanonicalUrl}
+  canonicalUrl={canonicalUrl}
   description={ONEQUERY_DEFAULT_DESCRIPTION}
-  imageAlt={landingImageAlt}
-  imageHeight={landingShareImage.height}
-  imageType={landingShareImage.type}
-  imageUrl={landingImageUrl}
-  imageWidth={landingShareImage.width}
-  metaTags={landingMetaTags}
-  structuredData={landingStructuredData}
-  title={landingTitle}
+  imageAlt={imageAlt}
+  imageHeight={shareImage.height}
+  imageType={shareImage.type}
+  imageUrl={imageUrl}
+  imageWidth={shareImage.width}
+  metaTags={metaTags}
+  structuredData={structuredData}
+  title={title}
 >
   <main class="page-main">
       <section class="hero-section">

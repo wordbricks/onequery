@@ -1,0 +1,93 @@
+---
+import type { MarkdownHeading } from "astro";
+import type { AstroComponentFactory } from "astro/runtime/server/index.js";
+import type { BlogPost, BlogPostSummary } from "@/features/blog/types";
+import TrackedLink from "@/shared/components/TrackedLink.astro";
+
+interface Props {
+  Content: AstroComponentFactory;
+  headings: readonly MarkdownHeading[];
+  post: BlogPost;
+  postSummaries: readonly BlogPostSummary[];
+}
+
+const { Content, headings, post, postSummaries } = Astro.props;
+
+const sectionHeadings = headings.filter((heading) => heading.depth === 2);
+const relatedPosts = postSummaries
+  .filter(
+    (relatedPost) =>
+      relatedPost.slug !== post.slug && relatedPost.category === post.category
+  )
+  .slice(0, 3);
+const fallbackRelatedPosts = postSummaries
+  .filter((relatedPost) => relatedPost.slug !== post.slug)
+  .slice(0, 3);
+const visibleRelatedPosts =
+  relatedPosts.length > 0 ? relatedPosts : fallbackRelatedPosts;
+---
+
+<main class="blog-post-main">
+    <article id="top">
+      <header class="blog-post-header">
+        <div class="blog-breadcrumb">
+          <TrackedLink href="/blog/">Blog</TrackedLink>
+          <span aria-hidden="true">/</span>
+          <span>{post.category}</span>
+        </div>
+        <p class="blog-post-date">
+          {post.date} <span aria-hidden="true">-</span> {post.category}
+        </p>
+        <h1>{post.title}</h1>
+      </header>
+
+      <div class="blog-post-byline">
+        <span>OneQuery Maintainers</span>
+        <span aria-hidden="true">-</span>
+        <span>{post.readTime}</span>
+      </div>
+
+      <div class="blog-post-layout">
+        <aside class="blog-post-toc">
+          <h2>Table of Contents</h2>
+          <nav>
+            <a href="#top">Up</a>
+            {
+              sectionHeadings.map((heading) => (
+                <a href={`#${heading.slug}`}>{heading.text}</a>
+              ))
+            }
+          </nav>
+        </aside>
+
+        <div class="blog-post-body">
+          <p class="blog-post-deck">{post.description}</p>
+          <Content />
+        </div>
+      </div>
+    </article>
+
+    <section class="blog-related">
+      <h2>Related posts</h2>
+      <div class="blog-related-grid">
+        {
+          visibleRelatedPosts.map((relatedPost) => (
+            <TrackedLink
+              href={`/blog/${relatedPost.slug}/`}
+            >
+              <span>
+                {relatedPost.date} - {relatedPost.category}
+              </span>
+              <h3>{relatedPost.title}</h3>
+              <p>
+                {relatedPost.readTime} <span aria-hidden="true">→</span>
+              </p>
+            </TrackedLink>
+          ))
+        }
+      </div>
+      <TrackedLink href="/blog/" class="blog-more-link">
+        View more posts <span aria-hidden="true">→</span>
+      </TrackedLink>
+    </section>
+</main>
