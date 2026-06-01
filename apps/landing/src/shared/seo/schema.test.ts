@@ -177,7 +177,7 @@ describe("createBlogPostStructuredData", () => {
       height: 630,
       src: "/_astro/debug-production-agent-runs-with-onequery-icon.png",
       width: 1200,
-    } as ImageMetadata;
+    } satisfies ImageMetadata;
     const post: BlogPost = {
       body: "## Evidence loop\n\nEvidence paragraph",
       category: "Engineering",

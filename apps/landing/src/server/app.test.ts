@@ -4,7 +4,6 @@ import { handleContactRequest, handleProductUpdatesRequest } from "./api";
 import type {
   ServiceUnavailableErrorResponse,
   ValidationErrorResponse,
-  WorkerBindings,
 } from "./api";
 import {
   createContactNotification,
@@ -12,6 +11,7 @@ import {
 } from "./notifications";
 
 const originalFetch = globalThis.fetch;
+const WEBHOOK_URL = "https://example.com/hooks/landing";
 
 function installFetchMock(fetchMock: typeof globalThis.fetch) {
   globalThis.fetch = fetchMock;
@@ -29,14 +29,12 @@ describe("landing API handlers", () => {
     installFetchMock(fetchSpy);
 
     const response = await handleProductUpdatesRequest({
-      bindings: {
-        LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
-      } satisfies WorkerBindings,
       request: new Request("https://landing.onequery.dev/api/product-updates", {
         body: JSON.stringify({ email: "team@example.com" }),
         headers: { "content-type": "application/json" },
         method: "POST",
       }),
+      slackWebhookUrl: WEBHOOK_URL,
     });
 
     expect(response.status).toBe(200);
@@ -51,21 +49,19 @@ describe("landing API handlers", () => {
     installFetchMock(fetchSpy);
 
     const response = await handleProductUpdatesRequest({
-      bindings: {
-        LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
-      },
       request: new Request("https://landing.onequery.dev/api/product-updates", {
         body: JSON.stringify({ email: " TEST@Example.COM " }),
         headers: { "content-type": "application/json" },
         method: "POST",
       }),
+      slackWebhookUrl: WEBHOOK_URL,
     });
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       email: "test@example.com",
     });
-    expect(fetchSpy).toHaveBeenCalledWith("https://example.com/hooks/landing", {
+    expect(fetchSpy).toHaveBeenCalledWith(WEBHOOK_URL, {
       body: JSON.stringify(
         createProductUpdatesNotification("test@example.com")
       ),
@@ -80,22 +76,20 @@ describe("landing API handlers", () => {
     installFetchMock(fetchSpy);
 
     const response = await handleProductUpdatesRequest({
-      bindings: {
-        LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
-      },
       request: new Request("https://landing.onequery.dev/api/product-updates", {
         body: new URLSearchParams({
           email: " FORM@Example.COM ",
         }),
         method: "POST",
       }),
+      slackWebhookUrl: WEBHOOK_URL,
     });
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       email: "form@example.com",
     });
-    expect(fetchSpy).toHaveBeenCalledWith("https://example.com/hooks/landing", {
+    expect(fetchSpy).toHaveBeenCalledWith(WEBHOOK_URL, {
       body: JSON.stringify(
         createProductUpdatesNotification("form@example.com")
       ),
@@ -110,9 +104,6 @@ describe("landing API handlers", () => {
     installFetchMock(fetchSpy);
 
     const response = await handleContactRequest({
-      bindings: {
-        LANDING_SLACK_WEBHOOK_URL: "https://example.com/hooks/landing",
-      },
       request: new Request("https://landing.onequery.dev/api/contact", {
         body: JSON.stringify({
           email: " TEAM@Example.COM ",
@@ -122,11 +113,12 @@ describe("landing API handlers", () => {
         headers: { "content-type": "application/json" },
         method: "POST",
       }),
+      slackWebhookUrl: WEBHOOK_URL,
     });
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({});
-    expect(fetchSpy).toHaveBeenCalledWith("https://example.com/hooks/landing", {
+    expect(fetchSpy).toHaveBeenCalledWith(WEBHOOK_URL, {
       body: JSON.stringify(
         createContactNotification({
           email: "team@example.com",
@@ -144,7 +136,6 @@ describe("landing API handlers", () => {
     installFetchMock(fetchSpy);
 
     const response = await handleContactRequest({
-      bindings: {},
       request: new Request("https://landing.onequery.dev/api/contact", {
         body: JSON.stringify({
           email: "team@example.com",
@@ -157,7 +148,7 @@ describe("landing API handlers", () => {
     });
 
     expect(response.status).toBe(400);
-    const body = (await response.json()) as ValidationErrorResponse;
+    const body: ValidationErrorResponse = await response.json();
     expect(body).toEqual({
       code: "validation_error",
       fieldErrors: {
@@ -174,7 +165,6 @@ describe("landing API handlers", () => {
     installFetchMock(fetchSpy);
 
     const response = await handleProductUpdatesRequest({
-      bindings: {},
       request: new Request("https://landing.onequery.dev/api/product-updates", {
         body: JSON.stringify({ email: "team@example.com" }),
         headers: { "content-type": "application/json" },
@@ -183,7 +173,7 @@ describe("landing API handlers", () => {
     });
 
     expect(response.status).toBe(503);
-    const body = (await response.json()) as ServiceUnavailableErrorResponse;
+    const body: ServiceUnavailableErrorResponse = await response.json();
     expect(body).toEqual({
       code: "service_unavailable",
       message: "Landing ingest is not configured",

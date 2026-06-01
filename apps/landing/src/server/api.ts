@@ -39,15 +39,11 @@ export type ApiErrorResponse =
   | ServiceUnavailableErrorResponse
   | ValidationErrorResponse;
 
-export interface WorkerBindings {
-  // Local dev can intentionally omit the webhook binding and use the loopback
-  // fallback sink, but deployed environments still require it.
-  LANDING_SLACK_WEBHOOK_URL?: string;
-}
-
 type RequestContext = {
-  bindings: WorkerBindings;
   request: Request;
+  // Local dev can intentionally omit the webhook and use the loopback fallback
+  // sink, but deployed environments still require it.
+  slackWebhookUrl?: string;
 };
 
 type LeadSubmission<Input, Body> = (
@@ -87,12 +83,12 @@ function resolveNotificationDelivery(input: {
 }
 
 function resolveNotificationDeliveryFromRequest({
-  bindings,
   request,
+  slackWebhookUrl,
 }: RequestContext) {
   return resolveNotificationDelivery({
     hostname: new URL(request.url).hostname,
-    slackWebhookUrl: bindings.LANDING_SLACK_WEBHOOK_URL,
+    slackWebhookUrl,
   });
 }
 

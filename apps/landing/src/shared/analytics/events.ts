@@ -15,9 +15,15 @@ declare global {
 }
 
 function getDefinedEventParams(params: AnalyticsEventParams) {
-  return Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== undefined)
-  ) as GoogleTagEventParams;
+  const eventParams: GoogleTagEventParams = {};
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) {
+      eventParams[key] = value;
+    }
+  }
+
+  return eventParams;
 }
 
 function trackEvent(name: string, params: AnalyticsEventParams = {}) {

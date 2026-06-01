@@ -1,7 +1,7 @@
 import { ActionError, defineAction } from "astro:actions";
+import { LANDING_SLACK_WEBHOOK_URL } from "astro:env/server";
 
 import { submitContactLead } from "@/server/api";
-import { readWorkerBindings } from "@/server/bindings";
 import { NotificationConfigurationError } from "@/server/notifications";
 import type { NotificationError } from "@/server/notifications";
 import { ContactRequestSchema } from "@/server/schemas";
@@ -31,8 +31,8 @@ export const server = {
     input: ContactRequestSchema,
     handler: async (input, { request }): Promise<ContactActionState> => {
       const result = await submitContactLead(input, {
-        bindings: readWorkerBindings(),
         request,
+        slackWebhookUrl: LANDING_SLACK_WEBHOOK_URL,
       });
 
       if (result.isErr()) {

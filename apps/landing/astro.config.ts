@@ -7,7 +7,7 @@ import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
 import starlight from "@astrojs/starlight";
 import { agentMarkdown } from "@onequery/astro-agent-markdown/astro";
-import { defineConfig, fontProviders } from "astro/config";
+import { defineConfig, envField, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
 import {
@@ -17,15 +17,22 @@ import {
 } from "./src/shared/config/site";
 
 const BUNDLE_REPORT_TEMPLATES = ["markdown", "list", "raw-data"] as const;
+const BUNDLE_REPORT_TEMPLATE_SET = new Set<string>(BUNDLE_REPORT_TEMPLATES);
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 type BundleReportTemplate = (typeof BUNDLE_REPORT_TEMPLATES)[number];
 
+function isBundleReportTemplate(
+  template: string
+): template is BundleReportTemplate {
+  return BUNDLE_REPORT_TEMPLATE_SET.has(template);
+}
+
 function getBundleReportTemplate(): BundleReportTemplate {
   const template = process.env.ONEQUERY_BUNDLE_REPORT_TEMPLATE ?? "markdown";
 
-  if (BUNDLE_REPORT_TEMPLATES.includes(template as BundleReportTemplate)) {
-    return template as BundleReportTemplate;
+  if (isBundleReportTemplate(template)) {
+    return template;
   }
 
   throw new Error(
@@ -53,7 +60,7 @@ function createBundleReportPlugin() {
     gzipSize: true,
     projectRoot: REPOSITORY_ROOT,
     template,
-  }) as never;
+  });
 }
 
 export default defineConfig({
@@ -76,6 +83,15 @@ export default defineConfig({
       weights: ["400 700"],
     },
   ],
+  env: {
+    schema: {
+      LANDING_SLACK_WEBHOOK_URL: envField.string({
+        access: "secret",
+        context: "server",
+        optional: true,
+      }),
+    },
+  },
   integrations: [
     partytown({
       config: {
