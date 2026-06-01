@@ -1,13 +1,32 @@
 import type { ImageMetadata } from "astro";
 import { describe, expect, it } from "vitest";
 
+import {
+  DATA_SOURCE_CONNECTORS,
+  getConnectorFaqs,
+  getRelatedConnectors,
+} from "../../data/connectors";
 import type { BlogPost } from "../blog/blog-types";
 import { NPM_PACKAGE_URL } from "../config/landing-config";
 import {
   createBlogPostStructuredData,
   createCanonicalUrl,
+  createConnectorIndexStructuredData,
+  createConnectorPageStructuredData,
   createLandingPageStructuredData,
 } from "./structured-data";
+
+function getConnector(key: string) {
+  const connector = DATA_SOURCE_CONNECTORS.find(
+    (candidate) => candidate.key === key
+  );
+
+  if (!connector) {
+    throw new Error(`Expected connector "${key}" to exist.`);
+  }
+
+  return connector;
+}
 
 describe("createCanonicalUrl", () => {
   it("normalizes page and endpoint URLs for public SEO links", () => {
@@ -61,6 +80,89 @@ describe("createLandingPageStructuredData", () => {
         expect.objectContaining({
           "@type": "SoftwareApplication",
           installUrl: NPM_PACKAGE_URL,
+        }),
+      ])
+    );
+  });
+});
+
+describe("createConnectorIndexStructuredData", () => {
+  it("emits CollectionPage and ItemList schema for connector discovery", () => {
+    const connectors = DATA_SOURCE_CONNECTORS.slice(0, 2);
+    const schema = createConnectorIndexStructuredData({
+      connectors,
+      description: "Supported OneQuery connectors.",
+      title: "OneQuery Connectors",
+    });
+    const graph = schema["@graph"];
+
+    expect(Array.isArray(graph)).toBe(true);
+    expect(graph).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "@type": "CollectionPage",
+          "@id": "https://onequery.dev/connectors/#webpage",
+        }),
+        expect.objectContaining({
+          "@type": "ItemList",
+          "@id": "https://onequery.dev/connectors/#connectors",
+          numberOfItems: connectors.length,
+          itemListElement: expect.arrayContaining([
+            expect.objectContaining({
+              item: expect.objectContaining({
+                "@id": "https://onequery.dev/connectors/postgresql/#connector",
+                name: "OneQuery PostgreSQL connector",
+              }),
+            }),
+          ]),
+        }),
+      ])
+    );
+  });
+});
+
+describe("createConnectorPageStructuredData", () => {
+  it("emits connector WebPage, FAQPage, and setup checklist schema", () => {
+    const connector = getConnector("ga");
+    const schema = createConnectorPageStructuredData({
+      connector,
+      description: "Use the Google Analytics connector in OneQuery.",
+      faqs: getConnectorFaqs(connector),
+      relatedConnectors: getRelatedConnectors(connector),
+      title: "Google Analytics Connector | OneQuery",
+    });
+    const graph = schema["@graph"];
+
+    expect(Array.isArray(graph)).toBe(true);
+    expect(graph).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "@type": "WebPage",
+          "@id": "https://onequery.dev/connectors/google-analytics/#webpage",
+          mainEntity: {
+            "@id":
+              "https://onequery.dev/connectors/google-analytics/#connector",
+          },
+        }),
+        expect.objectContaining({
+          "@type": "SoftwareApplication",
+          "@id": "https://onequery.dev/connectors/google-analytics/#connector",
+          name: "OneQuery Google Analytics connector",
+        }),
+        expect.objectContaining({
+          "@type": "FAQPage",
+          "@id": "https://onequery.dev/connectors/google-analytics/#faq",
+          mainEntity: expect.arrayContaining([
+            expect.objectContaining({
+              "@type": "Question",
+            }),
+          ]),
+        }),
+        expect.objectContaining({
+          "@type": "ItemList",
+          "@id":
+            "https://onequery.dev/connectors/google-analytics/#setup-checklist",
+          numberOfItems: connector.guideSteps.length,
         }),
       ])
     );

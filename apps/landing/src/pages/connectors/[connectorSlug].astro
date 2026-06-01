@@ -1,0 +1,244 @@
+---
+import type { DataSourceConnector } from "../../data/connectors";
+import {
+  DATA_SOURCE_CONNECTORS,
+  getConnectorFaqs,
+  getConnectorInterfaceDescription,
+  getConnectorInterfaceLabel,
+  getConnectorKeywords,
+  getConnectorMetaDescription,
+  getConnectorPath,
+  getRelatedConnectors,
+} from "../../data/connectors";
+import MarketingLayout from "../../layouts/MarketingLayout.astro";
+import { BrandIcon, hasBrandIcon } from "../../landing/content/brand-icons";
+import {
+  createCanonicalUrl,
+  createConnectorPageStructuredData,
+} from "../../landing/seo/structured-data";
+import "../../styles/connectors.css";
+
+export function getStaticPaths() {
+  return DATA_SOURCE_CONNECTORS.map((connector) => ({
+    params: {
+      connectorSlug: connector.slug,
+    },
+    props: {
+      connector,
+    },
+  }));
+}
+
+interface Props {
+  connector: DataSourceConnector;
+}
+
+const { connector } = Astro.props;
+const title = `${connector.label} Connector | OneQuery`;
+const description = getConnectorMetaDescription(connector);
+const canonicalUrl = createCanonicalUrl(getConnectorPath(connector), Astro.site);
+const interfaceLabel = getConnectorInterfaceLabel(connector);
+const interfaceDescription = getConnectorInterfaceDescription(connector);
+const relatedConnectors = getRelatedConnectors(connector);
+const faqs = getConnectorFaqs(connector);
+const credentialLabel = connector.credentialType.replace(/_/gu, " ");
+const setupSurface =
+  connector.availability === "Dashboard + CLI"
+    ? "Dashboard and CLI"
+    : "CLI";
+const structuredData = createConnectorPageStructuredData({
+  connector,
+  description,
+  faqs,
+  relatedConnectors,
+  site: Astro.site,
+  title,
+});
+---
+
+<MarketingLayout
+  canonicalUrl={canonicalUrl}
+  description={description}
+  keywords={getConnectorKeywords(connector)}
+  shellClass="page-shell connectors-shell"
+  structuredData={structuredData}
+  title={title}
+>
+  <main class="connector-detail-main">
+    <nav class="connector-breadcrumb" aria-label="Breadcrumb">
+      <a href="/connectors/">Connectors</a>
+      <span aria-hidden="true">/</span>
+      <span>{connector.label}</span>
+    </nav>
+
+    <section class="connector-detail-hero">
+      <div class="connector-detail-hero-copy">
+        <p class="eyebrow">{connector.category} connector</p>
+        <h1>{connector.label} connector for governed AI agent access</h1>
+        <p class="connector-detail-lede">{connector.description}</p>
+
+        <div class="connector-detail-tags" aria-label="Connector capabilities">
+          {
+            connector.capabilities.map((capability) => (
+              <span>{capability}</span>
+            ))
+          }
+        </div>
+
+        <div class="connector-detail-actions">
+          <a
+            class="connector-detail-button connector-detail-button-primary"
+            href="/docs/guide/connect-source/"
+          >
+            Setup docs
+          </a>
+          <a class="connector-detail-button" href="/connectors/">
+            All connectors
+          </a>
+        </div>
+      </div>
+
+      <aside
+        class="connector-detail-summary"
+        aria-label={`${connector.label} connector summary`}
+      >
+        <span class="connector-detail-glyph" aria-hidden="true">
+          {
+            hasBrandIcon(connector.key) ? (
+              <BrandIcon
+                aria-hidden="true"
+                className="connector-detail-icon"
+                name={connector.key}
+              />
+            ) : (
+              <span class="connector-icon-fallback">
+                {connector.key.slice(0, 1).toUpperCase()}
+              </span>
+            )
+          }
+        </span>
+        <dl>
+          <div>
+            <dt>Source</dt>
+            <dd>{connector.label}</dd>
+          </div>
+          <div>
+            <dt>Access model</dt>
+            <dd>{interfaceLabel}</dd>
+          </div>
+          <div>
+            <dt>Setup surface</dt>
+            <dd>{setupSurface}</dd>
+          </div>
+          <div>
+            <dt>Provider key</dt>
+            <dd><code>{connector.key}</code></dd>
+          </div>
+        </dl>
+      </aside>
+    </section>
+
+    <section class="connector-answer-section" aria-labelledby="answer-heading">
+      <p class="eyebrow">Direct answer</p>
+      <h2 id="answer-heading">
+        OneQuery supports {connector.label} for governed agent access.
+      </h2>
+      <p>
+        Teams use the {connector.label} connector to give AI agents {
+          interfaceDescription
+        } while OneQuery keeps credentials centralized, limits access to
+        approved sources, and preserves audit logs for review.
+      </p>
+    </section>
+
+    <div class="connector-detail-grid">
+      <section class="connector-detail-panel">
+        <p class="eyebrow">Agent workflow</p>
+        <h2>What this connector enables</h2>
+        <p>
+          {connector.label} becomes an approved OneQuery source instead of a
+          secret copied into an agent prompt, shell session, or model tool. The
+          agent receives a governed access path, and the source credentials stay
+          behind OneQuery.
+        </p>
+        <ul class="connector-detail-list">
+          <li>
+            Use {interfaceDescription} for {connector.category.toLowerCase()}
+            context.
+          </li>
+          <li>
+            Keep {connector.label} credentials centralized and out of agent
+            runtimes.
+          </li>
+          <li>
+            Review agent access through OneQuery audit history instead of
+            reconstructing direct service usage.
+          </li>
+        </ul>
+      </section>
+
+      <section class="connector-detail-panel">
+        <p class="eyebrow">Setup checklist</p>
+        <h2>Prepare the {connector.label} connection</h2>
+        <p>
+          Use {credentialLabel} credentials and connect the source through the {
+            setupSurface
+          }. Keep credentials scoped to the data the agent is allowed to read.
+        </p>
+        <ol class="connector-setup-list">
+          {connector.guideSteps.map((step) => <li>{step}</li>)}
+        </ol>
+      </section>
+    </div>
+
+    <section class="connector-detail-panel connector-faq-section">
+      <p class="eyebrow">FAQ</p>
+      <h2>{connector.label} connector questions</h2>
+      <div class="connector-faq-list">
+        {
+          faqs.map((faq) => (
+            <section>
+              <h3>{faq.question}</h3>
+              <p>{faq.answer}</p>
+            </section>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="connector-related-section" aria-labelledby="related-heading">
+      <div>
+        <p class="eyebrow">Related connectors</p>
+        <h2 id="related-heading">More {connector.category.toLowerCase()} sources</h2>
+      </div>
+      <div class="connector-related-grid">
+        {
+          relatedConnectors.map((relatedConnector) => (
+            <a
+              class="connector-related-card"
+              href={getConnectorPath(relatedConnector)}
+            >
+              <span class="connector-related-glyph" aria-hidden="true">
+                {hasBrandIcon(relatedConnector.key) ? (
+                  <BrandIcon
+                    aria-hidden="true"
+                    className="connector-related-icon"
+                    name={relatedConnector.key}
+                  />
+                ) : (
+                  <span class="connector-icon-fallback">
+                    {relatedConnector.key.slice(0, 1).toUpperCase()}
+                  </span>
+                )}
+              </span>
+              <span>
+                <strong>{relatedConnector.label}</strong>
+                <span>{relatedConnector.description}</span>
+              </span>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+  </main>
+</MarketingLayout>

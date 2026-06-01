@@ -1,5 +1,6 @@
 ---
 import type { DataSourceConnector } from "../../data/connectors";
+import { getConnectorPath } from "../../data/connectors";
 import { BrandIcon, hasBrandIcon } from "../../landing/content/brand-icons";
 
 interface Props {
@@ -65,8 +66,9 @@ const categoryOptions = [
   <div class="connector-grid">
     {
       connectors.map((connector) => (
-        <article
+        <a
           class="connector-card"
+          href={getConnectorPath(connector)}
           data-connector-card
           data-connector-category={connector.category}
           data-connector-search={[
@@ -74,9 +76,11 @@ const categoryOptions = [
             connector.category,
             connector.description,
             connector.key,
+            connector.slug,
           ]
             .join(" ")
             .toLowerCase()}
+          aria-label={`${connector.label} connector details`}
         >
           <span class="connector-glyph" aria-hidden="true">
             {hasBrandIcon(connector.key) ? (
@@ -98,7 +102,7 @@ const categoryOptions = [
             <h2>{connector.label}</h2>
             <p>{connector.category}</p>
           </div>
-        </article>
+        </a>
       ))
     }
   </div>

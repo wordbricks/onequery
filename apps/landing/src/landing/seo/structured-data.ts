@@ -1,3 +1,8 @@
+import type { ConnectorFaq, DataSourceConnector } from "../../data/connectors";
+import {
+  getConnectorInterfaceDescription,
+  getConnectorPath,
+} from "../../data/connectors";
 import type { BlogPost, BlogPostSummary } from "../blog/blog-types";
 import {
   NPM_PACKAGE_URL,
@@ -63,6 +68,22 @@ type BlogIndexStructuredDataInput = {
   pathname?: string;
   postImages?: Partial<Record<string, StructuredImageMetadata>>;
   posts: readonly BlogPostSummary[];
+  site?: SiteInput;
+  title: string;
+};
+
+type ConnectorIndexStructuredDataInput = {
+  connectors: readonly DataSourceConnector[];
+  description: string;
+  site?: SiteInput;
+  title: string;
+};
+
+type ConnectorPageStructuredDataInput = {
+  connector: DataSourceConnector;
+  description: string;
+  faqs: readonly ConnectorFaq[];
+  relatedConnectors: readonly DataSourceConnector[];
   site?: SiteInput;
   title: string;
 };
@@ -277,6 +298,44 @@ function createSiteGraph(site: SiteInput): StructuredData[] {
   return [createOneQueryOrganization(site), createOneQueryWebsite(site)];
 }
 
+function createConnectorFeatureList(connector: DataSourceConnector) {
+  return [
+    `${connector.label} ${getConnectorInterfaceDescription(connector)}`,
+    `${connector.availability} setup for approved source access`,
+    "Centralized credentials for AI agent workflows",
+    "Audit-ready source access through OneQuery",
+  ];
+}
+
+function createConnectorSoftwareApplication(
+  connector: DataSourceConnector,
+  site: SiteInput
+): StructuredData {
+  const siteUrl = normalizeSiteUrl(site);
+  const connectorUrl = createCanonicalUrl(getConnectorPath(connector), siteUrl);
+
+  return {
+    "@type": "SoftwareApplication",
+    "@id": `${connectorUrl}#connector`,
+    name: `OneQuery ${connector.label} connector`,
+    url: connectorUrl,
+    applicationCategory: "DeveloperApplication",
+    applicationSubCategory: connector.category,
+    operatingSystem:
+      connector.availability === "Dashboard + CLI"
+        ? "Web, CLI, Self-hosted gateway"
+        : "CLI, Self-hosted gateway",
+    description: connector.description,
+    featureList: createConnectorFeatureList(connector),
+    publisher: {
+      "@id": getOrganizationId(siteUrl),
+    },
+    isPartOf: {
+      "@id": getSoftwareApplicationId(siteUrl),
+    },
+  };
+}
+
 export function createLandingPageStructuredData(
   input: LandingPageStructuredDataInput
 ): StructuredData {
@@ -434,6 +493,168 @@ export function createBlogIndexStructuredData(
       "@type": "BreadcrumbList",
       "@id": `${pageUrl}#breadcrumb`,
       itemListElement: breadcrumbItems,
+    },
+  ]);
+}
+
+export function createConnectorIndexStructuredData(
+  input: ConnectorIndexStructuredDataInput
+): StructuredData {
+  const siteUrl = normalizeSiteUrl(input.site);
+  const connectorsUrl = createCanonicalUrl("/connectors", siteUrl);
+
+  return createGraph([
+    ...createSiteGraph(siteUrl),
+    createOneQuerySoftwareApplication({
+      description: ONEQUERY_DEFAULT_DESCRIPTION,
+      site: siteUrl,
+    }),
+    {
+      "@type": "CollectionPage",
+      "@id": `${connectorsUrl}#webpage`,
+      url: connectorsUrl,
+      name: input.title,
+      description: input.description,
+      inLanguage: "en",
+      isPartOf: {
+        "@id": getWebsiteId(siteUrl),
+      },
+      about: {
+        "@id": getSoftwareApplicationId(siteUrl),
+      },
+      mainEntity: {
+        "@id": `${connectorsUrl}#connectors`,
+      },
+      breadcrumb: {
+        "@id": `${connectorsUrl}#breadcrumb`,
+      },
+    },
+    {
+      "@type": "ItemList",
+      "@id": `${connectorsUrl}#connectors`,
+      name: "OneQuery supported data source connectors",
+      numberOfItems: input.connectors.length,
+      itemListElement: input.connectors.map((connector, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        item: createConnectorSoftwareApplication(connector, siteUrl),
+      })),
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": `${connectorsUrl}#breadcrumb`,
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: ONEQUERY_SITE_NAME,
+          item: `${siteUrl}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Connectors",
+          item: connectorsUrl,
+        },
+      ],
+    },
+  ]);
+}
+
+export function createConnectorPageStructuredData(
+  input: ConnectorPageStructuredDataInput
+): StructuredData {
+  const siteUrl = normalizeSiteUrl(input.site);
+  const connectorsUrl = createCanonicalUrl("/connectors", siteUrl);
+  const connectorUrl = createCanonicalUrl(
+    getConnectorPath(input.connector),
+    siteUrl
+  );
+
+  return createGraph([
+    ...createSiteGraph(siteUrl),
+    createOneQuerySoftwareApplication({
+      description: ONEQUERY_DEFAULT_DESCRIPTION,
+      site: siteUrl,
+    }),
+    createConnectorSoftwareApplication(input.connector, siteUrl),
+    {
+      "@type": "WebPage",
+      "@id": `${connectorUrl}#webpage`,
+      url: connectorUrl,
+      name: input.title,
+      description: input.description,
+      inLanguage: "en",
+      isPartOf: {
+        "@id": getWebsiteId(siteUrl),
+      },
+      about: {
+        "@id": `${connectorUrl}#connector`,
+      },
+      mainEntity: {
+        "@id": `${connectorUrl}#connector`,
+      },
+      hasPart: [
+        {
+          "@id": `${connectorUrl}#faq`,
+        },
+        {
+          "@id": `${connectorUrl}#setup-checklist`,
+        },
+      ],
+      relatedLink: input.relatedConnectors.map((connector) =>
+        createCanonicalUrl(getConnectorPath(connector), siteUrl)
+      ),
+      breadcrumb: {
+        "@id": `${connectorUrl}#breadcrumb`,
+      },
+    },
+    {
+      "@type": "FAQPage",
+      "@id": `${connectorUrl}#faq`,
+      mainEntity: input.faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    },
+    {
+      "@type": "ItemList",
+      "@id": `${connectorUrl}#setup-checklist`,
+      name: `${input.connector.label} connector setup checklist`,
+      numberOfItems: input.connector.guideSteps.length,
+      itemListElement: input.connector.guideSteps.map((step, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: step,
+      })),
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": `${connectorUrl}#breadcrumb`,
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: ONEQUERY_SITE_NAME,
+          item: `${siteUrl}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Connectors",
+          item: connectorsUrl,
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: input.connector.label,
+          item: connectorUrl,
+        },
+      ],
     },
   ]);
 }
