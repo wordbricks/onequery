@@ -56,6 +56,7 @@ export const ONEQUERY = {
 export const SEO_PATHS = {
   BLOG: "/blog",
   CONNECTORS: "/connectors",
+  DOCS: "/docs",
 } as const;
 
 export const SCHEMA_FRAGMENTS = {

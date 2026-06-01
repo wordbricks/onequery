@@ -11,6 +11,7 @@ export type BlogPost = BlogPostContent & {
   body: string;
   date: string;
   headings: readonly MarkdownHeading[];
+  readTime: string;
   slug: string;
 };
 

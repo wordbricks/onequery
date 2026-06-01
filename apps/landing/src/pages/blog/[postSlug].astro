@@ -32,8 +32,8 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
-const { Content, headings } = await render(entry);
-const post = toBlogPost(entry, headings);
+const { Content, headings, remarkPluginFrontmatter } = await render(entry);
+const post = toBlogPost(entry, { headings, remarkPluginFrontmatter });
 const postSummaries = await getBlogPostSummaries();
 const shareImage = await getBlogShareImage(
   getPreferredBlogShareImage(post),

@@ -1,3 +1,5 @@
+import type { JsonLdObject, StructuredDataGraph } from "@onequery/astro-seo";
+
 import type { BlogPost, BlogPostSummary } from "@/features/blog/types";
 import type {
   ConnectorFaq,
@@ -21,7 +23,7 @@ import {
 } from "./constants";
 import type { SeoImage } from "./constants";
 
-export type StructuredData = Record<string, unknown>;
+type StructuredDataNode = JsonLdObject;
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const READ_TIME_MINUTES_PATTERN = /\d+/u;
@@ -34,7 +36,7 @@ const CORE_TOPICS = [
   "safe production debugging",
 ] as const;
 
-type SiteInput = string | URL | null | undefined;
+export type SiteInput = string | URL | null | undefined;
 
 type HomePageStructuredDataInput = {
   description: string;
@@ -94,6 +96,12 @@ type ConnectorPageStructuredDataInput = {
   title: string;
 };
 
+type DocsIndexStructuredDataInput = {
+  description: string;
+  site?: SiteInput;
+  title: string;
+};
+
 export function normalizeSiteUrl(site: SiteInput = ONEQUERY.SITE_URL) {
   const rawSite = site instanceof URL ? site.toString() : site;
   const siteUrl = rawSite && rawSite.length > 0 ? rawSite : ONEQUERY.SITE_URL;
@@ -149,7 +157,7 @@ export function getBlogPostKeywords(post: Pick<BlogPost, "category">) {
   ].join(", ");
 }
 
-function createGraph(graph: StructuredData[]): StructuredData {
+function createGraph(graph: StructuredDataNode[]): StructuredDataGraph {
   return {
     "@context": "https://schema.org",
     "@graph": graph,
@@ -203,7 +211,7 @@ function createImageObject(input: {
   site: SiteInput;
   url: string;
   width: number;
-}) {
+}): StructuredDataNode {
   return {
     "@type": "ImageObject",
     url: toAbsoluteSiteUrl(input.url, input.site),
@@ -213,7 +221,7 @@ function createImageObject(input: {
   };
 }
 
-function createOneQueryOrganization(site: SiteInput): StructuredData {
+function createOneQueryOrganization(site: SiteInput): StructuredDataNode {
   const siteUrl = normalizeSiteUrl(site);
 
   return {
@@ -231,7 +239,7 @@ function createOneQueryOrganization(site: SiteInput): StructuredData {
   };
 }
 
-function createOneQueryWebsite(site: SiteInput): StructuredData {
+function createOneQueryWebsite(site: SiteInput): StructuredDataNode {
   const siteUrl = normalizeSiteUrl(site);
 
   return {
@@ -250,7 +258,7 @@ function createOneQueryWebsite(site: SiteInput): StructuredData {
 function createOneQuerySoftwareApplication(input: {
   description: string;
   site: SiteInput;
-}): StructuredData {
+}): StructuredDataNode {
   const siteUrl = normalizeSiteUrl(input.site);
 
   return {
@@ -284,7 +292,7 @@ function createOneQuerySoftwareApplication(input: {
 
 function createDemoVideoStructuredData(
   input: DemoVideoStructuredDataInput & { site: SiteInput }
-): StructuredData {
+): StructuredDataNode {
   const siteUrl = normalizeSiteUrl(input.site);
   const thumbnailUrl = toAbsoluteSiteUrl(input.thumbnail.url, siteUrl);
   const pageUrl = toAbsoluteSiteUrl(input.pageUrl, siteUrl);
@@ -318,7 +326,7 @@ function createDemoVideoStructuredData(
   };
 }
 
-function createSiteGraph(site: SiteInput): StructuredData[] {
+function createSiteGraph(site: SiteInput): StructuredDataNode[] {
   return [createOneQueryOrganization(site), createOneQueryWebsite(site)];
 }
 
@@ -334,7 +342,7 @@ function createConnectorFeatureList(connector: DataSourceConnector) {
 function createConnectorSoftwareApplication(
   connector: DataSourceConnector,
   site: SiteInput
-): StructuredData {
+): StructuredDataNode {
   const siteUrl = normalizeSiteUrl(site);
   const connectorUrl = createCanonicalUrl(getConnectorPath(connector), siteUrl);
   const connectorId = getNodeId(connectorUrl, SCHEMA_FRAGMENTS.CONNECTOR);
@@ -363,7 +371,7 @@ function createConnectorSoftwareApplication(
 
 export function createHomePageStructuredData(
   input: HomePageStructuredDataInput
-): StructuredData {
+): StructuredDataGraph {
   const siteUrl = normalizeSiteUrl(input.site);
   const videoReference = input.video
     ? {
@@ -435,9 +443,60 @@ export function createHomePageStructuredData(
   ]);
 }
 
+export function createDocsIndexStructuredData(
+  input: DocsIndexStructuredDataInput
+): StructuredDataGraph {
+  const siteUrl = normalizeSiteUrl(input.site);
+  const docsUrl = createCanonicalUrl(SEO_PATHS.DOCS, siteUrl);
+
+  return createGraph([
+    ...createSiteGraph(siteUrl),
+    createOneQuerySoftwareApplication({
+      description: ONEQUERY.SITE_DESCRIPTION,
+      site: siteUrl,
+    }),
+    {
+      "@type": "WebPage",
+      "@id": getNodeId(docsUrl, SCHEMA_FRAGMENTS.WEBPAGE),
+      url: docsUrl,
+      name: input.title,
+      headline: input.title,
+      description: input.description,
+      inLanguage: "en",
+      isPartOf: {
+        "@id": getWebsiteId(siteUrl),
+      },
+      about: {
+        "@id": getSoftwareApplicationId(siteUrl),
+      },
+      breadcrumb: {
+        "@id": getNodeId(docsUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
+      },
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": getNodeId(docsUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: ONEQUERY.NAME,
+          item: `${siteUrl}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Documentation",
+          item: docsUrl,
+        },
+      ],
+    },
+  ]);
+}
+
 export function createBlogIndexStructuredData(
   input: BlogIndexStructuredDataInput
-): StructuredData {
+): StructuredDataGraph {
   const siteUrl = normalizeSiteUrl(input.site);
   const blogUrl = createCanonicalUrl(SEO_PATHS.BLOG, siteUrl);
   const pageUrl = createCanonicalUrl(input.pathname, siteUrl);
@@ -524,7 +583,7 @@ export function createBlogIndexStructuredData(
 
 export function createConnectorIndexStructuredData(
   input: ConnectorIndexStructuredDataInput
-): StructuredData {
+): StructuredDataGraph {
   const siteUrl = normalizeSiteUrl(input.site);
   const connectorsUrl = createCanonicalUrl(SEO_PATHS.CONNECTORS, siteUrl);
 
@@ -588,7 +647,7 @@ export function createConnectorIndexStructuredData(
 
 export function createConnectorPageStructuredData(
   input: ConnectorPageStructuredDataInput
-): StructuredData {
+): StructuredDataGraph {
   const siteUrl = normalizeSiteUrl(input.site);
   const connectorsUrl = createCanonicalUrl(SEO_PATHS.CONNECTORS, siteUrl);
   const connectorUrl = createCanonicalUrl(
@@ -687,7 +746,7 @@ export function createConnectorPageStructuredData(
 
 export function createBlogPostStructuredData(
   input: BlogPostStructuredDataInput
-): StructuredData {
+): StructuredDataGraph {
   const { image, post } = input;
   const siteUrl = normalizeSiteUrl(input.site);
   const blogUrl = createCanonicalUrl(SEO_PATHS.BLOG, siteUrl);
@@ -799,7 +858,7 @@ function createBlogPostSummaryStructuredData(
   post: BlogPostSummary,
   site: SiteInput,
   image: SeoImage
-): StructuredData {
+): StructuredDataNode {
   const siteUrl = normalizeSiteUrl(site);
   const postUrl = getBlogPostUrl(post.slug, siteUrl);
   const publishedTime = toIsoDateTime(post.publishedAt);

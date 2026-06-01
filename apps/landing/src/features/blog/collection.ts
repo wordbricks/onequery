@@ -1,8 +1,9 @@
-import { getCollection } from "astro:content";
 import type { CollectionEntry } from "astro:content";
+import { getCollection, render } from "astro:content";
 
 import type { BlogPost, BlogPostContent, BlogPostSummary } from "./types";
 
+const READ_TIME_PATTERN = /^\d+ min read$/u;
 const blogDateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   month: "short",
@@ -10,8 +11,38 @@ const blogDateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
+type BlogPostRenderData = {
+  headings?: BlogPost["headings"];
+  remarkPluginFrontmatter: unknown;
+};
+
 function formatBlogPostDate(publishedAt: string) {
   return blogDateFormatter.format(new Date(`${publishedAt}T00:00:00.000Z`));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getBlogPostReadTime(
+  entry: CollectionEntry<"blog">,
+  remarkPluginFrontmatter: unknown
+) {
+  if (!isRecord(remarkPluginFrontmatter)) {
+    throw new Error(
+      `Blog post "${entry.id}" is missing remark plugin frontmatter.`
+    );
+  }
+
+  const { readTime } = remarkPluginFrontmatter;
+
+  if (typeof readTime === "string" && READ_TIME_PATTERN.test(readTime)) {
+    return readTime;
+  }
+
+  throw new Error(
+    `Blog post "${entry.id}" is missing a valid remark-generated readTime.`
+  );
 }
 
 export function comparePostDates(
@@ -36,7 +67,7 @@ function toBlogPostSummary(post: BlogPost): BlogPostSummary {
 
 export function toBlogPost(
   entry: CollectionEntry<"blog">,
-  headings: BlogPost["headings"] = []
+  { headings = [], remarkPluginFrontmatter }: BlogPostRenderData
 ): BlogPost {
   const data = entry.data as BlogPostContent;
 
@@ -45,6 +76,7 @@ export function toBlogPost(
     body: entry.body ?? "",
     date: formatBlogPostDate(data.publishedAt),
     headings,
+    readTime: getBlogPostReadTime(entry, remarkPluginFrontmatter),
     slug: entry.id,
   };
 }
@@ -56,7 +88,15 @@ export async function getBlogPostEntries(): Promise<CollectionEntry<"blog">[]> {
 }
 
 export async function getBlogPosts(): Promise<BlogPost[]> {
-  return (await getBlogPostEntries()).map((entry) => toBlogPost(entry));
+  const entries = await getBlogPostEntries();
+
+  return Promise.all(
+    entries.map(async (entry) => {
+      const { headings, remarkPluginFrontmatter } = await render(entry);
+
+      return toBlogPost(entry, { headings, remarkPluginFrontmatter });
+    })
+  );
 }
 
 export async function getBlogPostSummaries(): Promise<BlogPostSummary[]> {

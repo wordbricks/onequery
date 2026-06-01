@@ -15,6 +15,7 @@ import {
   createCanonicalUrl,
   createConnectorIndexStructuredData,
   createConnectorPageStructuredData,
+  createDocsIndexStructuredData,
   createHomePageStructuredData,
 } from "./schema";
 
@@ -86,6 +87,45 @@ describe("createHomePageStructuredData", () => {
         expect.objectContaining({
           "@type": "SoftwareApplication",
           installUrl: NPM_PACKAGE_URL,
+        }),
+      ])
+    );
+  });
+});
+
+describe("createDocsIndexStructuredData", () => {
+  it("emits WebPage and breadcrumb schema for the docs index", () => {
+    const schema = createDocsIndexStructuredData({
+      description: "OneQuery documentation.",
+      title: "OneQuery Documentation",
+    });
+    const graph = schema["@graph"];
+
+    expect(Array.isArray(graph)).toBe(true);
+    expect(graph).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "@type": "SoftwareApplication",
+          "@id": "https://onequery.dev/#software",
+          softwareHelp: "https://onequery.dev/docs/operations/self-host/",
+        }),
+        expect.objectContaining({
+          "@type": "WebPage",
+          "@id": "https://onequery.dev/docs/#webpage",
+          headline: "OneQuery Documentation",
+          about: {
+            "@id": "https://onequery.dev/#software",
+          },
+        }),
+        expect.objectContaining({
+          "@type": "BreadcrumbList",
+          "@id": "https://onequery.dev/docs/#breadcrumb",
+          itemListElement: expect.arrayContaining([
+            expect.objectContaining({
+              name: "Documentation",
+              item: "https://onequery.dev/docs/",
+            }),
+          ]),
         }),
       ])
     );

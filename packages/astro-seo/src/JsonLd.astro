@@ -1,0 +1,17 @@
+---
+import { safeJsonLdStringify } from "./json-ld";
+import type { StructuredData } from "./json-ld";
+
+export interface Props {
+  item: readonly StructuredData[] | StructuredData;
+  space?: number | string;
+}
+
+const { item, space } = Astro.props;
+---
+
+<script
+  is:inline
+  type="application/ld+json"
+  set:html={safeJsonLdStringify(item, space)}
+/>
