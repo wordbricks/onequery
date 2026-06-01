@@ -94,7 +94,7 @@ export default defineConfig({
       favicon: "/onequery-icon.png",
       logo: {
         alt: "OneQuery",
-        src: "/src/assets/onequery-icon.png",
+        src: "/src/assets/onequery-icon.svg",
       },
       sidebar: [
         {
