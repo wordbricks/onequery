@@ -1,0 +1,26 @@
+{
+  "name": "@onequery/astro-seo",
+  "version": "0.0.0",
+  "private": false,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./JsonLd.astro": "./src/JsonLd.astro",
+    "./SeoHead.astro": "./src/SeoHead.astro",
+    "./json-ld": "./src/json-ld.ts",
+    "./metadata": "./src/metadata.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsgo --noEmit"
+  },
+  "devDependencies": {
+    "astro": "catalog:",
+    "vitest": "catalog:testing"
+  },
+  "peerDependencies": {
+    "astro": "^6.3.0"
+  }
+}

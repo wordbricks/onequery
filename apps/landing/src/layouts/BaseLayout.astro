@@ -1,5 +1,6 @@
 ---
 import "@/shared/styles/base.css";
+import SeoHead from "@onequery/astro-seo/SeoHead.astro";
 import { Font } from "astro:assets";
 import { googleTagConfig } from "@/shared/analytics/google-tag";
 import {
@@ -61,12 +62,6 @@ const {
   title = DEFAULT_TITLE,
   twitterTitle = title,
 } = Astro.props;
-const structuredDataItems =
-  structuredData === null
-    ? []
-    : Array.isArray(structuredData)
-      ? structuredData
-      : [structuredData];
 ---
 
 <!doctype html>
@@ -74,7 +69,35 @@ const structuredDataItems =
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
+    <SeoHead
+      applicationName={ONEQUERY.NAME}
+      appleMobileWebAppTitle={ONEQUERY.NAME}
+      author={ONEQUERY.AUTHOR_NAME}
+      canonicalUrl={canonicalUrl}
+      description={description}
+      image={{
+        alt: imageAlt,
+        height: imageHeight,
+        type: imageType,
+        url: imageUrl,
+        width: imageWidth,
+      }}
+      keywords={keywords}
+      metaTags={metaTags}
+      openGraph={{
+        locale: "en_US",
+        siteName: ONEQUERY.NAME,
+        type: ogType,
+      }}
+      robots={robots}
+      sitemapUrl="/sitemap-index.xml"
+      structuredData={structuredData}
+      themeColor="#ffffff"
+      title={title}
+      twitter={{
+        title: twitterTitle,
+      }}
+    />
     <script is:inline set:html={googleTagEventBridgeScript} />
     <script is:inline type="text/partytown" src={googleTagScriptSrc}></script>
     <script
@@ -115,10 +138,6 @@ const structuredDataItems =
         });
       });
     </script>
-    <meta name="robots" content={robots} />
-    <meta name="author" content={ONEQUERY.AUTHOR_NAME} />
-    <meta name="application-name" content={ONEQUERY.NAME} />
-    <meta name="apple-mobile-web-app-title" content={ONEQUERY.NAME} />
     <link
       rel="icon"
       type="image/png"
@@ -130,47 +149,7 @@ const structuredDataItems =
       sizes="180x180"
       href="/apple-touch-icon.png"
     />
-    <link rel="canonical" href={canonicalUrl} />
-    <link rel="sitemap" href="/sitemap-index.xml" />
     <Font cssVariable="--font-geist" preload />
-    <meta name="description" content={description} />
-    {keywords ? <meta name="keywords" content={keywords} /> : null}
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:type" content={ogType} />
-    <meta property="og:url" content={canonicalUrl} />
-    <meta property="og:site_name" content={ONEQUERY.NAME} />
-    <meta property="og:locale" content="en_US" />
-    <meta property="og:image" content={imageUrl} />
-    <meta property="og:image:secure_url" content={imageUrl} />
-    <meta property="og:image:type" content={imageType} />
-    <meta property="og:image:width" content={String(imageWidth)} />
-    <meta property="og:image:height" content={String(imageHeight)} />
-    <meta property="og:image:alt" content={imageAlt} />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={twitterTitle} />
-    <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={imageUrl} />
-    <meta name="twitter:image:alt" content={imageAlt} />
-    {
-      metaTags.map((tag) =>
-        "name" in tag ? (
-          <meta name={tag.name} content={tag.content} />
-        ) : (
-          <meta property={tag.property} content={tag.content} />
-        )
-      )
-    }
-    <title>{title}</title>
-    {
-      structuredDataItems.map((item) => (
-        <script
-          is:inline
-          type="application/ld+json"
-          set:html={JSON.stringify(item)}
-        />
-      ))
-    }
   </head>
   <body>
     <slot />

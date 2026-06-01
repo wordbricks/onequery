@@ -1,3 +1,5 @@
+import type { StructuredData } from "@onequery/astro-seo";
+
 import type { BlogPost, BlogPostSummary } from "@/features/blog/types";
 import type {
   ConnectorFaq,
@@ -21,7 +23,7 @@ import {
 } from "./constants";
 import type { SeoImage } from "./constants";
 
-export type StructuredData = Record<string, unknown>;
+export type { StructuredData };
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const READ_TIME_MINUTES_PATTERN = /\d+/u;

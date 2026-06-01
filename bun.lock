@@ -125,6 +125,7 @@
         "@astrojs/starlight": "catalog:",
         "@nanostores/react": "catalog:",
         "@onequery/astro-agent-markdown": "workspace:*",
+        "@onequery/astro-seo": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/ui": "workspace:*",
         "astro": "catalog:",
@@ -177,6 +178,17 @@
         "unified": "catalog:",
         "yaml": "catalog:",
       },
+      "devDependencies": {
+        "astro": "catalog:",
+        "vitest": "catalog:testing",
+      },
+      "peerDependencies": {
+        "astro": "^6.3.0",
+      },
+    },
+    "packages/astro-seo": {
+      "name": "@onequery/astro-seo",
+      "version": "0.0.0",
       "devDependencies": {
         "astro": "catalog:",
         "vitest": "catalog:testing",
@@ -1275,6 +1287,8 @@
     "@nodelib/fs.walk": ["@nodelib/fs.walk@1.2.8", "", { "dependencies": { "@nodelib/fs.scandir": "2.1.5", "fastq": "^1.6.0" } }, "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg=="],
 
     "@onequery/astro-agent-markdown": ["@onequery/astro-agent-markdown@workspace:packages/astro-agent-markdown"],
+
+    "@onequery/astro-seo": ["@onequery/astro-seo@workspace:packages/astro-seo"],
 
     "@onequery/audit-contracts": ["@onequery/audit-contracts@workspace:packages/audit-contracts"],
 

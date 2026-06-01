@@ -1,14 +1,6 @@
-import type { StructuredData } from "@/shared/seo/schema";
+import type { MetaTag, StructuredData } from "@onequery/astro-seo";
 
-export type MetaTag =
-  | {
-      content: string;
-      name: string;
-    }
-  | {
-      content: string;
-      property: string;
-    };
+export type { MetaTag };
 
 export interface PageMetadata {
   canonicalUrl?: string;
