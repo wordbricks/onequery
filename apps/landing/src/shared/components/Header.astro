@@ -1,11 +1,22 @@
 ---
 import OneQueryIcon from "@/assets/onequery-icon.svg";
-import { NAVIGATION_ITEMS } from "@/shared/navigation/main";
 import { REPOSITORY_URL } from "@/shared/config/site";
 import { BrandIcon } from "@/shared/icons/brands";
 import TrackedLink from "./TrackedLink.astro";
 
-type NavigationItem = (typeof NAVIGATION_ITEMS)[number];
+type NavigationItem = {
+  href: string;
+  label: string;
+};
+
+const NAVIGATION_ITEMS = [
+  { href: "/", label: "Product" },
+  { href: "/#demo", label: "Demo" },
+  { href: "/#install", label: "Install" },
+  { href: "/docs/", label: "Docs" },
+  { href: "/connectors/", label: "Connectors" },
+  { href: "/blog/", label: "Blog" },
+] satisfies ReadonlyArray<NavigationItem>;
 
 function normalizePathname(pathname: string) {
   if (pathname !== "/" && pathname.endsWith("/")) {

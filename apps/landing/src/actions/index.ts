@@ -1,22 +1,18 @@
 import { ActionError, defineAction } from "astro:actions";
-import { env } from "cloudflare:workers";
 
 import { submitContactLead } from "@/server/api";
+import { readWorkerBindings } from "@/server/bindings";
 import { NotificationConfigurationError } from "@/server/notifications";
 import type { NotificationError } from "@/server/notifications";
 import { ContactRequestSchema } from "@/server/schemas";
 
-import { SENT_CONTACT_ACTION_STATE } from "./contact-action-state";
-import type { ContactActionState } from "./contact-action-state";
+type ContactActionState = {
+  status: "sent";
+};
 
-function readWorkerBindings() {
-  return {
-    LANDING_SLACK_WEBHOOK_URL:
-      typeof env.LANDING_SLACK_WEBHOOK_URL === "string"
-        ? env.LANDING_SLACK_WEBHOOK_URL
-        : undefined,
-  };
-}
+const SENT_CONTACT_ACTION_STATE = {
+  status: "sent",
+} satisfies ContactActionState;
 
 function createActionError(error: NotificationError) {
   const message = NotificationConfigurationError.is(error)

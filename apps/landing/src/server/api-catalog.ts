@@ -1,6 +1,5 @@
-import { API_PREFIX } from "@/shared/config/api";
-
-const API_CATALOG_PATH = "/.well-known/api-catalog";
+const API_PREFIX = "/api";
+const API_CATALOG_PATH = "/.well-known/api-catalog/";
 const API_CATALOG_CONTENT_TYPE =
   'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"';
 const ONEQUERY_REPOSITORY_URL = "https://github.com/wordbricks/onequery";

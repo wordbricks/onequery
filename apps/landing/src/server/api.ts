@@ -50,6 +50,11 @@ type RequestContext = {
   request: Request;
 };
 
+type LeadSubmission<Input, Body> = (
+  input: Input,
+  context: RequestContext
+) => Promise<Result<Body, NotificationError>>;
+
 function isLoopbackHostname(hostname: string) {
   return (
     hostname === "localhost" ||
@@ -300,30 +305,27 @@ export async function submitContactLead(
   return Result.ok<ContactResponse>({});
 }
 
-export async function handleProductUpdatesRequest({
-  bindings,
-  request,
-}: RequestContext) {
+async function handleLeadRequest<TSchema extends z.ZodType, Body>(input: {
+  context: RequestContext;
+  schema: TSchema;
+  submit: LeadSubmission<z.infer<TSchema>, Body>;
+}) {
   const requestId = createRequestId();
+  const { context, schema, submit } = input;
+  const { request } = context;
 
   try {
-    const input = await readValidatedRequestBody(
-      request,
-      ProductUpdatesRequestSchema
-    );
-    if (isValidationErrorResponse(input)) {
-      return createValidationErrorResponse(input, requestId);
+    const requestBody = await readValidatedRequestBody(request, schema);
+    if (isValidationErrorResponse(requestBody)) {
+      return createValidationErrorResponse(requestBody, requestId);
     }
 
-    const result = await submitProductUpdatesLead(input, {
-      bindings,
-      request,
-    });
+    const result = await submit(requestBody, context);
     if (result.isErr()) {
       return createServiceUnavailableResponse(result.error, requestId);
     }
 
-    return createJsonResponse<ProductUpdatesResponse>(result.value, {
+    return createJsonResponse<Body>(result.value, {
       requestId,
       status: 200,
     });
@@ -341,40 +343,18 @@ export async function handleProductUpdatesRequest({
   }
 }
 
-export async function handleContactRequest({
-  bindings,
-  request,
-}: RequestContext) {
-  const requestId = createRequestId();
+export function handleProductUpdatesRequest(context: RequestContext) {
+  return handleLeadRequest({
+    context,
+    schema: ProductUpdatesRequestSchema,
+    submit: submitProductUpdatesLead,
+  });
+}
 
-  try {
-    const input = await readValidatedRequestBody(request, ContactRequestSchema);
-    if (isValidationErrorResponse(input)) {
-      return createValidationErrorResponse(input, requestId);
-    }
-
-    const result = await submitContactLead(input, {
-      bindings,
-      request,
-    });
-    if (result.isErr()) {
-      return createServiceUnavailableResponse(result.error, requestId);
-    }
-
-    return createJsonResponse<ContactResponse>(result.value, {
-      requestId,
-      status: 200,
-    });
-  } catch (error) {
-    console.error(
-      {
-        err: error,
-        event: "landing.request.failed",
-        path: new URL(request.url).pathname,
-        requestId,
-      },
-      "landing request failed"
-    );
-    return createInternalErrorResponse(requestId);
-  }
+export function handleContactRequest(context: RequestContext) {
+  return handleLeadRequest({
+    context,
+    schema: ContactRequestSchema,
+    submit: submitContactLead,
+  });
 }

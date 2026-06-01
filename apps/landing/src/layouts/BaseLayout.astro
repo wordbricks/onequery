@@ -1,7 +1,13 @@
 ---
 import "@/shared/styles/base.css";
 import { Font } from "astro:assets";
-import GoogleTag from "@/shared/components/GoogleTag.astro";
+import { googleTagConfig } from "@/shared/analytics/google-tag";
+import {
+  createGoogleTagAfterSwapScript,
+  createGoogleTagBootstrapScript,
+  createGoogleTagEventBridgeScript,
+  createGoogleTagScriptSrc,
+} from "@/shared/analytics/script";
 import {
   createCanonicalUrl,
   createHomePageStructuredData,
@@ -25,6 +31,12 @@ const DEFAULT_CANONICAL_URL = createCanonicalUrl("/", siteUrl);
 const defaultShareImage = getOneQueryPublicShareImageMetadata(siteUrl);
 const defaultStructuredShareImage =
   getOneQueryStructuredShareImageMetadata(siteUrl);
+const googleTagScriptSrc = createGoogleTagScriptSrc(googleTagConfig);
+const googleTagEventBridgeScript = createGoogleTagEventBridgeScript();
+const googleTagBootstrapScript =
+  createGoogleTagBootstrapScript(googleTagConfig);
+const googleTagAfterSwapScript =
+  createGoogleTagAfterSwapScript(googleTagConfig);
 const DEFAULT_IMAGE_URL = defaultShareImage.url;
 const DEFAULT_STRUCTURED_DATA = createHomePageStructuredData({
   description: DEFAULT_DESCRIPTION,
@@ -68,7 +80,14 @@ const structuredDataItems =
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
-    <GoogleTag />
+    <script is:inline set:html={googleTagEventBridgeScript} />
+    <script is:inline type="text/partytown" src={googleTagScriptSrc}></script>
+    <script
+      is:inline
+      type="text/partytown"
+      set:html={googleTagBootstrapScript}
+    />
+    <script is:inline set:html={googleTagAfterSwapScript} />
     <script is:inline>
       document.addEventListener("click", (event) => {
         if (!(event.target instanceof Element)) {
