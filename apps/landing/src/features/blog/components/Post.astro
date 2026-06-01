@@ -3,6 +3,7 @@ import type { MarkdownHeading } from "astro";
 import type { AstroComponentFactory } from "astro/runtime/server/index.js";
 import type { BlogPost, BlogPostSummary } from "@/features/blog/types";
 import TrackedLink from "@/shared/components/TrackedLink.astro";
+import { ONEQUERY } from "@/shared/seo/constants";
 
 interface Props {
   Content: AstroComponentFactory;
@@ -42,7 +43,7 @@ const visibleRelatedPosts =
       </header>
 
       <div class="blog-post-byline">
-        <span>OneQuery Maintainers</span>
+        <span>{ONEQUERY.AUTHOR_NAME}</span>
         <span aria-hidden="true">-</span>
         <span>{post.readTime}</span>
       </div>

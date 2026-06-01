@@ -22,14 +22,10 @@ import {
   createCanonicalUrl,
   createHomePageStructuredData,
   normalizeSiteUrl,
-  ONEQUERY_DEFAULT_DESCRIPTION,
   toAbsoluteSiteUrl,
 } from "@/shared/seo/schema";
-import {
-  getOneQueryPublicShareImageMetadata,
-  getOneQueryStructuredShareImageMetadata,
-  ONEQUERY_DEFAULT_SHARE_IMAGE_ALT,
-} from "@/shared/seo/images";
+import { ONEQUERY } from "@/shared/seo/constants";
+import { getOneQueryShareImage } from "@/shared/seo/images";
 import {
   HERO_SIGNALS,
   INSTALL_STEPS,
@@ -41,21 +37,21 @@ import {
 // Keep the home page prerendered; dynamic signup posts to the API route.
 export const prerender = true;
 
-const title = "OneQuery | Governed Data Access for AI Agents";
-const imageAlt = ONEQUERY_DEFAULT_SHARE_IMAGE_ALT;
+const title = ONEQUERY.DEFAULT_PAGE_TITLE;
+const imageAlt = ONEQUERY.SHARE_IMAGE_ALT;
 const siteUrl = normalizeSiteUrl(Astro.site);
 const canonicalUrl = createCanonicalUrl("/", siteUrl);
-const shareImage = getOneQueryPublicShareImageMetadata(siteUrl);
-const structuredShareImage =
-  getOneQueryStructuredShareImageMetadata(siteUrl);
+const shareImage = getOneQueryShareImage(siteUrl);
 const imageUrl = shareImage.url;
 const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
 const structuredData = createHomePageStructuredData({
-  description: ONEQUERY_DEFAULT_DESCRIPTION,
-  imageAlt,
-  imageHeight: structuredShareImage.height,
-  imageUrl: structuredShareImage.url,
-  imageWidth: structuredShareImage.width,
+  description: ONEQUERY.SITE_DESCRIPTION,
+  image: {
+    alt: imageAlt,
+    height: shareImage.height,
+    url: shareImage.url,
+    width: shareImage.width,
+  },
   site: siteUrl,
   title,
   video: {
@@ -64,9 +60,11 @@ const structuredData = createHomePageStructuredData({
     duration: OPEN_CLAW_DEMO_VIDEO.duration,
     name: OPEN_CLAW_DEMO_VIDEO.name,
     pageUrl: `${canonicalUrl}#demo`,
-    thumbnailHeight: OPEN_CLAW_DEMO_VIDEO.posterHeight,
-    thumbnailUrl: openClawDemoPosterImage.src,
-    thumbnailWidth: OPEN_CLAW_DEMO_VIDEO.posterWidth,
+    thumbnail: {
+      height: OPEN_CLAW_DEMO_VIDEO.posterHeight,
+      url: openClawDemoPosterImage.src,
+      width: OPEN_CLAW_DEMO_VIDEO.posterWidth,
+    },
     uploadDate: OPEN_CLAW_DEMO_VIDEO.uploadDate,
   },
 });
@@ -144,7 +142,7 @@ const finalCtaActions: ReadonlyArray<CtaAction> = [
 
 <MarketingLayout
   canonicalUrl={canonicalUrl}
-  description={ONEQUERY_DEFAULT_DESCRIPTION}
+  description={ONEQUERY.SITE_DESCRIPTION}
   imageAlt={imageAlt}
   imageHeight={shareImage.height}
   imageType={shareImage.type}

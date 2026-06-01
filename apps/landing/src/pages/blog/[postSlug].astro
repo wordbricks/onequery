@@ -8,11 +8,16 @@ import {
   getBlogPostSummaries,
   toBlogPost,
 } from "@/features/blog/collection";
-import { getBlogPostShareImageMetadata } from "@/features/blog/images";
-import { getBlogPostShareMetadata } from "@/features/blog/share";
+import {
+  getBlogShareImage,
+  getPreferredBlogShareImage,
+} from "@/features/blog/images";
+import { ONEQUERY } from "@/shared/seo/constants";
 import {
   createBlogPostStructuredData,
+  createCanonicalUrl,
   getBlogPostKeywords,
+  toIsoDateTime,
 } from "@/shared/seo/schema";
 
 interface Props {
@@ -30,18 +35,24 @@ const { entry } = Astro.props;
 const { Content, headings } = await render(entry);
 const post = toBlogPost(entry, headings);
 const postSummaries = await getBlogPostSummaries();
-const imageMetadata = await getBlogPostShareImageMetadata(post, Astro.site);
-const metadata = getBlogPostShareMetadata(post, Astro.site, imageMetadata);
-const structuredData = createBlogPostStructuredData(
-  post,
-  Astro.site,
-  imageMetadata
+const shareImage = await getBlogShareImage(
+  getPreferredBlogShareImage(post),
+  Astro.site
 );
+const canonicalUrl = createCanonicalUrl(`/blog/${post.slug}`, Astro.site);
+const imageAlt = `${post.title} - ${ONEQUERY.BLOG_NAME}`;
+const publishedTime = toIsoDateTime(post.publishedAt);
+const title = `${post.title} | ${ONEQUERY.BLOG_NAME}`;
+const structuredData = createBlogPostStructuredData({
+  image: shareImage,
+  post,
+  site: Astro.site,
+});
 const articleMetaTags = [
-  ...(metadata.publishedTime
+  ...(publishedTime
     ? [
         {
-          content: metadata.publishedTime,
+          content: publishedTime,
           property: "article:published_time",
         },
       ]
@@ -51,25 +62,25 @@ const articleMetaTags = [
     property: "article:section",
   },
   {
-    content: "OneQuery Maintainers",
+    content: ONEQUERY.AUTHOR_NAME,
     name: "author",
   },
 ];
 ---
 
 <BlogLayout
-  canonicalUrl={metadata.canonicalUrl}
-  description={metadata.description}
-  imageAlt={metadata.imageAlt}
-  imageHeight={metadata.imageHeight}
-  imageUrl={metadata.imageUrl}
-  imageWidth={metadata.imageWidth}
+  canonicalUrl={canonicalUrl}
+  description={post.description}
+  imageAlt={imageAlt}
+  imageHeight={shareImage.height}
+  imageUrl={shareImage.url}
+  imageWidth={shareImage.width}
   keywords={getBlogPostKeywords(post)}
   metaTags={articleMetaTags}
   ogType="article"
   structuredData={structuredData}
-  title={metadata.title}
-  twitterTitle={metadata.twitterTitle}
+  title={title}
+  twitterTitle={post.title}
 >
   <BlogPostView
     Content={Content}

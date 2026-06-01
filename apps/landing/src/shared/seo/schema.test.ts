@@ -9,6 +9,7 @@ import {
 } from "@/features/connectors/data";
 import { NPM_PACKAGE_URL } from "@/shared/config/site";
 
+import { ONEQUERY } from "./constants";
 import {
   createBlogPostStructuredData,
   createCanonicalUrl,
@@ -42,8 +43,10 @@ describe("createHomePageStructuredData", () => {
   it("emits landing-page schema with npm as the install target", () => {
     const schema = createHomePageStructuredData({
       description: "Landing description",
-      imageAlt: "OneQuery share image",
-      imageUrl: "/og.png",
+      image: {
+        ...ONEQUERY.IMAGES.SHARE,
+        alt: "OneQuery share image",
+      },
       title: "OneQuery",
       video: {
         contentUrl: "/_astro/openclaw-demo-video.hash.mp4",
@@ -51,9 +54,11 @@ describe("createHomePageStructuredData", () => {
         duration: "PT20S",
         name: "OneQuery OpenClaw agent access demo",
         pageUrl: "https://onequery.dev/#demo",
-        thumbnailHeight: 900,
-        thumbnailUrl: "/_astro/openclaw-demo-poster.hash.avif",
-        thumbnailWidth: 1400,
+        thumbnail: {
+          height: 900,
+          url: "/_astro/openclaw-demo-poster.hash.avif",
+          width: 1400,
+        },
         uploadDate: "2026-05-22T00:00:00.000Z",
       },
     });
@@ -200,7 +205,14 @@ describe("createBlogPostStructuredData", () => {
       slug: "debug-production-agent-runs-with-onequery",
       title: "Debugging production on Cloudflare with Codex.",
     };
-    const schema = createBlogPostStructuredData(post);
+    const schema = createBlogPostStructuredData({
+      image: {
+        height: coverImage.height,
+        url: coverImage.src,
+        width: coverImage.width,
+      },
+      post,
+    });
     const graph = schema["@graph"];
 
     expect(Array.isArray(graph)).toBe(true);

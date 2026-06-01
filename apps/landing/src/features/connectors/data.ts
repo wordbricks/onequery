@@ -1,6 +1,8 @@
 import { listPublicSourceProviders } from "@onequery/db/source-providers";
 import type { PublicSourceProvider } from "@onequery/db/source-providers";
 
+import { ONEQUERY } from "@/shared/seo/constants";
+
 export type ConnectorAvailability = "Dashboard + CLI" | "CLI";
 
 export type ConnectorCapability = "API" | "Query" | "Connector" | "Workflow";
@@ -119,23 +121,23 @@ export function getConnectorInterfaceDescription(
 export function getConnectorKeywords(connector: DataSourceConnector) {
   return [
     `${connector.label} connector`,
-    `${connector.label} OneQuery`,
+    `${connector.label} ${ONEQUERY.NAME}`,
     `${connector.label} AI agent data access`,
     `${connector.category} connector`,
-    "OneQuery connector",
+    `${ONEQUERY.NAME} connector`,
     "governed AI agent access",
     "centralized credentials",
   ].join(", ");
 }
 
 export function getConnectorMetaDescription(connector: DataSourceConnector) {
-  const description = `Use the ${connector.label} connector in OneQuery for governed AI agent access with centralized credentials, limits, and audit logs.`;
+  const description = `Use the ${connector.label} connector in ${ONEQUERY.NAME} for governed AI agent access with centralized credentials, limits, and audit logs.`;
 
   if (description.length <= 160) {
     return description;
   }
 
-  return `Use the ${connector.label} connector in OneQuery for governed AI agent access with centralized credentials and audit logs.`;
+  return `Use the ${connector.label} connector in ${ONEQUERY.NAME} for governed AI agent access with centralized credentials and audit logs.`;
 }
 
 export function getRelatedConnectors(
@@ -173,19 +175,19 @@ export function getConnectorFaqs(
   const interfaceDescription = getConnectorInterfaceDescription(connector);
   const setupSurface =
     connector.availability === "Dashboard + CLI"
-      ? "the OneQuery dashboard or CLI"
-      : "the OneQuery CLI";
+      ? `the ${ONEQUERY.NAME} dashboard or CLI`
+      : `the ${ONEQUERY.NAME} CLI`;
   const credentialLabel = connector.credentialType.replace(/_/gu, " ");
   const firstSetupStep = connector.guideSteps[0];
 
   return [
     {
-      answer: `The OneQuery ${connector.label} connector makes ${connector.category.toLowerCase()} context from ${connector.label} available to AI agents through ${interfaceDescription}. ${connector.description}`,
-      question: `What is the OneQuery ${connector.label} connector?`,
+      answer: `The ${ONEQUERY.NAME} ${connector.label} connector makes ${connector.category.toLowerCase()} context from ${connector.label} available to AI agents through ${interfaceDescription}. ${connector.description}`,
+      question: `What is the ${ONEQUERY.NAME} ${connector.label} connector?`,
     },
     {
-      answer: `Agents call OneQuery instead of receiving raw ${connector.label} credentials. OneQuery keeps credentials centralized, applies source boundaries, and records access in audit logs while exposing ${interfaceDescription}.`,
-      question: `How do AI agents access ${connector.label} through OneQuery?`,
+      answer: `Agents call ${ONEQUERY.NAME} instead of receiving raw ${connector.label} credentials. ${ONEQUERY.NAME} keeps credentials centralized, applies source boundaries, and records access in audit logs while exposing ${interfaceDescription}.`,
+      question: `How do AI agents access ${connector.label} through ${ONEQUERY.NAME}?`,
     },
     {
       answer: firstSetupStep

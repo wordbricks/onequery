@@ -13,20 +13,16 @@ import {
   SELF_HOST_DOCS_URL,
 } from "@/shared/config/site";
 
+import {
+  ONEQUERY,
+  SCHEMA_FRAGMENTS,
+  SCHEMA_URLS,
+  SEO_PATHS,
+} from "./constants";
+import type { SeoImage } from "./constants";
+
 export type StructuredData = Record<string, unknown>;
-export type StructuredImageMetadata = {
-  height: number;
-  url: string;
-  width: number;
-};
 
-export const ONEQUERY_SITE_NAME = "OneQuery";
-export const ONEQUERY_SITE_URL = "https://onequery.dev";
-export const ONEQUERY_DEFAULT_DESCRIPTION =
-  "OneQuery gives AI agents production context without production keys, using approved sources, centralized credentials, enforced limits, and full audit logs.";
-
-const DEFAULT_IMAGE_WIDTH = 1200;
-const DEFAULT_IMAGE_HEIGHT = 630;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
 const READ_TIME_MINUTES_PATTERN = /\d+/u;
 const CORE_TOPICS = [
@@ -42,10 +38,7 @@ type SiteInput = string | URL | null | undefined;
 
 type HomePageStructuredDataInput = {
   description: string;
-  imageAlt: string;
-  imageHeight?: number;
-  imageUrl: string;
-  imageWidth?: number;
+  image: SeoImage & { alt: string };
   site?: SiteInput;
   title: string;
   video?: DemoVideoStructuredDataInput;
@@ -54,25 +47,35 @@ type HomePageStructuredDataInput = {
 type DemoVideoStructuredDataInput = {
   contentUrl: string;
   description: string;
-  duration?: string;
-  embedUrl?: string;
+  duration: string;
   name: string;
   pageUrl: string;
-  thumbnailHeight?: number;
-  thumbnailUrl: string;
-  thumbnailWidth?: number;
+  thumbnail: SeoImage;
   uploadDate: string;
 };
 
 type BlogIndexStructuredDataInput = {
-  breadcrumbName?: string;
+  breadcrumbName: string;
   description: string;
-  itemListName?: string;
-  pathname?: string;
-  postImages?: Partial<Record<string, StructuredImageMetadata>>;
+  itemListName: string;
+  pathname: string;
+  postImages: Readonly<Record<string, SeoImage>>;
   posts: readonly BlogPostSummary[];
   site?: SiteInput;
   title: string;
+};
+
+type BlogPostStructuredDataInput = {
+  image: SeoImage;
+  post: BlogPost;
+  site?: SiteInput;
+};
+
+type BreadcrumbListItem = {
+  "@type": "ListItem";
+  item: string;
+  name: string;
+  position: number;
 };
 
 type ConnectorIndexStructuredDataInput = {
@@ -91,9 +94,9 @@ type ConnectorPageStructuredDataInput = {
   title: string;
 };
 
-export function normalizeSiteUrl(site: SiteInput = ONEQUERY_SITE_URL) {
+export function normalizeSiteUrl(site: SiteInput = ONEQUERY.SITE_URL) {
   const rawSite = site instanceof URL ? site.toString() : site;
-  const siteUrl = rawSite && rawSite.length > 0 ? rawSite : ONEQUERY_SITE_URL;
+  const siteUrl = rawSite && rawSite.length > 0 ? rawSite : ONEQUERY.SITE_URL;
 
   return siteUrl.replace(/\/+$/u, "");
 }
@@ -137,7 +140,7 @@ export function toIsoDateTime(date: string) {
 
 export function getBlogPostKeywords(post: Pick<BlogPost, "category">) {
   return [
-    "OneQuery",
+    ONEQUERY.NAME,
     "AI agents",
     "production data access",
     "governed data access",
@@ -153,35 +156,60 @@ function createGraph(graph: StructuredData[]): StructuredData {
   };
 }
 
+function getNodeId(baseUrl: string, fragment: string) {
+  return `${baseUrl}#${fragment}`;
+}
+
 function getOrganizationId(site: SiteInput) {
-  return `${normalizeSiteUrl(site)}/#organization`;
+  return getNodeId(`${normalizeSiteUrl(site)}/`, SCHEMA_FRAGMENTS.ORGANIZATION);
 }
 
 function getWebsiteId(site: SiteInput) {
-  return `${normalizeSiteUrl(site)}/#website`;
+  return getNodeId(`${normalizeSiteUrl(site)}/`, SCHEMA_FRAGMENTS.WEBSITE);
 }
 
 function getSoftwareApplicationId(site: SiteInput) {
-  return `${normalizeSiteUrl(site)}/#software`;
+  return getNodeId(`${normalizeSiteUrl(site)}/`, SCHEMA_FRAGMENTS.SOFTWARE);
 }
 
 function getDemoVideoId(site: SiteInput) {
-  return `${normalizeSiteUrl(site)}/#demo-video`;
+  return getNodeId(`${normalizeSiteUrl(site)}/`, SCHEMA_FRAGMENTS.DEMO_VIDEO);
+}
+
+function getBlogPostId(postUrl: string) {
+  return getNodeId(postUrl, SCHEMA_FRAGMENTS.ARTICLE);
+}
+
+function getBlogPostUrl(slug: string, site: SiteInput) {
+  return createCanonicalUrl(`${SEO_PATHS.BLOG}/${slug}`, site);
+}
+
+function getBlogPostImage(
+  imagesBySlug: Readonly<Record<string, SeoImage>>,
+  slug: string
+) {
+  const image = imagesBySlug[slug];
+
+  if (!image) {
+    throw new Error(`Missing structured data image for blog post "${slug}".`);
+  }
+
+  return image;
 }
 
 function createImageObject(input: {
   alt?: string;
-  height?: number;
-  site?: SiteInput;
+  height: number;
+  site: SiteInput;
   url: string;
-  width?: number;
+  width: number;
 }) {
   return {
     "@type": "ImageObject",
     url: toAbsoluteSiteUrl(input.url, input.site),
     ...(input.alt ? { caption: input.alt } : {}),
-    ...(input.width ? { width: input.width } : {}),
-    ...(input.height ? { height: input.height } : {}),
+    width: input.width,
+    height: input.height,
   };
 }
 
@@ -191,14 +219,12 @@ function createOneQueryOrganization(site: SiteInput): StructuredData {
   return {
     "@type": "Organization",
     "@id": getOrganizationId(siteUrl),
-    name: ONEQUERY_SITE_NAME,
+    name: ONEQUERY.NAME,
     url: `${siteUrl}/`,
     logo: createImageObject({
-      alt: "OneQuery icon",
-      height: 512,
+      ...ONEQUERY.IMAGES.ICON,
+      alt: ONEQUERY.ICON_IMAGE_ALT,
       site: siteUrl,
-      url: "/onequery-icon.png",
-      width: 512,
     }),
     sameAs: [REPOSITORY_URL],
     knowsAbout: [...CORE_TOPICS],
@@ -211,9 +237,9 @@ function createOneQueryWebsite(site: SiteInput): StructuredData {
   return {
     "@type": "WebSite",
     "@id": getWebsiteId(siteUrl),
-    name: ONEQUERY_SITE_NAME,
+    name: ONEQUERY.NAME,
     url: `${siteUrl}/`,
-    description: ONEQUERY_DEFAULT_DESCRIPTION,
+    description: ONEQUERY.SITE_DESCRIPTION,
     inLanguage: "en",
     publisher: {
       "@id": getOrganizationId(siteUrl),
@@ -223,24 +249,22 @@ function createOneQueryWebsite(site: SiteInput): StructuredData {
 
 function createOneQuerySoftwareApplication(input: {
   description: string;
-  site?: SiteInput;
+  site: SiteInput;
 }): StructuredData {
   const siteUrl = normalizeSiteUrl(input.site);
 
   return {
     "@type": "SoftwareApplication",
     "@id": getSoftwareApplicationId(siteUrl),
-    name: ONEQUERY_SITE_NAME,
+    name: ONEQUERY.NAME,
     url: `${siteUrl}/`,
     applicationCategory: "DeveloperApplication",
     operatingSystem: "Web, CLI, Self-hosted gateway",
     description: input.description,
     image: createImageObject({
-      alt: "OneQuery icon",
-      height: 512,
+      ...ONEQUERY.IMAGES.ICON,
+      alt: ONEQUERY.ICON_IMAGE_ALT,
       site: siteUrl,
-      url: "/onequery-icon.png",
-      width: 512,
     }),
     publisher: {
       "@id": getOrganizationId(siteUrl),
@@ -259,10 +283,10 @@ function createOneQuerySoftwareApplication(input: {
 }
 
 function createDemoVideoStructuredData(
-  input: DemoVideoStructuredDataInput & { site?: SiteInput }
+  input: DemoVideoStructuredDataInput & { site: SiteInput }
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(input.site);
-  const thumbnailUrl = toAbsoluteSiteUrl(input.thumbnailUrl, siteUrl);
+  const thumbnailUrl = toAbsoluteSiteUrl(input.thumbnail.url, siteUrl);
   const pageUrl = toAbsoluteSiteUrl(input.pageUrl, siteUrl);
 
   return {
@@ -272,27 +296,24 @@ function createDemoVideoStructuredData(
     description: input.description,
     thumbnailUrl: [thumbnailUrl],
     uploadDate: input.uploadDate,
-    ...(input.duration ? { duration: input.duration } : {}),
+    duration: input.duration,
     contentUrl: toAbsoluteSiteUrl(input.contentUrl, siteUrl),
-    ...(input.embedUrl
-      ? { embedUrl: toAbsoluteSiteUrl(input.embedUrl, siteUrl) }
-      : {}),
     url: pageUrl,
     inLanguage: "en",
     publisher: {
       "@id": getOrganizationId(siteUrl),
     },
     isPartOf: {
-      "@id": `${siteUrl}/#webpage`,
+      "@id": getNodeId(`${siteUrl}/`, SCHEMA_FRAGMENTS.WEBPAGE),
     },
     mainEntityOfPage: {
-      "@id": `${siteUrl}/#webpage`,
+      "@id": getNodeId(`${siteUrl}/`, SCHEMA_FRAGMENTS.WEBPAGE),
     },
     thumbnail: createImageObject({
-      height: input.thumbnailHeight,
+      height: input.thumbnail.height,
       site: siteUrl,
       url: thumbnailUrl,
-      width: input.thumbnailWidth,
+      width: input.thumbnail.width,
     }),
   };
 }
@@ -306,7 +327,7 @@ function createConnectorFeatureList(connector: DataSourceConnector) {
     `${connector.label} ${getConnectorInterfaceDescription(connector)}`,
     `${connector.availability} setup for approved source access`,
     "Centralized credentials for AI agent workflows",
-    "Audit-ready source access through OneQuery",
+    `Audit-ready source access through ${ONEQUERY.NAME}`,
   ];
 }
 
@@ -316,11 +337,12 @@ function createConnectorSoftwareApplication(
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(site);
   const connectorUrl = createCanonicalUrl(getConnectorPath(connector), siteUrl);
+  const connectorId = getNodeId(connectorUrl, SCHEMA_FRAGMENTS.CONNECTOR);
 
   return {
     "@type": "SoftwareApplication",
-    "@id": `${connectorUrl}#connector`,
-    name: `OneQuery ${connector.label} connector`,
+    "@id": connectorId,
+    name: `${ONEQUERY.NAME} ${connector.label} connector`,
     url: connectorUrl,
     applicationCategory: "DeveloperApplication",
     applicationSubCategory: connector.category,
@@ -365,7 +387,7 @@ export function createHomePageStructuredData(
       : []),
     {
       "@type": "WebPage",
-      "@id": `${siteUrl}/#webpage`,
+      "@id": getNodeId(`${siteUrl}/`, SCHEMA_FRAGMENTS.WEBPAGE),
       url: `${siteUrl}/`,
       name: input.title,
       description: input.description,
@@ -383,29 +405,29 @@ export function createHomePageStructuredData(
           }
         : {}),
       primaryImageOfPage: createImageObject({
-        alt: input.imageAlt,
-        height: input.imageHeight ?? DEFAULT_IMAGE_HEIGHT,
+        alt: input.image.alt,
+        height: input.image.height,
         site: siteUrl,
-        url: input.imageUrl,
-        width: input.imageWidth ?? DEFAULT_IMAGE_WIDTH,
+        url: input.image.url,
+        width: input.image.width,
       }),
       breadcrumb: {
-        "@id": `${siteUrl}/#breadcrumb`,
+        "@id": getNodeId(`${siteUrl}/`, SCHEMA_FRAGMENTS.BREADCRUMB),
       },
       significantLink: [
-        createCanonicalUrl("/blog", siteUrl),
+        createCanonicalUrl(SEO_PATHS.BLOG, siteUrl),
         NPM_PACKAGE_URL,
         SELF_HOST_DOCS_URL,
       ],
     },
     {
       "@type": "BreadcrumbList",
-      "@id": `${siteUrl}/#breadcrumb`,
+      "@id": getNodeId(`${siteUrl}/`, SCHEMA_FRAGMENTS.BREADCRUMB),
       itemListElement: [
         {
           "@type": "ListItem",
           position: 1,
-          name: ONEQUERY_SITE_NAME,
+          name: ONEQUERY.NAME,
           item: `${siteUrl}/`,
         },
       ],
@@ -417,19 +439,19 @@ export function createBlogIndexStructuredData(
   input: BlogIndexStructuredDataInput
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(input.site);
-  const blogUrl = createCanonicalUrl("/blog", siteUrl);
-  const pageUrl = createCanonicalUrl(input.pathname ?? "/blog", siteUrl);
-  const breadcrumbItems = [
+  const blogUrl = createCanonicalUrl(SEO_PATHS.BLOG, siteUrl);
+  const pageUrl = createCanonicalUrl(input.pathname, siteUrl);
+  const breadcrumbItems: BreadcrumbListItem[] = [
     {
       "@type": "ListItem",
       position: 1,
-      name: ONEQUERY_SITE_NAME,
+      name: ONEQUERY.NAME,
       item: `${siteUrl}/`,
     },
     {
       "@type": "ListItem",
       position: 2,
-      name: "Blog",
+      name: ONEQUERY.BLOG_NAME,
       item: blogUrl,
     },
   ];
@@ -438,7 +460,7 @@ export function createBlogIndexStructuredData(
     breadcrumbItems.push({
       "@type": "ListItem",
       position: 3,
-      name: input.breadcrumbName ?? input.title,
+      name: input.breadcrumbName,
       item: pageUrl,
     });
   }
@@ -447,8 +469,8 @@ export function createBlogIndexStructuredData(
     ...createSiteGraph(siteUrl),
     {
       "@type": "Blog",
-      "@id": `${blogUrl}#blog`,
-      name: "OneQuery Blog",
+      "@id": getNodeId(blogUrl, SCHEMA_FRAGMENTS.BLOG),
+      name: ONEQUERY.BLOG_NAME,
       url: blogUrl,
       description: input.description,
       inLanguage: "en",
@@ -456,12 +478,12 @@ export function createBlogIndexStructuredData(
         "@id": getOrganizationId(siteUrl),
       },
       blogPost: input.posts.map((post) => ({
-        "@id": `${createCanonicalUrl(`/blog/${post.slug}`, siteUrl)}#article`,
+        "@id": getBlogPostId(getBlogPostUrl(post.slug, siteUrl)),
       })),
     },
     {
       "@type": "CollectionPage",
-      "@id": `${pageUrl}#webpage`,
+      "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.WEBPAGE),
       url: pageUrl,
       name: input.title,
       description: input.description,
@@ -470,17 +492,17 @@ export function createBlogIndexStructuredData(
         "@id": getWebsiteId(siteUrl),
       },
       mainEntity: {
-        "@id": `${blogUrl}#blog`,
+        "@id": getNodeId(blogUrl, SCHEMA_FRAGMENTS.BLOG),
       },
       breadcrumb: {
-        "@id": `${blogUrl}#breadcrumb`,
+        "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
       },
     },
     {
       "@type": "ItemList",
-      "@id": `${pageUrl}#posts`,
-      name: input.itemListName ?? "OneQuery Blog posts",
-      itemListOrder: "https://schema.org/ItemListOrderDescending",
+      "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.POSTS),
+      name: input.itemListName,
+      itemListOrder: SCHEMA_URLS.DESCENDING_ITEM_LIST_ORDER,
       numberOfItems: input.posts.length,
       itemListElement: input.posts.map((post, index) => ({
         "@type": "ListItem",
@@ -488,13 +510,13 @@ export function createBlogIndexStructuredData(
         item: createBlogPostSummaryStructuredData(
           post,
           siteUrl,
-          input.postImages?.[post.slug]
+          getBlogPostImage(input.postImages, post.slug)
         ),
       })),
     },
     {
       "@type": "BreadcrumbList",
-      "@id": `${pageUrl}#breadcrumb`,
+      "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
       itemListElement: breadcrumbItems,
     },
   ]);
@@ -504,17 +526,17 @@ export function createConnectorIndexStructuredData(
   input: ConnectorIndexStructuredDataInput
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(input.site);
-  const connectorsUrl = createCanonicalUrl("/connectors", siteUrl);
+  const connectorsUrl = createCanonicalUrl(SEO_PATHS.CONNECTORS, siteUrl);
 
   return createGraph([
     ...createSiteGraph(siteUrl),
     createOneQuerySoftwareApplication({
-      description: ONEQUERY_DEFAULT_DESCRIPTION,
+      description: ONEQUERY.SITE_DESCRIPTION,
       site: siteUrl,
     }),
     {
       "@type": "CollectionPage",
-      "@id": `${connectorsUrl}#webpage`,
+      "@id": getNodeId(connectorsUrl, SCHEMA_FRAGMENTS.WEBPAGE),
       url: connectorsUrl,
       name: input.title,
       description: input.description,
@@ -526,16 +548,16 @@ export function createConnectorIndexStructuredData(
         "@id": getSoftwareApplicationId(siteUrl),
       },
       mainEntity: {
-        "@id": `${connectorsUrl}#connectors`,
+        "@id": getNodeId(connectorsUrl, SCHEMA_FRAGMENTS.CONNECTORS),
       },
       breadcrumb: {
-        "@id": `${connectorsUrl}#breadcrumb`,
+        "@id": getNodeId(connectorsUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
       },
     },
     {
       "@type": "ItemList",
-      "@id": `${connectorsUrl}#connectors`,
-      name: "OneQuery supported data source connectors",
+      "@id": getNodeId(connectorsUrl, SCHEMA_FRAGMENTS.CONNECTORS),
+      name: `${ONEQUERY.NAME} supported data source connectors`,
       numberOfItems: input.connectors.length,
       itemListElement: input.connectors.map((connector, index) => ({
         "@type": "ListItem",
@@ -545,12 +567,12 @@ export function createConnectorIndexStructuredData(
     },
     {
       "@type": "BreadcrumbList",
-      "@id": `${connectorsUrl}#breadcrumb`,
+      "@id": getNodeId(connectorsUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
       itemListElement: [
         {
           "@type": "ListItem",
           position: 1,
-          name: ONEQUERY_SITE_NAME,
+          name: ONEQUERY.NAME,
           item: `${siteUrl}/`,
         },
         {
@@ -568,22 +590,23 @@ export function createConnectorPageStructuredData(
   input: ConnectorPageStructuredDataInput
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(input.site);
-  const connectorsUrl = createCanonicalUrl("/connectors", siteUrl);
+  const connectorsUrl = createCanonicalUrl(SEO_PATHS.CONNECTORS, siteUrl);
   const connectorUrl = createCanonicalUrl(
     getConnectorPath(input.connector),
     siteUrl
   );
+  const connectorId = getNodeId(connectorUrl, SCHEMA_FRAGMENTS.CONNECTOR);
 
   return createGraph([
     ...createSiteGraph(siteUrl),
     createOneQuerySoftwareApplication({
-      description: ONEQUERY_DEFAULT_DESCRIPTION,
+      description: ONEQUERY.SITE_DESCRIPTION,
       site: siteUrl,
     }),
     createConnectorSoftwareApplication(input.connector, siteUrl),
     {
       "@type": "WebPage",
-      "@id": `${connectorUrl}#webpage`,
+      "@id": getNodeId(connectorUrl, SCHEMA_FRAGMENTS.WEBPAGE),
       url: connectorUrl,
       name: input.title,
       description: input.description,
@@ -592,29 +615,29 @@ export function createConnectorPageStructuredData(
         "@id": getWebsiteId(siteUrl),
       },
       about: {
-        "@id": `${connectorUrl}#connector`,
+        "@id": connectorId,
       },
       mainEntity: {
-        "@id": `${connectorUrl}#connector`,
+        "@id": connectorId,
       },
       hasPart: [
         {
-          "@id": `${connectorUrl}#faq`,
+          "@id": getNodeId(connectorUrl, SCHEMA_FRAGMENTS.FAQ),
         },
         {
-          "@id": `${connectorUrl}#setup-checklist`,
+          "@id": getNodeId(connectorUrl, SCHEMA_FRAGMENTS.SETUP_CHECKLIST),
         },
       ],
       relatedLink: input.relatedConnectors.map((connector) =>
         createCanonicalUrl(getConnectorPath(connector), siteUrl)
       ),
       breadcrumb: {
-        "@id": `${connectorUrl}#breadcrumb`,
+        "@id": getNodeId(connectorUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
       },
     },
     {
       "@type": "FAQPage",
-      "@id": `${connectorUrl}#faq`,
+      "@id": getNodeId(connectorUrl, SCHEMA_FRAGMENTS.FAQ),
       mainEntity: input.faqs.map((faq) => ({
         "@type": "Question",
         name: faq.question,
@@ -626,7 +649,7 @@ export function createConnectorPageStructuredData(
     },
     {
       "@type": "ItemList",
-      "@id": `${connectorUrl}#setup-checklist`,
+      "@id": getNodeId(connectorUrl, SCHEMA_FRAGMENTS.SETUP_CHECKLIST),
       name: `${input.connector.label} connector setup checklist`,
       numberOfItems: input.connector.guideSteps.length,
       itemListElement: input.connector.guideSteps.map((step, index) => ({
@@ -637,12 +660,12 @@ export function createConnectorPageStructuredData(
     },
     {
       "@type": "BreadcrumbList",
-      "@id": `${connectorUrl}#breadcrumb`,
+      "@id": getNodeId(connectorUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
       itemListElement: [
         {
           "@type": "ListItem",
           position: 1,
-          name: ONEQUERY_SITE_NAME,
+          name: ONEQUERY.NAME,
           item: `${siteUrl}/`,
         },
         {
@@ -663,17 +686,12 @@ export function createConnectorPageStructuredData(
 }
 
 export function createBlogPostStructuredData(
-  post: BlogPost,
-  site?: SiteInput,
-  image: StructuredImageMetadata = {
-    height: DEFAULT_IMAGE_HEIGHT,
-    url: "/og.png",
-    width: DEFAULT_IMAGE_WIDTH,
-  }
+  input: BlogPostStructuredDataInput
 ): StructuredData {
-  const siteUrl = normalizeSiteUrl(site);
-  const blogUrl = createCanonicalUrl("/blog", siteUrl);
-  const postUrl = createCanonicalUrl(`/blog/${post.slug}`, siteUrl);
+  const { image, post } = input;
+  const siteUrl = normalizeSiteUrl(input.site);
+  const blogUrl = createCanonicalUrl(SEO_PATHS.BLOG, siteUrl);
+  const postUrl = getBlogPostUrl(post.slug, siteUrl);
   const publishedTime = toIsoDateTime(post.publishedAt);
   const postSections = post.headings.filter((heading) => heading.depth === 2);
 
@@ -681,8 +699,8 @@ export function createBlogPostStructuredData(
     ...createSiteGraph(siteUrl),
     {
       "@type": "Blog",
-      "@id": `${blogUrl}#blog`,
-      name: "OneQuery Blog",
+      "@id": getNodeId(blogUrl, SCHEMA_FRAGMENTS.BLOG),
+      name: ONEQUERY.BLOG_NAME,
       url: blogUrl,
       publisher: {
         "@id": getOrganizationId(siteUrl),
@@ -690,14 +708,14 @@ export function createBlogPostStructuredData(
     },
     {
       "@type": "BlogPosting",
-      "@id": `${postUrl}#article`,
+      "@id": getBlogPostId(postUrl),
       mainEntityOfPage: {
-        "@id": `${postUrl}#webpage`,
+        "@id": getNodeId(postUrl, SCHEMA_FRAGMENTS.WEBPAGE),
       },
       headline: post.title,
       description: post.description,
       image: createImageObject({
-        alt: `${post.title} - OneQuery Blog`,
+        alt: `${post.title} - ${ONEQUERY.BLOG_NAME}`,
         height: image.height,
         site: siteUrl,
         url: image.url,
@@ -711,13 +729,13 @@ export function createBlogPostStructuredData(
         : {}),
       author: {
         "@id": getOrganizationId(siteUrl),
-        name: "OneQuery Maintainers",
+        name: ONEQUERY.AUTHOR_NAME,
       },
       publisher: {
         "@id": getOrganizationId(siteUrl),
       },
       isPartOf: {
-        "@id": `${blogUrl}#blog`,
+        "@id": getNodeId(blogUrl, SCHEMA_FRAGMENTS.BLOG),
       },
       articleSection: post.category,
       keywords: getBlogPostKeywords(post),
@@ -735,35 +753,35 @@ export function createBlogPostStructuredData(
     },
     {
       "@type": "WebPage",
-      "@id": `${postUrl}#webpage`,
+      "@id": getNodeId(postUrl, SCHEMA_FRAGMENTS.WEBPAGE),
       url: postUrl,
-      name: `${post.title} | OneQuery Blog`,
+      name: `${post.title} | ${ONEQUERY.BLOG_NAME}`,
       description: post.description,
       inLanguage: "en",
       isPartOf: {
         "@id": getWebsiteId(siteUrl),
       },
       mainEntity: {
-        "@id": `${postUrl}#article`,
+        "@id": getBlogPostId(postUrl),
       },
       breadcrumb: {
-        "@id": `${postUrl}#breadcrumb`,
+        "@id": getNodeId(postUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
       },
     },
     {
       "@type": "BreadcrumbList",
-      "@id": `${postUrl}#breadcrumb`,
+      "@id": getNodeId(postUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
       itemListElement: [
         {
           "@type": "ListItem",
           position: 1,
-          name: ONEQUERY_SITE_NAME,
+          name: ONEQUERY.NAME,
           item: `${siteUrl}/`,
         },
         {
           "@type": "ListItem",
           position: 2,
-          name: "Blog",
+          name: ONEQUERY.BLOG_NAME,
           item: blogUrl,
         },
         {
@@ -780,24 +798,20 @@ export function createBlogPostStructuredData(
 function createBlogPostSummaryStructuredData(
   post: BlogPostSummary,
   site: SiteInput,
-  image: StructuredImageMetadata = {
-    height: DEFAULT_IMAGE_HEIGHT,
-    url: "/og.png",
-    width: DEFAULT_IMAGE_WIDTH,
-  }
+  image: SeoImage
 ): StructuredData {
   const siteUrl = normalizeSiteUrl(site);
-  const postUrl = createCanonicalUrl(`/blog/${post.slug}`, siteUrl);
+  const postUrl = getBlogPostUrl(post.slug, siteUrl);
   const publishedTime = toIsoDateTime(post.publishedAt);
 
   return {
     "@type": "BlogPosting",
-    "@id": `${postUrl}#article`,
+    "@id": getBlogPostId(postUrl),
     url: postUrl,
     headline: post.title,
     description: post.description,
     image: createImageObject({
-      alt: `${post.title} - OneQuery Blog`,
+      alt: `${post.title} - ${ONEQUERY.BLOG_NAME}`,
       height: image.height,
       site: siteUrl,
       url: image.url,
@@ -806,7 +820,7 @@ function createBlogPostSummaryStructuredData(
     ...(publishedTime ? { datePublished: publishedTime } : {}),
     author: {
       "@id": getOrganizationId(siteUrl),
-      name: "OneQuery Maintainers",
+      name: ONEQUERY.AUTHOR_NAME,
     },
     publisher: {
       "@id": getOrganizationId(siteUrl),

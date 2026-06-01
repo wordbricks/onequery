@@ -1,32 +1,12 @@
+import { ONEQUERY } from "./constants";
+import type { ShareImage } from "./constants";
 import { toAbsoluteSiteUrl } from "./schema";
-import type { StructuredImageMetadata } from "./schema";
 
 type SiteInput = string | URL | null | undefined;
-type TypedStructuredImageMetadata = StructuredImageMetadata & {
-  type: string;
-};
 
-export const ONEQUERY_DEFAULT_SHARE_IMAGE_ALT =
-  "OneQuery - Governed Data Access for AI Agents";
-
-export const ONEQUERY_PUBLIC_SHARE_IMAGE = {
-  height: 630,
-  type: "image/png",
-  url: "/og.png",
-  width: 1200,
-} as const satisfies TypedStructuredImageMetadata;
-
-export function getOneQueryPublicShareImageMetadata(
-  site?: SiteInput
-): TypedStructuredImageMetadata {
+export function getOneQueryShareImage(site?: SiteInput): ShareImage {
   return {
-    ...ONEQUERY_PUBLIC_SHARE_IMAGE,
-    url: toAbsoluteSiteUrl(ONEQUERY_PUBLIC_SHARE_IMAGE.url, site),
+    ...ONEQUERY.IMAGES.SHARE,
+    url: toAbsoluteSiteUrl(ONEQUERY.IMAGES.SHARE.url, site),
   };
-}
-
-export function getOneQueryStructuredShareImageMetadata(
-  site?: SiteInput
-): TypedStructuredImageMetadata {
-  return getOneQueryPublicShareImageMetadata(site);
 }

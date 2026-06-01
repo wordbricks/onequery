@@ -1,18 +1,18 @@
+import { ONEQUERY } from "@/shared/seo/constants";
 import {
   createBlogIndexStructuredData,
   createCanonicalUrl,
 } from "@/shared/seo/schema";
 
 import { comparePostDates, getBlogPostSummaries } from "./collection";
-import { getBlogShareImageMetadataBySlug } from "./images";
+import { getBlogShareImagesBySlug } from "./images";
 import { getBlogCategoryFilters, getBlogIndexPath } from "./taxonomy";
 import type { BlogCategoryFilter } from "./taxonomy";
 
-const BLOG_INDEX_TITLE = "OneQuery Blog | Governed Data Access for AI Agents";
+const BLOG_INDEX_TITLE = `${ONEQUERY.BLOG_NAME} | Governed Data Access for AI Agents`;
 const BLOG_INDEX_DESCRIPTION =
   "Notes from the OneQuery team on production data access, AI agent safety, telemetry, and operational workflows.";
-const BLOG_INDEX_KEYWORDS =
-  "OneQuery blog, AI agent safety, governed data access, production data access, LLM telemetry, data agent workflows";
+const BLOG_INDEX_KEYWORDS = `${ONEQUERY.NAME} blog, AI agent safety, governed data access, production data access, LLM telemetry, data agent workflows`;
 
 function getCategorySeoLabel(category: BlogCategoryFilter) {
   return category === "Usecase" ? "use case" : category.toLowerCase();
@@ -23,7 +23,7 @@ function getBlogIndexTitle(category: BlogCategoryFilter) {
     return BLOG_INDEX_TITLE;
   }
 
-  return `${category} Articles | OneQuery Blog`;
+  return `${category} Articles | ${ONEQUERY.BLOG_NAME}`;
 }
 
 function getBlogIndexDescription(category: BlogCategoryFilter) {
@@ -33,13 +33,13 @@ function getBlogIndexDescription(category: BlogCategoryFilter) {
 
   const categoryLabel = getCategorySeoLabel(category);
 
-  return `Read OneQuery ${categoryLabel} articles on governed data access for AI agents, production context, telemetry, and operational workflows.`;
+  return `Read ${ONEQUERY.NAME} ${categoryLabel} articles on governed data access for AI agents, production context, telemetry, and operational workflows.`;
 }
 
 function getBlogIndexKeywords(category: BlogCategoryFilter) {
   return category === "All"
     ? BLOG_INDEX_KEYWORDS
-    : `${BLOG_INDEX_KEYWORDS}, ${category}, OneQuery ${getCategorySeoLabel(category)} articles`;
+    : `${BLOG_INDEX_KEYWORDS}, ${category}, ${ONEQUERY.NAME} ${getCategorySeoLabel(category)} articles`;
 }
 
 function getBlogIndexBreadcrumbName(category: BlogCategoryFilter) {
@@ -63,7 +63,7 @@ export async function getBlogIndexPage(input: {
   const pagePath = getBlogIndexPath(input);
   const title = getBlogIndexTitle(input.category);
   const description = getBlogIndexDescription(input.category);
-  const postImages = await getBlogShareImageMetadataBySlug(posts, input.site);
+  const postImages = await getBlogShareImagesBySlug(posts, input.site);
 
   return {
     activeCategory: input.category,
@@ -77,8 +77,8 @@ export async function getBlogIndexPage(input: {
       description,
       itemListName:
         input.category === "All"
-          ? "OneQuery Blog posts"
-          : `OneQuery ${input.category} articles`,
+          ? ONEQUERY.BLOG_POSTS_ITEM_LIST_NAME
+          : `${ONEQUERY.NAME} ${input.category} articles`,
       pathname: pagePath,
       postImages,
       posts,
