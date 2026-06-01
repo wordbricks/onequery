@@ -1,37 +1,44 @@
 ---
-import "../styles/base.css";
+import "@/shared/styles/base.css";
 import { Font } from "astro:assets";
-import GoogleTag from "../components/landing/GoogleTag.astro";
+import { googleTagConfig } from "@/shared/analytics/google-tag";
+import {
+  createGoogleTagAfterSwapScript,
+  createGoogleTagBootstrapScript,
+  createGoogleTagEventBridgeScript,
+  createGoogleTagScriptSrc,
+} from "@/shared/analytics/script";
 import {
   createCanonicalUrl,
-  createLandingPageStructuredData,
+  createHomePageStructuredData,
   normalizeSiteUrl,
-  ONEQUERY_DEFAULT_DESCRIPTION,
-} from "../landing/seo/structured-data";
-import {
-  getOneQueryPublicShareImageMetadata,
-  getOneQueryStructuredShareImageMetadata,
-  ONEQUERY_DEFAULT_SHARE_IMAGE_ALT,
-} from "../landing/seo/site-images";
-import type { PageMetadata } from "./layout-types";
+} from "@/shared/seo/schema";
+import { ONEQUERY } from "@/shared/seo/constants";
+import { getOneQueryShareImage } from "@/shared/seo/images";
+import type { PageMetadata } from "./types";
 
-const DEFAULT_TITLE = "OneQuery | Governed Data Access for AI Agents";
-const DEFAULT_DESCRIPTION = ONEQUERY_DEFAULT_DESCRIPTION;
-const DEFAULT_KEYWORDS =
-  "OneQuery, AI agent access control, production context, production keys, Claude Code, centralized credentials, audit logs, capability grants, safe production access";
-const DEFAULT_IMAGE_ALT = ONEQUERY_DEFAULT_SHARE_IMAGE_ALT;
+const DEFAULT_TITLE = ONEQUERY.DEFAULT_PAGE_TITLE;
+const DEFAULT_DESCRIPTION = ONEQUERY.SITE_DESCRIPTION;
+const DEFAULT_KEYWORDS = ONEQUERY.DEFAULT_KEYWORDS;
+const DEFAULT_IMAGE_ALT = ONEQUERY.SHARE_IMAGE_ALT;
 const siteUrl = normalizeSiteUrl(Astro.site);
 const DEFAULT_CANONICAL_URL = createCanonicalUrl("/", siteUrl);
-const defaultShareImage = getOneQueryPublicShareImageMetadata(siteUrl);
-const defaultStructuredShareImage =
-  getOneQueryStructuredShareImageMetadata(siteUrl);
+const defaultShareImage = getOneQueryShareImage(siteUrl);
+const googleTagScriptSrc = createGoogleTagScriptSrc(googleTagConfig);
+const googleTagEventBridgeScript = createGoogleTagEventBridgeScript();
+const googleTagBootstrapScript =
+  createGoogleTagBootstrapScript(googleTagConfig);
+const googleTagAfterSwapScript =
+  createGoogleTagAfterSwapScript(googleTagConfig);
 const DEFAULT_IMAGE_URL = defaultShareImage.url;
-const DEFAULT_STRUCTURED_DATA = createLandingPageStructuredData({
+const DEFAULT_STRUCTURED_DATA = createHomePageStructuredData({
   description: DEFAULT_DESCRIPTION,
-  imageAlt: DEFAULT_IMAGE_ALT,
-  imageHeight: defaultStructuredShareImage.height,
-  imageUrl: defaultStructuredShareImage.url,
-  imageWidth: defaultStructuredShareImage.width,
+  image: {
+    alt: DEFAULT_IMAGE_ALT,
+    height: defaultShareImage.height,
+    url: defaultShareImage.url,
+    width: defaultShareImage.width,
+  },
   site: siteUrl,
   title: DEFAULT_TITLE,
 });
@@ -68,7 +75,14 @@ const structuredDataItems =
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ffffff" />
-    <GoogleTag />
+    <script is:inline set:html={googleTagEventBridgeScript} />
+    <script is:inline type="text/partytown" src={googleTagScriptSrc}></script>
+    <script
+      is:inline
+      type="text/partytown"
+      set:html={googleTagBootstrapScript}
+    />
+    <script is:inline set:html={googleTagAfterSwapScript} />
     <script is:inline>
       document.addEventListener("click", (event) => {
         if (!(event.target instanceof Element)) {
@@ -102,9 +116,9 @@ const structuredDataItems =
       });
     </script>
     <meta name="robots" content={robots} />
-    <meta name="author" content="OneQuery Maintainers" />
-    <meta name="application-name" content="OneQuery" />
-    <meta name="apple-mobile-web-app-title" content="OneQuery" />
+    <meta name="author" content={ONEQUERY.AUTHOR_NAME} />
+    <meta name="application-name" content={ONEQUERY.NAME} />
+    <meta name="apple-mobile-web-app-title" content={ONEQUERY.NAME} />
     <link
       rel="icon"
       type="image/png"
@@ -125,7 +139,7 @@ const structuredDataItems =
     <meta property="og:description" content={description} />
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonicalUrl} />
-    <meta property="og:site_name" content="OneQuery" />
+    <meta property="og:site_name" content={ONEQUERY.NAME} />
     <meta property="og:locale" content="en_US" />
     <meta property="og:image" content={imageUrl} />
     <meta property="og:image:secure_url" content={imageUrl} />

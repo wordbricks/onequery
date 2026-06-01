@@ -1,24 +1,21 @@
 import { ActionError, defineAction } from "astro:actions";
-import { env } from "cloudflare:workers";
+import { LANDING_SLACK_WEBHOOK_URL } from "astro:env/server";
 
-import { submitContactLead } from "../server/landing-api";
-import { ContactRequestSchema } from "../server/landing-schemas";
-import { LandingNotificationConfigurationError } from "../server/landing/landing-notifications";
-import type { LandingNotificationError } from "../server/landing/landing-notifications";
-import { SENT_CONTACT_ACTION_STATE } from "./contact-action-state";
-import type { ContactActionState } from "./contact-action-state";
+import { submitContactLead } from "@/server/api";
+import { NotificationConfigurationError } from "@/server/notifications";
+import type { NotificationError } from "@/server/notifications";
+import { ContactRequestSchema } from "@/server/schemas";
 
-function readLandingWorkerBindings() {
-  return {
-    LANDING_SLACK_WEBHOOK_URL:
-      typeof env.LANDING_SLACK_WEBHOOK_URL === "string"
-        ? env.LANDING_SLACK_WEBHOOK_URL
-        : undefined,
-  };
-}
+type ContactActionState = {
+  status: "sent";
+};
 
-function createLandingActionError(error: LandingNotificationError) {
-  const message = LandingNotificationConfigurationError.is(error)
+const SENT_CONTACT_ACTION_STATE = {
+  status: "sent",
+} satisfies ContactActionState;
+
+function createActionError(error: NotificationError) {
+  const message = NotificationConfigurationError.is(error)
     ? error.message
     : "Failed to deliver notification";
 
@@ -34,12 +31,12 @@ export const server = {
     input: ContactRequestSchema,
     handler: async (input, { request }): Promise<ContactActionState> => {
       const result = await submitContactLead(input, {
-        bindings: readLandingWorkerBindings(),
         request,
+        slackWebhookUrl: LANDING_SLACK_WEBHOOK_URL,
       });
 
       if (result.isErr()) {
-        throw createLandingActionError(result.error);
+        throw createActionError(result.error);
       }
 
       return SENT_CONTACT_ACTION_STATE;

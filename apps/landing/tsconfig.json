@@ -1,5 +1,10 @@
 {
   "extends": "@onequery/tsconfig/base.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
   "include": [
     ".astro/types.d.ts",
     "src",

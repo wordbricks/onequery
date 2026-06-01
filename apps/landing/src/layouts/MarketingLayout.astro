@@ -1,9 +1,9 @@
 ---
-import type { FooterLink } from "../data/footer";
-import SiteFooter from "../components/landing/SiteFooter.astro";
-import SiteHeader from "../components/landing/SiteHeader.astro";
+import type { FooterLink } from "@/shared/navigation/footer";
+import SiteFooter from "@/shared/components/Footer.astro";
+import SiteHeader from "@/shared/components/Header.astro";
 import BaseLayout from "./BaseLayout.astro";
-import type { PageMetadata } from "./layout-types";
+import type { PageMetadata } from "./types";
 
 interface Props extends PageMetadata {
   footerLinks?: ReadonlyArray<FooterLink>;
