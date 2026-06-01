@@ -47,7 +47,7 @@ const siteUrl = normalizeSiteUrl(Astro.site);
 const landingCanonicalUrl = createCanonicalUrl("/", siteUrl);
 const landingShareImage = getOneQueryPublicShareImageMetadata(siteUrl);
 const landingStructuredShareImage =
-  await getOneQueryStructuredShareImageMetadata(siteUrl);
+  getOneQueryStructuredShareImageMetadata(siteUrl);
 const landingImageUrl = landingShareImage.url;
 const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
 const landingStructuredData = createLandingPageStructuredData({

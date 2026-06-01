@@ -1,7 +1,5 @@
 ---
-import { Image } from "astro:assets";
-
-import onequeryIcon from "../../assets/onequery-icon.png";
+import OneQueryIcon from "../../assets/onequery-icon.svg";
 import { NAVIGATION_ITEMS } from "../../data/navigation";
 import { REPOSITORY_URL } from "../../landing/config/landing-config";
 import { BrandIcon } from "../../landing/content/brand-icons";
@@ -50,14 +48,11 @@ const navigationItems = NAVIGATION_ITEMS.map((item) => ({
     class="brand-mark"
     aria-label="OneQuery landing homepage"
   >
-    <Image
-      src={onequeryIcon}
-      alt="OneQuery logo"
+    <OneQueryIcon
       aria-hidden="true"
       class="brand-mark-icon"
       width={60}
       height={60}
-      loading="eager"
     />
     <span>OneQuery</span>
   </TrackedLink>

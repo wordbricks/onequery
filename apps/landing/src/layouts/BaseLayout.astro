@@ -24,7 +24,7 @@ const siteUrl = normalizeSiteUrl(Astro.site);
 const DEFAULT_CANONICAL_URL = createCanonicalUrl("/", siteUrl);
 const defaultShareImage = getOneQueryPublicShareImageMetadata(siteUrl);
 const defaultStructuredShareImage =
-  await getOneQueryStructuredShareImageMetadata(siteUrl);
+  getOneQueryStructuredShareImageMetadata(siteUrl);
 const DEFAULT_IMAGE_URL = defaultShareImage.url;
 const DEFAULT_STRUCTURED_DATA = createLandingPageStructuredData({
   description: DEFAULT_DESCRIPTION,
@@ -105,8 +105,17 @@ const structuredDataItems =
     <meta name="author" content="OneQuery Maintainers" />
     <meta name="application-name" content="OneQuery" />
     <meta name="apple-mobile-web-app-title" content="OneQuery" />
-    <link rel="icon" type="image/png" href="/onequery-icon.png" />
-    <link rel="apple-touch-icon" href="/onequery-icon.png" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="96x96"
+      href="/favicon-96x96.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/apple-touch-icon.png"
+    />
     <link rel="canonical" href={canonicalUrl} />
     <link rel="sitemap" href="/sitemap-index.xml" />
     <Font cssVariable="--font-geist" preload />

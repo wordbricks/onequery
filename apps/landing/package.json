@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
+    "preview": "astro preview",
     "workspace:dev": "bun run dev",
     "build": "astro build",
     "bundle:analyze": "ONEQUERY_BUNDLE_REPORT=1 astro build",
