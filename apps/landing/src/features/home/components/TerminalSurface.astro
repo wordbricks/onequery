@@ -1,4 +1,6 @@
 ---
+import { Code } from "astro:components";
+
 import type { TerminalLine } from "@/features/home/terminal/types";
 
 interface Props {
@@ -29,7 +31,14 @@ const { footer, lines, title } = Astro.props;
               {line.kind === "prompt" ? "$" : ">"}
             </span>
           )}
-          <code>{line.text}</code>
+          <Code
+            class="terminal-line-code"
+            code={line.text}
+            defaultColor={false}
+            inline
+            lang={line.kind === "output" ? "plaintext" : "shell"}
+            theme="tokyo-night"
+          />
         </div>
       ))
     }

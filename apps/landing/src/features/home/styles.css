@@ -197,7 +197,6 @@
   min-width: 0;
   overflow: hidden;
   background: transparent !important;
-  color: inherit;
   font: inherit;
   line-height: inherit;
   white-space: inherit;
@@ -1434,8 +1433,15 @@
 }
 
 .terminal-line code {
+  background: transparent !important;
+  font: inherit;
+  line-height: inherit;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.terminal-line-code .line {
+  display: inline;
 }
 
 .terminal-line-prefix {

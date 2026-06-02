@@ -1,7 +1,7 @@
 ---
 name: onequery-openclaw
 description: Use OpenClaw's exec tool to inspect orgs, sources, and run bounded read-only SQL through the OneQuery CLI directly.
-metadata: {"openclaw":{"requires":{"bins":["onequery"]},"homepage":"https://github.com/wordbricks/onequery"}}
+metadata: {"openclaw":{"requires":{"bins":["onequery"]},"homepage":"https://onequery.dev"}}
 ---
 
 Use this skill when the user wants company or customer data that should be read

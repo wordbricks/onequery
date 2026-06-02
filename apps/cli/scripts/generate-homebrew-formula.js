@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
+const SHA256_PATTERN = /^[a-f0-9]{64}$/iu;
 const GENERATE_HOMEBREW_FORMULA_OPTIONS = new Set([
   "--version",
   "--repo-owner",
@@ -47,7 +47,7 @@ const PLATFORM_RELEASES = [
 ];
 
 function versionedReleaseAssetName(assetName, version) {
-  return assetName.replace(/\.tgz$/, `-${version}.tgz`);
+  return assetName.replace(/\.tgz$/u, `-${version}.tgz`);
 }
 
 function readOptionValue(argv, index, optionName) {
@@ -266,7 +266,7 @@ export function buildFormula({
     "",
     "class Onequery < Formula",
     '  desc "CLI for querying and self-hosting OneQuery"',
-    `  homepage "https://github.com/${repoOwner}/${repoName}"`,
+    '  homepage "https://onequery.dev"',
     '  license "Apache-2.0"',
     `  version "${version}"`,
     "",
@@ -326,9 +326,9 @@ export async function writeFormula({ outputPath, formulaText }) {
   await writeFile(outputPath, formulaText, "utf8");
 }
 
-const __filename = fileURLToPath(import.meta.url);
+const currentFilePath = fileURLToPath(import.meta.url);
 
-if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+if (process.argv[1] && path.resolve(process.argv[1]) === currentFilePath) {
   const args = parseArgs(process.argv.slice(2));
   const formulaText = buildFormula(args);
   await writeFormula({

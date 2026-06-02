@@ -1,4 +1,6 @@
 ---
+import { Code } from "astro:components";
+
 import {
   COPY_FEEDBACK_RESET_DELAY_MS,
   INSTALL_COMMANDS,
@@ -61,7 +63,14 @@ function getInstallTabId(index: number) {
             data-install-method-index={index}
             hidden={method !== defaultMethod}
           >
-            <code class="download-command-code">{method.command}</code>
+            <Code
+              class="download-command-code"
+              code={method.command}
+              defaultColor={false}
+              inline
+              lang="shell"
+              theme="tokyo-night"
+            />
           </span>
         ))
       }
