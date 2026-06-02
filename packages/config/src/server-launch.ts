@@ -18,10 +18,8 @@ import type {
   ServerLaunchMigrationsConfig,
   ServerLaunchRateLimitConfig,
   ServerLaunchRuntimePathsConfig,
-  ServerLaunchSmtpConfig,
   ServerLaunchStorageConfig,
   ServerLaunchSupervisorControlConfig,
-  ServerLaunchSupervisorControlTransportConfig,
   WorkspaceDevServerLaunchConfig,
 } from "@onequery/proto-runtime/runtime/v1/launch_pb";
 

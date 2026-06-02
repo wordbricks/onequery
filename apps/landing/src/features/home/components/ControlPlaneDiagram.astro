@@ -215,3 +215,417 @@ const controlPlanePolicies = [
     }
   </div>
 </div>
+
+<style>
+  .control-plane-diagram {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 2.4fr 1.4fr;
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    justify-content: center;
+    column-gap: 0;
+    align-items: center;
+    min-height: 340px;
+    padding: 20px 24px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.012),
+      rgba(0, 0, 0, 0.004)
+    );
+    box-shadow: var(--shadow-ring);
+  }
+
+  .control-plane-diagram-lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .control-plane-line {
+    fill: none;
+    stroke: rgba(0, 0, 0, 0.22);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-dasharray: 5 9;
+    animation: control-plane-flow 3.2s linear infinite;
+  }
+
+  .control-plane-column,
+  .control-plane-core {
+    position: relative;
+    z-index: 1;
+  }
+
+  .control-plane-column {
+    display: grid;
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    grid-row: 1 / span 4;
+    align-self: stretch;
+    align-items: center;
+    gap: 0;
+  }
+
+  .control-plane-column-left {
+    justify-items: end;
+  }
+
+  .control-plane-column-right {
+    justify-items: start;
+  }
+
+  .control-plane-node {
+    width: min(100%, 184px);
+    min-height: 56px;
+    padding: 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: var(--shadow-ring);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
+  }
+
+  .control-plane-node:hover,
+  .control-plane-member:hover,
+  .control-plane-core-shell:hover {
+    border-color: var(--line-strong);
+    box-shadow:
+      0 16px 30px rgba(0, 0, 0, 0.06),
+      var(--shadow-ring);
+    transform: translateY(-1px);
+  }
+
+  .control-plane-member-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-self: end;
+  }
+
+  .control-plane-member {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: var(--shadow-ring);
+    color: var(--ink);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
+  }
+
+  .control-plane-member-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: 0;
+    white-space: nowrap;
+    order: -1;
+  }
+
+  .control-plane-member-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--ink);
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .control-plane-node-output {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 10px 14px;
+    min-height: 52px;
+  }
+
+  .control-plane-node-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-soft);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .control-plane-node-icons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
+
+  .control-plane-node-icons :global(.brand-icon) {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    color: var(--ink);
+  }
+
+  .control-plane-core-shell h3,
+  .control-plane-capability-row,
+  .control-plane-core-kicker {
+    margin: 0;
+  }
+
+  .control-plane-core-kicker {
+    color: var(--text-soft);
+    font-size: 11px;
+    line-height: 1.5;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .control-plane-core {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    grid-row: 1 / span 4;
+  }
+
+  .control-plane-core-shell {
+    width: min(100%, 300px);
+    padding: 18px 18px 16px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: var(--shadow-ring);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
+  }
+
+  .control-plane-core-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .control-plane-core-brand :global(.control-plane-core-logo) {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    object-fit: cover;
+    flex: none;
+  }
+
+  .control-plane-core-shell h3 {
+    margin: 0;
+    font-size: clamp(1.6rem, 3.2vw, 2.2rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0;
+  }
+
+  .control-plane-capability-list {
+    display: grid;
+    gap: 0;
+    margin-top: 14px;
+    padding: 2px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .control-plane-capability-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 38px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .control-plane-capability-row:first-child {
+    border-top: 0;
+  }
+
+  .control-plane-capability-dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--ink);
+    animation: marker-pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes control-plane-flow {
+    to {
+      stroke-dashoffset: -28;
+    }
+  }
+
+  @keyframes marker-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 0.72;
+      transform: scale(0.86);
+    }
+  }
+
+  @media (max-width: 1100px) {
+    .control-plane-diagram {
+      grid-template-columns: 1fr 2.2fr 1.4fr;
+      min-height: 340px;
+      padding-inline: 20px;
+    }
+
+    .control-plane-core-shell {
+      width: min(100%, 340px);
+    }
+
+    .control-plane-node {
+      width: min(100%, 196px);
+    }
+  }
+
+  @media (max-width: 860px) {
+    .control-plane-diagram {
+      grid-template-columns: 1fr;
+      grid-template-rows: none;
+      justify-content: stretch;
+      column-gap: 0;
+      gap: 20px;
+      min-height: auto;
+      padding: 24px 18px;
+    }
+
+    .control-plane-diagram-lines {
+      display: none;
+    }
+
+    .control-plane-column {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: none;
+      grid-row: auto;
+      gap: 14px;
+    }
+
+    .control-plane-column-right,
+    .control-plane-column-left {
+      justify-items: stretch;
+    }
+
+    .control-plane-node,
+    .control-plane-column-right .control-plane-output-index-1,
+    .control-plane-column-right .control-plane-output-index-2,
+    .control-plane-column-right .control-plane-output-index-3,
+    .control-plane-column-right .control-plane-output-index-4 {
+      width: 100%;
+      transform: none;
+    }
+
+    .control-plane-member-wrap {
+      flex-direction: column;
+      justify-self: center;
+    }
+
+    .control-plane-member-label {
+      order: 0;
+    }
+
+    .control-plane-member {
+      width: 52px;
+      height: 52px;
+      transform: none;
+    }
+
+    .control-plane-core-shell {
+      width: 100%;
+    }
+
+    .control-plane-core {
+      grid-row: auto;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .control-plane-column {
+      grid-template-columns: 1fr;
+    }
+
+    .control-plane-column-left {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .control-plane-column-right {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .control-plane-member-wrap {
+      justify-self: stretch;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .control-plane-member-label {
+      font-size: 11px;
+      line-height: 1.25;
+      text-align: center;
+      white-space: normal;
+    }
+
+    .control-plane-node {
+      min-height: 72px;
+    }
+
+    .control-plane-core-shell {
+      padding: 22px 18px 18px;
+      border-radius: 18px;
+    }
+
+    .control-plane-core-shell h3 {
+      font-size: 2.7rem;
+    }
+
+    .control-plane-capability-list {
+      margin-top: 20px;
+    }
+
+    .control-plane-capability-row {
+      min-height: 46px;
+      font-size: 16px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .control-plane-line,
+    .control-plane-node,
+    .control-plane-core-shell,
+    .control-plane-capability-dot {
+      animation: none;
+    }
+
+    .control-plane-node,
+    .control-plane-member,
+    .control-plane-core-shell {
+      transition: none;
+    }
+  }
+</style>

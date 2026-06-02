@@ -15,8 +15,8 @@ import {
   resolveTargetTripleCandidates,
 } from "./package-constants.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const launcherFilePath = fileURLToPath(import.meta.url);
+const launcherDir = path.dirname(launcherFilePath);
 const require = createRequire(import.meta.url);
 const runtimeBundleSpec = readRuntimeBundleSpec(resolveRuntimeBundleSpecPath());
 
@@ -27,7 +27,7 @@ const binaryName = binaryNameForPlatform(platform, CLI_BINARY_NAME);
 
 // CONTEXT: platform packages are installed through npm alias names so the
 // launcher resolves the alias folder, not the underlying published package id.
-const localVendorRoot = path.join(__dirname, "..", "vendor");
+const localVendorRoot = path.join(launcherDir, "..", "vendor");
 const resolvedVendor = resolveVendorPayload({
   binaryName,
   localVendorRoot,
@@ -112,7 +112,7 @@ if (childResult.type === "signal") {
 
 function detectPackageManager() {
   const userAgent = process.env.npm_config_user_agent ?? "";
-  if (/\bbun\//.test(userAgent)) {
+  if (/\bbun\//u.test(userAgent)) {
     return "bun";
   }
 
@@ -122,8 +122,8 @@ function detectPackageManager() {
   }
 
   if (
-    __dirname.includes(".bun/install/global") ||
-    __dirname.includes(".bun\\install\\global")
+    launcherDir.includes(".bun/install/global") ||
+    launcherDir.includes(".bun\\install\\global")
   ) {
     return "bun";
   }
@@ -196,7 +196,7 @@ function resolveBundlePaths({ binaryName, bundleRoot, runtimeBundleSpec }) {
 }
 
 function resolveRuntimeBundleSpecPath() {
-  const packagedSpecPath = path.join(__dirname, "..", "runtime-bundle.json");
+  const packagedSpecPath = path.join(launcherDir, "..", "runtime-bundle.json");
   if (existsSync(packagedSpecPath)) {
     return packagedSpecPath;
   }
@@ -204,7 +204,7 @@ function resolveRuntimeBundleSpecPath() {
   // Comment: local workspace execution reads the canonical bundle spec from the
   // repo; published npm packages ship the same file at the package root.
   return path.join(
-    __dirname,
+    launcherDir,
     "..",
     "..",
     "..",

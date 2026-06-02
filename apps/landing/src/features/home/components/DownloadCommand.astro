@@ -88,6 +88,228 @@ function getInstallTabId(index: number) {
   </div>
 </div>
 
+<style>
+  .install-selector {
+    display: grid;
+    gap: 12px;
+    width: min(100%, 780px);
+    margin-top: 28px;
+  }
+
+  .install-tabs {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .install-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 10px 0 8px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-soft);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 18px;
+    cursor: pointer;
+  }
+
+  .install-tab :global(.install-tab-icon) {
+    display: block;
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+    color: currentColor;
+  }
+
+  .install-tab-active {
+    background: var(--wash);
+    color: var(--ink);
+  }
+
+  .download-command {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.24);
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 100%),
+      #0d0d0d;
+    box-shadow:
+      0 18px 42px rgba(0, 0, 0, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
+  }
+
+  .download-command:focus-within,
+  .download-command:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow:
+      0 22px 48px rgba(0, 0, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .download-command-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 6px;
+  }
+
+  .download-command-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.74);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .download-command-value {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.92);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 22px;
+  }
+
+  .download-command-value[hidden] {
+    display: none;
+  }
+
+  .download-command-value :global(.download-command-code) {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    background: transparent !important;
+    font: inherit;
+    line-height: inherit;
+    white-space: inherit;
+    text-overflow: inherit;
+  }
+
+  .download-command-value :global(.line) {
+    display: inline;
+  }
+
+  .install-method-copy {
+    min-width: 74px;
+    min-height: 42px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 11px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 19px;
+    box-shadow:
+      0 10px 20px rgba(0, 0, 0, 0.2),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+    cursor: pointer;
+    transition:
+      opacity 160ms ease,
+      transform 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .install-method-copy:hover {
+    opacity: 0.94;
+    box-shadow:
+      0 12px 24px rgba(0, 0, 0, 0.24),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+    transform: translateY(-1px);
+  }
+
+  .t-text-swap {
+    display: inline-block;
+    transform: translateY(0);
+    filter: blur(0);
+    opacity: 1;
+    transition:
+      transform var(--text-swap-dur) var(--text-swap-ease),
+      filter var(--text-swap-dur) var(--text-swap-ease),
+      opacity var(--text-swap-dur) var(--text-swap-ease);
+    will-change: transform, filter, opacity;
+  }
+
+  .t-text-swap.is-exit {
+    transform: translateY(calc(var(--text-swap-translate-y) * -1));
+    filter: blur(var(--text-swap-blur));
+    opacity: 0;
+  }
+
+  .t-text-swap.is-enter-start {
+    transform: translateY(var(--text-swap-translate-y));
+    filter: blur(var(--text-swap-blur));
+    opacity: 0;
+    transition: none;
+  }
+
+  @media (max-width: 640px) {
+    .download-command {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
+
+    .download-command-line {
+      min-height: 42px;
+    }
+
+    .download-command-value {
+      overflow: visible;
+      white-space: normal;
+      text-overflow: clip;
+      word-break: break-word;
+    }
+
+    .download-command-value :global(.download-command-code) {
+      overflow: visible;
+      word-break: inherit;
+    }
+
+    .install-method-copy {
+      width: 100%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .download-command,
+    .install-method-copy {
+      transition: none;
+    }
+
+    .t-text-swap {
+      transition: none !important;
+    }
+  }
+</style>
+
 <script is:inline>
   (() => {
     const selectors = document.querySelectorAll("[data-install-selector]");

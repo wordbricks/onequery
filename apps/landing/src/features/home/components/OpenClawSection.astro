@@ -43,7 +43,75 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
   </div>
 </section>
 
-<script is:inline type="module">
+<style>
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .section-intro {
+    max-width: 760px;
+  }
+
+  .section-intro h2 {
+    margin: 18px 0 0;
+    font-size: 3.25rem;
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: 0;
+    text-wrap: balance;
+  }
+
+  .section-intro p {
+    margin: 20px 0 0;
+    color: var(--text-muted);
+    font-size: 18px;
+    line-height: 1.65;
+  }
+
+  .openclaw-demo-section {
+    gap: 28px;
+  }
+
+  .openclaw-demo-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 14 / 9;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: var(--shadow), var(--shadow-ring);
+  }
+
+  .openclaw-demo-video {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    background: #0d0d0d;
+    object-fit: cover;
+  }
+
+  @media (max-width: 860px) {
+    .section-intro h2 {
+      font-size: 3.15rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .section-intro h2 {
+      font-size: 2.6rem;
+      letter-spacing: 0;
+    }
+
+    .section-intro p {
+      font-size: 16px;
+    }
+  }
+</style>
+
+<script>
   const autoplayVisibilityThreshold = 0.28;
   const playbackObserverThresholds = [
     0,
@@ -53,7 +121,7 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
     1,
   ];
 
-  function getFallbackVisibleRatio(element) {
+  const getFallbackVisibleRatio = (element) => {
     const rect = element.getBoundingClientRect();
     const elementArea = rect.width * rect.height;
 
@@ -75,7 +143,7 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
     );
 
     return (visibleWidth * visibleHeight) / elementArea;
-  }
+  };
 
   for (const frame of document.querySelectorAll("[data-openclaw-demo-frame]")) {
     const video = frame.querySelector("[data-openclaw-demo-video]");

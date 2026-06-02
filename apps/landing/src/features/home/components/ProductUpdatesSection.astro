@@ -35,11 +35,89 @@
   </form>
 </section>
 
-<script is:inline>
+<style>
+  .marketing-updates {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
+    gap: 28px;
+    align-items: end;
+    padding: 28px 32px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.015), rgba(0, 0, 0, 0.04)),
+      var(--surface);
+    box-shadow: var(--shadow-ring);
+  }
+
+  .marketing-updates-copy {
+    max-width: 720px;
+  }
+
+  .marketing-updates-copy p:last-child {
+    margin-top: 18px;
+  }
+
+  .marketing-updates-form {
+    display: grid;
+    gap: 12px;
+  }
+
+  .marketing-inline-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+
+  .marketing-input {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    border: 1px solid rgba(15, 23, 42, 0.18);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--ink);
+    outline: none;
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  .marketing-input:focus {
+    border-color: rgba(37, 99, 235, 0.45);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  }
+
+  .marketing-submit-button {
+    min-width: 132px;
+  }
+
+  @media (max-width: 1100px) {
+    .marketing-updates {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .marketing-updates {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .marketing-inline-form {
+      grid-template-columns: 1fr;
+    }
+
+    .marketing-submit-button {
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
   const PRODUCT_UPDATES_DEFAULT_MESSAGE =
     "Failed to subscribe for product updates";
 
-  function readProductUpdatesErrorMessage(payload) {
+  const readProductUpdatesErrorMessage = (payload) => {
     if (
       payload &&
       typeof payload === "object" &&
@@ -51,9 +129,9 @@
     }
 
     return PRODUCT_UPDATES_DEFAULT_MESSAGE;
-  }
+  };
 
-  function setProductUpdatesFeedback(feedback, message, state) {
+  const setProductUpdatesFeedback = (feedback, message, state) => {
     feedback.textContent = message;
     feedback.classList.toggle(
       "marketing-form-feedback-success",
@@ -64,7 +142,7 @@
       state === "error"
     );
     feedback.setAttribute("role", state === "error" ? "alert" : "status");
-  }
+  };
 
   for (const form of document.querySelectorAll(
     "[data-product-updates-form]"

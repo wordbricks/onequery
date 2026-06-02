@@ -40,10 +40,10 @@ import {
   binaryNameForTargetTriple,
 } from "../bin/package-constants.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const scriptFilePath = fileURLToPath(import.meta.url);
+const scriptDir = path.dirname(scriptFilePath);
 
-const CLI_ROOT = path.resolve(__dirname, "..");
+const CLI_ROOT = path.resolve(scriptDir, "..");
 const WORKSPACE_ROOT = path.resolve(CLI_ROOT, "..", "..");
 const WORKSPACE_MANIFEST_PATH = path.join(WORKSPACE_ROOT, "package.json");
 const workspacePackageRequireCache = new Map();
@@ -331,8 +331,10 @@ function createReleasePlatformPackageManifest(
 ) {
   const stagedPlatformPackage = {
     cpu: [platformPackage.cpu],
+    bugs: packageJson.bugs,
     description: packageJson.description,
     files: ["vendor", "README.md"],
+    homepage: packageJson.homepage,
     license: packageJson.license,
     name: CLI_PACKAGE_NAME,
     os: [platformPackage.os],
@@ -663,8 +665,9 @@ function indexWorkspacePackageManifestPaths(workspacePackageManifests) {
   return workspacePackageManifestPathIndex;
 }
 
-export const __internal = {
+export const buildNpmPackageInternals = {
   INSTALL_BUNDLE_PACKAGES,
+  createReleasePlatformPackageManifest,
   indexWorkspacePackageManifestPaths,
   readCliPackageJson,
   restorePackagedExecutableModes,
