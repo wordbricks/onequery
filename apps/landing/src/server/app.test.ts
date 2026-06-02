@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { handleContactRequest, handleProductUpdatesRequest } from "./api";
 import type {
@@ -9,72 +9,66 @@ import {
   createContactNotification,
   createProductUpdatesNotification,
 } from "./notifications";
+import {
+  createSlackEmulatorHarness,
+  SLACK_EMULATOR_BOT_ID,
+} from "./test/slack-emulator";
+import type { SlackEmulatorHarness } from "./test/slack-emulator";
 
-const originalFetch = globalThis.fetch;
-const WEBHOOK_URL = "https://example.com/hooks/landing";
+let slack: SlackEmulatorHarness;
 
-function installFetchMock(fetchMock: typeof globalThis.fetch) {
-  globalThis.fetch = fetchMock;
-}
+beforeAll(async () => {
+  slack = await createSlackEmulatorHarness();
+});
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
-  vi.restoreAllMocks();
+  slack.reset();
+});
+
+afterAll(async () => {
+  await slack.close();
 });
 
 describe("landing API handlers", () => {
   it("assigns a request id to successful API responses", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));
-    installFetchMock(fetchSpy);
-
     const response = await handleProductUpdatesRequest({
       request: new Request("https://landing.onequery.dev/api/product-updates", {
         body: JSON.stringify({ email: "team@example.com" }),
         headers: { "content-type": "application/json" },
         method: "POST",
       }),
-      slackWebhookUrl: WEBHOOK_URL,
+      slackWebhookUrl: slack.webhookUrl,
     });
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-request-id")).toEqual(expect.any(String));
     expect(response.headers.get("x-robots-tag")).toBe("noindex");
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(await slack.readMessages()).toHaveLength(1);
   });
 
   it("accepts product updates submissions with trimmed email input", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));
-    installFetchMock(fetchSpy);
-
     const response = await handleProductUpdatesRequest({
       request: new Request("https://landing.onequery.dev/api/product-updates", {
         body: JSON.stringify({ email: " TEST@Example.COM " }),
         headers: { "content-type": "application/json" },
         method: "POST",
       }),
-      slackWebhookUrl: WEBHOOK_URL,
+      slackWebhookUrl: slack.webhookUrl,
     });
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       email: "test@example.com",
     });
-    expect(fetchSpy).toHaveBeenCalledWith(WEBHOOK_URL, {
-      body: JSON.stringify(
-        createProductUpdatesNotification("test@example.com")
-      ),
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
+    const [message] = await slack.readMessages();
+    expect(message).toMatchObject({
+      bot_id: SLACK_EMULATOR_BOT_ID,
+      blocks: createProductUpdatesNotification("test@example.com").blocks,
+      text: "New product updates signup: test@example.com",
     });
   });
 
   it("accepts product updates form submissions for the HTML fallback", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));
-    installFetchMock(fetchSpy);
-
     const response = await handleProductUpdatesRequest({
       request: new Request("https://landing.onequery.dev/api/product-updates", {
         body: new URLSearchParams({
@@ -82,27 +76,21 @@ describe("landing API handlers", () => {
         }),
         method: "POST",
       }),
-      slackWebhookUrl: WEBHOOK_URL,
+      slackWebhookUrl: slack.webhookUrl,
     });
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       email: "form@example.com",
     });
-    expect(fetchSpy).toHaveBeenCalledWith(WEBHOOK_URL, {
-      body: JSON.stringify(
-        createProductUpdatesNotification("form@example.com")
-      ),
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
+    const [message] = await slack.readMessages();
+    expect(message).toMatchObject({
+      blocks: createProductUpdatesNotification("form@example.com").blocks,
+      text: "New product updates signup: form@example.com",
     });
   });
 
   it("normalizes contact submissions before delivery", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));
-    installFetchMock(fetchSpy);
-
     const response = await handleContactRequest({
       request: new Request("https://landing.onequery.dev/api/contact", {
         body: JSON.stringify({
@@ -113,28 +101,23 @@ describe("landing API handlers", () => {
         headers: { "content-type": "application/json" },
         method: "POST",
       }),
-      slackWebhookUrl: WEBHOOK_URL,
+      slackWebhookUrl: slack.webhookUrl,
     });
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({});
-    expect(fetchSpy).toHaveBeenCalledWith(WEBHOOK_URL, {
-      body: JSON.stringify(
-        createContactNotification({
-          email: "team@example.com",
-          message: "Need pricing details",
-          name: "Jane Doe",
-        })
-      ),
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
+    const [message] = await slack.readMessages();
+    expect(message).toMatchObject({
+      blocks: createContactNotification({
+        email: "team@example.com",
+        message: "Need pricing details",
+        name: "Jane Doe",
+      }).blocks,
+      text: "New contact request from Jane Doe (team@example.com)",
     });
   });
 
   it("rejects contact submissions that become empty after trimming", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    installFetchMock(fetchSpy);
-
     const response = await handleContactRequest({
       request: new Request("https://landing.onequery.dev/api/contact", {
         body: JSON.stringify({
@@ -157,13 +140,10 @@ describe("landing API handlers", () => {
       },
       message: "name is required",
     });
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(await slack.readMessages()).toHaveLength(0);
   });
 
   it("returns a typed 503 error response when delivery is unconfigured", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    installFetchMock(fetchSpy);
-
     const response = await handleProductUpdatesRequest({
       request: new Request("https://landing.onequery.dev/api/product-updates", {
         body: JSON.stringify({ email: "team@example.com" }),
@@ -178,6 +158,6 @@ describe("landing API handlers", () => {
       code: "service_unavailable",
       message: "Landing ingest is not configured",
     });
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(await slack.readMessages()).toHaveLength(0);
   });
 });

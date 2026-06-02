@@ -8,6 +8,7 @@
   "include": [
     ".astro/types.d.ts",
     "src",
+    "scripts",
     "astro.config.ts",
     "vitest.config.ts",
     "worker-configuration.d.ts"

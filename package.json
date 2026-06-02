@@ -38,7 +38,7 @@
       "antiox": "0.1.4",
       "astro": "6.3.7",
       "better-auth": "1.5.5",
-      "better-result": "2.9.0",
+      "better-result": "2.9.2",
       "hono": "4.12.16",
       "hono-problem-details": "0.6.1",
       "hono-rate-limiter": "0.5.3",

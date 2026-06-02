@@ -1,22 +1,31 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { deliverNotification } from "./notifications";
+import {
+  createProductUpdatesNotification,
+  deliverNotification,
+} from "./notifications";
+import {
+  createSlackEmulatorHarness,
+  findAvailablePort,
+} from "./test/slack-emulator";
+import type { SlackEmulatorHarness } from "./test/slack-emulator";
 
-const originalFetch = globalThis.fetch;
+let slack: SlackEmulatorHarness;
 
-function installFetchMock(fetchMock: typeof globalThis.fetch) {
-  globalThis.fetch = fetchMock;
-}
+beforeAll(async () => {
+  slack = await createSlackEmulatorHarness();
+});
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
-  vi.restoreAllMocks();
+  slack.reset();
+});
+
+afterAll(async () => {
+  await slack.close();
 });
 
 describe("deliverNotification", () => {
   it("accepts local loopback requests without a configured webhook", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    installFetchMock(fetchSpy);
     const payload = {
       text: "New product updates signup: test@example.com",
       blocks: [],
@@ -31,13 +40,10 @@ describe("deliverNotification", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(await slack.readMessages()).toHaveLength(0);
   });
 
   it("stays unavailable outside local loopback when the webhook is missing", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    installFetchMock(fetchSpy);
-
     const result = await deliverNotification({
       delivery: {
         kind: "unconfigured",
@@ -53,44 +59,36 @@ describe("deliverNotification", () => {
     if (result.isErr()) {
       expect(result.error.message).toBe("Landing ingest is not configured");
     }
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(await slack.readMessages()).toHaveLength(0);
   });
 
   it("delivers to the configured webhook when present", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    fetchSpy.mockResolvedValue(new Response(null, { status: 200 }));
-    installFetchMock(fetchSpy);
-    const payload = {
-      text: "New product updates signup: test@example.com",
-      blocks: [],
-    };
+    const payload = createProductUpdatesNotification("test@example.com");
 
     const result = await deliverNotification({
       delivery: {
         kind: "slack-webhook",
-        webhookUrl: "https://example.com/hooks/landing",
+        webhookUrl: slack.webhookUrl,
       },
       notificationType: "product_updates",
       payload,
     });
 
     expect(result.isOk()).toBe(true);
-    expect(fetchSpy).toHaveBeenCalledWith("https://example.com/hooks/landing", {
-      body: JSON.stringify(payload),
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
+    const [message] = await slack.readMessages();
+    expect(message).toMatchObject({
+      blocks: payload.blocks,
+      text: payload.text,
     });
   });
 
   it("returns request failures as request errors", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    fetchSpy.mockRejectedValue(new Error("boom"));
-    installFetchMock(fetchSpy);
+    const port = await findAvailablePort();
 
     const result = await deliverNotification({
       delivery: {
         kind: "slack-webhook",
-        webhookUrl: "https://example.com/hooks/landing",
+        webhookUrl: `http://127.0.0.1:${port}/hooks/landing`,
       },
       notificationType: "product_updates",
       payload: {
@@ -101,27 +99,21 @@ describe("deliverNotification", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toBe(
-        "Failed to send landing notification: boom"
+      expect(result.error.message).toMatch(
+        /^Failed to send landing notification:/
       );
     }
   });
 
   it("returns webhook rejections as response errors", async () => {
-    const fetchSpy = vi.fn<typeof globalThis.fetch>();
-    fetchSpy.mockResolvedValue(
-      new Response("invalid payload", { status: 400 })
-    );
-    installFetchMock(fetchSpy);
-
     const result = await deliverNotification({
       delivery: {
         kind: "slack-webhook",
-        webhookUrl: "https://example.com/hooks/landing",
+        webhookUrl: slack.webhookUrl,
       },
       notificationType: "contact",
       payload: {
-        text: "New contact request from Jane Doe (team@example.com)",
+        text: "",
         blocks: [],
       },
     });
