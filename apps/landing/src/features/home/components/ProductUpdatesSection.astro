@@ -114,24 +114,18 @@
 </style>
 
 <script>
+  import { actions, isInputError } from "astro:actions";
+
+  type ProductUpdatesFeedbackState = "error" | "neutral" | "success";
+
   const PRODUCT_UPDATES_DEFAULT_MESSAGE =
     "Failed to subscribe for product updates";
 
-  const readProductUpdatesErrorMessage = (payload) => {
-    if (
-      payload &&
-      typeof payload === "object" &&
-      "message" in payload &&
-      typeof payload.message === "string" &&
-      payload.message.length > 0
-    ) {
-      return payload.message;
-    }
-
-    return PRODUCT_UPDATES_DEFAULT_MESSAGE;
-  };
-
-  const setProductUpdatesFeedback = (feedback, message, state) => {
+  const setProductUpdatesFeedback = (
+    feedback: HTMLElement,
+    message: string,
+    state: ProductUpdatesFeedbackState
+  ) => {
     feedback.textContent = message;
     feedback.classList.toggle(
       "marketing-form-feedback-success",
@@ -165,7 +159,6 @@
 
       event.preventDefault();
       const formData = new FormData(form);
-      const email = String(formData.get("email") ?? "").trim();
 
       form.setAttribute("aria-busy", "true");
       if (submitButton instanceof HTMLButtonElement) {
@@ -175,32 +168,22 @@
       setProductUpdatesFeedback(feedback, "Sending...", "neutral");
 
       try {
-        const response = await fetch(form.action, {
-          body: JSON.stringify({ email }),
-          headers: {
-            accept: "application/json",
-            "content-type": "application/json",
-          },
-          method: "POST",
-        });
-        const payload = await response.json().catch(() => null);
+        const { data, error } = await actions.productUpdates(formData);
 
-        if (!response.ok) {
-          throw new Error(readProductUpdatesErrorMessage(payload));
+        if (error) {
+          const inputMessage = isInputError(error)
+            ? error.fields.email?.[0]
+            : undefined;
+
+          throw new Error(
+            inputMessage ?? error.message ?? PRODUCT_UPDATES_DEFAULT_MESSAGE
+          );
         }
-
-        const subscribedEmail =
-          payload &&
-          typeof payload === "object" &&
-          "email" in payload &&
-          typeof payload.email === "string"
-            ? payload.email
-            : email;
 
         form.reset();
         setProductUpdatesFeedback(
           feedback,
-          `We'll send product updates to ${subscribedEmail}.`,
+          `We'll send product updates to ${data.email}.`,
           "success"
         );
 

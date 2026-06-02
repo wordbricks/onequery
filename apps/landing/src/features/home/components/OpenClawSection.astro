@@ -121,7 +121,7 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
     1,
   ];
 
-  const getFallbackVisibleRatio = (element) => {
+  const getFallbackVisibleRatio = (element: Element) => {
     const rect = element.getBoundingClientRect();
     const elementArea = rect.width * rect.height;
 
@@ -212,7 +212,7 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
       pauseForVisibility();
     };
 
-    const setVisibilityForAutoplay = (isVisible) => {
+    const setVisibilityForAutoplay = (isVisible: boolean) => {
       isVisibleForAutoplay = isVisible;
       syncVisibilityPlayback();
     };
@@ -249,7 +249,8 @@ const openClawDemoPosterImage = await getOpenClawDemoPosterImage();
 
     document.addEventListener("visibilitychange", syncVisibilityPlayback);
 
-    if ("IntersectionObserver" in window) {
+    // Keep the older-browser fallback reachable without narrowing `window`.
+    if (typeof IntersectionObserver === "function") {
       const observer = new IntersectionObserver(
         (entries) => {
           const entry = entries.find(
