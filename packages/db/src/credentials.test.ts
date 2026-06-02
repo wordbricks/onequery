@@ -25,6 +25,7 @@ import {
   isLinearCredentials,
   isMongoCredentials,
   isOAuthCredentials,
+  isSlackCredentials,
   isTokenExpired,
   LaminarCredentialsSchema,
   LinearCredentialsSchema,
@@ -38,6 +39,7 @@ import {
   PostHogCredentialsSchema,
   SendGridCredentialsSchema,
   SentryCredentialsSchema,
+  SlackCredentialsSchema,
   SnowflakeCredentialsSchema,
   TikTokMarketingCredentialsSchema,
   VercelCredentialsSchema,
@@ -73,6 +75,7 @@ import type {
   PostHogCredentials,
   SendGridCredentials,
   SentryCredentials,
+  SlackCredentials,
   SnowflakeCredentials,
   TikTokMarketingCredentials,
   VercelCredentials,
@@ -1407,6 +1410,58 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("SlackCredentialsSchema", () => {
+    it("validates canonical Slack credentials", () => {
+      const credentials: SlackCredentials = {
+        botScopes: ["channels:read", "channels:history"],
+        botToken: "xoxb-token",
+        botUserId: "U123",
+        teamId: "T123",
+        teamName: "Acme",
+        type: "slack",
+      };
+
+      const result = SlackCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("normalizes legacy comma-delimited scope credentials", () => {
+      const result = SlackCredentialsSchema.safeParse({
+        botToken: "xoxb-token",
+        botUserId: "U123",
+        scope: "channels:read, channels:history,",
+        teamId: "T123",
+        teamName: "Acme",
+        type: "slack",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({
+          botScopes: ["channels:read", "channels:history"],
+          botToken: "xoxb-token",
+          botUserId: "U123",
+          teamId: "T123",
+          teamName: "Acme",
+          type: "slack",
+        });
+      }
+    });
+
+    it("rejects blank bot tokens", () => {
+      const result = SlackCredentialsSchema.safeParse({
+        botScopes: ["channels:read"],
+        botToken: "   ",
+        botUserId: "U123",
+        teamId: "T123",
+        teamName: "Acme",
+        type: "slack",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("CalCredentialsSchema", () => {
     it("defaults apiVersion to the current v2 header version", () => {
       const result = CalCredentialsSchema.safeParse({
@@ -1857,6 +1912,10 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.discord).toBe(DiscordCredentialsSchema);
     });
 
+    it("should map slack to SlackCredentialsSchema", () => {
+      expect(credentialSchemaMap.slack).toBe(SlackCredentialsSchema);
+    });
+
     it("should map cal to CalCredentialsSchema", () => {
       expect(credentialSchemaMap.cal).toBe(CalCredentialsSchema);
     });
@@ -1950,6 +2009,20 @@ describe("credentials schemas", () => {
         type: "github",
       };
       expect(isGitHubCredentials(credentials)).toBe(true);
+    });
+  });
+
+  describe("isSlackCredentials", () => {
+    it("should return true for Slack credentials", () => {
+      const credentials: SlackCredentials = {
+        botScopes: ["channels:read"],
+        botToken: "xoxb-token",
+        botUserId: "U123",
+        teamId: "T123",
+        teamName: "Acme",
+        type: "slack",
+      };
+      expect(isSlackCredentials(credentials)).toBe(true);
     });
   });
 

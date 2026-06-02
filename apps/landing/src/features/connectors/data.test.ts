@@ -38,6 +38,19 @@ describe("DATA_SOURCE_CONNECTORS", () => {
     );
   });
 
+  it("includes Slack as an API connector with provider description copy", () => {
+    expect(getConnector("slack")).toEqual(
+      expect.objectContaining({
+        capabilities: ["API"],
+        category: "Productivity",
+        description: expect.stringContaining("Slack"),
+        key: "slack",
+        label: "Slack",
+        slug: "slack",
+      })
+    );
+  });
+
   it("creates connector FAQ copy from provider metadata", () => {
     const connector = getConnector("github");
     const faqs = getConnectorFaqs(connector);

@@ -273,6 +273,51 @@ export const DiscordCredentialsSchema = z.object({
 
 export type DiscordCredentials = z.infer<typeof DiscordCredentialsSchema>;
 
+const parseSlackScopeList = (scope: string): string[] =>
+  scope
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+const SlackCredentialsBaseSchema = z.object({
+  botToken: requiredOpaqueString("Bot token is required"),
+  botUserId: z.string(),
+  teamId: trimmedString("Team ID is required"),
+  teamName: z.string(),
+  type: z.literal("slack"),
+});
+
+const CanonicalSlackCredentialsSchema = SlackCredentialsBaseSchema.extend({
+  botScopes: z.array(z.string()),
+});
+
+const LegacySlackCredentialsSchema = SlackCredentialsBaseSchema.extend({
+  botScopes: z.array(z.string()).optional(),
+  scope: z.string(),
+});
+
+export const SlackCredentialsSchema = z
+  .union([CanonicalSlackCredentialsSchema, LegacySlackCredentialsSchema])
+  .transform((credentials) => {
+    if ("scope" in credentials) {
+      // Comment: Older Slack installs stored a comma-delimited `scope` string.
+      // Normalize on read so source-api adapters only receive `botScopes`.
+      return {
+        botScopes:
+          credentials.botScopes ?? parseSlackScopeList(credentials.scope),
+        botToken: credentials.botToken,
+        botUserId: credentials.botUserId,
+        teamId: credentials.teamId,
+        teamName: credentials.teamName,
+        type: credentials.type,
+      };
+    }
+
+    return credentials;
+  });
+
+export type SlackCredentials = z.infer<typeof SlackCredentialsSchema>;
+
 export const CalCredentialsSchema = z.object({
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
   apiKey: requiredOpaqueString("API key is required"),
@@ -471,6 +516,7 @@ export const CredentialsSchema = z.union([
   GitHubCredentialsSchema,
   AirtableCredentialsSchema,
   DiscordCredentialsSchema,
+  SlackCredentialsSchema,
   CalCredentialsSchema,
   GranolaCredentialsSchema,
   GoogleSearchConsoleCredentialsSchema,
@@ -552,6 +598,7 @@ export const credentialSchemaMap = {
   posthog: PostHogCredentialsSchema,
   sendgrid: SendGridCredentialsSchema,
   sentry: SentryCredentialsSchema,
+  slack: SlackCredentialsSchema,
   snowflake: SnowflakeCredentialsSchema,
   tiktok_marketing: TikTokMarketingCredentialsSchema,
   vercel: VercelCredentialsSchema,
@@ -625,6 +672,12 @@ export function isLinearCredentials(
   credentials: Credentials
 ): credentials is LinearCredentials {
   return credentials.type === "linear";
+}
+
+export function isSlackCredentials(
+  credentials: Credentials
+): credentials is SlackCredentials {
+  return credentials.type === "slack";
 }
 
 export function normalizeEnvVarName(name: string): string {

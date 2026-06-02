@@ -100,7 +100,8 @@ const categoryOptions = [
               {connector.capabilities.map((capability) => <span>{capability}</span>)}
             </div>
             <h2>{connector.label}</h2>
-            <p>{connector.category}</p>
+            <p class="connector-card-category">{connector.category}</p>
+            <p class="connector-card-description">{connector.description}</p>
           </div>
         </a>
       ))
