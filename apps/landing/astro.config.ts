@@ -20,6 +20,7 @@ import {
 const BUNDLE_REPORT_TEMPLATES = ["markdown", "list", "raw-data"] as const;
 const BUNDLE_REPORT_TEMPLATE_SET = new Set<string>(BUNDLE_REPORT_TEMPLATES);
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+const SITE_URL = "https://onequery.dev";
 
 type BundleReportTemplate = (typeof BUNDLE_REPORT_TEMPLATES)[number];
 
@@ -93,6 +94,12 @@ export default defineConfig({
       }),
     },
   },
+  experimental: {
+    queuedRendering: {
+      enabled: true,
+    },
+    rustCompiler: true,
+  },
   integrations: [
     partytown({
       config: {
@@ -162,7 +169,10 @@ export default defineConfig({
       title: "OneQuery Docs",
     }),
     mdx(),
-    sitemap(),
+    sitemap({
+      changefreq: "daily",
+      priority: 0.7,
+    }),
     agentMarkdown({
       content: [
         {
@@ -179,7 +189,7 @@ export default defineConfig({
     host: DEV_SERVER_HOST,
     port: DEFAULT_DEV_PORT,
   },
-  site: "https://onequery.dev",
+  site: SITE_URL,
   // Cloudflare normalizes extensionless page URLs with trailing slashes in
   // production, so keep Astro's generated route shape aligned with the edge.
   trailingSlash: "always",
