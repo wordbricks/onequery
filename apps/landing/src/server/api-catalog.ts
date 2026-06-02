@@ -1,7 +1,6 @@
 import { REPOSITORY_URL } from "@/shared/config/site";
 import { ONEQUERY } from "@/shared/seo/constants";
 
-const API_PREFIX = "/api";
 const API_CATALOG_PATH = "/.well-known/api-catalog/";
 const API_CATALOG_CONTENT_TYPE =
   'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"';
@@ -23,8 +22,6 @@ export const AGENT_DISCOVERY_LINK_HEADER = [
 export function buildApiCatalogLinkset(origin: string) {
   const homepageUrl = `${origin}/`;
   const catalogUrl = `${origin}${API_CATALOG_PATH}`;
-  const productUpdatesApiUrl = `${origin}${API_PREFIX}/product-updates/`;
-  const contactApiUrl = `${origin}${API_PREFIX}/contact/`;
 
   return {
     linkset: [
@@ -55,19 +52,6 @@ export function buildApiCatalogLinkset(origin: string) {
             href: API_CATALOG_LINKS.DOCS,
             title: "OneQuery documentation",
             type: "text/html",
-          },
-        ],
-      },
-      {
-        anchor: catalogUrl,
-        item: [
-          {
-            href: productUpdatesApiUrl,
-            title: "Landing product updates API",
-          },
-          {
-            href: contactApiUrl,
-            title: "Landing contact API",
           },
         ],
       },

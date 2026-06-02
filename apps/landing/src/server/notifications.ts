@@ -1,80 +1,41 @@
-import { Result, TaggedError } from "better-result";
-
 const LEAD_CAPTURE_SOURCE = "onequery_landing";
 
-export type NotificationDelivery =
-  | {
-      kind: "local-dev-null-sink";
-    }
-  | {
-      kind: "slack-webhook";
-      webhookUrl: string;
-    }
-  | {
-      kind: "unconfigured";
-    };
-
-export class NotificationConfigurationError extends TaggedError(
-  "NotificationConfigurationError"
-)<{
-  message: string;
-}>() {}
-
-export class NotificationRequestError extends TaggedError(
-  "NotificationRequestError"
-)<{
-  message: string;
-  cause: unknown;
-}>() {}
-
-export class NotificationResponseError extends TaggedError(
-  "NotificationResponseError"
-)<{
-  message: string;
-  status: number;
-}>() {}
-
-export type NotificationError =
-  | NotificationConfigurationError
-  | NotificationRequestError
-  | NotificationResponseError;
-
 type SlackPlainText = {
-  type: "plain_text";
   text: string;
+  type: "plain_text";
 };
 
 type SlackMarkdownText = {
-  type: "mrkdwn";
   text: string;
+  type: "mrkdwn";
 };
 
 type SlackHeaderBlock = {
-  type: "header";
   text: SlackPlainText;
+  type: "header";
 };
 
 type SlackSectionBlock =
   | {
-      type: "section";
       fields: readonly SlackMarkdownText[];
+      type: "section";
     }
   | {
-      type: "section";
       text: SlackMarkdownText;
+      type: "section";
     };
 
 type SlackContextBlock = {
-  type: "context";
   elements: readonly SlackMarkdownText[];
+  type: "context";
 };
 
-type NotificationPayload = {
-  text: string;
+export type SlackNotificationPayload = {
   blocks: readonly (SlackContextBlock | SlackHeaderBlock | SlackSectionBlock)[];
+  text: string;
 };
 
-type NotificationType = "contact" | "product_updates";
+export type NotificationType = "contact" | "product_updates";
 
 function escapeSlackText(value: string) {
   return value
@@ -85,22 +46,22 @@ function escapeSlackText(value: string) {
 
 export function createProductUpdatesNotification(
   email: string
-): NotificationPayload {
+): SlackNotificationPayload {
   return {
-    text: `New product updates signup: ${email}`,
     blocks: [
       {
+        text: { text: "New product updates signup", type: "plain_text" },
         type: "header",
-        text: { type: "plain_text", text: "New product updates signup" },
       },
       {
-        type: "section",
         fields: [
-          { type: "mrkdwn", text: `*Email*\n${escapeSlackText(email)}` },
-          { type: "mrkdwn", text: `*Source*\n${LEAD_CAPTURE_SOURCE}` },
+          { text: `*Email*\n${escapeSlackText(email)}`, type: "mrkdwn" },
+          { text: `*Source*\n${LEAD_CAPTURE_SOURCE}`, type: "mrkdwn" },
         ],
+        type: "section",
       },
     ],
+    text: `New product updates signup: ${email}`,
   };
 }
 
@@ -108,125 +69,88 @@ export function createContactNotification(input: {
   email: string;
   message: string;
   name: string;
-}): NotificationPayload {
+}): SlackNotificationPayload {
   return {
-    text: `New contact request from ${input.name} (${input.email})`,
     blocks: [
       {
+        text: { text: "New contact request", type: "plain_text" },
         type: "header",
-        text: { type: "plain_text", text: "New contact request" },
       },
       {
-        type: "section",
         fields: [
-          { type: "mrkdwn", text: `*Name*\n${escapeSlackText(input.name)}` },
-          { type: "mrkdwn", text: `*Email*\n${escapeSlackText(input.email)}` },
+          { text: `*Name*\n${escapeSlackText(input.name)}`, type: "mrkdwn" },
+          { text: `*Email*\n${escapeSlackText(input.email)}`, type: "mrkdwn" },
         ],
-      },
-      {
         type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*Message*\n${escapeSlackText(input.message)}`,
-        },
       },
       {
+        text: {
+          text: `*Message*\n${escapeSlackText(input.message)}`,
+          type: "mrkdwn",
+        },
+        type: "section",
+      },
+      {
+        elements: [{ text: `Source: ${LEAD_CAPTURE_SOURCE}`, type: "mrkdwn" }],
         type: "context",
-        elements: [{ type: "mrkdwn", text: `Source: ${LEAD_CAPTURE_SOURCE}` }],
       },
     ],
+    text: `New contact request from ${input.name} (${input.email})`,
   };
 }
 
-export async function deliverNotification(input: {
-  delivery: NotificationDelivery;
+export async function deliverSlackNotification(input: {
   notificationType: NotificationType;
-  payload: NotificationPayload;
-}): Promise<Result<void, NotificationError>> {
-  const { delivery, notificationType, payload } = input;
+  payload: SlackNotificationPayload;
+  webhookUrl: string;
+}): Promise<void> {
+  let response: Response;
 
-  if (delivery.kind === "local-dev-null-sink") {
-    console.info(
-      {
-        delivery: delivery.kind,
-        event: "landing.notification.delivered_local",
-        notificationType,
-      },
-      "landing notification routed to local sink"
-    );
-    return Result.ok(undefined);
-  }
-
-  if (delivery.kind === "unconfigured") {
+  try {
+    response = await fetch(input.webhookUrl, {
+      body: JSON.stringify(input.payload),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+  } catch (cause) {
+    const message = `Failed to send landing notification: ${toErrorMessage(
+      cause
+    )}`;
     console.error(
       {
-        delivery: delivery.kind,
-        event: "landing.notification.delivery_unconfigured",
-        notificationType,
-      },
-      "landing notification delivery is unconfigured"
-    );
-    return Result.err(
-      new NotificationConfigurationError({
-        message: "Landing ingest is not configured",
-      })
-    );
-  }
-
-  const responseResult = await Result.tryPromise({
-    try: () =>
-      fetch(delivery.webhookUrl, {
-        body: JSON.stringify(payload),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      }),
-    catch: (cause: unknown) =>
-      new NotificationRequestError({
         cause,
-        message: `Failed to send landing notification: ${toErrorMessage(cause)}`,
-      }),
-  });
-  if (responseResult.isErr()) {
-    console.error(
-      {
-        cause: responseResult.error.cause,
-        delivery: delivery.kind,
-        errorMessage: responseResult.error.message,
+        errorMessage: message,
         event: "landing.notification.webhook_request_failed",
-        notificationType,
+        notificationType: input.notificationType,
       },
       "landing notification webhook request failed"
     );
-    return Result.err(responseResult.error);
+    throw new Error(message, { cause });
   }
-
-  const response = responseResult.value;
 
   if (response.ok) {
-    return Result.ok(undefined);
+    return;
   }
 
-  const upstream = (await Result.tryPromise(() => response.text())).unwrapOr(
-    ""
-  );
-  // Public lead-capture requests should not leak upstream webhook
-  // details back to the browser, so worker errors stay generic.
+  const upstream = await readResponseText(response);
   console.error(
     {
-      delivery: delivery.kind,
       event: "landing.notification.webhook_rejected",
-      notificationType,
+      notificationType: input.notificationType,
       status: response.status,
       upstreamBodyPreview: upstream.slice(0, 500),
     },
     "landing notification webhook rejected"
   );
-  return Result.err(
-    new NotificationResponseError({
-      message: "Failed to deliver notification",
-      status: response.status,
-    })
-  );
+  throw new Error("Failed to deliver notification");
+}
+
+async function readResponseText(response: Response) {
+  try {
+    return await response.text();
+  } catch {
+    return "";
+  }
 }
 
 function toErrorMessage(error: unknown): string {

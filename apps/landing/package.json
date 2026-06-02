@@ -34,18 +34,18 @@
     "@onequery/db": "workspace:*",
     "@onequery/ui": "workspace:*",
     "astro": "catalog:",
-    "better-result": "catalog:",
     "mdast-util-to-string": "4.0.0",
     "nanostores": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "reading-time": "1.5.0",
-    "simple-icons": "catalog:",
-    "zod": "catalog:"
+    "simple-icons": "catalog:"
   },
   "devDependencies": {
     "@astrojs/check": "catalog:tooling",
     "@cloudflare/workers-types": "catalog:tooling",
+    "@emulators/core": "0.6.0",
+    "@emulators/slack": "0.6.0",
     "@onequery/installer": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

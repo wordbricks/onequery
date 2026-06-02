@@ -195,7 +195,6 @@ export default defineConfig({
   trailingSlash: "always",
   vite: {
     optimizeDeps: {
-      include: ["better-result"],
       exclude: ["@nanostores/react"],
     },
     plugins: [

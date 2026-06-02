@@ -1,3 +1,7 @@
+---
+import { actions } from "astro:actions";
+---
+
 <button
   type="button"
   class="contact-link-button"
@@ -43,7 +47,7 @@
 
     <form
       class="contact-modal-form t-input-wrap"
-      action="/api/contact/"
+      action={actions.contact}
       method="post"
       data-contact-form
     >

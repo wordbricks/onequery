@@ -1,3 +1,7 @@
+---
+import { actions } from "astro:actions";
+---
+
 <section class="section marketing-updates">
   <div class="marketing-updates-copy">
     <p class="eyebrow">Stay in the loop</p>
@@ -7,7 +11,7 @@
   <form
     class="marketing-updates-form"
     method="POST"
-    action="/api/product-updates/"
+    action={actions.productUpdates}
     data-product-updates-form
   >
     <div class="marketing-inline-form">

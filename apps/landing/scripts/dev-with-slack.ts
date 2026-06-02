@@ -1,10 +1,19 @@
+import {
+  createServer as createEmulatorServer,
+  filePersistence,
+  serve,
+} from "@emulators/core";
+import type { StoreSnapshot } from "@emulators/core";
+import { getSlackStore, slackPlugin } from "@emulators/slack";
+import type { SlackMessage } from "@emulators/slack";
 import { dev } from "astro";
-import { createEmulator } from "emulate";
 
 const DEFAULT_SLACK_EMULATOR_PORT = "4003";
+const DEFAULT_SLACK_EMULATOR_STATE_PATH = ".emulate/landing-slack.json";
 const SLACK_EMULATOR_WEBHOOK_PATH =
   "/services/T000000001/B000000001/X000000001";
 const SLACK_EMULATOR_TOKEN = "xoxb-local-test";
+const MUTATING_METHODS = new Set(["DELETE", "PATCH", "POST", "PUT"]);
 
 type SlackDevEmulator = {
   close: () => Promise<void>;
@@ -36,10 +45,7 @@ async function main() {
 
   try {
     slackEmulator = shouldStartSlackEmulator
-      ? await ensureSlackEmulator({
-          baseUrl: slackBaseUrl,
-          port: slackPort,
-        })
+      ? await createSlackEmulator(slackPort)
       : undefined;
 
     applyLandingSlackWebhookUrl(slackWebhookUrl);
@@ -63,27 +69,12 @@ async function main() {
   }
 }
 
-async function ensureSlackEmulator(input: {
-  baseUrl: string;
-  port: string;
-}): Promise<SlackDevEmulator | undefined> {
-  if (await isSlackEmulatorReachable(input.baseUrl)) {
-    console.info(`[dev] Reusing Slack emulator at ${input.baseUrl}/`);
-    return undefined;
-  }
-
-  const emulator = await createSlackEmulator(input.port);
-
-  return {
-    close: () => emulator.close(),
-  };
-}
-
 async function createSlackEmulator(port: string) {
   try {
-    return await createEmulator({
+    return await createPersistentSlackEmulator({
+      baseUrl: readSlackBaseUrl(port),
       port: readPortNumber(port),
-      service: "slack",
+      statePath: DEFAULT_SLACK_EMULATOR_STATE_PATH,
     });
   } catch (cause) {
     throw new Error(
@@ -119,6 +110,142 @@ function logSlackDevState(input: {
   }
 
   console.info("[dev] Slack emulator disabled; local requests use null sink");
+}
+
+async function createPersistentSlackEmulator(input: {
+  baseUrl: string;
+  port: number;
+  statePath: string;
+}): Promise<SlackDevEmulator> {
+  const persistence = filePersistence(input.statePath);
+  const { app, store } = createEmulatorServer(slackPlugin, {
+    baseUrl: input.baseUrl,
+    fallbackUser: {
+      id: 1,
+      login: "U000000001",
+      scopes: [],
+    },
+    port: input.port,
+    tokens: {
+      [SLACK_EMULATOR_TOKEN]: {
+        id: 1,
+        login: "U000000001",
+        scopes: [],
+      },
+      test_token_admin: {
+        id: 1,
+        login: "U000000001",
+        scopes: [],
+      },
+    },
+  });
+
+  const restored = await restoreSlackState({
+    persistence,
+    statePath: input.statePath,
+    store,
+  });
+  if (!restored) {
+    slackPlugin.seed?.(store, input.baseUrl);
+    await persistence.save(JSON.stringify(store.snapshot()));
+  }
+
+  const seenMessageTimestamps = new Set(
+    readSlackMessages(store).map((message) => message.ts)
+  );
+  let pendingSave = Promise.resolve();
+
+  function enqueueSave() {
+    pendingSave = pendingSave
+      .catch(() => undefined)
+      .then(() => persistence.save(JSON.stringify(store.snapshot())))
+      .catch((error: unknown) => {
+        console.warn(
+          `[dev] Failed to persist Slack emulator state: ${toErrorMessage(
+            error
+          )}`
+        );
+      });
+  }
+
+  function logNewMessages() {
+    for (const message of readSlackMessages(store)) {
+      if (seenMessageTimestamps.has(message.ts)) {
+        continue;
+      }
+
+      seenMessageTimestamps.add(message.ts);
+      console.info(`[dev] Slack message received: ${message.text}`);
+    }
+  }
+
+  const httpServer = serve({
+    fetch: async (request) => {
+      const response = await app.fetch(request);
+
+      if (MUTATING_METHODS.has(request.method)) {
+        logNewMessages();
+        enqueueSave();
+      }
+
+      return response;
+    },
+    port: input.port,
+  });
+
+  console.info(`[dev] Slack emulator state: ${input.statePath}`);
+
+  return {
+    async close() {
+      await pendingSave;
+      await new Promise<void>((resolve, reject) => {
+        httpServer.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve();
+        });
+      });
+    },
+  };
+}
+
+async function restoreSlackState(input: {
+  persistence: ReturnType<typeof filePersistence>;
+  statePath: string;
+  store: {
+    restore: (snapshot: StoreSnapshot) => void;
+  };
+}) {
+  const raw = await input.persistence.load();
+  if (!raw) {
+    return false;
+  }
+
+  try {
+    input.store.restore(JSON.parse(raw) as StoreSnapshot);
+    return true;
+  } catch (error) {
+    console.warn(
+      `[dev] Ignoring unreadable Slack emulator state at ${
+        input.statePath
+      }: ${toErrorMessage(error)}`
+    );
+    return false;
+  }
+}
+
+function readSlackMessages(store: Parameters<typeof getSlackStore>[0]) {
+  return getSlackStore(store)
+    .messages.all()
+    .filter((message): message is SlackMessage => message.type === "message")
+    .sort((left, right) => left.ts.localeCompare(right.ts));
+}
+
+function toErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function readDevServerConfig(args: string[]) {
@@ -193,28 +320,6 @@ function readPortArg(port: string | undefined, flag: string) {
   }
 
   return readPortNumber(port);
-}
-
-async function isSlackEmulatorReachable(url: string) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 500);
-  try {
-    const response = await fetch(`${url}/api/team.info`, {
-      body: "{}",
-      headers: {
-        Authorization: `Bearer ${SLACK_EMULATOR_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-      signal: controller.signal,
-    });
-    const body = (await response.json()) as { ok?: unknown };
-    return response.ok && body.ok === true;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 function readSlackBaseUrl(port: string) {

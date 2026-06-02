@@ -51,6 +51,7 @@ __pycache__/
 .dev.vars*
 
 .reports
+.emulate/
 .claude/settings.local.json
 .claude/worktrees
 AGENTS.override.md
