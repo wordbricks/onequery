@@ -175,12 +175,7 @@ function SendGridIcon({ size, ...props }: IconSvgProps) {
 
 function SlackIcon({ size, ...props }: IconSvgProps) {
   return (
-    <SvgIcon
-      {...props}
-      defaultLabel="Slack"
-      size={size}
-      viewBox="0 0 128 128"
-    >
+    <SvgIcon {...props} defaultLabel="Slack" size={size} viewBox="0 0 128 128">
       <path
         d="M27.255 80.719c0 7.33-5.978 13.317-13.309 13.317C6.616 94.036.63 88.049.63 80.719s5.987-13.317 13.317-13.317h13.309zm6.709 0c0-7.33 5.987-13.317 13.317-13.317s13.317 5.986 13.317 13.317v33.335c0 7.33-5.986 13.317-13.317 13.317-7.33 0-13.317-5.987-13.317-13.317zm0 0"
         fill="#de1c59"
