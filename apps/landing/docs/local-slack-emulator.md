@@ -11,11 +11,15 @@ rtk bun run dev
 ```
 
 Submit the product updates form or the contact form in the local landing page,
-then inspect the stored Slack messages at:
+then inspect the stored Slack messages at the URL printed by the dev server.
+The default inspector URL is:
 
 ```text
 http://localhost:4003/
 ```
+
+If port 4003 is already in use, `bun run dev` picks another available port and
+prints that inspector URL instead.
 
 The default emulator webhook posts to the emulator's `general` channel:
 
@@ -24,11 +28,7 @@ http://localhost:4003/services/T000000001/B000000001/X000000001
 ```
 
 If `LANDING_SLACK_WEBHOOK_URL` is already configured, `bun run dev` uses that
-value and does not start the emulator. To keep the old null-sink behavior, run:
-
-```bash
-rtk env LANDING_SLACK_EMULATOR=0 bun run dev
-```
+value and does not start the emulator.
 
 You can still run only the emulator with:
 

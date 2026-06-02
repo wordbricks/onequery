@@ -31,14 +31,6 @@ const SENT_CONTACT = {
   status: "sent",
 } as const;
 
-function isLoopbackHostname(hostname: string) {
-  return (
-    hostname === "localhost" ||
-    hostname === "[::1]" ||
-    hostname.startsWith("127.")
-  );
-}
-
 function createServiceUnavailableActionError(message: string) {
   return new ActionError({
     code: "SERVICE_UNAVAILABLE",
@@ -46,14 +38,10 @@ function createServiceUnavailableActionError(message: string) {
   });
 }
 
-function readWebhookUrl(request: Request) {
+function readWebhookUrl() {
   const webhookUrl = LANDING_SLACK_WEBHOOK_URL?.trim();
   if (webhookUrl) {
     return webhookUrl;
-  }
-
-  if (isLoopbackHostname(new URL(request.url).hostname)) {
-    return undefined;
   }
 
   console.error(
@@ -68,19 +56,8 @@ function readWebhookUrl(request: Request) {
 async function sendNotification(input: {
   notificationType: NotificationType;
   payload: SlackNotificationPayload;
-  request: Request;
 }) {
-  const webhookUrl = readWebhookUrl(input.request);
-  if (!webhookUrl) {
-    console.info(
-      {
-        event: "landing.notification.delivered_local",
-        notificationType: input.notificationType,
-      },
-      "landing notification routed to local sink"
-    );
-    return;
-  }
+  const webhookUrl = readWebhookUrl();
 
   try {
     await deliverSlackNotification({
@@ -105,11 +82,10 @@ export const server = {
   productUpdates: defineAction({
     accept: "form",
     input: ProductUpdatesInputSchema,
-    handler: async ({ email }, { request }) => {
+    handler: async ({ email }) => {
       await sendNotification({
         notificationType: "product_updates",
         payload: createProductUpdatesNotification(email),
-        request,
       });
 
       return { email };
@@ -118,11 +94,10 @@ export const server = {
   contact: defineAction({
     accept: "form",
     input: ContactInputSchema,
-    handler: async (input, { request }) => {
+    handler: async (input) => {
       await sendNotification({
         notificationType: "contact",
         payload: createContactNotification(input),
-        request,
       });
 
       return SENT_CONTACT;

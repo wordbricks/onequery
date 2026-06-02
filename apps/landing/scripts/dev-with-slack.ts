@@ -1,3 +1,5 @@
+import { createServer as createTcpServer } from "node:net";
+
 import {
   createServer as createEmulatorServer,
   filePersistence,
@@ -8,7 +10,7 @@ import { getSlackStore, slackPlugin } from "@emulators/slack";
 import type { SlackMessage } from "@emulators/slack";
 import { dev } from "astro";
 
-const DEFAULT_SLACK_EMULATOR_PORT = "4003";
+const DEFAULT_SLACK_EMULATOR_PORT = 4003;
 const DEFAULT_SLACK_EMULATOR_STATE_PATH = ".emulate/landing-slack.json";
 const SLACK_EMULATOR_WEBHOOK_PATH =
   "/services/T000000001/B000000001/X000000001";
@@ -32,26 +34,21 @@ async function main() {
   let slackEmulator: SlackDevEmulator | undefined;
 
   const configuredWebhookUrl = process.env.LANDING_SLACK_WEBHOOK_URL?.trim();
-  const shouldStartSlackEmulator =
-    process.env.LANDING_SLACK_EMULATOR !== "0" && !configuredWebhookUrl;
-  const slackPort =
-    process.env.LANDING_SLACK_EMULATOR_PORT ?? DEFAULT_SLACK_EMULATOR_PORT;
-  const slackBaseUrl = readSlackBaseUrl(slackPort);
+  const slackEmulatorConfig = configuredWebhookUrl
+    ? undefined
+    : await createSlackEmulatorConfig();
   const slackWebhookUrl =
-    configuredWebhookUrl ??
-    (shouldStartSlackEmulator
-      ? `${slackBaseUrl}${SLACK_EMULATOR_WEBHOOK_PATH}`
-      : undefined);
+    configuredWebhookUrl ?? createSlackEmulatorWebhookUrl(slackEmulatorConfig);
 
   try {
-    slackEmulator = shouldStartSlackEmulator
-      ? await createSlackEmulator(slackPort)
+    slackEmulator = slackEmulatorConfig
+      ? await createSlackEmulator(slackEmulatorConfig)
       : undefined;
 
     applyLandingSlackWebhookUrl(slackWebhookUrl);
     logSlackDevState({
       configuredWebhookUrl,
-      slackBaseUrl,
+      slackBaseUrl: slackEmulatorConfig?.baseUrl,
       slackWebhookUrl,
     });
 
@@ -69,16 +66,35 @@ async function main() {
   }
 }
 
-async function createSlackEmulator(port: string) {
+async function createSlackEmulatorConfig() {
+  const port = await findPreferredAvailablePort(DEFAULT_SLACK_EMULATOR_PORT);
+
+  return {
+    baseUrl: readSlackBaseUrl(port),
+    port,
+  };
+}
+
+function createSlackEmulatorWebhookUrl(
+  config: { baseUrl: string; port: number } | undefined
+) {
+  if (!config) {
+    throw new Error("Slack emulator config was not created");
+  }
+
+  return `${config.baseUrl}${SLACK_EMULATOR_WEBHOOK_PATH}`;
+}
+
+async function createSlackEmulator(input: { baseUrl: string; port: number }) {
   try {
     return await createPersistentSlackEmulator({
-      baseUrl: readSlackBaseUrl(port),
-      port: readPortNumber(port),
+      baseUrl: input.baseUrl,
+      port: input.port,
       statePath: DEFAULT_SLACK_EMULATOR_STATE_PATH,
     });
   } catch (cause) {
     throw new Error(
-      `Failed to start Slack emulator on port ${port}. Set LANDING_SLACK_EMULATOR_PORT to use another port.`,
+      `Failed to start Slack emulator on port ${input.port}. Stop the process using that port and rerun bun run dev.`,
       { cause }
     );
   }
@@ -95,7 +111,7 @@ function applyLandingSlackWebhookUrl(slackWebhookUrl: string | undefined) {
 
 function logSlackDevState(input: {
   configuredWebhookUrl: string | undefined;
-  slackBaseUrl: string;
+  slackBaseUrl: string | undefined;
   slackWebhookUrl: string | undefined;
 }) {
   if (input.configuredWebhookUrl) {
@@ -103,13 +119,10 @@ function logSlackDevState(input: {
     return;
   }
 
-  if (input.slackWebhookUrl) {
+  if (input.slackBaseUrl) {
     console.info(`[dev] Slack emulator inspector: ${input.slackBaseUrl}/`);
     console.info(`[dev] Slack webhook: ${input.slackWebhookUrl}`);
-    return;
   }
-
-  console.info("[dev] Slack emulator disabled; local requests use null sink");
 }
 
 async function createPersistentSlackEmulator(input: {
@@ -322,8 +335,8 @@ function readPortArg(port: string | undefined, flag: string) {
   return readPortNumber(port);
 }
 
-function readSlackBaseUrl(port: string) {
-  return `http://localhost:${readPortNumber(port)}`;
+function readSlackBaseUrl(port: number) {
+  return `http://localhost:${port}`;
 }
 
 function readPortNumber(port: string) {
@@ -333,6 +346,47 @@ function readPortNumber(port: string) {
   }
 
   return value;
+}
+
+async function findPreferredAvailablePort(preferredPort: number) {
+  if (await isPortAvailable(preferredPort)) {
+    return preferredPort;
+  }
+
+  return findAvailablePort();
+}
+
+async function isPortAvailable(port: number) {
+  return new Promise<boolean>((resolve) => {
+    const server = createTcpServer();
+    server.once("error", () => {
+      resolve(false);
+    });
+    server.listen(port, "127.0.0.1", () => {
+      server.close(() => {
+        resolve(true);
+      });
+    });
+  });
+}
+
+async function findAvailablePort() {
+  return new Promise<number>((resolve, reject) => {
+    const server = createTcpServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (typeof address !== "object" || address === null) {
+        server.close();
+        reject(new Error("Failed to allocate a local Slack emulator port"));
+        return;
+      }
+
+      server.close(() => {
+        resolve(address.port);
+      });
+    });
+  });
 }
 
 function createShutdownSignal(): Promise<void> {
