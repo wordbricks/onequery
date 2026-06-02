@@ -21,6 +21,7 @@ import { mongodbSourceApiAdapter } from "./adapters/mongodb";
 import { postHogSourceApiAdapter } from "./adapters/posthog";
 import { sendGridSourceApiAdapter } from "./adapters/sendgrid";
 import { sentrySourceApiAdapter } from "./adapters/sentry";
+import { slackSourceApiAdapter } from "./adapters/slack";
 import { tiktokMarketingSourceApiAdapter } from "./adapters/tiktok-marketing";
 import { vercelSourceApiAdapter } from "./adapters/vercel";
 import {
@@ -88,6 +89,7 @@ export const sourceApiRegistry = createSourceApiRegistry([
   postHogSourceApiAdapter,
   sendGridSourceApiAdapter,
   sentrySourceApiAdapter,
+  slackSourceApiAdapter,
   tiktokMarketingSourceApiAdapter,
   vercelSourceApiAdapter,
 ]);

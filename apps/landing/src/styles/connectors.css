@@ -221,8 +221,8 @@
   display: grid;
   grid-template-columns: 76px minmax(0, 1fr);
   gap: 16px;
-  align-items: center;
-  min-height: 126px;
+  align-items: start;
+  min-height: 174px;
   padding: 12px 18px 12px 12px;
   border: 1px solid var(--connector-line);
   border-radius: 28px;
@@ -250,6 +250,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  margin-top: 3px;
   width: 76px;
   height: 76px;
   border-radius: 18px;
@@ -309,14 +310,27 @@
   white-space: nowrap;
 }
 
-.connector-card p {
+.connector-card-category,
+.connector-card-description {
   margin: 6px 0 0;
-  overflow: hidden;
   color: var(--connector-muted);
+  line-height: 1.35;
+}
+
+.connector-card-category {
+  overflow: hidden;
   font-size: 18px;
-  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.connector-card-description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--connector-soft);
+  font-size: 14px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 @media (max-width: 1100px) {
@@ -368,7 +382,7 @@
   }
 
   .connector-card {
-    min-height: 112px;
+    min-height: 158px;
     border-radius: 22px;
   }
 }

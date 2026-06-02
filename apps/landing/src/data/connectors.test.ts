@@ -14,6 +14,13 @@ describe("DATA_SOURCE_CONNECTORS", () => {
     expect(DATA_SOURCE_CONNECTORS).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          capabilities: ["API"],
+          category: "Productivity",
+          description: expect.stringContaining("Slack"),
+          key: "slack",
+          label: "Slack",
+        }),
+        expect.objectContaining({
           category: "Productivity",
           key: "cal",
           label: "Cal.com",
