@@ -6,7 +6,6 @@ coverImage:
   src: "../../assets/blog/making-data-source-setup-boring-icon.png"
   alt: "Making data source setup boring - OneQuery blog cover image."
 publishedAt: "2026-04-21"
-readTime: "7 min read"
 ---
 
 ## Why source setup stays messy
@@ -19,7 +18,7 @@ Making setup boring means turning that scattered work into a predictable lifecyc
 
 ## Make configuration a product surface
 
-A data source is not connected when a credential works once. It is connected when the team can understand and operate it later. That requires a durable configuration record: source type, source key, credential location, allowed interfaces, owner, environment, budget limits, timeout behavior, and the validation checks that proved the connection is usable.
+A data source is not connected when a credential works once. It is connected when the team can understand and operate it later. That requires a durable configuration record: source type, source identifier, credential location, allowed interfaces, owner, environment, budget limits, timeout behavior, and the validation checks that proved the connection is usable.
 
 This is where a shared control plane matters. Instead of treating every connector as a custom script, OneQuery gives the team one place to manage the source definition and one path for CLI, web, and agent workflows to use it. The operational details are still visible, but they stop being tribal knowledge.
 

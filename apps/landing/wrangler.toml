@@ -5,6 +5,7 @@
 name = "onequery-landing"
 main = "./src/worker.ts"
 compatibility_date = "2026-04-14"
+compatibility_flags = ["nodejs_compat"]
 logpush = true
 preview_urls = true
 routes = [{ pattern = "onequery.dev", custom_domain = true }]

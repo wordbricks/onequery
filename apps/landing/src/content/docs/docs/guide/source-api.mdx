@@ -1,0 +1,57 @@
+---
+title: Use Source API
+description: Call SaaS and workflow provider APIs through OneQuery source identifiers.
+sidebar:
+  order: 6
+---
+
+Source API is the path for integrations where the useful operation is a provider API call instead of SQL. GitHub, Sentry, Vercel, Cloudflare, and analytics systems are common examples.
+
+## Basic Shape
+
+```sh
+onequery api --source github://github_main /repos/acme/web/pulls --json
+```
+
+The source identifier selects the connected credential. The path selects the provider endpoint.
+
+## GitHub Pull Requests
+
+```sh
+onequery api \
+  --source github://github_main \
+  /repos/acme/web/pulls \
+  --paginate \
+  --max-pages 2 \
+  --jq '.[] | {number,title,user,head,base}' \
+  --json
+```
+
+## Sentry Issues
+
+```sh
+onequery api \
+  --source sentry://sentry_prod \
+  /organizations/acme/issues/ \
+  -f 'params[query]=is:unresolved' \
+  --json
+```
+
+## Cloudflare Workers Observability
+
+```sh
+onequery api \
+  --source cloudflare_workers_observability://cloudflare_workers \
+  /accounts/{account_id}/workers/observability/telemetry \
+  --json
+```
+
+Replace provider path parameters with the values required by the provider API or the connected source configuration.
+
+## Source API Rules
+
+- Scope provider tokens to read-only permissions when possible.
+- Prefer endpoint-specific commands in agent instructions.
+- Use pagination limits for list endpoints.
+- Use `--jq` to reduce large provider responses before the agent reads them.
+- Keep write-capable provider tokens out of agent-facing sources unless an operator has explicitly approved that workflow.

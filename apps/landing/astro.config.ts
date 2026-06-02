@@ -5,25 +5,35 @@ import mdx from "@astrojs/mdx";
 import partytown from "@astrojs/partytown";
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
+import starlight from "@astrojs/starlight";
 import { agentMarkdown } from "@onequery/astro-agent-markdown/astro";
-import { defineConfig, fontProviders } from "astro/config";
+import { defineConfig, envField, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
+import { remarkReadingTime } from "./src/features/blog/remark-reading-time";
 import {
   DEFAULT_DEV_PORT,
   DEV_SERVER_HOST,
-} from "./src/landing/config/landing-config";
+  REPOSITORY_URL,
+} from "./src/shared/config/site";
 
 const BUNDLE_REPORT_TEMPLATES = ["markdown", "list", "raw-data"] as const;
+const BUNDLE_REPORT_TEMPLATE_SET = new Set<string>(BUNDLE_REPORT_TEMPLATES);
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 type BundleReportTemplate = (typeof BUNDLE_REPORT_TEMPLATES)[number];
 
+function isBundleReportTemplate(
+  template: string
+): template is BundleReportTemplate {
+  return BUNDLE_REPORT_TEMPLATE_SET.has(template);
+}
+
 function getBundleReportTemplate(): BundleReportTemplate {
   const template = process.env.ONEQUERY_BUNDLE_REPORT_TEMPLATE ?? "markdown";
 
-  if (BUNDLE_REPORT_TEMPLATES.includes(template as BundleReportTemplate)) {
-    return template as BundleReportTemplate;
+  if (isBundleReportTemplate(template)) {
+    return template;
   }
 
   throw new Error(
@@ -51,18 +61,18 @@ function createBundleReportPlugin() {
     gzipSize: true,
     projectRoot: REPOSITORY_ROOT,
     template,
-  }) as never;
+  });
 }
 
 export default defineConfig({
   adapter: cloudflare({
     imageService: { build: "compile", runtime: "cloudflare-binding" },
-    // Keep Shiki-backed Astro code rendering out of workerd's prerender path.
-    prerenderEnvironment: "node",
+    prerenderEnvironment: "workerd",
   }),
   build: {
-    // Keep page CSS out of a separate render-blocking request for first-load LCP.
-    inlineStylesheets: "always",
+    // Let Astro externalize shared Starlight CSS instead of duplicating it in
+    // every docs HTML payload.
+    inlineStylesheets: "auto",
   },
   fonts: [
     {
@@ -74,6 +84,15 @@ export default defineConfig({
       weights: ["400 700"],
     },
   ],
+  env: {
+    schema: {
+      LANDING_SLACK_WEBHOOK_URL: envField.string({
+        access: "secret",
+        context: "server",
+        optional: true,
+      }),
+    },
+  },
   integrations: [
     partytown({
       config: {
@@ -81,6 +100,67 @@ export default defineConfig({
       },
     }),
     react(),
+    starlight({
+      description:
+        "Documentation for setting up and operating OneQuery's governed agent access layer.",
+      // Keep the existing marketing 404 route; Starlight otherwise injects one too.
+      disable404Route: true,
+      editLink: {
+        baseUrl: `${REPOSITORY_URL}/edit/main/apps/landing/`,
+      },
+      favicon: "/favicon-96x96.png",
+      logo: {
+        alt: "OneQuery",
+        src: "/src/assets/onequery-icon.svg",
+      },
+      routeMiddleware: "./src/starlightRouteData.ts",
+      sidebar: [
+        {
+          items: ["docs", "docs/getting-started"],
+          label: "Start Here",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/concepts" } }],
+          label: "Concepts",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/guide" } }],
+          label: "Guide",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/integrations" } }],
+          label: "Integrations",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/examples" } }],
+          label: "Examples",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/operations" } }],
+          label: "Operations",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/security" } }],
+          label: "Security",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/reference" } }],
+          label: "Reference",
+        },
+        {
+          items: [{ autogenerate: { directory: "docs/support" } }],
+          label: "Support",
+        },
+      ],
+      social: [
+        {
+          href: REPOSITORY_URL,
+          icon: "github",
+          label: "GitHub",
+        },
+      ],
+      title: "OneQuery Docs",
+    }),
     mdx(),
     sitemap(),
     agentMarkdown({
@@ -92,6 +172,9 @@ export default defineConfig({
       ],
     }),
   ],
+  markdown: {
+    remarkPlugins: [remarkReadingTime],
+  },
   server: {
     host: DEV_SERVER_HOST,
     port: DEFAULT_DEV_PORT,
@@ -112,6 +195,9 @@ export default defineConfig({
         : []),
     ],
     resolve: {
+      alias: {
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+      },
       dedupe: ["react", "react-dom"],
     },
     server: {

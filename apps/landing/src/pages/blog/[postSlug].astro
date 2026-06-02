@@ -1,19 +1,24 @@
 ---
 import type { CollectionEntry } from "astro:content";
 import { render } from "astro:content";
-import BlogPostView from "../../components/blog/BlogPost.astro";
-import BlogLayout from "../../layouts/BlogLayout.astro";
+import BlogPostView from "@/features/blog/components/Post.astro";
+import BlogLayout from "@/layouts/BlogLayout.astro";
 import {
   getBlogPostEntries,
   getBlogPostSummaries,
   toBlogPost,
-} from "../../landing/blog/blog-collection";
-import { getBlogPostShareImageMetadata } from "../../landing/blog/blog-images";
-import { getBlogPostShareMetadata } from "../../landing/blog/blog-share-metadata";
+} from "@/features/blog/collection";
+import {
+  getBlogShareImage,
+  getPreferredBlogShareImage,
+} from "@/features/blog/images";
+import { ONEQUERY } from "@/shared/seo/constants";
 import {
   createBlogPostStructuredData,
+  createCanonicalUrl,
   getBlogPostKeywords,
-} from "../../landing/seo/structured-data";
+  toIsoDateTime,
+} from "@/shared/seo/schema";
 
 interface Props {
   entry: CollectionEntry<"blog">;
@@ -27,21 +32,27 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
-const { Content, headings } = await render(entry);
-const post = toBlogPost(entry, headings);
+const { Content, headings, remarkPluginFrontmatter } = await render(entry);
+const post = toBlogPost(entry, { headings, remarkPluginFrontmatter });
 const postSummaries = await getBlogPostSummaries();
-const imageMetadata = await getBlogPostShareImageMetadata(post, Astro.site);
-const metadata = getBlogPostShareMetadata(post, Astro.site, imageMetadata);
-const structuredData = createBlogPostStructuredData(
-  post,
-  Astro.site,
-  imageMetadata
+const shareImage = await getBlogShareImage(
+  getPreferredBlogShareImage(post),
+  Astro.site
 );
+const canonicalUrl = createCanonicalUrl(`/blog/${post.slug}`, Astro.site);
+const imageAlt = `${post.title} - ${ONEQUERY.BLOG_NAME}`;
+const publishedTime = toIsoDateTime(post.publishedAt);
+const title = `${post.title} | ${ONEQUERY.BLOG_NAME}`;
+const structuredData = createBlogPostStructuredData({
+  image: shareImage,
+  post,
+  site: Astro.site,
+});
 const articleMetaTags = [
-  ...(metadata.publishedTime
+  ...(publishedTime
     ? [
         {
-          content: metadata.publishedTime,
+          content: publishedTime,
           property: "article:published_time",
         },
       ]
@@ -51,25 +62,25 @@ const articleMetaTags = [
     property: "article:section",
   },
   {
-    content: "OneQuery Maintainers",
+    content: ONEQUERY.AUTHOR_NAME,
     name: "author",
   },
 ];
 ---
 
 <BlogLayout
-  canonicalUrl={metadata.canonicalUrl}
-  description={metadata.description}
-  imageAlt={metadata.imageAlt}
-  imageHeight={metadata.imageHeight}
-  imageUrl={metadata.imageUrl}
-  imageWidth={metadata.imageWidth}
+  canonicalUrl={canonicalUrl}
+  description={post.description}
+  imageAlt={imageAlt}
+  imageHeight={shareImage.height}
+  imageUrl={shareImage.url}
+  imageWidth={shareImage.width}
   keywords={getBlogPostKeywords(post)}
   metaTags={articleMetaTags}
   ogType="article"
   structuredData={structuredData}
-  title={metadata.title}
-  twitterTitle={metadata.twitterTitle}
+  title={title}
+  twitterTitle={post.title}
 >
   <BlogPostView
     Content={Content}

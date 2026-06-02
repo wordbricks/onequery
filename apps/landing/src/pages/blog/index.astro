@@ -1,7 +1,7 @@
 ---
-import BlogIndex from "../../components/blog/BlogIndex.astro";
-import BlogLayout from "../../layouts/BlogLayout.astro";
-import { getBlogIndexPage } from "../../landing/blog/blog-index-page";
+import BlogIndex from "@/features/blog/components/Index.astro";
+import BlogLayout from "@/layouts/BlogLayout.astro";
+import { getBlogIndexPage } from "@/features/blog/index-page";
 
 const page = await getBlogIndexPage({
   category: "All",

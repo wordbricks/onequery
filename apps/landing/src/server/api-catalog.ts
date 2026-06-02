@@ -1,27 +1,30 @@
-import { LANDING_API_PREFIX } from "../landing/config/landing-api";
+import { REPOSITORY_URL } from "@/shared/config/site";
+import { ONEQUERY } from "@/shared/seo/constants";
 
-const API_CATALOG_PATH = "/.well-known/api-catalog";
+const API_PREFIX = "/api";
+const API_CATALOG_PATH = "/.well-known/api-catalog/";
 const API_CATALOG_CONTENT_TYPE =
   'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"';
-const ONEQUERY_REPOSITORY_URL = "https://github.com/wordbricks/onequery";
-const ONEQUERY_README_URL = `${ONEQUERY_REPOSITORY_URL}/blob/main/README.md`;
-const ONEQUERY_DOCS_URL = `${ONEQUERY_README_URL}#documentation`;
-const ONEQUERY_PROTO_README_URL = `${ONEQUERY_REPOSITORY_URL}/blob/main/proto/README.md`;
-const ONEQUERY_CLI_PROTO_URL =
-  "https://raw.githubusercontent.com/wordbricks/onequery/main/proto/onequery/cli/v1/cli.proto";
+const API_CATALOG_LINKS = {
+  CLI_PROTO:
+    "https://raw.githubusercontent.com/wordbricks/onequery/main/proto/onequery/cli/v1/cli.proto",
+  DOCS: `${ONEQUERY.SITE_URL}/docs/`,
+  PROTO_README: `${REPOSITORY_URL}/blob/main/proto/README.md`,
+  README: `${REPOSITORY_URL}/blob/main/README.md`,
+} as const;
 
 export const AGENT_DISCOVERY_LINK_HEADER = [
   `<${API_CATALOG_PATH}>; rel="api-catalog"; type="application/linkset+json"`,
-  `<${ONEQUERY_CLI_PROTO_URL}>; rel="service-desc"; type="text/plain"`,
-  `<${ONEQUERY_DOCS_URL}>; rel="service-doc"; type="text/html"`,
-  `<${ONEQUERY_README_URL}>; rel="describedby"; type="text/html"`,
+  `<${API_CATALOG_LINKS.CLI_PROTO}>; rel="service-desc"; type="text/plain"`,
+  `<${API_CATALOG_LINKS.DOCS}>; rel="service-doc"; type="text/html"`,
+  `<${API_CATALOG_LINKS.README}>; rel="describedby"; type="text/html"`,
 ].join(", ");
 
 export function buildApiCatalogLinkset(origin: string) {
   const homepageUrl = `${origin}/`;
   const catalogUrl = `${origin}${API_CATALOG_PATH}`;
-  const productUpdatesApiUrl = `${origin}${LANDING_API_PREFIX}/product-updates/`;
-  const contactApiUrl = `${origin}${LANDING_API_PREFIX}/contact/`;
+  const productUpdatesApiUrl = `${origin}${API_PREFIX}/product-updates/`;
+  const contactApiUrl = `${origin}${API_PREFIX}/contact/`;
 
   return {
     linkset: [
@@ -35,21 +38,21 @@ export function buildApiCatalogLinkset(origin: string) {
         ],
         describedby: [
           {
-            href: ONEQUERY_README_URL,
+            href: API_CATALOG_LINKS.README,
             title: "OneQuery README",
             type: "text/html",
           },
         ],
         "service-desc": [
           {
-            href: ONEQUERY_CLI_PROTO_URL,
+            href: API_CATALOG_LINKS.CLI_PROTO,
             title: "OneQuery CLI Connect RPC protobuf schema",
             type: "text/plain",
           },
         ],
         "service-doc": [
           {
-            href: ONEQUERY_DOCS_URL,
+            href: API_CATALOG_LINKS.DOCS,
             title: "OneQuery documentation",
             type: "text/html",
           },
@@ -69,10 +72,10 @@ export function buildApiCatalogLinkset(origin: string) {
         ],
       },
       {
-        anchor: ONEQUERY_CLI_PROTO_URL,
+        anchor: API_CATALOG_LINKS.CLI_PROTO,
         describedby: [
           {
-            href: ONEQUERY_PROTO_README_URL,
+            href: API_CATALOG_LINKS.PROTO_README,
             title: "OneQuery protobuf workspace documentation",
             type: "text/html",
           },

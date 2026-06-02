@@ -1,0 +1,40 @@
+---
+title: Security Checklist
+description: Review this checklist before exposing OneQuery sources to agents or production automation.
+sidebar:
+  order: 5
+---
+
+Use this checklist before making a source available to an agent workflow.
+
+## Source Setup
+
+- The provider credential is read-only when the provider supports read-only access.
+- The credential is dedicated to OneQuery or clearly owned by the OneQuery deployment.
+- Production and staging data use separate OneQuery sources.
+- The source was tested with a minimal query or API request.
+
+## Agent Access
+
+- The agent receives source identifiers, not raw credentials.
+- The task prompt lists the allowed sources.
+- The prompt requires narrow time windows and result limits.
+- The prompt requires an evidence summary before code changes.
+- The agent environment does not contain duplicate provider credentials.
+
+## Operations
+
+- Operators know where gateway logs and audit records are reviewed.
+- Credential rotation has an owner.
+- Incident runbooks name approved OneQuery sources.
+- Blocked requests are reviewed instead of bypassed with raw credentials.
+- Production changes cite evidence sources when OneQuery was used.
+
+## Red Flags
+
+Stop the rollout if:
+
+- A prompt includes a database password, provider token, or cloud key.
+- The approved source list uses ambiguous identifiers such as `postgres://prod` or `postgres://db`.
+- The provider token can write to production systems and the workflow only needs read access.
+- The agent asks to broaden access before producing a source-backed explanation.

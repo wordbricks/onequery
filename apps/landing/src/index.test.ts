@@ -9,7 +9,7 @@ import {
 describe("landing discovery resources", () => {
   it("serves the API catalog well-known resource", async () => {
     const response = createApiCatalogResponse(
-      new Request("https://onequery.dev/.well-known/api-catalog")
+      new Request("https://onequery.dev/.well-known/api-catalog/")
     );
     const body = (await response.json()) as {
       linkset: ReadonlyArray<Record<string, unknown>>;
@@ -26,14 +26,14 @@ describe("landing discovery resources", () => {
         expect.objectContaining({
           "api-catalog": [
             {
-              href: "https://onequery.dev/.well-known/api-catalog",
+              href: "https://onequery.dev/.well-known/api-catalog/",
               type: "application/linkset+json",
             },
           ],
           anchor: "https://onequery.dev/",
         }),
         expect.objectContaining({
-          anchor: "https://onequery.dev/.well-known/api-catalog",
+          anchor: "https://onequery.dev/.well-known/api-catalog/",
           item: [
             {
               href: "https://onequery.dev/api/product-updates/",
@@ -51,7 +51,7 @@ describe("landing discovery resources", () => {
 
   it("omits a response body for HEAD API catalog requests", async () => {
     const response = createApiCatalogResponse(
-      new Request("https://onequery.dev/.well-known/api-catalog", {
+      new Request("https://onequery.dev/.well-known/api-catalog/", {
         method: "HEAD",
       })
     );
@@ -65,7 +65,7 @@ describe("landing discovery resources", () => {
       expect.objectContaining({
         linkset: expect.arrayContaining([
           expect.objectContaining({
-            anchor: "https://preview.onequery.dev/.well-known/api-catalog",
+            anchor: "https://preview.onequery.dev/.well-known/api-catalog/",
             item: [
               {
                 href: "https://preview.onequery.dev/api/product-updates/",

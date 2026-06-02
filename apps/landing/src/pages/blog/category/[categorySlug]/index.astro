@@ -1,13 +1,13 @@
 ---
-import BlogIndex from "../../../../components/blog/BlogIndex.astro";
-import BlogLayout from "../../../../layouts/BlogLayout.astro";
-import { getBlogPostSummaries } from "../../../../landing/blog/blog-collection";
-import { getBlogIndexPage } from "../../../../landing/blog/blog-index-page";
+import BlogIndex from "@/features/blog/components/Index.astro";
+import BlogLayout from "@/layouts/BlogLayout.astro";
+import { getBlogPostSummaries } from "@/features/blog/collection";
+import { getBlogIndexPage } from "@/features/blog/index-page";
 import {
   getBlogCategorySlug,
   getPopulatedBlogPostCategories,
-} from "../../../../landing/blog/blog-taxonomy";
-import type { BlogPostCategory } from "../../../../landing/blog/blog-taxonomy";
+} from "@/features/blog/taxonomy";
+import type { BlogPostCategory } from "@/features/blog/taxonomy";
 
 interface Props {
   category: BlogPostCategory;

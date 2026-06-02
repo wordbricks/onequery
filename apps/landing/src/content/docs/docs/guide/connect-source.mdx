@@ -1,0 +1,74 @@
+---
+title: Connect a Source
+description: Connect databases, warehouses, SaaS APIs, and observability systems as named OneQuery sources.
+sidebar:
+  order: 4
+---
+
+import { Steps } from "@astrojs/starlight/components";
+
+A source is a named connection to a provider. `--source postgres` plus `"sourceKey": "warehouse"` creates the identifier `postgres://warehouse`.
+
+## Basic Flow
+
+<Steps>
+
+1. Pick the provider.
+
+   ```sh
+   onequery source connect --help
+   ```
+
+2. Ask for provider-specific setup guidance.
+
+   ```sh
+   onequery source connect --source postgres
+   ```
+
+3. Build the input payload with a read-only credential.
+
+   ```json
+   {
+     "sourceKey": "warehouse",
+     "credentials": {
+       "host": "db.example.com",
+       "port": 5432,
+       "database": "app",
+       "username": "onequery_readonly",
+       "password": "<read-only-password>",
+       "sslMode": "require"
+     }
+   }
+   ```
+
+4. Connect the source.
+
+   ```sh
+   onequery source connect --source postgres \
+     --input '{"sourceKey":"warehouse","credentials":{"host":"db.example.com","port":5432,"database":"app","username":"onequery_readonly","password":"<read-only-password>","sslMode":"require"}}'
+   ```
+
+5. Confirm the source appears.
+
+   ```sh
+   onequery source list
+   ```
+
+</Steps>
+
+## Credential Guidance
+
+- Prefer read-only users or provider tokens.
+- Create separate OneQuery sources for production, staging, and customer data.
+- Rotate provider credentials outside the agent runtime.
+- Do not paste source credentials into prompts or task descriptions.
+
+## Provider Families
+
+Use the integration pages for provider-specific patterns:
+
+- [Databases](/docs/integrations/databases/)
+- [Warehouses](/docs/integrations/warehouses/)
+- [Observability](/docs/integrations/observability/)
+- [Developer tools](/docs/integrations/developer-tools/)
+- [Product analytics](/docs/integrations/product-analytics/)

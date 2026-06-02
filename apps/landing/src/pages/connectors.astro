@@ -1,21 +1,31 @@
 ---
-import ConnectorBrowser from "../components/connectors/ConnectorBrowser.astro";
-import { DATA_SOURCE_CONNECTORS } from "../data/connectors";
-import MarketingLayout from "../layouts/MarketingLayout.astro";
-import { createCanonicalUrl } from "../landing/seo/structured-data";
-import "../styles/connectors.css";
+import ConnectorBrowser from "@/features/connectors/Browser.astro";
+import { DATA_SOURCE_CONNECTORS } from "@/features/connectors/data";
+import MarketingLayout from "@/layouts/MarketingLayout.astro";
+import {
+  createCanonicalUrl,
+  createConnectorIndexStructuredData,
+} from "@/shared/seo/schema";
+import "@/features/connectors/styles.css";
 
 const title = "OneQuery Connectors | Supported Data Sources";
 const description =
   "See the databases, warehouses, observability tools, analytics systems, and developer workflows currently supported by OneQuery.";
+const canonicalUrl = createCanonicalUrl("/connectors", Astro.site);
+const structuredData = createConnectorIndexStructuredData({
+  connectors: DATA_SOURCE_CONNECTORS,
+  description,
+  site: Astro.site,
+  title,
+});
 ---
 
 <MarketingLayout
-  canonicalUrl={createCanonicalUrl("/connectors", Astro.site)}
+  canonicalUrl={canonicalUrl}
   description={description}
   keywords="OneQuery connectors, supported data sources, AI agent data access, PostgreSQL, Snowflake, BigQuery, GitHub, Linear"
   shellClass="page-shell connectors-shell"
-  structuredData={null}
+  structuredData={structuredData}
   title={title}
 >
   <main class="connectors-main">

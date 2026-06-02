@@ -1,0 +1,48 @@
+---
+title: Threat Model
+description: What OneQuery helps protect against in agent data access workflows, and what remains the operator's responsibility.
+sidebar:
+  order: 3
+---
+
+OneQuery is an access boundary for source execution. It is not a complete replacement for provider permissions, database roles, incident process, or human review.
+
+## Helps Protect Against
+
+| Risk                                          | OneQuery control                                                                                  |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Agent receives raw production credentials     | Credentials stay in OneQuery source configuration.                                                |
+| Agent invents a direct production access path | Workflow uses named source identifiers and commands.                                              |
+| SQL request is too broad or unsafe            | Query validation, single-statement expectations, and result limits can block or narrow execution. |
+| Provider token is scattered across tools      | OneQuery source configuration replaces copied provider credentials.                               |
+| No record of what the agent inspected         | Audit history records source activity.                                                            |
+
+## Does Not Automatically Protect Against
+
+- A provider token that has broader permissions than the workflow needs.
+- A database role that can read sensitive tables the agent should not inspect.
+- Sensitive data returned in a legitimate result payload.
+- A human approving a risky source or prompt.
+- A second credential path outside OneQuery.
+- Unsupported provider behavior or provider-side outages.
+
+## Prompt Injection and Tool Output
+
+Prompt rules can tell an agent what to do, but they cannot enforce source access. Treat hostile or confusing tool output as a reason to keep the deterministic boundary narrow:
+
+- Limit sources by task.
+- Limit query shape.
+- Limit provider endpoints.
+- Require evidence summaries.
+- Review audit history.
+
+## Operator Responsibility
+
+Operators still own:
+
+- Provider credential scope.
+- Database role design.
+- Source naming and environment separation.
+- Agent prompt review.
+- Production change review.
+- Audit review after sensitive runs.

@@ -1,0 +1,88 @@
+---
+import { Picture } from "astro:assets";
+import { getBlogIndexPath } from "@/features/blog/taxonomy";
+import type { BlogCategoryFilter } from "@/features/blog/taxonomy";
+import type { BlogPostSummary } from "@/features/blog/types";
+import TrackedLink from "@/shared/components/TrackedLink.astro";
+
+const THUMBNAIL_SIZES =
+  "(min-width: 1120px) 33vw, (min-width: 720px) 50vw, 100vw";
+const THUMBNAIL_WIDTHS = [320, 480, 640, 900, 1254];
+const LAZY_IMAGE_ATTRIBUTES = {
+  decoding: "async" as const,
+  loading: "lazy" as const,
+};
+
+interface Props {
+  activeCategory: BlogCategoryFilter;
+  categories: readonly BlogCategoryFilter[];
+  posts: readonly BlogPostSummary[];
+}
+
+const { activeCategory, categories, posts } = Astro.props;
+---
+
+<main class="blog-main">
+  <section class="blog-index-hero">
+    <p class="eyebrow">OneQuery</p>
+    <h1>Blog</h1>
+    <nav aria-label="Blog categories" class="blog-categories">
+      {
+        categories.map((category) => (
+          <TrackedLink
+            href={getBlogIndexPath({ category })}
+            class={
+              activeCategory === category
+                ? "blog-category blog-category-active"
+                : "blog-category"
+            }
+            aria-current={activeCategory === category ? "page" : undefined}
+          >
+            {category}
+          </TrackedLink>
+        ))
+      }
+    </nav>
+  </section>
+
+  <div class="blog-toolbar">
+    <span class="blog-toolbar-button">{posts.length} posts</span>
+  </div>
+
+  <section>
+    <div class="blog-grid">
+      {
+        posts.map((post, postIndex) => (
+          <article class="blog-card">
+            <TrackedLink href={`/blog/${post.slug}/`}>
+              <div class="blog-image blog-image-card">
+                <Picture
+                  src={post.coverImage.src}
+                  alt={post.coverImage.alt}
+                  class="blog-image-media"
+                  fallbackFormat="webp"
+                  formats={["avif"]}
+                  priority={postIndex === 0}
+                  sizes={THUMBNAIL_SIZES}
+                  widths={THUMBNAIL_WIDTHS}
+                  {...(postIndex === 0 ? {} : LAZY_IMAGE_ATTRIBUTES)}
+                />
+              </div>
+              <div class="blog-card-meta">
+                <span>{post.category}</span>
+                <span aria-hidden="true">/</span>
+                <span>{post.date}</span>
+              </div>
+              <h2>{post.title}</h2>
+              <p>{post.description}</p>
+              <span class="blog-card-read-more">
+                {post.readTime}
+                <span aria-hidden="true">→</span>
+              </span>
+            </TrackedLink>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+</main>

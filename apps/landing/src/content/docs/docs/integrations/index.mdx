@@ -1,0 +1,67 @@
+---
+title: Integrations
+description: Connect OneQuery to databases, warehouses, observability systems, developer tools, productivity systems, marketing APIs, and product analytics platforms.
+sidebar:
+  label: Overview
+  order: 1
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+OneQuery integrations become named sources. Each source has a provider, a local name, credential metadata, and one or more interfaces.
+
+<CardGrid>
+  <LinkCard
+    title="Databases"
+    href="/docs/integrations/databases/"
+    description="PostgreSQL, Supabase, MySQL, and MongoDB setup patterns."
+  />
+  <LinkCard
+    title="Warehouses"
+    href="/docs/integrations/warehouses/"
+    description="Snowflake, BigQuery, AWS Athena Connector, and MotherDuck setup patterns."
+  />
+  <LinkCard
+    title="Observability"
+    href="/docs/integrations/observability/"
+    description="Sentry, Laminar, and Cloudflare Workers Observability for incident evidence."
+  />
+  <LinkCard
+    title="Developer tools"
+    href="/docs/integrations/developer-tools/"
+    description="GitHub, Linear, Jira, Confluence, Vercel, and Discord access patterns."
+  />
+  <LinkCard
+    title="Product analytics"
+    href="/docs/integrations/product-analytics/"
+    description="Google Analytics, Amplitude, Mixpanel, PostHog, Clarity, and Cloudflare Web Analytics."
+  />
+  <LinkCard
+    title="Marketing and productivity"
+    href="/docs/integrations/marketing-productivity/"
+    description="Airtable, Cal.com, Granola, Amazon Ads, LinkedIn Ads, TikTok Marketing, SendGrid, and Search Console."
+  />
+</CardGrid>
+
+## Interfaces
+
+OneQuery sources commonly expose one of two access patterns.
+
+| Interface  | Use it for                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------ |
+| Query      | SQL-oriented sources such as databases and warehouses.                                     |
+| Source API | Provider APIs such as GitHub pull requests, Sentry issues, or product analytics endpoints. |
+
+Some provider credentials can be used from the dashboard and the CLI. Others are CLI-first because their setup or workflow is more specialized.
+
+## Provider-Specific Guides
+
+Run a provider guide command before connecting a new source:
+
+```sh
+onequery source connect --source postgres
+```
+
+Replace `postgres` with the provider ID you plan to connect. The provider guide shows the expected credential shape and an example input payload.
+
+Use [source identifiers](/docs/concepts/source-identifiers/) in agent instructions and runbooks after a source is connected.

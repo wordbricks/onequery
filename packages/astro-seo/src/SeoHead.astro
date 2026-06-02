@@ -1,0 +1,24 @@
+---
+import { createSeoHeadEntries } from "./metadata";
+import type { SeoHeadMetadata } from "./metadata";
+
+type Props = SeoHeadMetadata;
+
+const headEntries = createSeoHeadEntries(Astro.props);
+---
+
+<Fragment>
+  {
+    headEntries.map((entry) =>
+      entry.tag === "title" ? (
+        <title>{entry.content}</title>
+      ) : entry.tag === "meta" ? (
+        <meta {...entry.attrs} />
+      ) : entry.tag === "link" ? (
+        <link {...entry.attrs} />
+      ) : (
+        <script is:inline {...entry.attrs} set:html={entry.content} />
+      )
+    )
+  }
+</Fragment>

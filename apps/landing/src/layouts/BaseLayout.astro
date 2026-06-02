@@ -1,37 +1,45 @@
 ---
-import "../styles/base.css";
+import "@/shared/styles/base.css";
+import SeoHead from "@onequery/astro-seo/SeoHead.astro";
 import { Font } from "astro:assets";
-import GoogleTag from "../components/landing/GoogleTag.astro";
+import { googleTagConfig } from "@/shared/analytics/google-tag";
+import {
+  createGoogleTagAfterSwapScript,
+  createGoogleTagBootstrapScript,
+  createGoogleTagEventBridgeScript,
+  createGoogleTagScriptSrc,
+} from "@/shared/analytics/script";
 import {
   createCanonicalUrl,
-  createLandingPageStructuredData,
+  createHomePageStructuredData,
   normalizeSiteUrl,
-  ONEQUERY_DEFAULT_DESCRIPTION,
-} from "../landing/seo/structured-data";
-import {
-  getOneQueryPublicShareImageMetadata,
-  getOneQueryStructuredShareImageMetadata,
-  ONEQUERY_DEFAULT_SHARE_IMAGE_ALT,
-} from "../landing/seo/site-images";
-import type { PageMetadata } from "./layout-types";
+} from "@/shared/seo/schema";
+import { ONEQUERY } from "@/shared/seo/constants";
+import { getOneQueryShareImage } from "@/shared/seo/images";
+import type { PageMetadata } from "./types";
 
-const DEFAULT_TITLE = "OneQuery | Governed Data Access for AI Agents";
-const DEFAULT_DESCRIPTION = ONEQUERY_DEFAULT_DESCRIPTION;
-const DEFAULT_KEYWORDS =
-  "OneQuery, AI agent access control, production context, production keys, Claude Code, centralized credentials, audit logs, capability grants, safe production access";
-const DEFAULT_IMAGE_ALT = ONEQUERY_DEFAULT_SHARE_IMAGE_ALT;
+const DEFAULT_TITLE = ONEQUERY.DEFAULT_PAGE_TITLE;
+const DEFAULT_DESCRIPTION = ONEQUERY.SITE_DESCRIPTION;
+const DEFAULT_KEYWORDS = ONEQUERY.DEFAULT_KEYWORDS;
+const DEFAULT_IMAGE_ALT = ONEQUERY.SHARE_IMAGE_ALT;
 const siteUrl = normalizeSiteUrl(Astro.site);
 const DEFAULT_CANONICAL_URL = createCanonicalUrl("/", siteUrl);
-const defaultShareImage = getOneQueryPublicShareImageMetadata(siteUrl);
-const defaultStructuredShareImage =
-  await getOneQueryStructuredShareImageMetadata(siteUrl);
+const defaultShareImage = getOneQueryShareImage(siteUrl);
+const googleTagScriptSrc = createGoogleTagScriptSrc(googleTagConfig);
+const googleTagEventBridgeScript = createGoogleTagEventBridgeScript();
+const googleTagBootstrapScript =
+  createGoogleTagBootstrapScript(googleTagConfig);
+const googleTagAfterSwapScript =
+  createGoogleTagAfterSwapScript(googleTagConfig);
 const DEFAULT_IMAGE_URL = defaultShareImage.url;
-const DEFAULT_STRUCTURED_DATA = createLandingPageStructuredData({
+const DEFAULT_STRUCTURED_DATA = createHomePageStructuredData({
   description: DEFAULT_DESCRIPTION,
-  imageAlt: DEFAULT_IMAGE_ALT,
-  imageHeight: defaultStructuredShareImage.height,
-  imageUrl: defaultStructuredShareImage.url,
-  imageWidth: defaultStructuredShareImage.width,
+  image: {
+    alt: DEFAULT_IMAGE_ALT,
+    height: defaultShareImage.height,
+    url: defaultShareImage.url,
+    width: defaultShareImage.width,
+  },
   site: siteUrl,
   title: DEFAULT_TITLE,
 });
@@ -54,12 +62,6 @@ const {
   title = DEFAULT_TITLE,
   twitterTitle = title,
 } = Astro.props;
-const structuredDataItems =
-  structuredData === null
-    ? []
-    : Array.isArray(structuredData)
-      ? structuredData
-      : [structuredData];
 ---
 
 <!doctype html>
@@ -67,8 +69,43 @@ const structuredDataItems =
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
-    <GoogleTag />
+    <SeoHead
+      applicationName={ONEQUERY.NAME}
+      appleMobileWebAppTitle={ONEQUERY.NAME}
+      author={ONEQUERY.AUTHOR_NAME}
+      canonicalUrl={canonicalUrl}
+      description={description}
+      image={{
+        alt: imageAlt,
+        height: imageHeight,
+        type: imageType,
+        url: imageUrl,
+        width: imageWidth,
+      }}
+      keywords={keywords}
+      metaTags={metaTags}
+      openGraph={{
+        locale: "en_US",
+        siteName: ONEQUERY.NAME,
+        type: ogType,
+      }}
+      robots={robots}
+      sitemapUrl="/sitemap-index.xml"
+      structuredData={structuredData}
+      themeColor="#ffffff"
+      title={title}
+      twitter={{
+        title: twitterTitle,
+      }}
+    />
+    <script is:inline set:html={googleTagEventBridgeScript} />
+    <script is:inline type="text/partytown" src={googleTagScriptSrc}></script>
+    <script
+      is:inline
+      type="text/partytown"
+      set:html={googleTagBootstrapScript}
+    />
+    <script is:inline set:html={googleTagAfterSwapScript} />
     <script is:inline>
       document.addEventListener("click", (event) => {
         if (!(event.target instanceof Element)) {
@@ -101,53 +138,18 @@ const structuredDataItems =
         });
       });
     </script>
-    <meta name="robots" content={robots} />
-    <meta name="author" content="OneQuery Maintainers" />
-    <meta name="application-name" content="OneQuery" />
-    <meta name="apple-mobile-web-app-title" content="OneQuery" />
-    <link rel="icon" type="image/png" href="/onequery-icon.png" />
-    <link rel="apple-touch-icon" href="/onequery-icon.png" />
-    <link rel="canonical" href={canonicalUrl} />
-    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="96x96"
+      href="/favicon-96x96.png"
+    />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/apple-touch-icon.png"
+    />
     <Font cssVariable="--font-geist" preload />
-    <meta name="description" content={description} />
-    {keywords ? <meta name="keywords" content={keywords} /> : null}
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:type" content={ogType} />
-    <meta property="og:url" content={canonicalUrl} />
-    <meta property="og:site_name" content="OneQuery" />
-    <meta property="og:locale" content="en_US" />
-    <meta property="og:image" content={imageUrl} />
-    <meta property="og:image:secure_url" content={imageUrl} />
-    <meta property="og:image:type" content={imageType} />
-    <meta property="og:image:width" content={String(imageWidth)} />
-    <meta property="og:image:height" content={String(imageHeight)} />
-    <meta property="og:image:alt" content={imageAlt} />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={twitterTitle} />
-    <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={imageUrl} />
-    <meta name="twitter:image:alt" content={imageAlt} />
-    {
-      metaTags.map((tag) =>
-        "name" in tag ? (
-          <meta name={tag.name} content={tag.content} />
-        ) : (
-          <meta property={tag.property} content={tag.content} />
-        )
-      )
-    }
-    <title>{title}</title>
-    {
-      structuredDataItems.map((item) => (
-        <script
-          is:inline
-          type="application/ld+json"
-          set:html={JSON.stringify(item)}
-        />
-      ))
-    }
   </head>
   <body>
     <slot />

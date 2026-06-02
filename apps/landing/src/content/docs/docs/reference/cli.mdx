@@ -1,0 +1,59 @@
+---
+title: CLI Commands
+description: Common OneQuery CLI commands for install verification, gateway lifecycle, auth, source setup, queries, and Source API calls.
+sidebar:
+  order: 2
+---
+
+## Help
+
+```sh
+onequery --help
+onequery gateway --help
+onequery source --help
+onequery query --help
+```
+
+## Gateway
+
+```sh
+onequery gateway
+onequery gateway start
+onequery gateway status
+onequery gateway logs
+onequery gateway restart
+onequery gateway stop
+```
+
+## Auth and Server
+
+```sh
+onequery config set api.server_url https://onequery.example.com
+onequery auth login
+onequery auth whoami
+onequery org use <org>
+```
+
+## Sources
+
+```sh
+onequery source connect --help
+onequery source connect --source postgres
+onequery source connect --source postgres --input '{"sourceKey":"warehouse","credentials":{"host":"db.example.com","database":"app","username":"onequery_readonly","password":"<read-only-password>"}}'
+onequery source list
+onequery source show postgres://warehouse
+```
+
+## Queries
+
+```sh
+onequery query exec --source postgres://warehouse --sql "select 1"
+```
+
+## Source API
+
+```sh
+onequery api --source github://github_main /repos/acme/web/pulls --json
+```
+
+Use `--paginate`, `--max-pages`, and `--jq` for provider endpoints that return large arrays.

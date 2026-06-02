@@ -1,0 +1,42 @@
+---
+title: Agent Workflows
+description: Give coding agents and automated workflows bounded OneQuery access to approved production context.
+sidebar:
+  order: 7
+---
+
+Agents need context, but they should not receive the original production credential. Give the agent a narrow OneQuery command surface and a task-specific list of approved source identifiers.
+
+## Command Surface
+
+```sh
+onequery query exec \
+  --source <source-identifier> \
+  --sql "<bounded read-only SQL>"
+```
+
+```sh
+onequery api \
+  --source <source-identifier> \
+  <provider-path> \
+  --json
+```
+
+Use [Run a query](/docs/guide/run-query/) for SQL examples and [Source API](/docs/guide/source-api/) for provider API examples.
+
+## Guardrails
+
+- Give the agent only the source identifiers needed for the task.
+- Require bounded queries and an evidence summary before production recommendations.
+- Review audit history after the first run against a new source.
+
+Use [Agent tool setup](/docs/guide/agent-tool-setup/) for copy-paste instructions and `AGENTS.md` snippets.
+
+## Example Workflow
+
+1. The operator asks the agent to investigate an incident.
+2. The agent queries Sentry and logs through OneQuery.
+3. The agent narrows evidence to a source, endpoint, and failure window.
+4. The agent inspects code locally.
+5. The agent proposes a patch with a short production evidence summary.
+6. The operator reviews the diff and the OneQuery audit trail.

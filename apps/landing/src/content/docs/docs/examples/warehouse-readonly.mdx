@@ -1,0 +1,47 @@
+---
+title: Read-Only Warehouse Review
+description: Use OneQuery for aggregate-first warehouse investigations with clear source identity and query limits.
+sidebar:
+  order: 3
+---
+
+Warehouse investigations should start broad and aggregate, then narrow only when needed.
+
+## Allowed Source
+
+```text
+snowflake://analytics_prod
+```
+
+## Aggregate First
+
+```sh
+onequery query exec \
+  --source snowflake://analytics_prod \
+  --sql "select event_name, count(*) as events from analytics.events where event_date >= current_date - 7 group by event_name order by events desc limit 20"
+```
+
+## Narrow by Time Window
+
+```sh
+onequery query exec \
+  --source snowflake://analytics_prod \
+  --sql "select date_trunc('hour', occurred_at) as hour, count(*) as failures from analytics.events where event_name = 'checkout_failed' and occurred_at >= current_timestamp - interval '24 hours' group by 1 order by 1"
+```
+
+## Review Rules
+
+- Do not start with raw event dumps.
+- Keep time windows explicit.
+- Preserve the source identifier in the analysis.
+- Use a read-only warehouse role.
+- Prefer saved views for sensitive data.
+
+## Result Note
+
+```text
+Source: snowflake://analytics_prod
+Window: last 24 hours
+Finding: checkout_failed increased after 14:00 UTC, concentrated in payment_method='card'.
+Follow-up: compare deployment and provider incident timelines.
+```

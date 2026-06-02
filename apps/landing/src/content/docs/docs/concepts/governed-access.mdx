@@ -1,0 +1,37 @@
+---
+title: Governed Access
+description: Understand how OneQuery keeps credentials centralized while giving agents and developers approved access to source data.
+sidebar:
+  order: 2
+---
+
+Governed access means the caller does not receive the raw credential for the production system. The caller receives a controlled interface to a named source.
+
+For an agent, this distinction is the product boundary. The agent can ask for relevant production context, but OneQuery still owns source resolution, credential handling, validation, result limits, and audit records.
+
+## What Stays Outside the Agent
+
+- Database passwords and SaaS API tokens.
+- Provider-specific authentication flows.
+- Source connection metadata that is not needed for the task.
+- Server-side validation and execution behavior.
+- Audit storage.
+
+## What the Agent Receives
+
+- A source identifier such as `postgres://warehouse` or `github://github_main`.
+- A command surface such as `onequery query exec` or `onequery api`.
+- A bounded result set or provider response.
+- Clear failure output when a request is blocked, invalid, or unavailable.
+
+## Production Rule
+
+Treat OneQuery as the only path from agent tools to production data. Do not place the same database password, SaaS token, or cloud credential directly in the agent environment.
+
+## Rollout Pattern
+
+1. Connect one low-risk read-only source.
+2. Verify a few human-run commands from the CLI.
+3. Give the agent only the source identifier and command pattern it needs.
+4. Review audit history after the first automated runs.
+5. Expand sources only after the operator workflow is clear.

@@ -66,6 +66,33 @@ async function exportHtmlFile(input: {
   return true;
 }
 
+async function collectHtmlFiles(directory: string) {
+  const htmlPaths: string[] = [];
+
+  async function visit(currentDirectory: string) {
+    const entries = await fs.readdir(currentDirectory, { withFileTypes: true });
+
+    await Promise.all(
+      entries.map(async (entry) => {
+        const entryPath = path.join(currentDirectory, entry.name);
+
+        if (entry.isDirectory()) {
+          await visit(entryPath);
+          return;
+        }
+
+        if (entry.isFile() && entry.name.endsWith(HTML_EXTENSION)) {
+          htmlPaths.push(entryPath);
+        }
+      })
+    );
+  }
+
+  await visit(directory);
+
+  return htmlPaths;
+}
+
 export async function exportHtmlMarkdownSidecars(
   options: ExportHtmlMarkdownSidecarsOptions
 ) {
@@ -79,6 +106,12 @@ export async function exportHtmlMarkdownSidecars(
         htmlAssetPaths.add(fileURLToPath(assetUrl));
       }
     }
+  }
+
+  // Workerd prerender builds can omit static HTML pages from the hook's assets
+  // map, so scan the emitted client directory as the source of truth.
+  for (const htmlPath of await collectHtmlFiles(outputDir)) {
+    htmlAssetPaths.add(htmlPath);
   }
 
   for (const htmlPath of htmlAssetPaths) {

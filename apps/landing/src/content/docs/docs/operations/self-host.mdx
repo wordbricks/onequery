@@ -1,0 +1,47 @@
+---
+title: Self-Host OneQuery
+description: Run OneQuery in a self-hosted gateway mode for local, private, or production deployments.
+sidebar:
+  order: 2
+---
+
+Self-hosting keeps the OneQuery gateway under your control while still giving developers and agents a single access path. This page covers deployment concerns; use [Choose Server Path](/docs/guide/start-gateway/) for local lifecycle commands.
+
+## Runtime Ownership
+
+Treat the gateway as infrastructure, not a developer helper script. Decide who owns:
+
+- Runtime configuration.
+- Secret rotation.
+- Process restarts.
+- Log review.
+- Upgrade timing.
+
+## Process Manager
+
+Run foreground mode under your process manager when you need supervised restarts:
+
+```sh
+onequery gateway
+```
+
+Keep the OneQuery home directory and runtime state on persistent storage. Back it up before upgrades and credential rotations.
+
+## Shared Server URL
+
+```sh
+onequery config set api.server_url https://onequery.example.com
+onequery auth login
+```
+
+Document the server URL for operators and agents that should use the shared gateway instead of a local one.
+
+## Deployment Notes
+
+- Put the gateway behind your normal TLS, identity, and network controls.
+- Put provider credentials in the OneQuery source configuration path, not agent environment variables.
+- Monitor startup, runtime logs, and source connection failures.
+- Document the server URL and approved source identifiers for operators.
+- Test backup restore before depending on self-hosted state.
+
+See the repository self-hosting guide for deeper runtime, storage, proxy, backup, and upgrade details.

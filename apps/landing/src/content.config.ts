@@ -1,7 +1,9 @@
+import { docsLoader } from "@astrojs/starlight/loaders";
+import { docsSchema } from "@astrojs/starlight/schema";
 import { glob } from "astro/loaders";
 import { defineCollection } from "astro:content";
 
-import { createBlogPostContentSchema } from "./landing/blog/blog-content-schema";
+import { createBlogPostContentSchema } from "@/features/blog/schema";
 
 const blog = defineCollection({
   loader: glob({
@@ -12,4 +14,9 @@ const blog = defineCollection({
   schema: createBlogPostContentSchema,
 });
 
-export const collections = { blog };
+const docs = defineCollection({
+  loader: docsLoader(),
+  schema: docsSchema(),
+});
+
+export const collections = { blog, docs };

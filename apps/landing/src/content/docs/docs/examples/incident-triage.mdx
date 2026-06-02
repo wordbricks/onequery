@@ -1,0 +1,40 @@
+---
+title: Incident Triage
+description: Run an evidence-first incident investigation with bounded OneQuery source access.
+sidebar:
+  order: 5
+---
+
+During an incident, avoid expanding agent access out of urgency. Give the agent a small source set and require concise evidence summaries between requests.
+
+## Incident Prompt
+
+```text
+We have elevated API errors. Use only OneQuery sources sentry://sentry_prod, cloudflare_workers_observability://cloudflare_workers, and github://github_main.
+Use a 60-minute window unless evidence requires a smaller window.
+Do not suggest a production change until you summarize source-backed evidence.
+```
+
+## First Requests
+
+Ask the agent for three short facts before it inspects code:
+
+1. First-seen time and affected service from observability.
+2. Current error shape and whether it is still increasing.
+3. Recent deploy, configuration, or dependency changes near the first-seen time.
+
+## Triage Loop
+
+1. Narrow the time window.
+2. Compare error evidence with release or configuration evidence.
+3. State the most likely failure mode and the source identifiers behind it.
+4. Propose a mitigation only after the evidence summary is reviewed.
+
+## Stop Conditions
+
+Stop and involve an operator when:
+
+- The agent asks for a raw credential.
+- The investigation requires write access to a provider.
+- Evidence conflicts across sources.
+- The proposed fix affects authentication, billing, security controls, or data deletion.
