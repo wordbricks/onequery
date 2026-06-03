@@ -18,15 +18,33 @@ import { isCliSourceKey } from "../identifiers";
 
 type CliSourceInterfaceType = "query" | "api";
 
+const CLI_SOURCE_KEY_NORMALIZATION_PATTERN = /[^a-z0-9._-]+/g;
+const CLI_SOURCE_KEY_BOUNDARY_PATTERN = /^[._-]+|[._-]+$/g;
+const CLI_SOURCE_KEY_REPEAT_PATTERN = /[._-]{2,}/g;
+
+function normalizeCliSourceKey(name: string): string | null {
+  const normalized = name
+    .trim()
+    .toLowerCase()
+    .replaceAll(CLI_SOURCE_KEY_NORMALIZATION_PATTERN, "-")
+    .replaceAll(CLI_SOURCE_KEY_BOUNDARY_PATTERN, "")
+    .replaceAll(CLI_SOURCE_KEY_REPEAT_PATTERN, "-");
+
+  return normalized.length > 0 && isCliSourceKey(normalized)
+    ? normalized
+    : null;
+}
+
 // The backing table still stores the CLI-visible source identity in
 // data_sources.name. The CLI domain treats that normalized org-unique name as
 // the canonical sourceKey so the rest of the workflow code never reaches for
 // raw table field names.
 export function createCliSourceKey(name: string): string | null {
   const normalized = name.trim();
-  return normalized.length > 0 && isCliSourceKey(normalized)
-    ? normalized
-    : null;
+  if (normalized.length > 0 && isCliSourceKey(normalized)) {
+    return normalized;
+  }
+  return normalizeCliSourceKey(normalized);
 }
 
 export function createCliSourceRecord(input: {
