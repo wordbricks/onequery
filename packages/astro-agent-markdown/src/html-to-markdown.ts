@@ -114,6 +114,14 @@ function pruneRootContent(node: RootContent): RootContent | undefined {
       .filter(isDefined);
   }
 
+  if (
+    isElement(node) &&
+    node.tagName === "a" &&
+    !hasReadableLinkContent(node)
+  ) {
+    return undefined;
+  }
+
   return node;
 }
 
@@ -124,7 +132,7 @@ function pruneRootChildren(root: Root) {
 }
 
 const extractReadableBody: Plugin<[], Root> = () => (tree) => {
-  const body = findFirstElement(tree, "body");
+  const body = findFirstElement(tree, "main") ?? findFirstElement(tree, "body");
 
   if (body) {
     tree.children = [...body.children] as RootContent[];

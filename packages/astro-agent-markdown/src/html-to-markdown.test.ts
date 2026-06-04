@@ -32,6 +32,22 @@ Give agents **context**, not keys.
 `);
   });
 
+  it("prefers main content over page chrome", () => {
+    expect(
+      htmlToMarkdown(`<!doctype html>
+        <html>
+          <body>
+            <header><a href="/">Home</a></header>
+            <main><h1>Docs</h1><p>Canonical page content.</p></main>
+            <footer><a href="/contact/">Contact</a></footer>
+          </body>
+        </html>`)
+    ).toBe(`# Docs
+
+Canonical page content.
+`);
+  });
+
   it("converts tables to GitHub-flavored Markdown tables", () => {
     expect(
       htmlToMarkdown(`<table>

@@ -2,6 +2,11 @@ import fs from "node:fs/promises";
 
 import type { AstroIntegration } from "astro";
 
+import { exportAgentMarkdownBundles } from "./bundle";
+import type {
+  AgentMarkdownBundleOptions,
+  AgentMarkdownDocumentSet,
+} from "./bundle";
 import { exportHtmlMarkdownSidecars } from "./html-sidecars";
 
 export type AgentMarkdownContentCollection = {
@@ -14,13 +19,22 @@ export type AgentMarkdownHtmlOptions = {
 };
 
 export type AgentMarkdownOptions = {
+  bundle?: false | AgentMarkdownBundleOptions;
   content?: readonly AgentMarkdownContentCollection[];
   html?: false | AgentMarkdownHtmlOptions;
   exclude?: readonly RegExp[];
 };
 
+type InjectRoute = (route: {
+  entrypoint: URL;
+  pattern: string;
+  prerender?: boolean;
+}) => void;
+
 const DEFAULT_EXCLUDES = [/^\/404(?:\/|$)/u, /^\/_astro(?:\/|$)/u];
 const CONTENT_ROUTE_PARAM = "agentMarkdownSlug";
+const DEFAULT_BUNDLE_INDEX_URL = "/llms.txt";
+const SERVER_OPTIMIZE_DEPS = ["yaml"];
 
 function normalizeRoutePrefix(routePrefix: string) {
   const prefixed = routePrefix.startsWith("/")
@@ -45,6 +59,29 @@ function getContentEndpointFilename(
     .toLowerCase();
 
   return `content-${index}-${safeName || "collection"}.ts`;
+}
+
+function normalizeBundleRouteUrl(url: string) {
+  if (/^[a-z][a-z0-9+.-]*:/iu.test(url)) {
+    throw new Error(`Agent Markdown bundle URLs must be site-relative: ${url}`);
+  }
+
+  const routeUrl = url.startsWith("/") ? url : `/${url}`;
+
+  if (/(?:^|\/)\.\.(?:\/|$)/u.test(routeUrl)) {
+    throw new Error(`Invalid agent Markdown bundle URL: ${url}`);
+  }
+
+  return routeUrl;
+}
+
+function getBundleEndpointFilename(url: string, index: number) {
+  const safeName = normalizeBundleRouteUrl(url)
+    .replace(/[^a-z0-9]+/giu, "-")
+    .replace(/^-|-$/gu, "")
+    .toLowerCase();
+
+  return `bundle-${index}-${safeName || "agent-markdown"}.ts`;
 }
 
 async function writeContentEndpointEntrypoint(input: {
@@ -178,10 +215,151 @@ export const onRequest = createDevMarkdownMiddleware(options);
   await fs.writeFile(input.entrypoint, code);
 }
 
+function buildBundleIndexPreview(input: {
+  bundle: AgentMarkdownBundleOptions;
+}) {
+  const index =
+    input.bundle.index === false
+      ? undefined
+      : (input.bundle.index ?? {
+          title: "Agent Markdown",
+        });
+  const title = index?.title ?? "Agent Markdown";
+  const description = index?.description ? `\n\n> ${index.description}` : "";
+  const documentLinks = input.bundle.documents
+    .map(
+      (document) =>
+        `- [${document.title}](${normalizeBundleRouteUrl(document.url)}): ${document.description}`
+    )
+    .join("\n");
+
+  return `# ${title}${description}
+
+This is a development placeholder. Agent Markdown bundle files are generated from the built site.
+
+Use a production preview to inspect the exact generated files.
+
+## Generated Markdown
+
+${documentLinks}
+`;
+}
+
+function buildBundleDocumentPreview(document: AgentMarkdownDocumentSet) {
+  return `# ${document.title}
+
+> ${document.description}
+
+This is a development placeholder. The full Agent Markdown document is generated from the built site.
+
+Use a production preview to inspect the exact generated file.
+`;
+}
+
+function getBundleIndexUrl(bundle: AgentMarkdownBundleOptions) {
+  if (bundle.index === false) {
+    return undefined;
+  }
+
+  return normalizeBundleRouteUrl(bundle.index?.url ?? DEFAULT_BUNDLE_INDEX_URL);
+}
+
+async function writeBundleEndpointEntrypoint(input: {
+  entrypoint: URL;
+  markdown: string;
+}) {
+  const code = `import type { APIRoute } from "astro";
+
+export const prerender = false;
+
+const markdown = ${JSON.stringify(input.markdown)};
+
+export const GET: APIRoute = () =>
+  new Response(markdown, {
+    headers: {
+      "Content-Type": "text/markdown; charset=utf-8",
+    },
+  });
+
+export const HEAD: APIRoute = () =>
+  new Response(null, {
+    headers: {
+      "Content-Type": "text/markdown; charset=utf-8",
+    },
+  });
+`;
+
+  await fs.writeFile(input.entrypoint, code);
+}
+
+async function writeBundleDevEndpoints(input: {
+  bundle: AgentMarkdownBundleOptions;
+  codegenDir: URL;
+  injectRoute: InjectRoute;
+}) {
+  const indexUrl = getBundleIndexUrl(input.bundle);
+  const routes = [
+    ...(indexUrl === undefined
+      ? []
+      : [
+          {
+            markdown: buildBundleIndexPreview({
+              bundle: input.bundle,
+            }),
+            url: indexUrl,
+          },
+        ]),
+    ...input.bundle.documents.map((document) => ({
+      markdown: buildBundleDocumentPreview(document),
+      url: normalizeBundleRouteUrl(document.url),
+    })),
+  ];
+
+  await Promise.all(
+    routes.map(async (route, index) => {
+      const entrypoint = new URL(
+        getBundleEndpointFilename(route.url, index),
+        input.codegenDir
+      );
+
+      await writeBundleEndpointEntrypoint({
+        entrypoint,
+        markdown: route.markdown,
+      });
+
+      input.injectRoute({
+        entrypoint,
+        pattern: route.url,
+        prerender: false,
+      });
+    })
+  );
+}
+
+function createServerOptimizeDepsPlugin() {
+  return {
+    name: "onequery-agent-markdown-optimize-deps",
+    configEnvironment(environment: string) {
+      if (environment === "client") {
+        return;
+      }
+
+      // Dev Markdown middleware can import YAML during dev SSR.
+      // Pre-optimize it so workerd does not discover the CJS dependency mid-request.
+      return {
+        optimizeDeps: {
+          include: SERVER_OPTIMIZE_DEPS,
+        },
+      };
+    },
+  };
+}
+
 export function agentMarkdown(
   options: AgentMarkdownOptions = {}
 ): AstroIntegration {
   const content = options.content ?? [];
+  let site: string | undefined;
 
   return {
     name: "onequery-agent-markdown",
@@ -191,8 +369,19 @@ export function agentMarkdown(
         command,
         createCodegenDir,
         injectRoute,
+        config,
+        updateConfig,
       }) => {
+        site = config.site;
         const codegenDir = createCodegenDir();
+
+        if (command === "dev") {
+          updateConfig({
+            vite: {
+              plugins: [createServerOptimizeDepsPlugin()],
+            },
+          });
+        }
 
         await Promise.all(
           content.map(async (contentCollection, index) => {
@@ -216,6 +405,14 @@ export function agentMarkdown(
 
         if (command !== "dev") {
           return;
+        }
+
+        if (options.bundle !== false && options.bundle !== undefined) {
+          await writeBundleDevEndpoints({
+            bundle: options.bundle,
+            codegenDir,
+            injectRoute,
+          });
         }
 
         const entrypoint = new URL("dev-middleware.ts", codegenDir);
@@ -250,6 +447,20 @@ export function agentMarkdown(
         logger.info(
           `Exported ${exportedCount} HTML-derived Markdown page sidecars`
         );
+
+        if (options.bundle !== false && options.bundle !== undefined) {
+          const bundleResult = await exportAgentMarkdownBundles({
+            bundle: options.bundle,
+            dir,
+            exclude: options.exclude,
+            logger,
+            site,
+          });
+
+          logger.info(
+            `Exported ${bundleResult.documentCount} agent Markdown bundle documents from ${bundleResult.pageCount} pages`
+          );
+        }
       },
     },
   };
