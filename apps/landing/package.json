@@ -47,6 +47,7 @@
     "@emulators/core": "0.6.0",
     "@emulators/slack": "0.6.0",
     "@onequery/installer": "workspace:*",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "emulate": "0.6.0",

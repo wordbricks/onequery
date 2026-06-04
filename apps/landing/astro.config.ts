@@ -174,10 +174,89 @@ export default defineConfig({
       priority: 0.7,
     }),
     agentMarkdown({
+      bundle: {
+        documents: [
+          {
+            description:
+              "Complete Markdown export of OneQuery marketing, connector, comparison, blog, and documentation pages for agent ingestion.",
+            include: [
+              /^\/$/u,
+              /^\/blog(?:\/|$)/u,
+              /^\/compare(?:\/|$)/u,
+              /^\/connectors(?:\/|$)/u,
+              /^\/docs(?:\/|$)/u,
+            ],
+            promote: [
+              /^\/$/u,
+              /^\/docs\/$/u,
+              /^\/docs\/getting-started\/$/u,
+              /^\/connectors\/$/u,
+              /^\/compare\/$/u,
+              /^\/blog\/$/u,
+            ],
+            title: "OneQuery Full Site Markdown",
+            url: "/llms-full.txt",
+          },
+          {
+            description:
+              "Focused Markdown export of core OneQuery product, setup, source, and safety pages for smaller agent contexts.",
+            include: [
+              /^\/$/u,
+              /^\/connectors\/$/u,
+              /^\/docs\/$/u,
+              /^\/docs\/getting-started\/$/u,
+              /^\/docs\/guide\/(?:install-cli|connect-source|run-query|source-api|agent-tool-setup)\/$/u,
+              /^\/docs\/concepts\/(?:governed-access|query-boundaries|source-identifiers|audit-history)\/$/u,
+              /^\/docs\/security\/(?:security-architecture|data-handling|cost-limits)\/$/u,
+              /^\/docs\/operations\/(?:self-host|credential-management|audit-review)\/$/u,
+              /^\/blog\/(?:llm-safe-data-access-layer|do-not-give-agents-production-keys|debug-production-agent-runs-with-onequery)\/$/u,
+            ],
+            promote: [
+              /^\/$/u,
+              /^\/docs\/getting-started\/$/u,
+              /^\/docs\/guide\/install-cli\/$/u,
+              /^\/docs\/guide\/connect-source\/$/u,
+              /^\/docs\/guide\/run-query\/$/u,
+            ],
+            title: "OneQuery Essential Agent Markdown",
+            url: "/llms-small.txt",
+          },
+        ],
+        index: {
+          description:
+            "Agent-readable Markdown exports for OneQuery, a governed production context layer for AI agents.",
+          details:
+            "Use these files as canonical public context for OneQuery product positioning, setup guidance, connector coverage, safety model, and operating documentation.",
+          notes:
+            "- The generated Markdown is derived from the public OneQuery landing site at build time.\n- Prefer the smaller export for concise answers and the full export for retrieval or long-context ingestion.",
+          optionalLinks: [
+            {
+              description: "Source repository for OneQuery.",
+              label: "GitHub repository",
+              url: REPOSITORY_URL,
+            },
+            {
+              description: "Installable OneQuery CLI package.",
+              label: "npm package",
+              url: "https://www.npmjs.com/package/@onequery/cli",
+            },
+            {
+              description: "Search engine sitemap for public pages.",
+              label: "Sitemap",
+              url: "/sitemap-index.xml",
+            },
+          ],
+          title: "OneQuery",
+        },
+      },
       content: [
         {
           collection: "blog",
           routePrefix: "/blog",
+        },
+        {
+          collection: "compare",
+          routePrefix: "/compare",
         },
       ],
     }),
