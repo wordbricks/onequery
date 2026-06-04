@@ -1,4 +1,7 @@
 const LEAD_CAPTURE_SOURCE = "onequery_landing";
+const SLACK_SECTION_TEXT_LIMIT = 3000;
+const MESSAGE_BLOCK_PREFIX = "*Message*\n";
+const CONTINUED_MESSAGE_BLOCK_PREFIX = "*Message (continued)*\n";
 
 type SlackPlainText = {
   text: string;
@@ -83,19 +86,54 @@ export function createContactNotification(input: {
         ],
         type: "section",
       },
-      {
-        text: {
-          text: `*Message*\n${escapeSlackText(input.message)}`,
-          type: "mrkdwn",
-        },
-        type: "section",
-      },
+      ...createContactMessageBlocks(input.message),
       {
         elements: [{ text: `Source: ${LEAD_CAPTURE_SOURCE}`, type: "mrkdwn" }],
         type: "context",
       },
     ],
     text: `New contact request from ${input.name} (${input.email})`,
+  };
+}
+
+function createContactMessageBlocks(message: string): SlackSectionBlock[] {
+  const escapedMessage = escapeSlackText(message);
+  const firstChunkSize = SLACK_SECTION_TEXT_LIMIT - MESSAGE_BLOCK_PREFIX.length;
+  const continuedChunkSize =
+    SLACK_SECTION_TEXT_LIMIT - CONTINUED_MESSAGE_BLOCK_PREFIX.length;
+  const blocks = [
+    createMarkdownSectionBlock(
+      MESSAGE_BLOCK_PREFIX,
+      escapedMessage.slice(0, firstChunkSize)
+    ),
+  ];
+
+  for (
+    let offset = firstChunkSize;
+    offset < escapedMessage.length;
+    offset += continuedChunkSize
+  ) {
+    blocks.push(
+      createMarkdownSectionBlock(
+        CONTINUED_MESSAGE_BLOCK_PREFIX,
+        escapedMessage.slice(offset, offset + continuedChunkSize)
+      )
+    );
+  }
+
+  return blocks;
+}
+
+function createMarkdownSectionBlock(
+  prefix: string,
+  text: string
+): SlackSectionBlock {
+  return {
+    text: {
+      text: `${prefix}${text}`,
+      type: "mrkdwn",
+    },
+    type: "section",
   };
 }
 

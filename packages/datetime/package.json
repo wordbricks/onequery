@@ -14,5 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "vitest": "catalog:testing"
+  }
 }
