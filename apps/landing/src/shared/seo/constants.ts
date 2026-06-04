@@ -55,6 +55,7 @@ export const ONEQUERY = {
 
 export const SEO_PATHS = {
   BLOG: "/blog",
+  COMPARE: "/compare",
   CONNECTORS: "/connectors",
   DOCS: "/docs",
 } as const;
@@ -63,6 +64,8 @@ export const SCHEMA_FRAGMENTS = {
   ARTICLE: "article",
   BLOG: "blog",
   BREADCRUMB: "breadcrumb",
+  COMPARISON_CRITERIA: "comparison-criteria",
+  COMPARISONS: "comparisons",
   CONNECTOR: "connector",
   CONNECTORS: "connectors",
   DEMO_VIDEO: "demo-video",

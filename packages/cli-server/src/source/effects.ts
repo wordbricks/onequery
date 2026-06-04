@@ -48,7 +48,6 @@ export async function runCliLoadSourceEffect(input: {
 }): Promise<CliLoadSourceEffectResult> {
   const sourceConditions = [
     eq(dataSources.organizationId, input.effect.organizationId),
-    eq(dataSources.name, input.effect.sourceKey),
   ];
   if (input.effect.sourceProvider) {
     sourceConditions.push(
@@ -56,7 +55,7 @@ export async function runCliLoadSourceEffect(input: {
     );
   }
 
-  const row = await input.db.query.dataSources.findFirst({
+  const rows = await input.db.query.dataSources.findMany({
     columns: {
       id: true,
       name: true,
@@ -69,14 +68,11 @@ export async function runCliLoadSourceEffect(input: {
     where: and(...sourceConditions),
   });
 
-  if (!row) {
-    return {
-      kind: "not_found",
-    };
-  }
+  const row = rows
+    .map((candidate) => createCliQuerySourceRecord(candidate))
+    .find((source) => source?.sourceKey === input.effect.sourceKey);
 
-  const source = createCliQuerySourceRecord(row);
-  if (!source) {
+  if (!row) {
     return {
       kind: "not_found",
     };
@@ -84,7 +80,7 @@ export async function runCliLoadSourceEffect(input: {
 
   return {
     kind: "found",
-    source,
+    source: row,
   };
 }
 

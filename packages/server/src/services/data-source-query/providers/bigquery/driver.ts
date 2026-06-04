@@ -47,7 +47,7 @@ function buildBigQueryQueryOptions(input: {
 
   const location = normalizeBigQueryLocation(input.location);
   if (location.isErr()) {
-    return location;
+    return Result.err(location.error);
   }
 
   return Result.ok(

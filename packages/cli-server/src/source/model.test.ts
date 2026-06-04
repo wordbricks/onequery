@@ -39,6 +39,10 @@ describe("source model", () => {
     expect(createCliSourceKey(" .. ")).toBeNull();
   });
 
+  it("derives safe source keys from display-style connection names", () => {
+    expect(createCliSourceKey("Slack - wordbricks")).toBe("slack-wordbricks");
+  });
+
   it("exposes BigQuery as both query and API capable", () => {
     expect(getCliSourceInterfaceTypes("bigquery")).toEqual(["query", "api"]);
   });

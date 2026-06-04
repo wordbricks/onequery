@@ -121,7 +121,7 @@ function resolveLaminarQueryUrl(
       }),
   });
   if (urlResult.isErr()) {
-    return urlResult;
+    return Result.err(urlResult.error);
   }
   const url = urlResult.value;
 
