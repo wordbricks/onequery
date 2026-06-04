@@ -4,3 +4,9 @@ export type {
   AgentMarkdownHtmlOptions,
   AgentMarkdownOptions,
 } from "./astro-integration";
+export type {
+  AgentMarkdownBundleOptions,
+  AgentMarkdownDocumentSet,
+  AgentMarkdownIndexOptions,
+  AgentMarkdownLink,
+} from "./bundle";
