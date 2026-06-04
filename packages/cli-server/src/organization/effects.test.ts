@@ -43,7 +43,7 @@ async function insertDataSource(
     id: string;
     name: string;
     organizationId: string;
-    provider?: "github" | "postgres";
+    provider?: "github" | "postgres" | "slack";
   }
 ) {
   await db.insert(dataSources).values({
@@ -221,6 +221,63 @@ describe("runCliLoadOrgAccessWithSource", { timeout: 60_000 }, () => {
           organizationId: "org-source-found",
           provider: "github",
           sourceKey: "github-prod",
+          status: "active",
+        },
+      },
+    });
+  });
+
+  it("matches source API lookup by normalized CLI source key", async ({
+    db,
+  }) => {
+    await insertUser(db, "user-source-normalized");
+    await insertOrganization(db, {
+      id: "org-source-normalized",
+      name: "Normalized Source Org",
+      slug: "source-normalized",
+    });
+    await insertMember(db, {
+      id: "member-source-normalized",
+      organizationId: "org-source-normalized",
+      role: "owner",
+      userId: "user-source-normalized",
+    });
+    await insertDataSource(db, {
+      id: "source-normalized",
+      name: "Slack - Wordbricks",
+      organizationId: "org-source-normalized",
+      provider: "slack",
+    });
+
+    await expect(
+      runCliLoadOrgAccessWithSource({
+        db,
+        orgSlug: "source-normalized",
+        sourceKey: "slack-wordbricks",
+        sourceProvider: "slack",
+        userId: "user-source-normalized",
+      })
+    ).resolves.toEqual({
+      access: {
+        kind: "found",
+        org: {
+          id: "org-source-normalized",
+          name: "Normalized Source Org",
+          slug: "source-normalized",
+        },
+        rawMembershipRole: "owner",
+      },
+      source: {
+        kind: "found",
+        source: {
+          credentialsEncrypted: "encrypted-source-normalized",
+          credentialsIv: "iv-source-normalized",
+          displayName: null,
+          id: "source-normalized",
+          name: "Slack - Wordbricks",
+          organizationId: "org-source-normalized",
+          provider: "slack",
+          sourceKey: "slack-wordbricks",
           status: "active",
         },
       },
