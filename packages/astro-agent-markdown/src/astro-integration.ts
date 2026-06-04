@@ -34,6 +34,7 @@ type InjectRoute = (route: {
 const DEFAULT_EXCLUDES = [/^\/404(?:\/|$)/u, /^\/_astro(?:\/|$)/u];
 const CONTENT_ROUTE_PARAM = "agentMarkdownSlug";
 const DEFAULT_BUNDLE_INDEX_URL = "/llms.txt";
+const SERVER_OPTIMIZE_DEPS = ["yaml"];
 
 function normalizeRoutePrefix(routePrefix: string) {
   const prefixed = routePrefix.startsWith("/")
@@ -335,6 +336,25 @@ async function writeBundleDevEndpoints(input: {
   );
 }
 
+function createServerOptimizeDepsPlugin() {
+  return {
+    name: "onequery-agent-markdown-optimize-deps",
+    configEnvironment(environment: string) {
+      if (environment === "client") {
+        return;
+      }
+
+      // Dev Markdown middleware can import YAML during dev SSR.
+      // Pre-optimize it so workerd does not discover the CJS dependency mid-request.
+      return {
+        optimizeDeps: {
+          include: SERVER_OPTIMIZE_DEPS,
+        },
+      };
+    },
+  };
+}
+
 export function agentMarkdown(
   options: AgentMarkdownOptions = {}
 ): AstroIntegration {
@@ -350,9 +370,18 @@ export function agentMarkdown(
         createCodegenDir,
         injectRoute,
         config,
+        updateConfig,
       }) => {
         site = config.site;
         const codegenDir = createCodegenDir();
+
+        if (command === "dev") {
+          updateConfig({
+            vite: {
+              plugins: [createServerOptimizeDepsPlugin()],
+            },
+          });
+        }
 
         await Promise.all(
           content.map(async (contentCollection, index) => {
