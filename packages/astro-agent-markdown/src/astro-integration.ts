@@ -34,7 +34,7 @@ type InjectRoute = (route: {
 const DEFAULT_EXCLUDES = [/^\/404(?:\/|$)/u, /^\/_astro(?:\/|$)/u];
 const CONTENT_ROUTE_PARAM = "agentMarkdownSlug";
 const DEFAULT_BUNDLE_INDEX_URL = "/llms.txt";
-const SERVER_OPTIMIZE_DEPS = ["yaml"];
+const SERVER_OPTIMIZE_DEP_EXCLUDES = ["yaml"];
 
 function normalizeRoutePrefix(routePrefix: string) {
   const prefixed = routePrefix.startsWith("/")
@@ -338,17 +338,17 @@ async function writeBundleDevEndpoints(input: {
 
 function createServerOptimizeDepsPlugin() {
   return {
-    name: "onequery-agent-markdown-optimize-deps",
+    name: "onequery-agent-markdown-dep-optimizer",
     configEnvironment(environment: string) {
       if (environment === "client") {
         return;
       }
 
-      // Dev Markdown middleware can import YAML during dev SSR.
-      // Pre-optimize it so workerd does not discover the CJS dependency mid-request.
+      // The Cloudflare dev runner can invalidate deps_ssr chunks when YAML is
+      // optimized during a full reload. Keep it as source in server environments.
       return {
         optimizeDeps: {
-          include: SERVER_OPTIMIZE_DEPS,
+          exclude: SERVER_OPTIMIZE_DEP_EXCLUDES,
         },
       };
     },
