@@ -1,5 +1,6 @@
 ---
 import { Code } from "astro:components";
+import tokyoNight from "@shikijs/themes/tokyo-night";
 
 import {
   COPY_FEEDBACK_RESET_DELAY_MS,
@@ -69,7 +70,7 @@ function getInstallTabId(index: number) {
               defaultColor={false}
               inline
               lang="shell"
-              theme="tokyo-night"
+              theme={tokyoNight}
             />
           </span>
         ))

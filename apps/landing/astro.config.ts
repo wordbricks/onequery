@@ -7,6 +7,7 @@ import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
 import starlight from "@astrojs/starlight";
 import { agentMarkdown } from "@onequery/astro-agent-markdown/astro";
+import tokyoNight from "@shikijs/themes/tokyo-night";
 import { defineConfig, envField, fontProviders } from "astro/config";
 import { visualizer } from "rollup-plugin-visualizer";
 
@@ -263,6 +264,11 @@ export default defineConfig({
   ],
   markdown: {
     remarkPlugins: [remarkReadingTime],
+    // Applies to Markdown/MDX code fences. astro:components <Code /> does not
+    // inherit this config, so pass the imported theme object to <Code /> too.
+    shikiConfig: {
+      theme: tokyoNight,
+    },
   },
   server: {
     host: DEV_SERVER_HOST,
