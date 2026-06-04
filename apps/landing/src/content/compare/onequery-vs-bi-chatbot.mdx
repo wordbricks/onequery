@@ -1,0 +1,73 @@
+---
+order: 4
+title: "OneQuery vs BI Chatbot | Operational Agent Access"
+metaDescription: "Compare OneQuery with BI chatbots for AI agent data access. Use dashboards for business answers and governed sources for operational agents."
+alternativeName: "BI chatbot"
+category: "Analytics versus operations"
+eyebrow: "OneQuery vs BI chatbot"
+summary: "BI chatbots make analytics more accessible. OneQuery makes production source access safer for agents that do operational work."
+answer: "Use OneQuery instead of a BI chatbot when the agent needs operational production context, not just dashboard-backed analytics answers. BI chatbots are best for business metrics; OneQuery is built for governed source access by coding, incident, and internal automation agents."
+heroSignals:
+  - "BI for metrics"
+  - "OneQuery for source context"
+  - "Separate analytics from agent access"
+keywords:
+  - "OneQuery vs BI chatbot"
+  - "AI agent data access vs BI chatbot"
+  - "operational data access for agents"
+  - "business intelligence chatbot"
+  - "production context for coding agents"
+criteria:
+  - factor: "Primary context"
+    oneQuery: "Agents can query approved databases and provider APIs for task-specific production context."
+    alternative: "Answers usually come from dashboards, saved questions, models, or a BI semantic layer."
+  - factor: "Primary user"
+    oneQuery: "Designed for agent workflows running through CLI, gateway, and source commands."
+    alternative: "Designed for humans asking business questions in a BI workspace or embedded analytics surface."
+  - factor: "Governance model"
+    oneQuery: "Governance is tied to source credentials, query validation, limits, and audit history."
+    alternative: "Governance is tied to BI permissions, curated datasets, and metric definitions."
+  - factor: "Best answer shape"
+    oneQuery: "Best for retrieving narrow operational evidence that an agent can use to debug, triage, or automate."
+    alternative: "Great for explaining trends, charts, cohorts, and reports."
+  - factor: "Operational fit"
+    oneQuery: "Can connect production databases, warehouses, observability tools, product analytics, and developer systems."
+    alternative: "May not expose the low-level source, incident, or developer-tool context an engineering agent needs."
+oneQueryBestFor:
+  - "Coding agents investigating errors, logs, database state, or customer-impacting incidents."
+  - "Internal automations that need source-specific evidence, not only chart summaries."
+  - "Teams that need source execution audit history outside a BI workspace."
+alternativeBestFor:
+  - "Business users asking metric, dashboard, and report questions."
+  - "A governed semantic layer where terms like revenue, churn, and active user already have company-approved definitions."
+  - "Recurring executive or go-to-market workflows that belong in dashboards and scheduled reports."
+migrationSteps:
+  - "Keep dashboard and metric questions routed to the BI chatbot."
+  - "Identify operational agent workflows that need raw source context or developer-tool data."
+  - "Connect those sources to OneQuery with read-only or least-privilege credentials."
+  - "Document when agents should use BI answers versus OneQuery source execution."
+faqs:
+  - question: "Does OneQuery replace a BI chatbot?"
+    answer: "Usually no. A BI chatbot and OneQuery solve different layers. Use the BI chatbot for business analytics questions and OneQuery for governed source access in engineering and automation workflows."
+  - question: "How do I choose between the two?"
+    answer: "Choose a BI chatbot when the answer should come from approved metrics, dashboards, reports, or a semantic model. Choose OneQuery when an agent needs bounded access to production sources during an operational task."
+  - question: "Can BI and OneQuery coexist?"
+    answer: "Yes. Teams can keep BI as the business analytics interface and use OneQuery as the access layer for coding agents, incident agents, and internal tools that need broader source context."
+references:
+  - label: "OneQuery connectors"
+    href: "/connectors/"
+    description: "OneQuery docs on supported databases, warehouses, analytics systems, and developer tools."
+  - label: "Query boundaries"
+    href: "/docs/concepts/query-boundaries/"
+    description: "OneQuery docs on what source requests are allowed to do."
+---
+
+## Analytics answers and operational context are different jobs
+
+BI chatbots are strongest when the company has already curated the data shape: metrics, dashboards, models, reports, and common business definitions. That is the right interface for many business questions.
+
+Operational agents often need a different kind of evidence. They may need a narrow production query, a recent error from an observability tool, a linked issue, or a support-system record. OneQuery gives those workflows a source boundary without turning the BI layer into the agent runtime.
+
+## Recommended rollout
+
+Write down which questions should stay in BI. Route the remaining operational workflows through OneQuery sources, starting with incident or debugging tasks where audit history and small result windows matter.

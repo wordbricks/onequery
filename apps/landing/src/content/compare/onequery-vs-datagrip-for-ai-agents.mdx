@@ -1,0 +1,76 @@
+---
+order: 6
+title: "OneQuery vs DataGrip for AI Agents | Safe Database Access"
+metaDescription: "Compare OneQuery with DataGrip for AI agents. Keep DataGrip for human SQL work and OneQuery for bounded agent source access."
+alternativeName: "DataGrip for AI agents"
+category: "IDE versus agent access layer"
+eyebrow: "OneQuery vs DataGrip for agents"
+summary: "DataGrip is excellent for trusted humans writing SQL. OneQuery is the safer path when the caller is an agent that should not hold database connection details."
+answer: "Use OneQuery instead of DataGrip for AI agents when the user is an autonomous agent rather than a human SQL operator. DataGrip is a database IDE for people; OneQuery is a governed source access layer that lets agents query approved data without receiving database connection details."
+heroSignals:
+  - "DataGrip for humans"
+  - "OneQuery for agents"
+  - "No IDE credentials in runtime"
+keywords:
+  - "OneQuery vs DataGrip for AI agents"
+  - "DataGrip AI agent alternative"
+  - "AI agent SQL access"
+  - "database IDE versus agent access layer"
+  - "safe agent database queries"
+criteria:
+  - factor: "Primary user"
+    oneQuery: "OneQuery is built around agent and CLI workflows that need controlled source access."
+    alternative: "DataGrip is built around human database work: data sources, query consoles, SQL files, schema browsing, and editor assistance."
+  - factor: "Connection details"
+    oneQuery: "The agent receives a source identifier while OneQuery stores and uses the source credential server-side."
+    alternative: "The IDE needs connection details such as host, port, password, and related settings for each data source."
+  - factor: "Execution judgment"
+    oneQuery: "OneQuery applies deterministic boundaries before agent-generated SQL reaches the source."
+    alternative: "A human chooses which SQL to run and can inspect the database state through the IDE."
+  - factor: "Audit model"
+    oneQuery: "Source requests are recorded as agent access events with actor, source, operation, outcome, and time."
+    alternative: "IDE history and database logs may help, but they are not an agent access control plane."
+  - factor: "Best fit"
+    oneQuery: "Best for giving coding agents narrow, repeatable, auditable access to production context."
+    alternative: "Excellent for interactive development, schema exploration, and SQL authoring by trusted users."
+oneQueryBestFor:
+  - "AI coding agents that need database evidence during production debugging."
+  - "Teams that want humans to keep powerful IDEs while agents get narrower source interfaces."
+  - "Workflows where query validation and audit history matter more than IDE ergonomics."
+alternativeBestFor:
+  - "Human developers writing, debugging, and organizing SQL in a full database IDE."
+  - "Schema browsing, query consoles, data editor workflows, and database object inspection."
+  - "A trusted operator session where the person using the tool should hold the database connection details."
+migrationSteps:
+  - "Keep human SQL authoring and schema exploration in DataGrip."
+  - "Create a scoped OneQuery source for the production data the agent can inspect."
+  - "Remove DataGrip connection details, passwords, and DSNs from the agent environment."
+  - "Use OneQuery audit history to review the agent's production source activity."
+faqs:
+  - question: "Does OneQuery replace DataGrip?"
+    answer: "No. Keep DataGrip for human database work. Use OneQuery for agent workflows where the database credential should stay outside the agent runtime."
+  - question: "Why not give an agent a DataGrip connection?"
+    answer: "Giving an agent an IDE connection profile recreates the direct-credential problem. OneQuery lets the agent request data through a bounded interface without owning the connection details."
+  - question: "How can developers use DataGrip and OneQuery together?"
+    answer: "A developer can use DataGrip to design or verify a query, then give the agent a OneQuery source and a narrow command pattern for repeatable production-safe runs."
+references:
+  - label: "DataGrip data sources"
+    href: "https://www.jetbrains.com/help/datagrip/managing-data-sources.html"
+    description: "JetBrains documentation on DataGrip data sources and supported databases."
+  - label: "DataGrip database connections"
+    href: "https://www.jetbrains.com/help/datagrip/connecting-to-a-database.html"
+    description: "JetBrains documentation on DataGrip database connection details and sessions."
+  - label: "DataGrip code editor"
+    href: "https://www.jetbrains.com/help/datagrip/code-editor.html"
+    description: "JetBrains documentation on DataGrip SQL query editing and consoles."
+---
+
+## Keep the IDE for humans
+
+DataGrip is a strong human database IDE. It helps trusted operators manage data sources, write SQL, inspect schemas, and work interactively with query consoles.
+
+That is a different job from giving an autonomous agent production context. An agent does not need the full IDE connection profile. It needs a narrow way to ask a source-specific question and receive a bounded answer.
+
+## Recommended rollout
+
+Keep DataGrip in the human workflow for query design and review. Give the agent a OneQuery source identifier and remove IDE connection details from the agent runtime.

@@ -1,0 +1,76 @@
+---
+order: 5
+title: "OneQuery vs Metabase for AI Agents | Governed Data Access"
+metaDescription: "Compare OneQuery with Metabase for AI agents. See when to use BI-curated analytics versus governed production source access."
+alternativeName: "Metabase for AI agents"
+category: "BI platform comparison"
+eyebrow: "OneQuery vs Metabase for agents"
+summary: "Metabase is the right home for BI-curated analytics. OneQuery is the access boundary for agents that need operational source context outside the BI workspace."
+answer: "Use OneQuery instead of Metabase for AI agents when the agent needs governed production source access across databases, APIs, and developer tools. Use Metabase when the agent should stay inside BI-curated dashboards, questions, models, and Metabot or Metabase MCP workflows."
+heroSignals:
+  - "Metabase for BI context"
+  - "OneQuery for source execution"
+  - "Clear agent access boundary"
+keywords:
+  - "OneQuery vs Metabase for AI agents"
+  - "Metabase AI agent alternative"
+  - "Metabase MCP server alternative"
+  - "BI chatbot vs agent data access"
+  - "governed production data access"
+criteria:
+  - factor: "Product center"
+    oneQuery: "OneQuery centers governed source access for agents, CLI workflows, and self-hosted gateways."
+    alternative: "Metabase centers analytics content such as dashboards, questions, models, collections, and the Metabot AI experience."
+  - factor: "Data path"
+    oneQuery: "Best when an agent needs bounded execution against approved production sources and provider APIs."
+    alternative: "Best when the answer should come from existing BI assets and user-scoped Metabase permissions."
+  - factor: "Agent job"
+    oneQuery: "Strong fit for production debugging, incident triage, release review, and operational evidence gathering."
+    alternative: "Strong fit for analytics exploration, report follow-up, and embedded BI chat."
+  - factor: "AI integration"
+    oneQuery: "OneQuery gives the agent a governed command and source interface independent of a BI workspace."
+    alternative: "Metabase MCP connects third-party AI tools to Metabase data, with responses scoped to Metabase permissions."
+  - factor: "Control surface"
+    oneQuery: "Governance follows source credentials, query boundaries, result limits, and audit history for agent execution."
+    alternative: "Governance follows Metabase content, permissions, and available AI controls."
+oneQueryBestFor:
+  - "Coding agents that need production context from databases, logs, issue trackers, and APIs."
+  - "Teams that do not want BI permissions to become the only control plane for operational agents."
+  - "Agent workflows where each source request needs a bounded execution record."
+alternativeBestFor:
+  - "Teams already using Metabase as the source of truth for dashboards, questions, models, and analytics content."
+  - "Business users who need a BI-native assistant inside Metabase or an embedded analytics experience."
+  - "Agents that should answer from Metabase-curated analytics rather than querying operational systems directly."
+migrationSteps:
+  - "Keep business metric and dashboard questions in Metabase."
+  - "Identify agent workflows that need production databases, logs, support tools, or developer APIs outside BI."
+  - "Connect those operational sources to OneQuery with scoped credentials."
+  - "Teach agents which questions belong in Metabase and which source operations go through OneQuery."
+faqs:
+  - question: "Does OneQuery replace Metabase?"
+    answer: "No. Metabase is a BI platform, and OneQuery is a governed access layer for agents. Many teams can use Metabase for analytics and OneQuery for operational source access."
+  - question: "When should an AI agent use OneQuery instead of Metabase?"
+    answer: "Use Metabase when the agent should answer from curated BI content. Use OneQuery when the agent needs to inspect approved production sources or developer systems through a bounded execution path."
+  - question: "Can OneQuery and Metabase be used together?"
+    answer: "Yes. Keep Metabase permissions and dashboards for analytics, then use OneQuery for the production sources and operational APIs that should not be exposed as raw credentials to coding agents."
+references:
+  - label: "Metabase AI overview"
+    href: "https://www.metabase.com/docs/latest/ai/overview"
+    description: "Metabase documentation for Metabot, embedded AI chat, and the Metabase MCP server."
+  - label: "Metabase basic exploration"
+    href: "https://www.metabase.com/docs/latest/exploration-and-organization/exploration"
+    description: "Metabase documentation for dashboards, questions, models, collections, databases, and tables."
+  - label: "OneQuery governed access"
+    href: "/docs/concepts/governed-access/"
+    description: "OneQuery docs on keeping credentials outside the agent while exposing a controlled source interface."
+---
+
+## Keep BI context in BI
+
+Metabase is strongest when the agent should work through analytics assets the business already understands: dashboards, saved questions, models, collections, and user-scoped BI permissions. That is a useful boundary for analytics answers.
+
+OneQuery fits the workflows that should not be reduced to a dashboard question. A coding or incident agent may need operational source context from databases, observability systems, issue trackers, and provider APIs. Those requests need credential isolation and execution records even when the team already has a BI platform.
+
+## Recommended rollout
+
+Keep Metabase as the analytics home. Add OneQuery for operational sources that are useful to agents but should not appear as raw credentials in a coding-agent runtime.

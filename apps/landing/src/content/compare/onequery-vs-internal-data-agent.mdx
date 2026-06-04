@@ -1,0 +1,73 @@
+---
+order: 3
+title: "OneQuery vs Internal Data Agent | Build vs Govern"
+metaDescription: "Compare OneQuery with building an internal data agent. Keep custom agent logic while outsourcing source credentials, limits, and audit trails."
+alternativeName: "internal data agent"
+category: "Build versus govern"
+eyebrow: "OneQuery vs building the whole agent stack"
+summary: "An internal agent can be the right product choice. OneQuery makes sure that agent does not also become the credential store and production query gate."
+answer: "Use OneQuery with an internal data agent when you want to build custom agent behavior without rebuilding the production access layer. The internal agent can own planning and UX while OneQuery owns source credentials, query boundaries, limits, and audit logs."
+heroSignals:
+  - "Keep custom agent logic"
+  - "Outsource access controls"
+  - "Ship sources faster"
+keywords:
+  - "OneQuery vs internal data agent"
+  - "build internal data agent"
+  - "AI data agent infrastructure"
+  - "agent access control plane"
+  - "governed production data access"
+criteria:
+  - factor: "Infrastructure scope"
+    oneQuery: "OneQuery provides the source access layer so the internal agent can focus on task logic and user experience."
+    alternative: "The internal team must design and maintain credential storage, source mapping, query safety, limits, and audit behavior."
+  - factor: "Secret handling"
+    oneQuery: "Credentials stay centralized behind named sources and do not need to appear in agent prompts or runtime env vars."
+    alternative: "Credentials often spread across service configs, worker environments, and prototype scripts."
+  - factor: "New source rollout"
+    oneQuery: "Teams add approved sources through a consistent connection, command, and audit model."
+    alternative: "Each source needs custom policy and logging code before it is safe for production use."
+  - factor: "Operational review"
+    oneQuery: "Access history is part of the governed data layer from the start."
+    alternative: "Audit review is usually a bespoke feature that competes with agent product work."
+  - factor: "Responsibility split"
+    oneQuery: "The agent asks and interprets; OneQuery resolves sources, validates requests, executes, and records outcomes."
+    alternative: "The internal agent becomes responsible for both reasoning and security-sensitive execution."
+oneQueryBestFor:
+  - "Teams that want custom agent UX without owning every production access control."
+  - "Engineering agents that need real operational context from several sources."
+  - "Organizations that need source-by-source rollout, review, and audit behavior."
+alternativeBestFor:
+  - "A differentiated product experience where the agent workflow itself is the core product."
+  - "Custom reasoning, planning, or UI behavior that cannot be bought as infrastructure."
+  - "A narrow internal prototype that uses one data source and a small trusted user group."
+migrationSteps:
+  - "Identify where the internal agent currently stores or receives source credentials."
+  - "Move one production source into OneQuery with a read-only upstream credential."
+  - "Change the agent tool call to use a OneQuery source identifier instead of direct source metadata."
+  - "Keep custom planning and response logic in the agent while reviewing source execution in OneQuery."
+faqs:
+  - question: "Does OneQuery replace our internal data agent?"
+    answer: "No. OneQuery is the data access boundary, not the reasoning layer. Internal teams can still build custom agents, prompts, UIs, and workflows while delegating governed source access to OneQuery."
+  - question: "What should we build ourselves?"
+    answer: "Build the agent behavior that is specific to your company. Use OneQuery for the repeated infrastructure work around credentials, source identifiers, safe execution, result limits, and audit history."
+  - question: "How should an internal agent adopt OneQuery?"
+    answer: "Connect one low-risk read-only source first, give the internal agent only the source identifier and command surface, and review audit history after the first automated runs."
+references:
+  - label: "Governed access"
+    href: "/docs/concepts/governed-access/"
+    description: "OneQuery docs on the split between what stays outside the agent and what the agent receives."
+  - label: "Security architecture"
+    href: "/docs/security/security-architecture/"
+    description: "OneQuery docs on credential boundaries and reviewable request flow."
+---
+
+## Build the agent, not the whole access layer
+
+Internal data agents are often worth building when the workflow is specific to the company. The risky part is letting that project quietly expand into credential management, query validation, source authorization, rate limits, and audit review.
+
+OneQuery gives the internal agent a smaller contract. The agent decides what to ask and how to explain the result. OneQuery decides which source can be used, how the request executes, and what record operators can review later.
+
+## Recommended rollout
+
+Keep the custom agent UI and planning loop. Replace direct source calls one at a time with OneQuery-backed source commands, starting with a read-only source that supports a real operational workflow.

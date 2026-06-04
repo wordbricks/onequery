@@ -1,0 +1,90 @@
+---
+import {
+  getComparisonPages,
+  getComparisonPath,
+} from "@/features/compare/data";
+import "@/features/compare/styles.css";
+import MarketingLayout from "@/layouts/MarketingLayout.astro";
+import TrackedLink from "@/shared/components/TrackedLink.astro";
+import {
+  createCanonicalUrl,
+  createComparisonIndexStructuredData,
+} from "@/shared/seo/schema";
+
+export const prerender = true;
+
+const title = "OneQuery Comparisons | Safe AI Agent Data Access";
+const description =
+  "Compare OneQuery with direct credentials, MCP database servers, internal data agents, BI chatbots, Metabase, and DataGrip for AI agent access.";
+const canonicalUrl = createCanonicalUrl("/compare", Astro.site);
+const comparisons = await getComparisonPages();
+const structuredData = createComparisonIndexStructuredData({
+  comparisons,
+  description,
+  site: Astro.site,
+  title,
+});
+---
+
+<MarketingLayout
+  canonicalUrl={canonicalUrl}
+  description={description}
+  keywords="OneQuery comparisons, AI agent data access comparison, MCP database server alternative, Metabase AI agents, DataGrip AI agents, direct database credentials"
+  shellClass="page-shell compare-shell"
+  structuredData={structuredData}
+  title={title}
+>
+  <main class="compare-index-main">
+    <section class="compare-index-hero">
+      <div class="compare-index-copy">
+        <p class="eyebrow">Compare OneQuery</p>
+        <h1>Choose the right data access boundary for AI agents.</h1>
+        <p>
+          These comparisons separate protocol adapters, BI tools, IDEs, and
+          custom agents from the governed source access layer production
+          workflows still need.
+        </p>
+      </div>
+      <ul class="compare-index-signals" aria-label="Comparison themes">
+        <li>Credential isolation</li>
+        <li>Read-only query boundaries</li>
+        <li>Agent audit history</li>
+      </ul>
+    </section>
+
+    <section class="compare-index-grid" aria-label="OneQuery comparisons">
+      {
+        comparisons.map((comparison) => (
+          <a class="compare-index-card" href={getComparisonPath(comparison)}>
+            <span class="compare-card-category">{comparison.category}</span>
+            <h2>{comparison.alternativeName}</h2>
+            <p>{comparison.summary}</p>
+            <span class="compare-card-link">Read comparison</span>
+          </a>
+        ))
+      }
+    </section>
+
+    <section class="compare-index-answer" aria-labelledby="compare-answer">
+      <p class="eyebrow">Direct answer</p>
+      <h2 id="compare-answer">
+        OneQuery is for governed production source access, not dashboards or
+        human SQL editing.
+      </h2>
+      <p>
+        Teams can keep BI platforms, MCP clients, database IDEs, and internal
+        agents. OneQuery fits where those systems need a shared access layer
+        that keeps credentials centralized, applies deterministic limits, and
+        records what agents did.
+      </p>
+      <TrackedLink
+        class="button button-primary"
+        href="/docs/concepts/governed-access/"
+        trackingName="compare_index_governed_access"
+        trackingSection="compare_index_answer"
+      >
+        Read governed access docs
+      </TrackedLink>
+    </section>
+  </main>
+</MarketingLayout>

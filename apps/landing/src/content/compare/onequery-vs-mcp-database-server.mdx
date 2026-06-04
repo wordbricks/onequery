@@ -1,0 +1,73 @@
+---
+order: 2
+title: "OneQuery vs MCP Database Server | Governed Agent Data Access"
+metaDescription: "Compare OneQuery with a database MCP server for AI agent data access, credential isolation, query boundaries, and audit history."
+alternativeName: "MCP database server"
+category: "Protocol adapter"
+eyebrow: "OneQuery vs MCP database server"
+summary: "MCP helps an AI application discover and call tools. OneQuery handles the production data boundary those tools still need."
+answer: "Use OneQuery instead of a generic MCP database server when the main problem is governed production access, not only tool exposure. MCP standardizes how AI applications call tools and resources; OneQuery focuses on credential isolation, query boundaries, source limits, and audit history for those data operations."
+heroSignals:
+  - "Protocol-compatible workflows"
+  - "Governed execution layer"
+  - "Central source audit history"
+keywords:
+  - "OneQuery vs MCP database server"
+  - "MCP database server alternative"
+  - "AI agent database MCP"
+  - "governed MCP data access"
+  - "agent query audit logs"
+criteria:
+  - factor: "Primary job"
+    oneQuery: "OneQuery is the execution boundary for source credentials, read-only SQL, result limits, and audit records."
+    alternative: "The MCP server defines the tool surface, and governance depends on the server implementation."
+  - factor: "Credential placement"
+    oneQuery: "Source credentials are centralized in OneQuery configuration and can be hidden from the AI client."
+    alternative: "Credentials usually live wherever the database MCP server is deployed or configured."
+  - factor: "Policy depth"
+    oneQuery: "OneQuery applies deterministic query validation and source controls before the request reaches the database."
+    alternative: "The protocol can expose tools and resources, but database safety is not automatic."
+  - factor: "Review path"
+    oneQuery: "Operators review source activity through a product-level audit history tied to approved sources."
+    alternative: "Tool logs may exist in the AI client, MCP host, or custom server logs."
+  - factor: "Scaling sources"
+    oneQuery: "Multiple databases and APIs use a consistent source identifier model and governed access path."
+    alternative: "Each database server may need its own credential, logging, and policy behavior."
+oneQueryBestFor:
+  - "Production database access where MCP tool exposure needs a stronger execution boundary."
+  - "Teams standardizing agent access across databases, warehouses, and provider APIs."
+  - "Operators who need query-level audit history outside the AI client transcript."
+alternativeBestFor:
+  - "A prototype where the database is local, read-only, and not production-sensitive."
+  - "A team that already has a hardened MCP database server with strong policy, logging, and credential handling."
+  - "An AI application that only needs a protocol adapter and not a broader access control plane."
+migrationSteps:
+  - "List the database tools your MCP server currently exposes."
+  - "Move the underlying database credential into a OneQuery source."
+  - "Route agent SQL execution through OneQuery and keep MCP as the optional client adapter."
+  - "Compare MCP tool logs with OneQuery audit history during the first production runs."
+faqs:
+  - question: "Does OneQuery replace MCP?"
+    answer: "No. MCP is a useful protocol for connecting AI applications to tools. OneQuery can complement MCP by acting as the governed data execution layer behind the tool surface."
+  - question: "When is an MCP database server enough?"
+    answer: "A database MCP server is enough when the data is low-risk and the server already enforces the policy you need. Use OneQuery when production credentials, query validation, source limits, and audit review are first-class requirements."
+  - question: "How do teams use OneQuery with MCP clients?"
+    answer: "Expose a OneQuery command or service through the MCP host, or keep OneQuery as the CLI/gateway path for agents that do not need MCP. The important part is that the database credential does not move into the AI client."
+references:
+  - label: "Model Context Protocol server concepts"
+    href: "https://modelcontextprotocol.io/docs/learn/server-concepts"
+    description: "The MCP docs describe servers as programs that expose capabilities, including database servers for data queries."
+  - label: "OneQuery query boundaries"
+    href: "/docs/concepts/query-boundaries/"
+    description: "OneQuery docs on the deterministic boundary around SQL and source API requests."
+---
+
+## MCP is an interface, not the whole boundary
+
+MCP gives AI applications a standard way to discover and invoke tools. That is useful, but it does not decide where production credentials live, which SQL shapes are allowed, how broad results may be, or how operators review source activity.
+
+OneQuery fits below or beside an MCP host. The MCP layer can remain the client adapter while OneQuery handles the part that has to be deterministic: source resolution, credential use, validation, limits, and audit records.
+
+## Recommended rollout
+
+Keep the MCP tool surface narrow. Move the database credential behind OneQuery first, then expose only the OneQuery-backed operation to the MCP host. That gives the agent a familiar tool while moving the production risk out of the client.
