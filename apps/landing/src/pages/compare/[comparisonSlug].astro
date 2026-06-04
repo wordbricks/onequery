@@ -1,0 +1,248 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { render } from "astro:content";
+import OneQueryIcon from "@/assets/onequery-icon.svg";
+import {
+  getComparisonEntries,
+  getComparisonKeywords,
+  getComparisonPages,
+  getComparisonPath,
+  getRelatedComparisons,
+  toComparisonPage,
+} from "@/features/compare/data";
+import "@/features/compare/styles.css";
+import MarketingLayout from "@/layouts/MarketingLayout.astro";
+import TrackedLink from "@/shared/components/TrackedLink.astro";
+import {
+  createCanonicalUrl,
+  createComparisonPageStructuredData,
+} from "@/shared/seo/schema";
+
+export const prerender = true;
+
+export async function getStaticPaths() {
+  const entries = await getComparisonEntries();
+
+  return entries.map((entry) => ({
+    params: {
+      comparisonSlug: entry.id,
+    },
+    props: {
+      entry,
+    },
+  }));
+}
+
+interface Props {
+  entry: CollectionEntry<"compare">;
+}
+
+const { entry } = Astro.props;
+const comparison = toComparisonPage(entry);
+const { Content } = await render(entry);
+const comparisons = await getComparisonPages();
+const relatedComparisons = getRelatedComparisons(comparison, comparisons);
+const canonicalUrl = createCanonicalUrl(getComparisonPath(comparison), Astro.site);
+const structuredData = createComparisonPageStructuredData({
+  comparison,
+  relatedComparisons,
+  site: Astro.site,
+});
+
+function isExternalLink(href: string) {
+  return /^https?:\/\//u.test(href);
+}
+---
+
+<MarketingLayout
+  canonicalUrl={canonicalUrl}
+  description={comparison.metaDescription}
+  keywords={getComparisonKeywords(comparison)}
+  shellClass="page-shell compare-shell"
+  structuredData={structuredData}
+  title={comparison.title}
+>
+  <main class="compare-detail-main">
+    <nav class="compare-breadcrumb" aria-label="Breadcrumb">
+      <a href="/compare/">Compare</a>
+      <span aria-hidden="true">/</span>
+      <span>{comparison.alternativeName}</span>
+    </nav>
+
+    <section class="compare-detail-hero">
+      <div class="compare-detail-copy">
+        <p class="eyebrow">{comparison.eyebrow}</p>
+        <h1>{comparison.title.replace(" | ", ": ")}</h1>
+        <p class="compare-detail-lede">{comparison.summary}</p>
+        <div class="compare-detail-actions">
+          <TrackedLink
+            class="button button-primary"
+            href="/docs/guide/connect-source/"
+            trackingName="compare_detail_connect_source"
+            trackingSection="compare_detail_hero"
+          >
+            Connect a source
+          </TrackedLink>
+          <TrackedLink
+            class="button button-secondary"
+            href="/connectors/"
+            trackingName="compare_detail_connectors"
+            trackingSection="compare_detail_hero"
+          >
+            View connectors
+          </TrackedLink>
+        </div>
+      </div>
+
+      <aside
+        class="compare-hero-visual"
+        aria-label={`${comparison.alternativeName} comparison summary`}
+      >
+        <div class="compare-flow-head">
+          <span class="compare-flow-logo" aria-hidden="true">
+            <OneQueryIcon width={36} height={36} />
+          </span>
+          <span>
+            <strong>OneQuery</strong>
+            <span>agent access boundary</span>
+          </span>
+        </div>
+        <ol class="compare-flow-steps">
+          <li>Agent request</li>
+          <li>Source policy</li>
+          <li>Bounded result</li>
+          <li>Audit record</li>
+        </ol>
+        <ul class="compare-hero-signals">
+          {comparison.heroSignals.map((signal) => <li>{signal}</li>)}
+        </ul>
+      </aside>
+    </section>
+
+    <section class="compare-answer-section" aria-labelledby="answer-heading">
+      <p class="eyebrow">Direct answer</p>
+      <h2 id="answer-heading">
+        OneQuery vs {comparison.alternativeName}: which should agents use?
+      </h2>
+      <p>{comparison.answer}</p>
+    </section>
+
+    <article class="compare-mdx-content">
+      <Content />
+    </article>
+
+    <section class="compare-section" aria-labelledby="criteria-heading">
+      <div class="compare-section-heading">
+        <p class="eyebrow">Comparison criteria</p>
+        <h2 id="criteria-heading">Where the boundary lives</h2>
+      </div>
+      <div class="compare-table-wrap">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th scope="col">Factor</th>
+              <th scope="col">OneQuery</th>
+              <th scope="col">{comparison.alternativeName}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              comparison.criteria.map((criterion) => (
+                <tr>
+                  <th scope="row">{criterion.factor}</th>
+                  <td>{criterion.oneQuery}</td>
+                  <td>{criterion.alternative}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="compare-fit-grid" aria-label="Best fit guidance">
+      <article class="compare-fit-panel compare-fit-panel-primary">
+        <p class="eyebrow">Choose OneQuery when</p>
+        <ul>
+          {comparison.oneQueryBestFor.map((item) => <li>{item}</li>)}
+        </ul>
+      </article>
+      <article class="compare-fit-panel">
+        <p class="eyebrow">Choose {comparison.alternativeName} when</p>
+        <ul>
+          {comparison.alternativeBestFor.map((item) => <li>{item}</li>)}
+        </ul>
+      </article>
+    </section>
+
+    <section class="compare-section" aria-labelledby="migration-heading">
+      <div class="compare-section-heading">
+        <p class="eyebrow">Rollout pattern</p>
+        <h2 id="migration-heading">Move access without changing the agent job.</h2>
+      </div>
+      <ol class="compare-migration-list">
+        {comparison.migrationSteps.map((step) => <li>{step}</li>)}
+      </ol>
+    </section>
+
+    <section class="compare-section compare-faq-section" aria-labelledby="faq-heading">
+      <div class="compare-section-heading">
+        <p class="eyebrow">FAQ</p>
+        <h2 id="faq-heading">Common questions</h2>
+      </div>
+      <div class="compare-faq-list">
+        {
+          comparison.faqs.map((faq) => (
+            <section>
+              <h3>{faq.question}</h3>
+              <p>{faq.answer}</p>
+            </section>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="compare-section" aria-labelledby="references-heading">
+      <div class="compare-section-heading">
+        <p class="eyebrow">Reference points</p>
+        <h2 id="references-heading">Docs behind the comparison</h2>
+      </div>
+      <div class="compare-reference-grid">
+        {
+          comparison.references.map((reference) => (
+            <a
+              class="compare-reference-card"
+              href={reference.href}
+              target={isExternalLink(reference.href) ? "_blank" : undefined}
+              rel={isExternalLink(reference.href) ? "noreferrer" : undefined}
+            >
+              <strong>{reference.label}</strong>
+              <span>{reference.description}</span>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="compare-related-section" aria-labelledby="related-heading">
+      <div class="compare-section-heading">
+        <p class="eyebrow">Related comparisons</p>
+        <h2 id="related-heading">Other agent access choices</h2>
+      </div>
+      <div class="compare-related-grid">
+        {
+          relatedComparisons.map((relatedComparison) => (
+            <a
+              class="compare-related-card"
+              href={getComparisonPath(relatedComparison)}
+            >
+              <span>{relatedComparison.category}</span>
+              <strong>{relatedComparison.alternativeName}</strong>
+              <em>{relatedComparison.summary}</em>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+  </main>
+</MarketingLayout>

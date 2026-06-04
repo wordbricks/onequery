@@ -1,6 +1,7 @@
 import type { JsonLdObject, StructuredDataGraph } from "@onequery/astro-seo";
 
 import type { BlogPost, BlogPostSummary } from "@/features/blog/types";
+import type { ComparisonPage } from "@/features/compare/types";
 import type {
   ConnectorFaq,
   DataSourceConnector,
@@ -94,6 +95,19 @@ type ConnectorPageStructuredDataInput = {
   relatedConnectors: readonly DataSourceConnector[];
   site?: SiteInput;
   title: string;
+};
+
+type ComparisonIndexStructuredDataInput = {
+  comparisons: readonly ComparisonPage[];
+  description: string;
+  site?: SiteInput;
+  title: string;
+};
+
+type ComparisonPageStructuredDataInput = {
+  comparison: ComparisonPage;
+  relatedComparisons: readonly ComparisonPage[];
+  site?: SiteInput;
 };
 
 type DocsIndexStructuredDataInput = {
@@ -339,6 +353,30 @@ function createConnectorFeatureList(connector: DataSourceConnector) {
   ];
 }
 
+function getComparisonPagePath(comparison: Pick<ComparisonPage, "slug">) {
+  return `${SEO_PATHS.COMPARE}/${comparison.slug}`;
+}
+
+function createComparisonSummaryStructuredData(
+  comparison: ComparisonPage,
+  site: SiteInput
+): StructuredDataNode {
+  const pageUrl = createCanonicalUrl(getComparisonPagePath(comparison), site);
+
+  return {
+    "@type": "WebPage",
+    "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.WEBPAGE),
+    url: pageUrl,
+    name: comparison.title,
+    headline: comparison.title,
+    description: comparison.metaDescription,
+    inLanguage: "en",
+    about: {
+      "@id": getSoftwareApplicationId(site),
+    },
+  };
+}
+
 function createConnectorSoftwareApplication(
   connector: DataSourceConnector,
   site: SiteInput
@@ -488,6 +526,169 @@ export function createDocsIndexStructuredData(
           position: 2,
           name: "Documentation",
           item: docsUrl,
+        },
+      ],
+    },
+  ]);
+}
+
+export function createComparisonIndexStructuredData(
+  input: ComparisonIndexStructuredDataInput
+): StructuredDataGraph {
+  const siteUrl = normalizeSiteUrl(input.site);
+  const compareUrl = createCanonicalUrl(SEO_PATHS.COMPARE, siteUrl);
+
+  return createGraph([
+    ...createSiteGraph(siteUrl),
+    createOneQuerySoftwareApplication({
+      description: ONEQUERY.SITE_DESCRIPTION,
+      site: siteUrl,
+    }),
+    {
+      "@type": "CollectionPage",
+      "@id": getNodeId(compareUrl, SCHEMA_FRAGMENTS.WEBPAGE),
+      url: compareUrl,
+      name: input.title,
+      description: input.description,
+      inLanguage: "en",
+      isPartOf: {
+        "@id": getWebsiteId(siteUrl),
+      },
+      about: {
+        "@id": getSoftwareApplicationId(siteUrl),
+      },
+      mainEntity: {
+        "@id": getNodeId(compareUrl, SCHEMA_FRAGMENTS.COMPARISONS),
+      },
+      breadcrumb: {
+        "@id": getNodeId(compareUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
+      },
+    },
+    {
+      "@type": "ItemList",
+      "@id": getNodeId(compareUrl, SCHEMA_FRAGMENTS.COMPARISONS),
+      name: `${ONEQUERY.NAME} AI agent data access comparisons`,
+      numberOfItems: input.comparisons.length,
+      itemListElement: input.comparisons.map((comparison, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        item: createComparisonSummaryStructuredData(comparison, siteUrl),
+      })),
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": getNodeId(compareUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: ONEQUERY.NAME,
+          item: `${siteUrl}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Compare",
+          item: compareUrl,
+        },
+      ],
+    },
+  ]);
+}
+
+export function createComparisonPageStructuredData(
+  input: ComparisonPageStructuredDataInput
+): StructuredDataGraph {
+  const siteUrl = normalizeSiteUrl(input.site);
+  const compareUrl = createCanonicalUrl(SEO_PATHS.COMPARE, siteUrl);
+  const pageUrl = createCanonicalUrl(
+    getComparisonPagePath(input.comparison),
+    siteUrl
+  );
+
+  return createGraph([
+    ...createSiteGraph(siteUrl),
+    createOneQuerySoftwareApplication({
+      description: ONEQUERY.SITE_DESCRIPTION,
+      site: siteUrl,
+    }),
+    {
+      "@type": "WebPage",
+      "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.WEBPAGE),
+      url: pageUrl,
+      name: input.comparison.title,
+      headline: input.comparison.title,
+      description: input.comparison.metaDescription,
+      inLanguage: "en",
+      isPartOf: {
+        "@id": getWebsiteId(siteUrl),
+      },
+      about: {
+        "@id": getSoftwareApplicationId(siteUrl),
+      },
+      mainEntity: {
+        "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.COMPARISON_CRITERIA),
+      },
+      hasPart: [
+        {
+          "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.COMPARISON_CRITERIA),
+        },
+        {
+          "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.FAQ),
+        },
+      ],
+      relatedLink: input.relatedComparisons.map((comparison) =>
+        createCanonicalUrl(getComparisonPagePath(comparison), siteUrl)
+      ),
+      breadcrumb: {
+        "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
+      },
+    },
+    {
+      "@type": "ItemList",
+      "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.COMPARISON_CRITERIA),
+      name: `${ONEQUERY.NAME} vs ${input.comparison.alternativeName} comparison criteria`,
+      numberOfItems: input.comparison.criteria.length,
+      itemListElement: input.comparison.criteria.map((criterion, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: criterion.factor,
+        description: `${criterion.oneQuery} Alternative: ${criterion.alternative}`,
+      })),
+    },
+    {
+      "@type": "FAQPage",
+      "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.FAQ),
+      mainEntity: input.comparison.faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": getNodeId(pageUrl, SCHEMA_FRAGMENTS.BREADCRUMB),
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: ONEQUERY.NAME,
+          item: `${siteUrl}/`,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Compare",
+          item: compareUrl,
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: input.comparison.alternativeName,
+          item: pageUrl,
         },
       ],
     },
