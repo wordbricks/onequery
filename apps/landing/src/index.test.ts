@@ -32,21 +32,10 @@ describe("landing discovery resources", () => {
           ],
           anchor: "https://onequery.dev/",
         }),
-        expect.objectContaining({
-          anchor: "https://onequery.dev/.well-known/api-catalog/",
-          item: [
-            {
-              href: "https://onequery.dev/api/product-updates/",
-              title: "Landing product updates API",
-            },
-            {
-              href: "https://onequery.dev/api/contact/",
-              title: "Landing contact API",
-            },
-          ],
-        }),
       ])
     );
+    expect(JSON.stringify(body)).not.toContain("/api/product-updates/");
+    expect(JSON.stringify(body)).not.toContain("/api/contact/");
   });
 
   it("omits a response body for HEAD API catalog requests", async () => {
@@ -65,20 +54,13 @@ describe("landing discovery resources", () => {
       expect.objectContaining({
         linkset: expect.arrayContaining([
           expect.objectContaining({
-            anchor: "https://preview.onequery.dev/.well-known/api-catalog/",
-            item: [
-              {
-                href: "https://preview.onequery.dev/api/product-updates/",
-                title: "Landing product updates API",
-              },
-              {
-                href: "https://preview.onequery.dev/api/contact/",
-                title: "Landing contact API",
-              },
-            ],
+            anchor: "https://preview.onequery.dev/",
           }),
         ]),
       })
     );
+    expect(
+      JSON.stringify(buildApiCatalogLinkset("https://preview.onequery.dev"))
+    ).not.toContain("/api/");
   });
 });

@@ -9,11 +9,11 @@ import { build } from "rolldown";
 
 import { serverBundleFilenameForTargetTriple } from "../bin/package-constants.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const scriptFilePath = fileURLToPath(import.meta.url);
+const scriptDir = path.dirname(scriptFilePath);
 const require = createRequire(import.meta.url);
 
-const CLI_ROOT = path.resolve(__dirname, "..");
+const CLI_ROOT = path.resolve(scriptDir, "..");
 const WORKSPACE_ROOT = path.resolve(CLI_ROOT, "..", "..");
 // Comment: resolve the packaged server entry through the runtime package's
 // declared export surface so CLI packaging does not depend on package-private

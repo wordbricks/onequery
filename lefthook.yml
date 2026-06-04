@@ -12,7 +12,7 @@ pre-commit:
         - "*.{html,gql,graphql,hbs}"
       stage_fixed: true
     format:
-      run: bunx oxfmt {staged_files}
+      run: bunx oxfmt --no-error-on-unmatched-pattern {staged_files}
       glob:
         - "*.{js,jsx,ts,tsx,mjs,cjs}"
         - "*.astro"

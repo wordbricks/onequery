@@ -37,6 +37,7 @@
     "no-console": "off",
     "no-ternary": "off",
     "no-undefined": "off",
+    "no-underscore-dangle": "off",
     "max-lines": "off",
     "id-length": "off",
     "func-style": [
@@ -170,6 +171,7 @@
     "react/jsx-props-no-spreading": "off",
     "react/jsx-max-depth": "off",
     "react/no-multi-comp": "off",
+    "react/forbid-component-props": "off",
 
     "react_perf/jsx-no-jsx-as-prop": "off",
     "react_perf/jsx-no-new-object-as-prop": "off",
@@ -177,6 +179,7 @@
     "react_perf/jsx-no-new-function-as-prop": "off", // Not a blanket perf win with React Compiler; prefer targeted stabilization at memo/effect boundaries.
 
     "jsx-a11y/no-autofocus": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
 
     "sort-keys": "off",
     "no-inline-comments": "off",
@@ -217,6 +220,7 @@
     "no-script-url": "off", // TEMP ~1
     "no-redeclare": "off", // TEMP ~1
     "no-new": "off", // TEMP ~1
+    "require-unicode-regexp": "off", // TEMP ~100 — add unicode flags to existing regex literals
   },
   "ignorePatterns": [
     "**/node_modules",

@@ -5,6 +5,7 @@
 name = "onequery-landing"
 main = "./src/worker.ts"
 compatibility_date = "2026-04-14"
+# Starlight's Cloudflare SSR path depends on Node-compatible modules.
 compatibility_flags = ["nodejs_compat"]
 logpush = true
 preview_urls = true
@@ -17,7 +18,9 @@ id = "4eae4e6551dc4042950bd2270b09f772"
 [assets]
 directory = "./dist/client"
 binding = "ASSETS"
-run_worker_first = ["/", "/connectors/*", "/blog/*"]
+# Routes with generated Markdown sidecars need Worker-first handling so
+# Accept: text/markdown can be negotiated before static asset serving.
+run_worker_first = ["/", "/connectors/*", "/blog/*", "/docs/*", "/compare/*"]
 
 [observability]
 enabled = true

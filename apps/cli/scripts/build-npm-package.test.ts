@@ -7,11 +7,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { __internal, tarballNameForPackage } from "./build-npm-package.js";
+import {
+  buildNpmPackageInternals,
+  tarballNameForPackage,
+} from "./build-npm-package.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const WORKSPACE_ROOT = path.resolve(__dirname, "..", "..", "..");
+const testFilePath = fileURLToPath(import.meta.url);
+const testDir = path.dirname(testFilePath);
+const WORKSPACE_ROOT = path.resolve(testDir, "..", "..", "..");
 const SERVER_PACKAGE_MANIFEST_PATH = path.join(
   WORKSPACE_ROOT,
   "packages",
@@ -28,7 +31,9 @@ describe("build-npm-package runtime asset resolution", () => {
 
   it("anchors polyglotSql assets to the declared owner package manifest", async () => {
     const sourcePaths =
-      await __internal.resolveRuntimeAssetSourcePaths("polyglotSql");
+      await buildNpmPackageInternals.resolveRuntimeAssetSourcePaths(
+        "polyglotSql"
+      );
     const serverRequire = createRequire(SERVER_PACKAGE_MANIFEST_PATH);
 
     expect(sourcePaths).toEqual([
@@ -44,7 +49,7 @@ describe("build-npm-package runtime asset resolution", () => {
 
   it("fails clearly when a workspace package is missing", async () => {
     try {
-      await __internal.resolveWorkspacePackageRequire(
+      await buildNpmPackageInternals.resolveWorkspacePackageRequire(
         "@onequery/not-a-package"
       );
       throw new Error("expected missing workspace package lookup to fail");
@@ -61,7 +66,7 @@ describe("build-npm-package runtime asset resolution", () => {
 
   it("rejects duplicate workspace package names when indexing manifests", () => {
     expect(() =>
-      __internal.indexWorkspacePackageManifestPaths([
+      buildNpmPackageInternals.indexWorkspacePackageManifestPaths([
         {
           name: "@onequery/server",
           packageJsonPath: "/tmp/workspace-a/package.json",
@@ -95,7 +100,7 @@ describe("build-npm-package runtime asset resolution", () => {
         })
       );
 
-      await __internal.restorePackagedExecutableModes({
+      await buildNpmPackageInternals.restorePackagedExecutableModes({
         targetRoot,
         targetTriple: "x86_64-unknown-linux-musl",
       });

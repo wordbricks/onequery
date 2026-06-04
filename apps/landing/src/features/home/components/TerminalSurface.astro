@@ -1,4 +1,6 @@
 ---
+import { Code } from "astro:components";
+
 import type { TerminalLine } from "@/features/home/terminal/types";
 
 interface Props {
@@ -29,7 +31,14 @@ const { footer, lines, title } = Astro.props;
               {line.kind === "prompt" ? "$" : ">"}
             </span>
           )}
-          <code>{line.text}</code>
+          <Code
+            class="terminal-line-code"
+            code={line.text}
+            defaultColor={false}
+            inline
+            lang={line.kind === "output" ? "plaintext" : "shell"}
+            theme="tokyo-night"
+          />
         </div>
       ))
     }
@@ -39,3 +48,88 @@ const { footer, lines, title } = Astro.props;
     <span>{footer}</span>
   </div>
 </div>
+
+<style>
+  .terminal-surface {
+    display: grid;
+    gap: 14px;
+    min-height: 100%;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .terminal-surface-toolbar,
+  .terminal-surface-footer,
+  .terminal-line {
+    display: flex;
+    align-items: center;
+  }
+
+  .terminal-surface-toolbar,
+  .terminal-surface-footer {
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .terminal-surface-dots {
+    display: inline-flex;
+    gap: 8px;
+  }
+
+  .terminal-surface-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  .terminal-surface-title,
+  .terminal-surface-footer {
+    color: rgba(255, 255, 255, 0.56);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .terminal-surface-body {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+
+  .terminal-line {
+    gap: 10px;
+    min-height: 20px;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .terminal-line :global(code) {
+    background: transparent !important;
+    font: inherit;
+    line-height: inherit;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .terminal-line :global(.terminal-line-code .line) {
+    display: inline;
+  }
+
+  .terminal-line-prefix {
+    flex: none;
+    width: 10px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .terminal-line-continuation .terminal-line-prefix {
+    opacity: 0;
+  }
+
+  .terminal-line-output {
+    padding-left: 20px;
+    color: rgba(255, 255, 255, 0.6);
+  }
+</style>

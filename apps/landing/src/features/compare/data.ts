@@ -4,6 +4,7 @@ import { getCollection } from "astro:content";
 import { ONEQUERY } from "@/shared/seo/constants";
 
 import type { ComparisonPage } from "./types";
+
 export type {
   ComparisonCriterion,
   ComparisonFaq,

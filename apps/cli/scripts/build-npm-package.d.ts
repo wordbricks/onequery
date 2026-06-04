@@ -7,7 +7,7 @@ export function tarballNameForPackage(
   version: string
 ): string;
 
-export const __internal: {
+export const buildNpmPackageInternals: {
   indexWorkspacePackageManifestPaths(
     workspacePackageManifests: Array<{
       name: string;

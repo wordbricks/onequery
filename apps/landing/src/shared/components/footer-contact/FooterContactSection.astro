@@ -1,0 +1,173 @@
+---
+import { actions } from "astro:actions";
+---
+
+<section
+  id="footer-contact"
+  class="contact-section"
+  aria-labelledby="contact-section-title"
+>
+  <div class="contact-section-header">
+    <p class="eyebrow">Start a conversation</p>
+    <h2 id="contact-section-title">Contact OneQuery</h2>
+    <p class="contact-section-copy">
+      Tell us how you want agents to debug production. We can help with
+      self-hosting, capability grants, and rollout questions.
+    </p>
+  </div>
+
+  <form
+    class="contact-form"
+    action={actions.contact}
+    method="POST"
+    data-contact-form
+  >
+    <div class="contact-field-grid">
+      <label class="contact-field">
+        <span class="contact-label">Name</span>
+        <input
+          type="text"
+          name="name"
+          placeholder="Jane Doe"
+          class="contact-input"
+          maxlength="200"
+          required
+        />
+      </label>
+
+      <label class="contact-field">
+        <span class="contact-label">Email</span>
+        <input
+          type="email"
+          name="email"
+          placeholder="you@company.com"
+          class="contact-input"
+          maxlength="320"
+          required
+        />
+      </label>
+    </div>
+
+    <label class="contact-field">
+      <span class="contact-label">Message</span>
+      <textarea
+        name="message"
+        placeholder="Share your agent workflow, production systems, or timeline."
+        class="contact-textarea"
+        maxlength="4000"
+        required></textarea>
+    </label>
+
+    <div class="contact-actions">
+      <p
+        class="marketing-form-feedback contact-feedback"
+        data-contact-feedback
+        aria-live="polite"
+      >
+        We use this only to follow up on your request.
+      </p>
+      <button type="submit" class="button button-primary contact-submit">
+        Send message
+      </button>
+    </div>
+  </form>
+</section>
+
+<script>
+  import { actions, isInputError } from "astro:actions";
+
+  const CONTACT_DEFAULT_ERROR = "Failed to send message";
+  const CONTACT_SUCCESS_MESSAGE = "Message sent. We'll be in touch.";
+
+  function readContactActionErrorMessage(
+    error: Awaited<ReturnType<typeof actions.contact>>["error"]
+  ) {
+    if (isInputError(error)) {
+      return (
+        error.fields.name?.[0] ??
+        error.fields.email?.[0] ??
+        error.fields.message?.[0] ??
+        CONTACT_DEFAULT_ERROR
+      );
+    }
+
+    return error?.message ?? CONTACT_DEFAULT_ERROR;
+  }
+
+  type ContactFeedbackState = "error" | "neutral" | "success";
+
+  const setContactFeedback = (
+    feedback: HTMLElement,
+    message: string,
+    state: ContactFeedbackState
+  ) => {
+    feedback.textContent = message;
+    feedback.classList.toggle(
+      "marketing-form-feedback-success",
+      state === "success"
+    );
+    feedback.classList.toggle(
+      "marketing-form-feedback-error",
+      state === "error"
+    );
+    feedback.setAttribute("role", state === "error" ? "alert" : "status");
+  };
+
+  for (const form of document.querySelectorAll("[data-contact-form]")) {
+    if (!(form instanceof HTMLFormElement)) {
+      continue;
+    }
+
+    const feedback = form.querySelector("[data-contact-feedback]");
+    const submitButton = form.querySelector('button[type="submit"]');
+
+    if (!(feedback instanceof HTMLElement)) {
+      continue;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      if (!form.reportValidity()) {
+        return;
+      }
+
+      event.preventDefault();
+      const formData = new FormData(form);
+
+      form.setAttribute("aria-busy", "true");
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Sending...";
+      }
+
+      setContactFeedback(feedback, "Sending...", "neutral");
+
+      try {
+        const { error } = await actions.contact(formData);
+
+        if (error) {
+          throw new Error(readContactActionErrorMessage(error));
+        }
+
+        form.reset();
+        setContactFeedback(feedback, CONTACT_SUCCESS_MESSAGE, "success");
+
+        if (typeof window.gtag === "function") {
+          window.gtag("event", "generate_lead", {
+            form_id: "contact",
+            location: "footer_contact",
+          });
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : CONTACT_DEFAULT_ERROR;
+        setContactFeedback(feedback, message, "error");
+      } finally {
+        form.removeAttribute("aria-busy");
+        if (submitButton instanceof HTMLButtonElement) {
+          submitButton.disabled = false;
+          submitButton.textContent = "Send message";
+        }
+      }
+    });
+  }
+</script>

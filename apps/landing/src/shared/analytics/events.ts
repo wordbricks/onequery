@@ -72,15 +72,9 @@ export function trackProductUpdatesSignup() {
   });
 }
 
-export function trackContactModalOpened() {
-  trackEvent("landing_contact_opened", {
-    location: "footer",
-  });
-}
-
 export function trackContactFormSubmitted() {
   trackEvent("generate_lead", {
     form_id: "contact",
-    location: "footer_modal",
+    location: "footer_contact",
   });
 }

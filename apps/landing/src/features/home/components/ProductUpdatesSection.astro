@@ -1,3 +1,7 @@
+---
+import { actions } from "astro:actions";
+---
+
 <section class="section marketing-updates">
   <div class="marketing-updates-copy">
     <p class="eyebrow">Stay in the loop</p>
@@ -7,7 +11,7 @@
   <form
     class="marketing-updates-form"
     method="POST"
-    action="/api/product-updates/"
+    action={actions.productUpdates}
     data-product-updates-form
   >
     <div class="marketing-inline-form">
@@ -35,25 +39,97 @@
   </form>
 </section>
 
-<script is:inline>
+<style>
+  .marketing-updates {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 460px);
+    gap: 28px;
+    align-items: end;
+    padding: 28px 32px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.015), rgba(0, 0, 0, 0.04)),
+      var(--surface);
+    box-shadow: var(--shadow-ring);
+  }
+
+  .marketing-updates-copy {
+    max-width: 720px;
+  }
+
+  .marketing-updates-copy p:last-child {
+    margin-top: 18px;
+  }
+
+  .marketing-updates-form {
+    display: grid;
+    gap: 12px;
+  }
+
+  .marketing-inline-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+
+  .marketing-input {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    border: 1px solid rgba(15, 23, 42, 0.18);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--ink);
+    outline: none;
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  .marketing-input:focus {
+    border-color: rgba(37, 99, 235, 0.45);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  }
+
+  .marketing-submit-button {
+    min-width: 132px;
+  }
+
+  @media (max-width: 1100px) {
+    .marketing-updates {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .marketing-updates {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .marketing-inline-form {
+      grid-template-columns: 1fr;
+    }
+
+    .marketing-submit-button {
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  import { actions, isInputError } from "astro:actions";
+
+  type ProductUpdatesFeedbackState = "error" | "neutral" | "success";
+
   const PRODUCT_UPDATES_DEFAULT_MESSAGE =
     "Failed to subscribe for product updates";
 
-  function readProductUpdatesErrorMessage(payload) {
-    if (
-      payload &&
-      typeof payload === "object" &&
-      "message" in payload &&
-      typeof payload.message === "string" &&
-      payload.message.length > 0
-    ) {
-      return payload.message;
-    }
-
-    return PRODUCT_UPDATES_DEFAULT_MESSAGE;
-  }
-
-  function setProductUpdatesFeedback(feedback, message, state) {
+  const setProductUpdatesFeedback = (
+    feedback: HTMLElement,
+    message: string,
+    state: ProductUpdatesFeedbackState
+  ) => {
     feedback.textContent = message;
     feedback.classList.toggle(
       "marketing-form-feedback-success",
@@ -64,7 +140,7 @@
       state === "error"
     );
     feedback.setAttribute("role", state === "error" ? "alert" : "status");
-  }
+  };
 
   for (const form of document.querySelectorAll(
     "[data-product-updates-form]"
@@ -87,7 +163,6 @@
 
       event.preventDefault();
       const formData = new FormData(form);
-      const email = String(formData.get("email") ?? "").trim();
 
       form.setAttribute("aria-busy", "true");
       if (submitButton instanceof HTMLButtonElement) {
@@ -97,32 +172,22 @@
       setProductUpdatesFeedback(feedback, "Sending...", "neutral");
 
       try {
-        const response = await fetch(form.action, {
-          body: JSON.stringify({ email }),
-          headers: {
-            accept: "application/json",
-            "content-type": "application/json",
-          },
-          method: "POST",
-        });
-        const payload = await response.json().catch(() => null);
+        const { data, error } = await actions.productUpdates(formData);
 
-        if (!response.ok) {
-          throw new Error(readProductUpdatesErrorMessage(payload));
+        if (error) {
+          const inputMessage = isInputError(error)
+            ? error.fields.email?.[0]
+            : undefined;
+
+          throw new Error(
+            inputMessage ?? error.message ?? PRODUCT_UPDATES_DEFAULT_MESSAGE
+          );
         }
-
-        const subscribedEmail =
-          payload &&
-          typeof payload === "object" &&
-          "email" in payload &&
-          typeof payload.email === "string"
-            ? payload.email
-            : email;
 
         form.reset();
         setProductUpdatesFeedback(
           feedback,
-          `We'll send product updates to ${subscribedEmail}.`,
+          `We'll send product updates to ${data.email}.`,
           "success"
         );
 

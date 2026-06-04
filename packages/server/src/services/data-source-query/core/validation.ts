@@ -23,7 +23,7 @@ export async function validateReadOnlySql(input: {
   });
 
   if (validation.isErr()) {
-    return validation;
+    return Result.err(validation.error);
   }
 
   if (validation.value.isErr()) {

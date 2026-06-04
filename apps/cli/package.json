@@ -3,6 +3,10 @@
   "version": "0.0.0-dev",
   "private": false,
   "description": "OneQuery CLI",
+  "homepage": "https://onequery.dev",
+  "bugs": {
+    "url": "https://github.com/wordbricks/onequery/issues"
+  },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

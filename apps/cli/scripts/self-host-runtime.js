@@ -19,10 +19,10 @@ import {
 } from "../bin/package-constants.js";
 import { stagePackagedRuntime } from "./build-npm-package.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const scriptFilePath = fileURLToPath(import.meta.url);
+const scriptDir = dirname(scriptFilePath);
 
-export const cliRootDir = resolve(__dirname, "..");
+export const cliRootDir = resolve(scriptDir, "..");
 const workspaceRootDir = resolve(cliRootDir, "..", "..");
 const cliManifestPath = join(cliRootDir, "Cargo.toml");
 const cliBinaryName = binaryNameForPlatform(process.platform, "onequery");
