@@ -62,12 +62,6 @@ export async function runCliLoadOrgAccessWithSource(input: {
   sourceProvider: ProviderType;
   userId: string;
 }): Promise<CliOrgAccessWithSourceResult> {
-  const sourceConditions = [
-    eq(dataSources.organizationId, organization.id),
-    eq(dataSources.name, input.sourceKey),
-    eq(dataSources.provider, input.sourceProvider),
-  ];
-
   const [row] = await input.db
     .select({
       orgId: organization.id,
@@ -75,13 +69,6 @@ export async function runCliLoadOrgAccessWithSource(input: {
       orgSlug: organization.slug,
       membershipId: member.id,
       membershipRole: member.role,
-      sourceCredentialsEncrypted: dataSources.credentialsEncrypted,
-      sourceCredentialsIv: dataSources.credentialsIv,
-      sourceId: dataSources.id,
-      sourceName: dataSources.name,
-      sourceOrganizationId: dataSources.organizationId,
-      sourceProvider: dataSources.provider,
-      sourceStatus: dataSources.status,
     })
     .from(organization)
     .leftJoin(
@@ -91,7 +78,6 @@ export async function runCliLoadOrgAccessWithSource(input: {
         eq(member.userId, input.userId)
       )
     )
-    .leftJoin(dataSources, and(...sourceConditions))
     .where(eq(organization.slug, input.orgSlug))
     .limit(1);
 
@@ -103,9 +89,16 @@ export async function runCliLoadOrgAccessWithSource(input: {
     };
   }
 
+  const source = await loadCliSourceBySourceKey({
+    db: input.db,
+    organizationId: access.org.id,
+    sourceKey: input.sourceKey,
+    sourceProvider: input.sourceProvider,
+  });
+
   return {
     access,
-    source: toCliLoadSourceEffectResult(row),
+    source,
   };
 }
 
@@ -177,47 +170,31 @@ function toCliOrgAccessResult(
   };
 }
 
-function toCliLoadSourceEffectResult(
-  row:
-    | (CliOrgAccessRow & {
-        sourceCredentialsEncrypted: string | null;
-        sourceCredentialsIv: string | null;
-        sourceId: string | null;
-        sourceName: string | null;
-        sourceOrganizationId: string | null;
-        sourceProvider:
-          | Parameters<typeof createCliQuerySourceRecord>[0]["provider"]
-          | null;
-        sourceStatus:
-          | Parameters<typeof createCliQuerySourceRecord>[0]["status"]
-          | null;
-      })
-    | undefined
-): CliLoadSourceEffectResult {
-  if (
-    row === undefined ||
-    row.sourceCredentialsEncrypted === null ||
-    row.sourceCredentialsIv === null ||
-    row.sourceId === null ||
-    row.sourceName === null ||
-    row.sourceOrganizationId === null ||
-    row.sourceProvider === null ||
-    row.sourceStatus === null
-  ) {
-    return {
-      kind: "not_found",
-    };
-  }
-
-  const source = createCliQuerySourceRecord({
-    credentialsEncrypted: row.sourceCredentialsEncrypted,
-    credentialsIv: row.sourceCredentialsIv,
-    id: row.sourceId,
-    name: row.sourceName,
-    organizationId: row.sourceOrganizationId,
-    provider: row.sourceProvider,
-    status: row.sourceStatus,
+async function loadCliSourceBySourceKey(input: {
+  db: Database;
+  organizationId: string;
+  sourceKey: string;
+  sourceProvider: ProviderType;
+}): Promise<CliLoadSourceEffectResult> {
+  const rows = await input.db.query.dataSources.findMany({
+    columns: {
+      id: true,
+      name: true,
+      organizationId: true,
+      provider: true,
+      status: true,
+      credentialsEncrypted: true,
+      credentialsIv: true,
+    },
+    where: and(
+      eq(dataSources.organizationId, input.organizationId),
+      eq(dataSources.provider, input.sourceProvider)
+    ),
   });
+
+  const source = rows
+    .map((candidate) => createCliQuerySourceRecord(candidate))
+    .find((candidate) => candidate?.sourceKey === input.sourceKey);
 
   if (!source) {
     return {
