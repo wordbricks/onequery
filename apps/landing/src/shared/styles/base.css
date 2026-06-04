@@ -56,12 +56,6 @@
   --dropdown-pre-scale: 0.97;
   --dropdown-closing-scale: 0.99;
   --dropdown-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Modal open / close */
-  --modal-open-dur: 250ms;
-  --modal-close-dur: 150ms;
-  --modal-scale: 0.96;
-  --modal-scale-close: 0.96;
-  --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Panel reveal */
   --panel-open-dur: 400ms;
   --panel-close-dur: 350ms;
@@ -104,14 +98,6 @@
   --avatar-falloff: 0.45;
   --avatar-ease-in: cubic-bezier(0.22, 1, 0.36, 1);
   --avatar-ease-out: cubic-bezier(0.34, 3.85, 0.64, 1);
-  /* Error state shake */
-  --shake-distance: 6px;
-  --shake-overshoot: 4px;
-  --shake-dur-a: 80ms;
-  --shake-dur-b: 60ms;
-  --shake-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --revert-hold: 3000ms;
-  --revert-dur: 280ms;
 }
 
 /* React ViewTransition recipes from $vercel-react-view-transitions. */
@@ -528,8 +514,8 @@ code {
   color: #0f766e;
 }
 
-.contact-modal-input,
-.contact-modal-textarea {
+.contact-input,
+.contact-textarea {
   width: 100%;
   border: 1px solid rgba(15, 23, 42, 0.18);
   background: #ffffff;
@@ -537,180 +523,44 @@ code {
   outline: none;
 }
 
-.contact-modal-input:focus,
-.contact-modal-textarea:focus {
+.contact-input:focus,
+.contact-textarea:focus {
   border-color: rgba(37, 99, 235, 0.45);
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 
 .contact-link-button {
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 2px;
   border: 0;
   background: transparent;
   color: var(--text-soft);
   font-size: 14px;
   line-height: 20px;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .contact-link-button:hover {
   color: var(--ink);
 }
 
-.contact-link-button-loading {
-  cursor: progress;
-}
-
-.contact-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
+.contact-section {
   display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgba(10, 10, 10, 0.28);
-  opacity: 0;
-  pointer-events: none;
-  backdrop-filter: blur(0);
-  transition:
-    opacity var(--modal-open-dur) var(--modal-ease),
-    backdrop-filter var(--modal-open-dur) var(--modal-ease);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 36px;
+  margin-top: 72px;
+  padding-top: 32px;
+  border-top: 1px solid var(--line);
 }
 
-.contact-modal-backdrop.is-open {
-  opacity: 1;
-  pointer-events: auto;
-  backdrop-filter: blur(12px);
+.contact-section-header {
+  max-width: 520px;
 }
 
-.contact-modal-backdrop.is-closing {
-  opacity: 0;
-  pointer-events: none;
-  backdrop-filter: blur(0);
-  transition:
-    opacity var(--modal-close-dur) var(--modal-ease),
-    backdrop-filter var(--modal-close-dur) var(--modal-ease);
-}
-
-.t-modal {
-  transform-origin: center;
-  transform: scale(var(--modal-scale));
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    transform var(--modal-open-dur) var(--modal-ease),
-    opacity var(--modal-open-dur) var(--modal-ease);
-  will-change: transform, opacity;
-}
-.t-modal.is-open {
-  transform: scale(1);
-  opacity: 1;
-  pointer-events: auto;
-}
-.t-modal.is-closing {
-  transform: scale(var(--modal-scale-close));
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    transform var(--modal-close-dur) var(--modal-ease),
-    opacity var(--modal-close-dur) var(--modal-ease);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .t-modal {
-    transition: none !important;
-  }
-}
-
-/* Border-color tween. Define your input's default / focused
-   / error border-color in your own component CSS; this rule
-   only owns the interpolation. Use a constant border-width
-   across states so the tween never shifts inner content. */
-.t-input {
-  transition: border-color 150ms ease-out;
-  will-change: transform;
-}
-.t-input.is-error {
-  /* Error border auto-reverts on the hold timer, so the
-     fade-out uses the slower revert duration (matches the
-     message fade). */
-  transition: border-color var(--revert-dur, 280ms) ease-out;
-}
-
-/* Error message reveal. Visibility is delayed by --revert-dur
-   on hide so the message stays painted for the full opacity
-   fade-out. Entering .is-error drops the delay to 0 so the
-   message becomes visible immediately. */
-.t-error-msg {
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    opacity var(--revert-dur, 280ms) ease-out,
-    visibility 0s linear var(--revert-dur, 280ms);
-}
-.t-input-wrap.is-error .t-error-msg {
-  opacity: 1;
-  visibility: visible;
-  transition:
-    opacity var(--revert-dur, 280ms) ease-out,
-    visibility 0s linear 0s;
-}
-
-/* Multi-segment keyframe with per-stop easing so each leg
-   of the shake follows its own cubic-bezier independently.
-   %-stops are cumulative durations as a fraction of the
-   total (80, 60, 80, 60 = 280ms): 28.57%, 57.14%, 78.57%,
-   100%. Recompute if any segment duration changes. */
-.t-input.is-shaking {
-  animation: t-input-shake calc(var(--shake-dur-a) * 2 + var(--shake-dur-b) * 2)
-    linear;
-}
-@keyframes t-input-shake {
-  0% {
-    transform: translateX(0);
-    animation-timing-function: var(--shake-ease);
-  }
-  28.57% {
-    transform: translateX(var(--shake-distance));
-    animation-timing-function: var(--shake-ease);
-  }
-  57.14% {
-    transform: translateX(calc(var(--shake-distance) * -1));
-    animation-timing-function: var(--shake-ease);
-  }
-  78.57% {
-    transform: translateX(var(--shake-overshoot));
-    animation-timing-function: var(--shake-ease);
-  }
-  100% {
-    transform: translateX(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .t-input {
-    animation: none !important;
-    transform: none !important;
-  }
-}
-
-.contact-modal {
-  position: relative;
-  width: min(100%, 640px);
-  padding: 32px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.015), rgba(0, 0, 0, 0.04)),
-    var(--surface);
-  box-shadow: var(--shadow), var(--shadow-ring);
-}
-
-.contact-modal-header {
-  max-width: 480px;
-}
-
-.contact-modal h2 {
+.contact-section h2 {
   margin: 0;
   color: var(--ink);
   font-size: clamp(2rem, 4vw, 3rem);
@@ -719,31 +569,30 @@ code {
   line-height: 1.02;
 }
 
-.contact-modal-copy {
+.contact-section-copy {
   margin: 18px 0 0;
   color: var(--text-muted);
   font-size: 16px;
   line-height: 1.65;
 }
 
-.contact-modal-form {
+.contact-form {
   display: grid;
   gap: 18px;
-  margin-top: 28px;
 }
 
-.contact-modal-field-grid {
+.contact-field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
-.contact-modal-field {
+.contact-field {
   display: grid;
   gap: 8px;
 }
 
-.contact-modal-label {
+.contact-label {
   color: var(--ink);
   font-size: 12px;
   font-weight: 600;
@@ -751,33 +600,25 @@ code {
   text-transform: uppercase;
 }
 
-.contact-modal-input,
-.contact-modal-textarea {
+.contact-input,
+.contact-textarea {
   min-height: 48px;
   padding: 0 14px;
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
   color: var(--ink);
   font-size: 15px;
   line-height: 1.5;
 }
 
-.contact-modal-textarea {
+.contact-textarea {
   min-height: 152px;
   padding-top: 14px;
   padding-bottom: 14px;
   resize: vertical;
 }
 
-.contact-modal-input.t-input.is-error,
-.contact-modal-textarea.t-input.is-error {
-  border-color: rgba(180, 35, 24, 0.52);
-  box-shadow:
-    0 0 0 4px rgba(180, 35, 24, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.contact-modal-actions {
+.contact-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -785,49 +626,14 @@ code {
   margin-top: 6px;
 }
 
-.contact-modal-note {
+.contact-feedback {
   margin: 0;
-  color: var(--text-soft);
-  font-size: 13px;
-  line-height: 1.6;
 }
 
-.contact-modal-actions .marketing-form-feedback-error {
-  grid-column: 1 / -1;
-}
-
-.contact-modal-submit {
+.contact-submit {
   min-width: 152px;
   min-height: 44px;
   border-radius: 10px;
-}
-
-.contact-modal-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.02);
-  color: var(--text-soft);
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    color 160ms ease,
-    background-color 160ms ease,
-    border-color 160ms ease;
-}
-
-.contact-modal-close:hover {
-  color: var(--ink);
-  border-color: var(--line-strong);
-  background: rgba(0, 0, 0, 0.05);
 }
 
 .site-footer {
@@ -838,6 +644,10 @@ code {
   margin-top: 72px;
   padding-top: 24px;
   border-top: 1px solid var(--line);
+}
+
+.contact-section + .site-footer {
+  margin-top: 32px;
 }
 
 .site-footer p {
@@ -881,6 +691,12 @@ code {
     padding-inline: 24px;
   }
 
+  .contact-section {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    margin-top: 56px;
+  }
+
   .site-footer {
     flex-direction: column;
     align-items: flex-start;
@@ -898,10 +714,6 @@ code {
     grid-row: 1;
     justify-self: end;
   }
-
-  .contact-modal {
-    padding: 28px 22px 24px;
-  }
 }
 
 @media (max-width: 640px) {
@@ -914,12 +726,12 @@ code {
     padding-bottom: 16px;
   }
 
-  .contact-modal-field-grid,
-  .contact-modal-actions {
+  .contact-field-grid,
+  .contact-actions {
     grid-template-columns: 1fr;
   }
 
-  .contact-modal-submit {
+  .contact-submit {
     width: 100%;
   }
 }
@@ -936,10 +748,6 @@ code {
   }
 
   .button {
-    transition: none;
-  }
-
-  .contact-modal-backdrop {
     transition: none;
   }
 }
