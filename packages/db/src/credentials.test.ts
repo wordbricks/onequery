@@ -12,6 +12,7 @@ import {
   ConnectorCredentialsSchema,
   credentialSchemaMap,
   DiscordCredentialsSchema,
+  E2BCredentialsSchema,
   GitHubCredentialsSchema,
   GoogleSearchConsoleCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
@@ -58,6 +59,7 @@ import type {
   ConnectorCredentials,
   Credentials,
   DiscordCredentials,
+  E2BCredentials,
   GitHubCredentials,
   GoogleSearchConsoleCredentials,
   GoogleAnalyticsCredentials,
@@ -1715,6 +1717,26 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("E2BCredentialsSchema", () => {
+    it("validates E2B credentials", () => {
+      const credentials: E2BCredentials = {
+        apiKey: "e2b_api_key",
+        type: "e2b",
+      };
+
+      const result = E2BCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects missing API key", () => {
+      const result = E2BCredentialsSchema.safeParse({
+        type: "e2b",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("MicrosoftClarityCredentialsSchema", () => {
     it("validates Microsoft Clarity credentials", () => {
       const credentials: MicrosoftClarityCredentials = {
@@ -1910,6 +1932,10 @@ describe("credentials schemas", () => {
 
     it("should map discord to DiscordCredentialsSchema", () => {
       expect(credentialSchemaMap.discord).toBe(DiscordCredentialsSchema);
+    });
+
+    it("should map e2b to E2BCredentialsSchema", () => {
+      expect(credentialSchemaMap.e2b).toBe(E2BCredentialsSchema);
     });
 
     it("should map slack to SlackCredentialsSchema", () => {

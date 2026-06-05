@@ -9,6 +9,7 @@ import { cloudflareWebAnalyticsSourceApiAdapter } from "./adapters/cloudflare-we
 import { cloudflareWorkersObservabilitySourceApiAdapter } from "./adapters/cloudflare-workers-observability";
 import { confluenceSourceApiAdapter } from "./adapters/confluence";
 import { discordSourceApiAdapter } from "./adapters/discord";
+import { e2bSourceApiAdapter } from "./adapters/e2b";
 import { googleAnalyticsSourceApiAdapter } from "./adapters/ga";
 import { githubSourceApiAdapter } from "./adapters/github";
 import { googleSearchConsoleSourceApiAdapter } from "./adapters/google-search-console";
@@ -77,6 +78,7 @@ export const sourceApiRegistry = createSourceApiRegistry([
   cloudflareWorkersObservabilitySourceApiAdapter,
   confluenceSourceApiAdapter,
   discordSourceApiAdapter,
+  e2bSourceApiAdapter,
   googleAnalyticsSourceApiAdapter,
   githubSourceApiAdapter,
   googleSearchConsoleSourceApiAdapter,

@@ -116,6 +116,33 @@ function GranolaIcon({ size, ...props }: IconSvgProps) {
   );
 }
 
+function E2BIcon({ size, ...props }: IconSvgProps) {
+  return (
+    <SvgIcon
+      {...props}
+      defaultLabel="E2B"
+      fill="none"
+      size={size}
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="m8 9 3 3-3 3M13 15h3"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </SvgIcon>
+  );
+}
+
 function MicrosoftClarityIcon({ size, ...props }: IconSvgProps) {
   return (
     <SvgIcon
@@ -231,6 +258,7 @@ const BRAND_ICONS = {
   confluence: createSimpleBrandIcon(siConfluence),
   curl: createSimpleBrandIcon(siCurl),
   discord: createSimpleBrandIcon(siDiscord),
+  e2b: E2BIcon,
   ga: createSimpleBrandIcon(siGoogleanalytics),
   github: createSimpleBrandIcon(siGithub),
   googledrive: createSimpleBrandIcon(siGoogledrive),
