@@ -506,6 +506,23 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
     },
   },
   {
+    provider: "e2b",
+    summary:
+      "Connect E2B with a team API key for read-only sandbox debugging through Source API calls.",
+    steps: [
+      "Create or copy an E2B team API key from the E2B dashboard.",
+      "Copy the key into `credentials.apiKey`.",
+      "Only include `apiBaseUrl` when you need a non-default E2B-compatible API origin.",
+      "Use this source for read-only debugging. Sandbox lifecycle mutations are intentionally out of scope.",
+    ],
+    exampleInput: {
+      sourceKey: "e2b_main",
+      credentials: {
+        apiKey: "e2b_api_key",
+      },
+    },
+  },
+  {
     provider: "microsoft_clarity",
     summary: "Connect Microsoft Clarity with a project Data Export API token.",
     steps: [
