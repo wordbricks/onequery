@@ -1,5 +1,6 @@
 ---
 import { Code } from "astro:components";
+import tokyoNight from "@shikijs/themes/tokyo-night";
 
 import type { TerminalLine } from "@/features/home/terminal/types";
 
@@ -37,7 +38,7 @@ const { footer, lines, title } = Astro.props;
             defaultColor={false}
             inline
             lang={line.kind === "output" ? "plaintext" : "shell"}
-            theme="tokyo-night"
+            theme={tokyoNight}
           />
         </div>
       ))
