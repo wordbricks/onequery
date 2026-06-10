@@ -1,5 +1,5 @@
 // This is a Google tag / GA4 measurement ID, not a GTM container ID.
-export const GOOGLE_TAG_ID = "G-TVPWK9V4TE";
+export const GOOGLE_TAG_ID = "G-42E8B09EX6";
 export const GOOGLE_TAG_DOMAIN = "https://www.googletagmanager.com";
 export const GOOGLE_TAG_SCRIPT = "gtag/js";
 

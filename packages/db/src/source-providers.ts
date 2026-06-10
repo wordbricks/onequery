@@ -12,6 +12,7 @@ import {
   ConfluenceCredentialsSchema,
   ConnectorCredentialsSchema,
   DiscordCredentialsSchema,
+  E2BCredentialsSchema,
   GitHubCredentialsSchema,
   GoogleSearchConsoleCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
@@ -946,6 +947,36 @@ export const SOURCE_PROVIDER_REGISTRY = {
         credentials: {
           type: "vercel",
           apiToken: "vercel_api_token",
+        },
+      },
+    },
+  },
+  e2b: {
+    label: "E2B",
+    credentialSchema: E2BCredentialsSchema,
+    credentialType: "e2b",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
+    guide: {
+      summary:
+        "Connect E2B with a team API key to inspect sandbox state, logs, metrics, and lifecycle events through read-only Source API calls.",
+      steps: [
+        "Create or copy an E2B team API key from the E2B dashboard.",
+        "Copy the key into `credentials.apiKey`.",
+        "Use the default API base URL unless you need a non-default E2B-compatible API origin.",
+        "Keep this source read-only for debugging; sandbox lifecycle mutations are intentionally out of scope.",
+      ],
+      exampleInput: {
+        sourceKey: "e2b_main",
+        credentials: {
+          type: "e2b",
+          apiKey: "e2b_api_key",
         },
       },
     },

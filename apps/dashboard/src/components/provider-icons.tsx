@@ -8,6 +8,7 @@ import {
   IconDatabase,
   IconHelpCircle,
   IconNotebook,
+  IconTerminal2,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import {
@@ -209,6 +210,12 @@ function GranolaIcon(props: ProviderIconProps) {
   );
 }
 
+function E2BIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon {...props} defaultLabel="E2B" Icon={IconTerminal2} />
+  );
+}
+
 function MicrosoftClarityIcon({ size = 24, ...props }: ProviderIconProps) {
   return (
     <SvgIcon
@@ -304,6 +311,7 @@ export const ProviderIcons = {
     createSimpleProviderIcon(siCloudflareworkers),
   confluence: createSimpleProviderIcon(siConfluence),
   discord: createSimpleProviderIcon(siDiscord),
+  e2b: E2BIcon,
   ga: createSimpleProviderIcon(siGoogleanalytics),
   github: GitHubIcon,
   google_docs: createSimpleProviderIcon(siGoogledocs),

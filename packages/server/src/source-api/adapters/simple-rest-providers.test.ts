@@ -7,6 +7,7 @@ import { calSourceApiAdapter } from "./cal";
 import { cloudflareWebAnalyticsSourceApiAdapter } from "./cloudflare-web-analytics";
 import { confluenceSourceApiAdapter } from "./confluence";
 import { discordSourceApiAdapter } from "./discord";
+import { e2bSourceApiAdapter } from "./e2b";
 import { googleSearchConsoleSourceApiAdapter } from "./google-search-console";
 import { granolaSourceApiAdapter } from "./granola";
 import { jiraSourceApiAdapter } from "./jira";
@@ -730,6 +731,95 @@ describe("simple REST source API providers", () => {
     expect(calledInit?.headers).toMatchObject({
       Authorization: "Bearer vercel_token",
     });
+  });
+
+  it("executes E2B read-only requests with X-API-Key auth", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ events: [] }), {
+        headers: {
+          "content-type": "application/json",
+        },
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        apiKey: "e2b_key",
+        type: "e2b",
+      },
+      displayName: "E2B",
+      id: "source_15",
+      provider: "e2b",
+      sourceKey: "e2b-main",
+    };
+    const descriptor = await e2bSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+    const operation = descriptor.operations[0];
+    expect(operation?.methodPolicy.allowedMethods).toEqual(["GET"]);
+
+    const plan = await e2bSourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        fieldPatch: {
+          params: {
+            limit: 20,
+          },
+        },
+        headers: [],
+        operation: "fetch_api",
+        selector: "/events/sandboxes",
+      },
+      source,
+    });
+
+    expect(plan.kind).toBe("http_request");
+    if (plan.kind !== "http_request") {
+      throw new Error("expected HTTP request plan");
+    }
+    expect(plan.url).toBe("https://api.e2b.app/events/sandboxes?limit=20");
+
+    const response = await e2bSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        ...plan,
+        bodyKind: "none",
+        bodyPaths: [],
+        headerNames: [],
+        preparedBinding: "binding",
+      },
+      source,
+    });
+
+    expect(response.status).toBe(200);
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(calledUrl)).toBe(
+      "https://api.e2b.app/events/sandboxes?limit=20"
+    );
+    expect(calledInit?.headers).toMatchObject({
+      "X-API-Key": "e2b_key",
+    });
+
+    await expect(
+      e2bSourceApiAdapter.normalize({
+        actor,
+        descriptor,
+        request: {
+          body: { kind: "none" },
+          fieldPatch: undefined,
+          headers: [],
+          methodOverride: "POST",
+          operation: "fetch_api",
+          selector: "/sandboxes",
+        },
+        source,
+      })
+    ).rejects.toThrow("Unsupported HTTP method override: POST");
   });
 
   it("normalizes Microsoft Clarity live insights requests", async () => {

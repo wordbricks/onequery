@@ -427,6 +427,14 @@ export const VercelCredentialsSchema = z.object({
 
 export type VercelCredentials = z.infer<typeof VercelCredentialsSchema>;
 
+export const E2BCredentialsSchema = z.object({
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiKey: requiredOpaqueString("API key is required"),
+  type: z.literal("e2b"),
+});
+
+export type E2BCredentials = z.infer<typeof E2BCredentialsSchema>;
+
 export const MicrosoftClarityCredentialsSchema = z.object({
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
   apiToken: requiredOpaqueString("API token is required"),
@@ -527,6 +535,7 @@ export const CredentialsSchema = z.union([
   SendGridCredentialsSchema,
   JiraCredentialsSchema,
   VercelCredentialsSchema,
+  E2BCredentialsSchema,
   MicrosoftClarityCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
@@ -578,6 +587,7 @@ export const credentialSchemaMap = {
   cloudflare_d1: CloudflareD1CredentialsSchema,
   confluence: ConfluenceCredentialsSchema,
   discord: DiscordCredentialsSchema,
+  e2b: E2BCredentialsSchema,
   ga: GoogleAnalyticsCredentialsSchema,
   github: GitHubCredentialsSchema,
   google_search_console: GoogleSearchConsoleCredentialsSchema,
