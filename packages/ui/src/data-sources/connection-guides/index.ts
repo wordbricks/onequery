@@ -46,6 +46,7 @@ export const GUIDE_CONTENT: Record<
   motherduck: motherduckGuideContent,
   mongodb: mongodbGuideContent,
   mysql: mysqlGuideContent,
+  onepassword: { providerLabel: "1Password" },
   postgres: postgresGuideContent,
   posthog: posthogGuideContent,
   sendgrid: sendGridGuideContent,

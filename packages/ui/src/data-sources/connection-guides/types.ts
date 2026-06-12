@@ -14,6 +14,7 @@ export type DataSourceConnectionGuideProvider =
   | "motherduck"
   | "mongodb"
   | "mysql"
+  | "onepassword"
   | "postgres"
   | "posthog"
   | "sendgrid"
