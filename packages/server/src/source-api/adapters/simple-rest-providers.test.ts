@@ -13,7 +13,10 @@ import { granolaSourceApiAdapter } from "./granola";
 import { jiraSourceApiAdapter } from "./jira";
 import { linkedInAdsSourceApiAdapter } from "./linkedin-ads";
 import { microsoftClaritySourceApiAdapter } from "./microsoft-clarity";
-import { onePasswordSourceApiAdapter } from "./onepassword";
+import {
+  createOnePasswordSourceApiAdapter,
+  onePasswordSourceApiAdapter,
+} from "./onepassword";
 import { sendGridSourceApiAdapter } from "./sendgrid";
 import { tiktokMarketingSourceApiAdapter } from "./tiktok-marketing";
 import { vercelSourceApiAdapter } from "./vercel";
@@ -913,6 +916,137 @@ describe("simple REST source API providers", () => {
         source,
       })
     ).rejects.toThrow("Unsupported HTTP method override: POST");
+  });
+
+  it("executes 1Password Service Account requests through the SDK client", async () => {
+    const sdkClient = {
+      items: {
+        get: vi.fn().mockResolvedValue({
+          fields: [{ title: "password", value: "secret" }],
+          id: "item_123",
+        }),
+        list: vi.fn().mockResolvedValue([{ id: "item_123", title: "Prod" }]),
+      },
+      secrets: {
+        resolve: vi.fn().mockResolvedValue("secret-value"),
+      },
+      vaults: {
+        list: vi.fn().mockResolvedValue([{ id: "vault_123", name: "Prod" }]),
+      },
+    };
+    const createServiceAccountClient = vi.fn().mockResolvedValue(sdkClient);
+    const adapter = createOnePasswordSourceApiAdapter({
+      createServiceAccountClient,
+    });
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        authMethod: "service_account",
+        serviceAccountToken: "ops_service_account_token",
+        type: "onepassword",
+      },
+      displayName: "1Password",
+      id: "source_17",
+      provider: "onepassword",
+      sourceKey: "onepassword-main",
+    };
+    const descriptor = await adapter.describe({
+      actor,
+      source,
+    });
+    expect(descriptor.descriptorVersion).toBe("onepassword.service_account.v1");
+    expect(descriptor.operations.map((operation) => operation.name)).toEqual([
+      "list_vaults",
+      "list_items",
+      "get_item",
+      "resolve_secret",
+    ]);
+
+    const listItemsPlan = await adapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        headers: [],
+        operation: "list_items",
+        selector: "vault_123",
+      },
+      source,
+    });
+
+    expect(listItemsPlan.kind).toBe("structured_request");
+    if (listItemsPlan.kind !== "structured_request") {
+      throw new Error("expected structured request plan");
+    }
+    expect(listItemsPlan.request).toEqual({ vaultId: "vault_123" });
+
+    const listItemsResponse = await adapter.execute({
+      actor,
+      prepared: {
+        ...listItemsPlan,
+        bodyKind: "none",
+        bodyPaths: [],
+        headerNames: [],
+        preparedBinding: "binding",
+      },
+      source,
+    });
+
+    expect(listItemsResponse.status).toBe(200);
+    expect(sdkClient.items.list).toHaveBeenCalledWith("vault_123");
+    expect(listItemsResponse.body).toEqual({
+      kind: "json",
+      value: [{ id: "item_123", title: "Prod" }],
+    });
+
+    const resolvePlan = await adapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        headers: [],
+        operation: "resolve_secret",
+        selector: "op://Prod/API/password",
+      },
+      source,
+    });
+    const resolveResponse = await adapter.execute({
+      actor,
+      prepared: {
+        ...resolvePlan,
+        bodyKind: "none",
+        bodyPaths: [],
+        headerNames: [],
+        preparedBinding: "binding",
+      },
+      source,
+    });
+
+    expect(sdkClient.secrets.resolve).toHaveBeenCalledWith(
+      "op://Prod/API/password"
+    );
+    expect(resolveResponse.body).toEqual({
+      kind: "json",
+      value: {
+        reference: "op://Prod/API/password",
+        value: "secret-value",
+      },
+    });
+    expect(createServiceAccountClient).toHaveBeenCalledWith(source.credentials);
+
+    await expect(
+      adapter.normalize({
+        actor,
+        descriptor,
+        request: {
+          body: { kind: "none" },
+          headers: [],
+          operation: "fetch_api",
+          selector: "/v1/vaults",
+        },
+        source,
+      })
+    ).rejects.toThrow("Unsupported source API operation: fetch_api");
   });
 
   it("normalizes Microsoft Clarity live insights requests", async () => {

@@ -445,14 +445,30 @@ export type MicrosoftClarityCredentials = z.infer<
   typeof MicrosoftClarityCredentialsSchema
 >;
 
-export const OnePasswordCredentialsSchema = z.object({
+const OnePasswordConnectCredentialsSchema = z.object({
   accessToken: requiredOpaqueString("Access token is required"),
   apiBaseUrl: trimmedUrl(
     "API base URL is required",
     "API base URL must be a valid URL"
   ).transform((value) => value.replace(/\/+$/, "")),
+  authMethod: z.literal("connect").optional(),
   type: z.literal("onepassword"),
 });
+
+const OnePasswordServiceAccountCredentialsSchema = z.object({
+  authMethod: z.literal("service_account").optional(),
+  integrationName: optionalTrimmedString("Integration name is required"),
+  integrationVersion: optionalTrimmedString("Integration version is required"),
+  serviceAccountToken: requiredOpaqueString(
+    "Service account token is required"
+  ),
+  type: z.literal("onepassword"),
+});
+
+export const OnePasswordCredentialsSchema = z.union([
+  OnePasswordConnectCredentialsSchema,
+  OnePasswordServiceAccountCredentialsSchema,
+]);
 
 export type OnePasswordCredentials = z.infer<
   typeof OnePasswordCredentialsSchema

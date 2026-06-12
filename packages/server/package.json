@@ -47,6 +47,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@1password/sdk": "0.4.0",
     "@bufbuild/protobuf": "catalog:",
     "@bufbuild/protovalidate": "catalog:",
     "@hono/structured-logger": "catalog:",
