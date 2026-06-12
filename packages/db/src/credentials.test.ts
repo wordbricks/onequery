@@ -35,6 +35,7 @@ import {
   MotherDuckCredentialsSchema,
   MongoDBCredentialsSchema,
   MySQLCredentialsSchema,
+  OnePasswordCredentialsSchema,
   normalizeEnvVarName,
   PostgresCredentialsSchema,
   PostHogCredentialsSchema,
@@ -73,6 +74,7 @@ import type {
   MotherDuckCredentials,
   MongoDBCredentials,
   MySQLCredentials,
+  OnePasswordCredentials,
   PostgresCredentials,
   PostHogCredentials,
   SendGridCredentials,
@@ -1737,6 +1739,38 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("OnePasswordCredentialsSchema", () => {
+    it("validates 1Password credentials", () => {
+      const credentials: OnePasswordCredentials = {
+        accessToken: "onepassword_connect_token",
+        apiBaseUrl: "https://connect.example.com",
+        type: "onepassword",
+      };
+
+      const result = OnePasswordCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects missing access token", () => {
+      const result = OnePasswordCredentialsSchema.safeParse({
+        apiBaseUrl: "https://connect.example.com",
+        type: "onepassword",
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects invalid API base URL", () => {
+      const result = OnePasswordCredentialsSchema.safeParse({
+        accessToken: "onepassword_connect_token",
+        apiBaseUrl: "not-a-url",
+        type: "onepassword",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("MicrosoftClarityCredentialsSchema", () => {
     it("validates Microsoft Clarity credentials", () => {
       const credentials: MicrosoftClarityCredentials = {
@@ -1936,6 +1970,12 @@ describe("credentials schemas", () => {
 
     it("should map e2b to E2BCredentialsSchema", () => {
       expect(credentialSchemaMap.e2b).toBe(E2BCredentialsSchema);
+    });
+
+    it("should map onepassword to OnePasswordCredentialsSchema", () => {
+      expect(credentialSchemaMap.onepassword).toBe(
+        OnePasswordCredentialsSchema
+      );
     });
 
     it("should map slack to SlackCredentialsSchema", () => {
@@ -2215,6 +2255,17 @@ describe("credentials schemas", () => {
 
       const result = validateCredentials(credentials);
       expect(result.type).toBe("microsoft_clarity");
+    });
+
+    it("should validate 1Password credentials", () => {
+      const credentials = {
+        accessToken: "onepassword_connect_token",
+        apiBaseUrl: "https://connect.example.com",
+        type: "onepassword",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("onepassword");
     });
 
     it("should validate Cloudflare Web Analytics credentials", () => {

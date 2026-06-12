@@ -13,6 +13,7 @@ import { granolaSourceApiAdapter } from "./granola";
 import { jiraSourceApiAdapter } from "./jira";
 import { linkedInAdsSourceApiAdapter } from "./linkedin-ads";
 import { microsoftClaritySourceApiAdapter } from "./microsoft-clarity";
+import { onePasswordSourceApiAdapter } from "./onepassword";
 import { sendGridSourceApiAdapter } from "./sendgrid";
 import { tiktokMarketingSourceApiAdapter } from "./tiktok-marketing";
 import { vercelSourceApiAdapter } from "./vercel";
@@ -816,6 +817,98 @@ describe("simple REST source API providers", () => {
           methodOverride: "POST",
           operation: "fetch_api",
           selector: "/sandboxes",
+        },
+        source,
+      })
+    ).rejects.toThrow("Unsupported HTTP method override: POST");
+  });
+
+  it("executes 1Password read-only requests with bearer auth", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ vaults: [] }), {
+        headers: {
+          "content-type": "application/json",
+        },
+        status: 200,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const source: PreparedSourceConnection = {
+      credentials: {
+        accessToken: "op_connect_token",
+        apiBaseUrl: "https://connect.example.com",
+        type: "onepassword",
+      },
+      displayName: "1Password",
+      id: "source_16",
+      provider: "onepassword",
+      sourceKey: "onepassword-main",
+    };
+    const descriptor = await onePasswordSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+    const operation = descriptor.operations[0];
+    expect(operation?.methodPolicy.allowedMethods).toEqual(["GET"]);
+
+    const plan = await onePasswordSourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        fieldPatch: {
+          params: {
+            filter: 'title eq "Production"',
+          },
+        },
+        headers: [],
+        operation: "fetch_api",
+        selector: "/v1/vaults/vault_123/items",
+      },
+      source,
+    });
+
+    expect(plan.kind).toBe("http_request");
+    if (plan.kind !== "http_request") {
+      throw new Error("expected HTTP request plan");
+    }
+    expect(plan.url).toBe(
+      "https://connect.example.com/v1/vaults/vault_123/items?filter=title+eq+%22Production%22"
+    );
+
+    const response = await onePasswordSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        ...plan,
+        bodyKind: "none",
+        bodyPaths: [],
+        headerNames: [],
+        preparedBinding: "binding",
+      },
+      source,
+    });
+
+    expect(response.status).toBe(200);
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(calledUrl)).toBe(
+      "https://connect.example.com/v1/vaults/vault_123/items?filter=title+eq+%22Production%22"
+    );
+    expect(calledInit?.headers).toMatchObject({
+      Authorization: "Bearer op_connect_token",
+    });
+
+    await expect(
+      onePasswordSourceApiAdapter.normalize({
+        actor,
+        descriptor,
+        request: {
+          body: { kind: "none" },
+          fieldPatch: undefined,
+          headers: [],
+          methodOverride: "POST",
+          operation: "fetch_api",
+          selector: "/v1/vaults/vault_123/items",
         },
         source,
       })

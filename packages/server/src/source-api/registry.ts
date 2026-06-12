@@ -19,6 +19,7 @@ import { linkedInAdsSourceApiAdapter } from "./adapters/linkedin-ads";
 import { microsoftClaritySourceApiAdapter } from "./adapters/microsoft-clarity";
 import { mixpanelSourceApiAdapter } from "./adapters/mixpanel";
 import { mongodbSourceApiAdapter } from "./adapters/mongodb";
+import { onePasswordSourceApiAdapter } from "./adapters/onepassword";
 import { postHogSourceApiAdapter } from "./adapters/posthog";
 import { sendGridSourceApiAdapter } from "./adapters/sendgrid";
 import { sentrySourceApiAdapter } from "./adapters/sentry";
@@ -88,6 +89,7 @@ export const sourceApiRegistry = createSourceApiRegistry([
   microsoftClaritySourceApiAdapter,
   mixpanelSourceApiAdapter,
   mongodbSourceApiAdapter,
+  onePasswordSourceApiAdapter,
   postHogSourceApiAdapter,
   sendGridSourceApiAdapter,
   sentrySourceApiAdapter,

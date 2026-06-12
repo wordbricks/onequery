@@ -26,6 +26,7 @@ import {
   MotherDuckCredentialsSchema,
   MongoDBCredentialsSchema,
   MySQLCredentialsSchema,
+  OnePasswordCredentialsSchema,
   PostgresCredentialsSchema,
   PostHogCredentialsSchema,
   SendGridCredentialsSchema,
@@ -977,6 +978,37 @@ export const SOURCE_PROVIDER_REGISTRY = {
         credentials: {
           type: "e2b",
           apiKey: "e2b_api_key",
+        },
+      },
+    },
+  },
+  onepassword: {
+    label: "1Password",
+    credentialSchema: OnePasswordCredentialsSchema,
+    credentialType: "onepassword",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
+    guide: {
+      summary:
+        "Connect 1Password through a self-hosted Connect Server API endpoint.",
+      steps: [
+        "Deploy or choose the 1Password Connect Server that can read the target vaults.",
+        "Create a Connect access token scoped to the vaults and items OneQuery should inspect.",
+        "Set `credentials.apiBaseUrl` to the Connect Server origin, for example `https://connect.example.com`.",
+        "Source API calls are read-only; use selectors such as `/v1/vaults` and `/v1/vaults/{vaultUUID}/items`.",
+      ],
+      exampleInput: {
+        sourceKey: "onepassword_main",
+        credentials: {
+          type: "onepassword",
+          apiBaseUrl: "https://connect.example.com",
+          accessToken: "onepassword_connect_token",
         },
       },
     },

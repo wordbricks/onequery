@@ -445,6 +445,19 @@ export type MicrosoftClarityCredentials = z.infer<
   typeof MicrosoftClarityCredentialsSchema
 >;
 
+export const OnePasswordCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  apiBaseUrl: trimmedUrl(
+    "API base URL is required",
+    "API base URL must be a valid URL"
+  ).transform((value) => value.replace(/\/+$/, "")),
+  type: z.literal("onepassword"),
+});
+
+export type OnePasswordCredentials = z.infer<
+  typeof OnePasswordCredentialsSchema
+>;
+
 export const CloudflareD1CredentialsSchema = z.object({
   accountId: trimmedString("Account ID is required"),
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
@@ -537,6 +550,7 @@ export const CredentialsSchema = z.union([
   VercelCredentialsSchema,
   E2BCredentialsSchema,
   MicrosoftClarityCredentialsSchema,
+  OnePasswordCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   CloudflareWebAnalyticsCredentialsSchema,
@@ -604,6 +618,7 @@ export const credentialSchemaMap = {
   motherduck: MotherDuckCredentialsSchema,
   mongodb: MongoDBCredentialsSchema,
   mysql: MySQLCredentialsSchema,
+  onepassword: OnePasswordCredentialsSchema,
   postgres: PostgresCredentialsSchema,
   posthog: PostHogCredentialsSchema,
   sendgrid: SendGridCredentialsSchema,

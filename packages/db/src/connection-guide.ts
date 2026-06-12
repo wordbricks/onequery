@@ -523,6 +523,25 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
     },
   },
   {
+    provider: "onepassword",
+    summary:
+      "Connect 1Password through a self-hosted Connect Server API endpoint.",
+    steps: [
+      "Deploy or choose the 1Password Connect Server that can read the target vaults.",
+      "Create a Connect access token scoped to the vaults and items OneQuery should inspect.",
+      "Set `credentials.apiBaseUrl` to the Connect Server origin, for example `https://connect.example.com`.",
+      "Source API calls are read-only; use selectors such as `/v1/vaults` and `/v1/vaults/{vaultUUID}/items`.",
+    ],
+    exampleInput: {
+      sourceKey: "onepassword_main",
+      credentials: {
+        type: "onepassword",
+        apiBaseUrl: "https://connect.example.com",
+        accessToken: "onepassword_connect_token",
+      },
+    },
+  },
+  {
     provider: "microsoft_clarity",
     summary: "Connect Microsoft Clarity with a project Data Export API token.",
     steps: [
