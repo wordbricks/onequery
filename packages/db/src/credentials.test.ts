@@ -1740,7 +1740,7 @@ describe("credentials schemas", () => {
   });
 
   describe("OnePasswordCredentialsSchema", () => {
-    it("validates 1Password credentials", () => {
+    it("validates 1Password Connect credentials", () => {
       const credentials: OnePasswordCredentials = {
         accessToken: "onepassword_connect_token",
         apiBaseUrl: "https://connect.example.com",
@@ -1751,9 +1751,29 @@ describe("credentials schemas", () => {
       expect(result.success).toBe(true);
     });
 
-    it("rejects missing access token", () => {
+    it("validates 1Password Service Account credentials", () => {
+      const credentials: OnePasswordCredentials = {
+        authMethod: "service_account",
+        serviceAccountToken: "ops_service_account_token",
+        type: "onepassword",
+      };
+
+      const result = OnePasswordCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects missing Connect access token", () => {
       const result = OnePasswordCredentialsSchema.safeParse({
         apiBaseUrl: "https://connect.example.com",
+        type: "onepassword",
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects missing Service Account token", () => {
+      const result = OnePasswordCredentialsSchema.safeParse({
+        authMethod: "service_account",
         type: "onepassword",
       });
 
@@ -2257,10 +2277,21 @@ describe("credentials schemas", () => {
       expect(result.type).toBe("microsoft_clarity");
     });
 
-    it("should validate 1Password credentials", () => {
+    it("should validate 1Password Connect credentials", () => {
       const credentials = {
         accessToken: "onepassword_connect_token",
         apiBaseUrl: "https://connect.example.com",
+        type: "onepassword",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("onepassword");
+    });
+
+    it("should validate 1Password Service Account credentials", () => {
+      const credentials = {
+        authMethod: "service_account",
+        serviceAccountToken: "ops_service_account_token",
         type: "onepassword",
       };
 
