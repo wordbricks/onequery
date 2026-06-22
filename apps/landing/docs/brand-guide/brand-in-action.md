@@ -61,6 +61,8 @@ Keep the README developer-first. Use badges only for factual status.
 ## Blog
 
 Blog visuals and writing should connect technical ideas to controlled workflows.
+For newly supported data sources, use the repeatable thumbnail pattern in
+`data-source-blog-thumbnails.md`.
 
 Good blog themes:
 
