@@ -1,0 +1,57 @@
+---
+category: "Product"
+title: "Connect E2B to OneQuery"
+description: "OneQuery now supports E2B as a connected Source API for reading sandbox state, lifecycle events, logs, and metrics without exposing raw credentials to agents."
+coverImage:
+  src: "../../assets/blog/e2b-source-api-connection-icon.png"
+  alt: "OneQuery logo connected to the E2B logo with a heart symbol."
+publishedAt: "2026-06-22"
+---
+
+## E2B is now a connectable source
+
+OneQuery now supports [E2B](http://e2b.dev/) as a connected data source. Teams that run agent workloads in E2B sandboxes can add an E2B API key once, name the source, and let approved tools inspect sandbox operations through OneQuery's Source API boundary.
+
+The point is not to give every agent an E2B token. The point is to make sandbox visibility available through the same controlled access path used for databases, analytics tools, observability systems, and developer platforms.
+
+## What agents can inspect
+
+The E2B integration is read-only. It exposes sandbox context that is useful for operations, debugging, and cost awareness:
+
+| Endpoint                         | What it shows                                                                                                                             |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `/sandboxes`                     | Running sandboxes visible to the connected E2B team, including state, start time, end time, template ID, CPU, memory, disk, and metadata. |
+| `/events/sandboxes`              | Recent sandbox lifecycle events for the team.                                                                                             |
+| `/events/sandboxes/{sandboxId}`  | Lifecycle history for one sandbox, including create and update events.                                                                    |
+| `/v2/sandboxes/{sandboxId}/logs` | Sandbox logs, process starts and exits, file reads and writes, command traces, and envd/orchestration messages.                           |
+| `/sandboxes/{sandboxId}/metrics` | CPU, memory, and disk metrics over time for one sandbox.                                                                                  |
+
+That makes it possible to ask concrete operational questions: how many sandboxes are running, which agent run created a sandbox, when a timeout was extended, what commands executed, whether memory usage spiked, or whether a sandbox is still active after a chat or workflow finishes.
+
+## Keep lifecycle control separate
+
+The integration intentionally supports GET requests only. Sandbox lifecycle mutations such as create, kill, pause, resume, refresh, and network updates are not exposed through this Source API adapter.
+
+That boundary matters. Reading sandbox evidence is useful for debugging and operations. Changing sandbox state is a control-plane action that should stay behind explicit product workflows, permissions, and audit decisions.
+
+In practice, an agent can inspect E2B state through OneQuery, summarize what is happening, and point to the specific sandbox, run ID, organization metadata, or log event that needs attention. It does not need raw E2B credentials in its prompt or runtime environment.
+
+## A better debugging loop for sandboxed agents
+
+Agent systems often need to answer questions that cross product state and sandbox state. A chat session may reuse a sandbox. A scheduled agent run may leave one running until timeout. A source query may write evidence files into the sandbox. Without a connected sandbox source, the debugging loop usually requires someone to jump into a vendor dashboard or search logs by hand.
+
+With E2B connected to OneQuery, the loop becomes simpler:
+
+1. List running sandboxes.
+2. Map sandbox metadata back to an agent run, chat session, organization, or persona.
+3. Pull lifecycle events to see when the sandbox was created or extended.
+4. Inspect logs to understand what executed.
+5. Review metrics to spot CPU, memory, or disk pressure.
+
+This keeps agent debugging evidence-based. The agent can report what it found from bounded source calls instead of guessing from application symptoms alone.
+
+## How it fits the OneQuery model
+
+E2B joins the growing set of sources that are not SQL databases but still matter to agent workflows. For these sources, OneQuery uses Source API operations instead of SQL. The same source catalog, credential handling, access checks, and audit expectations still apply.
+
+Connect E2B once, expose it as a named source such as `e2b://E2B`, and let approved workflows call read-only endpoints when they need sandbox context.
