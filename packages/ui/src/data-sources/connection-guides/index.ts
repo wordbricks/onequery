@@ -20,6 +20,7 @@ import { supabaseGuideContent } from "./supabase";
 import { tiktokMarketingGuideContent } from "./tiktok-marketing";
 import type { DataSourceConnectionGuideProvider, GuideContent } from "./types";
 import { CONNECTOR_BASE_URL_TOKEN } from "./types";
+import { vercelGuideContent } from "./vercel";
 
 export { CONNECTOR_BASE_URL_TOKEN };
 export type {
@@ -54,4 +55,5 @@ export const GUIDE_CONTENT: Record<
   snowflake: snowflakeGuideContent,
   supabase: supabaseGuideContent,
   tiktok_marketing: tiktokMarketingGuideContent,
+  vercel: vercelGuideContent,
 };
