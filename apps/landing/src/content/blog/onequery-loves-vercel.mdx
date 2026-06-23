@@ -1,0 +1,71 @@
+---
+category: "Product"
+title: "OneQuery loves Vercel"
+description: "Connect Vercel to OneQuery so agents can inspect teams, projects, and deployments without carrying raw Vercel tokens."
+coverImage:
+  src: "../../assets/blog/onequery-loves-vercel-icon.png"
+  alt: "OneQuery logo connected to the Vercel logo with a heart symbol."
+publishedAt: "2026-06-23"
+---
+
+## Vercel is now a useful source for agents
+
+Vercel is often where the operational truth of a web product shows up first. A project was redeployed, a production alias moved, a cron job changed, a preview branch became active, or a build started failing after a specific commit.
+
+Those facts are useful to agents, but the raw Vercel token should not live in an agent prompt, notebook, or local script. OneQuery lets a team connect Vercel once, name it as a source such as `vercel://Vercel`, and expose bounded Source API reads through the same control plane used for databases, analytics tools, repositories, and observability systems.
+
+That makes Vercel less like a dashboard someone has to open by hand and more like a readable part of the agent's evidence graph.
+
+## What OneQuery can read from Vercel
+
+The Vercel Source API connection can call Vercel REST endpoints using the connected token. The most immediately useful reads are:
+
+| Endpoint          | What it helps answer                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| `/v2/teams`       | Which Vercel teams the connected token can see, including the team ID needed later.   |
+| `/v9/projects`    | Which projects exist, how they are configured, and which deployments are current.     |
+| `/v6/deployments` | Which deployments were created recently, what commit produced them, and their status. |
+
+That is enough for many operational questions. An approved agent can check whether the Vercel source is active, inspect the projects visible to the token, and connect deployment metadata back to GitHub commits, branches, aliases, environments, and project settings.
+
+The important part is the access path. The agent asks OneQuery. OneQuery uses the stored credential server-side, applies the source boundary, and leaves an auditable path for the team to review later.
+
+## Example: a deployment change investigator
+
+Imagine a support channel reports that a production workflow started failing after lunch. There are several possible causes: a code change, a changed environment variable, a scheduled job, a preview deployment promoted by mistake, or an unrelated upstream outage.
+
+With Vercel connected to OneQuery, the agent can start with read-only evidence:
+
+1. List the Vercel team and confirm the team ID the token reaches.
+2. List projects and find the production project by name.
+3. Inspect the latest production deployment for that project.
+4. Read the deployment metadata: commit SHA, branch, creator, ready state, alias assignment, region, framework, build command, cron definitions, and environment targets.
+5. Compare that deployment timestamp to the user-reported failure window.
+
+The result is not a magical diagnosis. It is a sharper first answer: "The production alias moved to deployment `dpl_...` at 13:12, from commit `abc123` on `main`. The deployment reached `READY`, but the project cron definitions changed in the same deployment. Check the scheduled route first."
+
+That is the kind of answer an agent can produce quickly when Vercel is a connected source instead of a separate dashboard tab.
+
+## Keep deployment visibility separate from deployment control
+
+Vercel can do much more than list teams, projects, and deployments. It can manage domains, deployments, environment variables, and project settings. Those are powerful control-plane actions, and they should not become casual agent capabilities.
+
+The most useful default is read-first: let the agent inspect deployment evidence, summarize what changed, and point to the next human or product workflow action. If a team later wants controlled mutation workflows, those should be explicit, permissioned, and reviewed separately.
+
+This is the same boundary OneQuery uses across other Source API providers. The useful thing is not "the model has a token." The useful thing is "the model can ask a narrow, auditable question through a source the team already approved."
+
+## Why this is interesting
+
+Vercel data is unusually good context for agentic debugging because it sits between code and production behavior. A database can show what users did. An analytics tool can show where a metric moved. A repository can show what code changed. Vercel can show when that code became a running deployment.
+
+That bridge makes a lot of workflows better:
+
+- Customer support can ask which deployment introduced a visible behavior change.
+- Engineering can ask whether the failing environment is production or preview.
+- Growth can ask which landing page deployment was live during a campaign window.
+- Finance and operations can inspect team-level plan and usage metadata without opening a vendor dashboard.
+- Agents can correlate Vercel deployment IDs with GitHub commits, logs, incidents, and product metrics.
+
+OneQuery does not replace Vercel. It makes Vercel easier for agents to read safely.
+
+Connect Vercel once, keep the token out of agent runtimes, and let the agent use deployment evidence when it needs to explain what changed.
