@@ -21,7 +21,8 @@ export type DataSourceConnectionGuideProvider =
   | "sentry"
   | "snowflake"
   | "supabase"
-  | "tiktok_marketing";
+  | "tiktok_marketing"
+  | "vercel";
 
 export interface GuideStep {
   title: string;
