@@ -29,6 +29,7 @@ import {
   siSupabase,
   siTiktok,
   siVercel,
+  siYoutube,
 } from "simple-icons";
 
 type BrandIconComponent = ComponentType<IconSvgProps>;
@@ -314,6 +315,7 @@ const BRAND_ICONS = {
   supabase: createSimpleBrandIcon(siSupabase),
   tiktok_marketing: createSimpleBrandIcon(siTiktok),
   vercel: createSimpleBrandIcon(siVercel),
+  youtube_analytics: createSimpleBrandIcon(siYoutube),
 } as const satisfies Record<string, BrandIconComponent>;
 
 export type BrandIconName = keyof typeof BRAND_ICONS;
