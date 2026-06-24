@@ -35,6 +35,7 @@ import {
   SnowflakeCredentialsSchema,
   TikTokMarketingCredentialsSchema,
   VercelCredentialsSchema,
+  YouTubeAnalyticsCredentialsSchema,
 } from "./credentials";
 
 type ProviderCredentialSchema = z.ZodType<{ type: string }>;
@@ -414,6 +415,39 @@ export const SOURCE_PROVIDER_REGISTRY = {
             privateKey:
               "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
           },
+        },
+      },
+    },
+  },
+  youtube_analytics: {
+    label: "YouTube Analytics",
+    credentialSchema: YouTubeAnalyticsCredentialsSchema,
+    credentialType: "youtube_analytics",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "google_oauth",
+    publicCategory: "Product analytics",
+    guide: {
+      summary:
+        "Connect YouTube Analytics with Google OAuth tokens that can read YouTube Analytics reports.",
+      steps: [
+        "Enable the YouTube Analytics API in the Google Cloud project used for OAuth.",
+        "Authorize a Google account that owns or manages the YouTube channel or content owner data you need to analyze.",
+        "Use the `https://www.googleapis.com/auth/youtube.readonly` and `https://www.googleapis.com/auth/yt-analytics.readonly` scopes for non-monetary metrics. Revenue and ad performance metrics require `https://www.googleapis.com/auth/yt-analytics-monetary.readonly`.",
+        "Call `/reports` through Source API with query params such as `ids`, `startDate`, `endDate`, `metrics`, `dimensions`, and `filters`.",
+      ],
+      exampleInput: {
+        sourceKey: "youtube_analytics",
+        credentials: {
+          type: "youtube_analytics",
+          authType: "oauth",
+          accessToken: "ya29...",
+          refreshToken: "1//...",
+          expiresAt: 1_798_761_600_000,
         },
       },
     },

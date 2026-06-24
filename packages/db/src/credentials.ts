@@ -158,6 +158,19 @@ export type BigQueryServiceAccountCredentials = z.infer<
   typeof BigQueryServiceAccountCredentialsSchema
 >;
 
+export const YouTubeAnalyticsCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  authType: z.literal("oauth").optional(),
+  expiresAt: z.number().int().min(0, "Expiration time must be positive"),
+  refreshToken: requiredOpaqueString("Refresh token is required"),
+  type: z.literal("youtube_analytics"),
+});
+
+export type YouTubeAnalyticsCredentials = z.infer<
+  typeof YouTubeAnalyticsCredentialsSchema
+>;
+
 export const LaminarCredentialsSchema = z.object({
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
   apiKey: requiredOpaqueString("API key is required"),
@@ -542,6 +555,7 @@ export const CredentialsSchema = z.union([
   MongoDBCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
   BigQueryCredentialsSchema,
+  YouTubeAnalyticsCredentialsSchema,
   SnowflakeCredentialsSchema,
   LaminarCredentialsSchema,
   MotherDuckCredentialsSchema,
@@ -643,6 +657,7 @@ export const credentialSchemaMap = {
   snowflake: SnowflakeCredentialsSchema,
   tiktok_marketing: TikTokMarketingCredentialsSchema,
   vercel: VercelCredentialsSchema,
+  youtube_analytics: YouTubeAnalyticsCredentialsSchema,
 } as const;
 
 export function validateCredentials(credentials: unknown): Credentials {
@@ -662,8 +677,15 @@ export function isTokenExpired(
 
 export function isOAuthCredentials(
   credentials: Credentials
-): credentials is GoogleAnalyticsOAuthCredentials | BigQueryOAuthCredentials {
-  if (credentials.type !== "ga" && credentials.type !== "bigquery") {
+): credentials is
+  | GoogleAnalyticsOAuthCredentials
+  | BigQueryOAuthCredentials
+  | YouTubeAnalyticsCredentials {
+  if (
+    credentials.type !== "ga" &&
+    credentials.type !== "bigquery" &&
+    credentials.type !== "youtube_analytics"
+  ) {
     return false;
   }
   if ("authType" in credentials && credentials.authType === "service_account") {
