@@ -5,6 +5,7 @@ import { cloudflareD1GuideContent } from "./cloudflare-d1";
 import { cloudflareWorkersObservabilityGuideContent } from "./cloudflare-workers-observability";
 import { gaGuideContent } from "./ga";
 import { githubGuideContent } from "./github";
+import { googleSearchConsoleGuideContent } from "./google-search-console";
 import { laminarGuideContent } from "./laminar";
 import { linkedInAdsGuideContent } from "./linkedin-ads";
 import { mixpanelGuideContent } from "./mixpanel";
@@ -40,6 +41,7 @@ export const GUIDE_CONTENT: Record<
   cloudflare_d1: cloudflareD1GuideContent,
   cloudflare_workers_observability: cloudflareWorkersObservabilityGuideContent,
   ga: gaGuideContent,
+  google_search_console: googleSearchConsoleGuideContent,
   github: githubGuideContent,
   laminar: laminarGuideContent,
   linkedin_ads: linkedInAdsGuideContent,

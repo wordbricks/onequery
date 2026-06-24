@@ -7,6 +7,7 @@ export type DataSourceConnectionGuideProvider =
   | "cloudflare_d1"
   | "cloudflare_workers_observability"
   | "ga"
+  | "google_search_console"
   | "github"
   | "laminar"
   | "linkedin_ads"

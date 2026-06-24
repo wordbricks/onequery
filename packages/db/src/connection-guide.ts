@@ -370,17 +370,17 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
   {
     provider: "google_search_console",
     summary:
-      "Connect Google Search Console with an OAuth access token and optional default site URL.",
+      "Connect Google Search Console with Google OAuth or an OAuth access token and optional default site URL.",
     steps: [
-      "Create or obtain an OAuth 2.0 access token with the `https://www.googleapis.com/auth/webmasters.readonly` scope.",
-      "Copy the token into `credentials.accessToken`.",
-      "Optionally include `siteUrl` so source API selectors like `/searchAnalytics/query` expand to `/sites/<siteUrl>/searchAnalytics/query`.",
+      "Confirm the Search Console property is visible to the Google account that will authorize OneQuery.",
+      "Use the dashboard `Connect with Google` flow, or create an OAuth 2.0 access token with the `https://www.googleapis.com/auth/webmasters.readonly` scope for CLI/JSON connections.",
+      "For CLI/JSON connections, copy the token into `credentials.accessToken`; optionally include the exact Search Console property string in `credentials.siteUrl` so source API selectors like `/searchAnalytics/query` expand to `/sites/<siteUrl>/searchAnalytics/query`.",
     ],
     exampleInput: {
       sourceKey: "gsc_site",
       credentials: {
         accessToken: "ya29...",
-        siteUrl: "https://www.example.com/",
+        siteUrl: "sc-domain:example.com",
       },
     },
   },
