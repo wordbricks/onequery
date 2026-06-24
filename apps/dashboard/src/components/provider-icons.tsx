@@ -35,6 +35,7 @@ import {
   siSupabase,
   siTiktok,
   siVercel,
+  siYoutube,
 } from "simple-icons";
 
 type ProviderIconProps = IconSvgProps;
@@ -343,6 +344,7 @@ export const ProviderIcons = {
   snowflake: createSimpleProviderIcon(siSnowflake),
   tiktok_marketing: createSimpleProviderIcon(siTiktok),
   vercel: createSimpleProviderIcon(siVercel),
+  youtube_analytics: createSimpleProviderIcon(siYoutube),
 } as const satisfies Record<string, ProviderIconComponent>;
 
 function hasProviderIcon(

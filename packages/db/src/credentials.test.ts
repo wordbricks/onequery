@@ -45,6 +45,7 @@ import {
   SnowflakeCredentialsSchema,
   TikTokMarketingCredentialsSchema,
   VercelCredentialsSchema,
+  YouTubeAnalyticsCredentialsSchema,
   safeValidateCredentials,
   validateCredentials,
 } from "./credentials";
@@ -83,6 +84,7 @@ import type {
   SnowflakeCredentials,
   TikTokMarketingCredentials,
   VercelCredentials,
+  YouTubeAnalyticsCredentials,
 } from "./credentials";
 
 describe("credentials schemas", () => {
@@ -499,6 +501,34 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("YouTubeAnalyticsCredentialsSchema", () => {
+    it("validates YouTube Analytics OAuth credentials", () => {
+      const credentials: YouTubeAnalyticsCredentials = {
+        accessToken: "ya29.youtube",
+        authType: "oauth",
+        expiresAt: Date.now() + 3_600_000,
+        refreshToken: "1//youtube",
+        type: "youtube_analytics",
+      };
+
+      const result = YouTubeAnalyticsCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("rejects missing refresh token", () => {
+      const result = YouTubeAnalyticsCredentialsSchema.safeParse({
+        accessToken: "ya29.youtube",
+        expiresAt: Date.now() + 3_600_000,
+        type: "youtube_analytics",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("CloudflareD1CredentialsSchema", () => {
     it("should validate valid Cloudflare D1 credentials", () => {
       const credentials: CloudflareD1Credentials = {
@@ -811,6 +841,16 @@ describe("credentials schemas", () => {
   });
 
   describe("isOAuthCredentials", () => {
+    it("should return true for YouTube Analytics credentials", () => {
+      const credentials: YouTubeAnalyticsCredentials = {
+        accessToken: "token",
+        expiresAt: Date.now(),
+        refreshToken: "refresh",
+        type: "youtube_analytics",
+      };
+      expect(isOAuthCredentials(credentials)).toBe(true);
+    });
+
     it("should return false for GA service account credentials", () => {
       const credentials: GoogleAnalyticsCredentials = {
         authType: "service_account",
@@ -1952,6 +1992,12 @@ describe("credentials schemas", () => {
       expect(credentialSchemaMap.bigquery).toBe(BigQueryCredentialsSchema);
     });
 
+    it("should map youtube_analytics to YouTubeAnalyticsCredentialsSchema", () => {
+      expect(credentialSchemaMap.youtube_analytics).toBe(
+        YouTubeAnalyticsCredentialsSchema
+      );
+    });
+
     it("should map cloudflare_d1 to CloudflareD1CredentialsSchema", () => {
       expect(credentialSchemaMap.cloudflare_d1).toBe(
         CloudflareD1CredentialsSchema
@@ -2434,11 +2480,17 @@ describe("credentials schemas", () => {
           apiKey: "lin_api_xxx",
           type: "linear",
         },
+        {
+          accessToken: "ya29.youtube",
+          expiresAt: Date.now() + 3_600_000,
+          refreshToken: "1//youtube",
+          type: "youtube_analytics",
+        },
       ];
 
       const oauthCreds = allCredentials.filter(isOAuthCredentials);
       expect(oauthCreds.map((c) => c.type).toSorted()).toEqual(
-        ["bigquery", "ga"].toSorted()
+        ["bigquery", "ga", "youtube_analytics"].toSorted()
       );
 
       const dbCreds = allCredentials.filter(isDatabaseCredentials);

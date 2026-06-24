@@ -26,6 +26,7 @@ import { sentrySourceApiAdapter } from "./adapters/sentry";
 import { slackSourceApiAdapter } from "./adapters/slack";
 import { tiktokMarketingSourceApiAdapter } from "./adapters/tiktok-marketing";
 import { vercelSourceApiAdapter } from "./adapters/vercel";
+import { youTubeAnalyticsSourceApiAdapter } from "./adapters/youtube-analytics";
 import {
   SourceApiAdapterNotRegisteredError,
   SourceApiRegistryConfigurationError,
@@ -96,4 +97,5 @@ export const sourceApiRegistry = createSourceApiRegistry([
   slackSourceApiAdapter,
   tiktokMarketingSourceApiAdapter,
   vercelSourceApiAdapter,
+  youTubeAnalyticsSourceApiAdapter,
 ]);

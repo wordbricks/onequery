@@ -20,6 +20,7 @@ import {
 import { sendGridSourceApiAdapter } from "./sendgrid";
 import { tiktokMarketingSourceApiAdapter } from "./tiktok-marketing";
 import { vercelSourceApiAdapter } from "./vercel";
+import { youTubeAnalyticsSourceApiAdapter } from "./youtube-analytics";
 
 const originalFetch = globalThis.fetch;
 
@@ -325,6 +326,56 @@ describe("simple REST source API providers", () => {
     }
     expect(plan.url).toBe(
       "https://www.googleapis.com/webmasters/v3/sites/https%3A%2F%2Fwww.example.com%2F/searchAnalytics/query"
+    );
+  });
+
+  it("normalizes YouTube Analytics reports query params", async () => {
+    const source: PreparedSourceConnection = {
+      credentials: {
+        accessToken: "youtube_token",
+        authType: "oauth",
+        expiresAt: 1_798_761_600_000,
+        refreshToken: "youtube_refresh",
+        type: "youtube_analytics",
+      },
+      displayName: "YouTube Analytics",
+      id: "source_yt",
+      provider: "youtube_analytics",
+      sourceKey: "youtube-main",
+    };
+    const descriptor = await youTubeAnalyticsSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    const plan = await youTubeAnalyticsSourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        fieldPatch: {
+          params: {
+            dimensions: "day",
+            endDate: "2026-05-07",
+            ids: "channel==MINE",
+            metrics: "views,estimatedMinutesWatched",
+            startDate: "2026-05-01",
+          },
+        },
+        headers: [],
+        operation: "fetch_api",
+        selector: "/reports",
+      },
+      source,
+    });
+
+    expect(plan.kind).toBe("http_request");
+    if (plan.kind !== "http_request") {
+      throw new Error("expected HTTP request plan");
+    }
+    expect(plan.method).toBe("GET");
+    expect(plan.url).toBe(
+      "https://youtubeanalytics.googleapis.com/v2/reports?dimensions=day&endDate=2026-05-07&ids=channel%3D%3DMINE&metrics=views%2CestimatedMinutesWatched&startDate=2026-05-01"
     );
   });
 
