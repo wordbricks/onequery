@@ -761,7 +761,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
     sourceApiInterface: true,
     testable: false,
     dashboardConnectable: true,
-    dashboardCredentialForm: "json",
+    dashboardCredentialForm: "google_oauth",
     publicCategory: "Marketing",
     guide: {
       summary:

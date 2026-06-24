@@ -1552,7 +1552,7 @@ describe("credentials schemas", () => {
   });
 
   describe("GoogleSearchConsoleCredentialsSchema", () => {
-    it("validates Google Search Console credentials", () => {
+    it("validates Google Search Console access token credentials", () => {
       const credentials: GoogleSearchConsoleCredentials = {
         accessToken: "ya29.token",
         siteUrl: "https://www.example.com/",
@@ -1562,6 +1562,24 @@ describe("credentials schemas", () => {
       const result =
         GoogleSearchConsoleCredentialsSchema.safeParse(credentials);
       expect(result.success).toBe(true);
+    });
+
+    it("validates Google Search Console OAuth credentials", () => {
+      const credentials: GoogleSearchConsoleCredentials = {
+        accessToken: "ya29.token",
+        authType: "oauth",
+        expiresAt: Date.now() + 3_600_000,
+        refreshToken: "1//gsc",
+        siteUrl: "https://www.example.com/",
+        type: "google_search_console",
+      };
+
+      const result =
+        GoogleSearchConsoleCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
     });
 
     it("rejects missing access token", () => {
@@ -2481,6 +2499,17 @@ describe("credentials schemas", () => {
           type: "linear",
         },
         {
+          accessToken: "ya29.gsc",
+          siteUrl: "https://www.example.com/",
+          type: "google_search_console",
+        },
+        {
+          accessToken: "ya29.gsc-oauth",
+          expiresAt: Date.now() + 3_600_000,
+          refreshToken: "1//gsc",
+          type: "google_search_console",
+        },
+        {
           accessToken: "ya29.youtube",
           expiresAt: Date.now() + 3_600_000,
           refreshToken: "1//youtube",
@@ -2490,7 +2519,12 @@ describe("credentials schemas", () => {
 
       const oauthCreds = allCredentials.filter(isOAuthCredentials);
       expect(oauthCreds.map((c) => c.type).toSorted()).toEqual(
-        ["bigquery", "ga", "youtube_analytics"].toSorted()
+        [
+          "bigquery",
+          "ga",
+          "google_search_console",
+          "youtube_analytics",
+        ].toSorted()
       );
 
       const dbCreds = allCredentials.filter(isDatabaseCredentials);
