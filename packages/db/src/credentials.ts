@@ -348,15 +348,36 @@ export const GranolaCredentialsSchema = z.object({
 
 export type GranolaCredentials = z.infer<typeof GranolaCredentialsSchema>;
 
-export const GoogleSearchConsoleCredentialsSchema = z.object({
+export const GoogleSearchConsoleOAuthCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Access token is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  authType: z.literal("oauth").optional(),
+  expiresAt: z.number().int().min(0, "Expiration time must be positive"),
+  refreshToken: requiredOpaqueString("Refresh token is required"),
+  siteUrl: optionalTrimmedString("Site URL is required"),
+  type: z.literal("google_search_console"),
+});
+
+export const GoogleSearchConsoleAccessTokenCredentialsSchema = z.object({
   accessToken: requiredOpaqueString("Access token is required"),
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
   siteUrl: optionalTrimmedString("Site URL is required"),
   type: z.literal("google_search_console"),
 });
 
+export const GoogleSearchConsoleCredentialsSchema = z.union([
+  GoogleSearchConsoleOAuthCredentialsSchema,
+  GoogleSearchConsoleAccessTokenCredentialsSchema,
+]);
+
 export type GoogleSearchConsoleCredentials = z.infer<
   typeof GoogleSearchConsoleCredentialsSchema
+>;
+export type GoogleSearchConsoleOAuthCredentials = z.infer<
+  typeof GoogleSearchConsoleOAuthCredentialsSchema
+>;
+export type GoogleSearchConsoleAccessTokenCredentials = z.infer<
+  typeof GoogleSearchConsoleAccessTokenCredentialsSchema
 >;
 
 export const ConfluenceCredentialsSchema = z.object({
@@ -680,7 +701,11 @@ export function isOAuthCredentials(
 ): credentials is
   | GoogleAnalyticsOAuthCredentials
   | BigQueryOAuthCredentials
+  | GoogleSearchConsoleOAuthCredentials
   | YouTubeAnalyticsCredentials {
+  if (credentials.type === "google_search_console") {
+    return "refreshToken" in credentials && "expiresAt" in credentials;
+  }
   if (
     credentials.type !== "ga" &&
     credentials.type !== "bigquery" &&
