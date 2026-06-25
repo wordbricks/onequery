@@ -7,6 +7,7 @@ import {
   BigQueryCredentialsSchema,
   CalCredentialsSchema,
   CloudflareD1CredentialsSchema,
+  CloudflareR2SqlCredentialsSchema,
   CloudflareWebAnalyticsCredentialsSchema,
   ConfluenceCredentialsSchema,
   ConnectorCredentialsSchema,
@@ -56,6 +57,7 @@ import type {
   BigQueryCredentials,
   CalCredentials,
   CloudflareD1Credentials,
+  CloudflareR2SqlCredentials,
   CloudflareWebAnalyticsCredentials,
   ConfluenceCredentials,
   ConnectorCredentials,
@@ -583,6 +585,51 @@ describe("credentials schemas", () => {
         accountId: "023e105f4ecef8ad9ca31a8372d0c353",
         apiToken: "cf_api_token",
         type: "cloudflare_d1",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("CloudflareR2SqlCredentialsSchema", () => {
+    it("should validate valid Cloudflare R2 SQL credentials", () => {
+      const credentials: CloudflareR2SqlCredentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_r2_sql_token",
+        bucketName: "analytics-events",
+        type: "cloudflare_r2_sql",
+      };
+
+      const result = CloudflareR2SqlCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("should accept optional apiBaseUrl", () => {
+      const credentials: CloudflareR2SqlCredentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiBaseUrl: "https://api.sql.cloudflarestorage.com/api/v1",
+        apiToken: "cf_r2_sql_token",
+        bucketName: "analytics-events",
+        type: "cloudflare_r2_sql",
+      };
+
+      const result = CloudflareR2SqlCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.apiBaseUrl).toBe(
+          "https://api.sql.cloudflarestorage.com/api/v1"
+        );
+      }
+    });
+
+    it("should reject missing bucketName", () => {
+      const result = CloudflareR2SqlCredentialsSchema.safeParse({
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_r2_sql_token",
+        type: "cloudflare_r2_sql",
       });
 
       expect(result.success).toBe(false);
@@ -2022,6 +2069,12 @@ describe("credentials schemas", () => {
       );
     });
 
+    it("should map cloudflare_r2_sql to CloudflareR2SqlCredentialsSchema", () => {
+      expect(credentialSchemaMap.cloudflare_r2_sql).toBe(
+        CloudflareR2SqlCredentialsSchema
+      );
+    });
+
     it("should map laminar to LaminarCredentialsSchema", () => {
       expect(credentialSchemaMap.laminar).toBe(LaminarCredentialsSchema);
     });
@@ -2289,6 +2342,18 @@ describe("credentials schemas", () => {
       expect(result.type).toBe("cloudflare_d1");
     });
 
+    it("should validate Cloudflare R2 SQL credentials", () => {
+      const credentials = {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        apiToken: "cf_r2_sql_token",
+        bucketName: "analytics-events",
+        type: "cloudflare_r2_sql",
+      };
+
+      const result = validateCredentials(credentials);
+      expect(result.type).toBe("cloudflare_r2_sql");
+    });
+
     it("should validate Sentry credentials", () => {
       const credentials = {
         authToken: "sntrys_123",
@@ -2449,6 +2514,12 @@ describe("credentials schemas", () => {
           type: "cloudflare_d1",
         },
         {
+          accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+          apiToken: "cf_r2_sql_token",
+          bucketName: "analytics-events",
+          type: "cloudflare_r2_sql",
+        },
+        {
           apiKey: "lmnr_project_key_123",
           type: "laminar",
         },
@@ -2533,6 +2604,7 @@ describe("credentials schemas", () => {
           "bigquery",
           "aws_athena_connector",
           "cloudflare_d1",
+          "cloudflare_r2_sql",
           "laminar",
           "motherduck",
           "mysql",

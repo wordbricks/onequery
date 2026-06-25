@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   executeBigQueryQuery,
   executeCloudflareD1Query,
+  executeCloudflareR2SqlQuery,
   executeDatabaseQuery,
   executeMotherDuckQuery,
   executeSnowflakeQuery,
@@ -240,6 +241,83 @@ describe("data source query execution", () => {
     if (result.isErr()) {
       expect(result.error.message).toBe(
         "Cloudflare D1 query failed: 403 Bearer [REDACTED] cannot access ***"
+      );
+    }
+  });
+
+  it("executes Cloudflare R2 SQL queries through the R2 SQL REST API", async () => {
+    const fetchSpy = vi.fn(async (_url: string | URL, _init?: RequestInit) => ({
+      json: async () => ({
+        errors: [],
+        messages: [],
+        result: {
+          metrics: {
+            bytes_scanned: 1024,
+            files_scanned: 2,
+            r2_requests_count: 3,
+          },
+          rows: [{ one: 1 }],
+          schema: [{ name: "one", type: "Int64" }],
+        },
+        success: true,
+      }),
+      ok: true,
+      status: 200,
+      text: async () => "",
+    }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const rows = unwrapQueryResult(
+      await executeCloudflareR2SqlQuery(
+        {
+          accountId: "acct_123",
+          apiToken: "cf-r2-sql-token",
+          bucketName: "analytics-events",
+          type: "cloudflare_r2_sql",
+        },
+        "SELECT 1"
+      )
+    );
+
+    expect(rows).toEqual([{ one: 1 }]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(String(url)).toBe(
+      "https://api.sql.cloudflarestorage.com/api/v1/accounts/acct_123/r2-sql/query/analytics-events"
+    );
+    expect(init?.method).toBe("POST");
+    expect(init?.headers).toMatchObject({
+      Authorization: "Bearer cf-r2-sql-token",
+      "Content-Type": "application/json",
+    });
+    expect(JSON.parse(init?.body as string)).toEqual({
+      query: "SELECT 1",
+      warehouse: "acct_123_analytics-events",
+    });
+  });
+
+  it("sanitizes Cloudflare R2 SQL error text", async () => {
+    const fetchSpy = vi.fn(async (_url: string | URL, _init?: RequestInit) => ({
+      json: async () => ({}),
+      ok: false,
+      status: 403,
+      text: async () => "Bearer cf-r2-sql-token cannot access cf-r2-sql-token",
+    }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const result = await executeCloudflareR2SqlQuery(
+      {
+        accountId: "acct_123",
+        apiToken: "cf-r2-sql-token",
+        bucketName: "analytics-events",
+        type: "cloudflare_r2_sql",
+      },
+      "SELECT 1"
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "Cloudflare R2 SQL query failed: 403 Bearer [REDACTED] cannot access ***"
       );
     }
   });

@@ -281,6 +281,7 @@ const BRAND_ICONS = {
   bun: createSimpleBrandIcon(siBun),
   cal: createSimpleBrandIcon(siCaldotcom),
   cloudflare_d1: CloudflareD1Icon,
+  cloudflare_r2_sql: createSimpleBrandIcon(siCloudflareworkers),
   cloudflare_web_analytics: createSimpleBrandIcon(siCloudflareworkers),
   cloudflare_workers_observability: createSimpleBrandIcon(siCloudflareworkers),
   confluence: createSimpleBrandIcon(siConfluence),

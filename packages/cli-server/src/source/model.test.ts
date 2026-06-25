@@ -51,6 +51,10 @@ describe("source model", () => {
     expect(getCliSourceInterfaceTypes("cloudflare_d1")).toEqual(["query"]);
   });
 
+  it("exposes Cloudflare R2 SQL as query capable", () => {
+    expect(getCliSourceInterfaceTypes("cloudflare_r2_sql")).toEqual(["query"]);
+  });
+
   it("keeps provider interfaces visible when a source is unhealthy", () => {
     expect(getCliSourceInterfaceTypes("postgres")).toEqual(["query"]);
   });

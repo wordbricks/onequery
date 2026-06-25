@@ -129,6 +129,25 @@ export const SOURCE_CONNECT_PROVIDER_GUIDES: SourceConnectProviderGuide[] = [
     },
   },
   {
+    provider: "cloudflare_r2_sql",
+    summary:
+      "Connect Cloudflare R2 SQL with an account ID, R2 bucket name, and API token for querying R2 Data Catalog Iceberg tables.",
+    steps: [
+      "Enable R2 Data Catalog for the bucket that owns the Iceberg tables OneQuery should query.",
+      "Copy the Cloudflare Account ID and the R2 bucket name from the Cloudflare dashboard or Wrangler.",
+      "Create a Cloudflare API token with R2 SQL read access plus R2 Data Catalog and R2 storage permissions for the target bucket.",
+      "Only include `apiBaseUrl` when you need a non-default R2 SQL API origin.",
+    ],
+    exampleInput: {
+      sourceKey: "cloudflare_r2_sql_prod",
+      credentials: {
+        accountId: "023e105f4ecef8ad9ca31a8372d0c353",
+        bucketName: "analytics-events",
+        apiToken: "cloudflare_r2_sql_token",
+      },
+    },
+  },
+  {
     provider: "laminar",
     summary:
       "Connect Laminar with an API key and optional non-default base URL.",
