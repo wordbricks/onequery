@@ -107,7 +107,7 @@ describe("data source query execution", () => {
           },
           sql: "DELETE FROM users",
         }),
-      "Only SELECT queries are allowed.",
+      "Only SELECT or SHOW queries are allowed.",
     ],
     [
       "invalid BigQuery locations",

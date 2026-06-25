@@ -59,6 +59,22 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
     });
   });
 
+  it("allows read-only SHOW metadata statements", async () => {
+    await expectValidQuery("SHOW ALL", { sql: "SHOW ALL" }, "postgres");
+    await expectValidQuery("SHOW TABLES", { sql: "SHOW TABLES" }, "mysql");
+    await expectValidQuery(
+      "SHOW CREATE TABLE orders",
+      { sql: "SHOW CREATE TABLE orders" },
+      "aws_athena_connector"
+    );
+    await expectValidQuery(
+      "SHOW TABLES WHERE Tables_in_test LIKE 'user%'",
+      { sql: "SHOW TABLES WHERE Tables_in_test LIKE 'user%'" },
+      "mysql"
+    );
+    await expectValidQuery("SHOW TABLES", { sql: "SHOW TABLES" }, "laminar");
+  });
+
   it("supports safe parenthesized selects", async () => {
     let sql = "(SELECT id FROM users)";
     await expectValidQuery(sql, {
@@ -82,7 +98,7 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
 
     await expectValidationError(
       "DELETE FROM events",
-      "Only SELECT queries are allowed. Got: delete",
+      "Only SELECT or SHOW queries are allowed. Got: delete",
       "cloudflare_d1"
     );
   });
@@ -98,7 +114,7 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
 
     await expectValidationError(
       "CREATE TABLE copied AS SELECT 1",
-      "Only SELECT queries are allowed. Got: create_table",
+      "Only SELECT or SHOW queries are allowed. Got: create_table",
       "cloudflare_r2_sql"
     );
   });
@@ -114,7 +130,7 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
 
     await expectValidationError(
       "PUT file:///tmp/users.csv @analytics_stage",
-      "Only SELECT queries are allowed. Got: put",
+      "Only SELECT or SHOW queries are allowed. Got: put",
       "snowflake"
     );
   });
@@ -130,7 +146,7 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
 
     await expectValidationError(
       "CREATE TABLE copied AS SELECT 1",
-      "Only SELECT queries are allowed. Got: create_table",
+      "Only SELECT or SHOW queries are allowed. Got: create_table",
       "motherduck"
     );
   });
@@ -157,7 +173,7 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
   it("rejects unsafe or unsupported statements", async () => {
     await expectValidationError(
       "DELETE FROM users",
-      "Only SELECT queries are allowed. Got: delete"
+      "Only SELECT or SHOW queries are allowed. Got: delete"
     );
     await expectValidationError(
       "SELECT 1; SELECT 2",
@@ -176,15 +192,15 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
   it("rejects mutable or side-effecting constructs anywhere in the tree", async () => {
     await expectValidationError(
       "SELECT * FROM (DELETE FROM users RETURNING *) x",
-      "Only SELECT queries are allowed. Got: delete"
+      "Only SELECT or SHOW queries are allowed. Got: delete"
     );
     await expectValidationError(
       "SELECT * FROM (INSERT INTO users(id) VALUES (1) RETURNING *) x",
-      "Only SELECT queries are allowed. Got: insert"
+      "Only SELECT or SHOW queries are allowed. Got: insert"
     );
     await expectValidationError(
       "SELECT * FROM (CREATE TABLE new_users AS SELECT * FROM users) x",
-      "Only SELECT queries are allowed. Got: create_table"
+      "Only SELECT or SHOW queries are allowed. Got: create_table"
     );
     await expectValidationError(
       "SELECT * FROM (SELECT * INTO new_users FROM users) x",
@@ -249,8 +265,18 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
       "mysql"
     );
     await expectValidationError(
+      "SHOW TABLES WHERE GET_LOCK('x', 1)",
+      "Side-effecting SQL functions are not allowed: get_lock",
+      "mysql"
+    );
+    await expectValidationError(
+      "SHOW TABLES WHERE SLEEP(10)",
+      "Side-effecting SQL functions are not allowed: sleep",
+      "mysql"
+    );
+    await expectValidationError(
       "SELECT @x := 1",
-      "Only SELECT queries are allowed. Got: property_e_q",
+      "Only SELECT or SHOW queries are allowed. Got: property_e_q",
       "mysql"
     );
     await expectValidationError(

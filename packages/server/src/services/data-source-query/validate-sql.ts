@@ -14,6 +14,8 @@ import type { Result as ResultType } from "better-result";
 const OUTFILE_ERROR = "SELECT INTO OUTFILE/DUMPFILE is not allowed";
 const ERRORS = {
   cteSelectOnly: "CTEs must only contain SELECT statements",
+  nonReadOnlyQuery: (kind: string) =>
+    `Only SELECT or SHOW queries are allowed. Got: ${kind}`,
   unsafeFunction: (name: string) =>
     `Side-effecting SQL functions are not allowed: ${name}`,
   locking: "SELECT locking clauses are not allowed",
@@ -234,6 +236,7 @@ type ValidationContext = {
 
 type ParsedQuery = {
   statement: Expression;
+  statementKind: "query" | "show";
 };
 
 type Expression = PolyglotSdk.ast.Expression;
@@ -409,7 +412,8 @@ async function parseStatements(
 }
 
 function extractParsedQuery(
-  statements: Expression[]
+  statements: Expression[],
+  context: ValidationContext
 ): ResultType<ParsedQuery, SqlValidationError> {
   if (statements.length !== 1) {
     return invalid(
@@ -424,15 +428,19 @@ function extractParsedQuery(
   }
 
   const query = unwrapParenthesizedQuery(statement);
-  if (!query || !isTopLevelQueryExpression(query)) {
-    const kind = getDeepestExpressionKind(statement);
-    return invalid(
-      "non_select_query",
-      `Only SELECT queries are allowed. Got: ${kind ?? "unknown"}`
-    );
+  if (query && isTopLevelQueryExpression(query)) {
+    return Result.ok({ statement, statementKind: "query" });
   }
 
-  return Result.ok({ statement });
+  if (isTopLevelShowExpression(statement, context)) {
+    return Result.ok({ statement, statementKind: "show" });
+  }
+
+  const kind = getDeepestExpressionKind(statement);
+  return invalid(
+    "non_select_query",
+    ERRORS.nonReadOnlyQuery(kind ?? "unknown")
+  );
 }
 
 function validateReadOnlyQuery(
@@ -465,12 +473,9 @@ function validateReadOnlyQuery(
     return invalid("unsafe_function", unsafeFunctionViolation);
   }
 
-  const mutableKind = findSideEffectingExpressionKind(parsedQuery.statement);
+  const mutableKind = findSideEffectingExpressionKind(parsedQuery);
   if (mutableKind) {
-    return invalid(
-      "non_select_query",
-      `Only SELECT queries are allowed. Got: ${mutableKind}`
-    );
+    return invalid("non_select_query", ERRORS.nonReadOnlyQuery(mutableKind));
   }
 
   return Result.ok(null);
@@ -544,6 +549,32 @@ function unwrapParenthesizedQuery(expr: Expression): Expression | null {
 
 function isTopLevelQueryExpression(expr: Expression): boolean {
   return polyglotAst.isSelect(expr) || polyglotAst.isSetOperation(expr);
+}
+
+function isTopLevelShowExpression(
+  expr: Expression,
+  context: ValidationContext
+): boolean {
+  const kind = getExpressionKind(expr);
+  if (kind === "show") {
+    return true;
+  }
+
+  // Polyglot maps ClickHouse SHOW statements to generic command nodes.
+  return kind === "command" && firstTokenIs(context, "show");
+}
+
+function firstTokenIs(context: ValidationContext, keyword: string): boolean {
+  const tokenization = tokenize(context.trimmedSql, context.dialect);
+  if (!tokenization.success || !Array.isArray(tokenization.tokens)) {
+    return false;
+  }
+
+  const firstToken = (tokenization.tokens as TokenInfo[]).find(
+    (token) => normalizeTokenText(token).length > 0
+  );
+
+  return normalizeTokenText(firstToken) === keyword;
 }
 
 function isCteQueryExpression(expr: Expression): boolean {
@@ -681,12 +712,24 @@ function isUnsafeFunctionName(
   return false;
 }
 
-function findSideEffectingExpressionKind(query: Expression): string | null {
-  const mutableExpression = polyglotAst.findFirst(query, (expr) =>
-    isSideEffectingExpression(expr)
+function findSideEffectingExpressionKind(
+  parsedQuery: ParsedQuery
+): string | null {
+  const mutableExpression = polyglotAst.findFirst(
+    parsedQuery.statement,
+    (expr) =>
+      !isAllowedStatementRoot(expr, parsedQuery) &&
+      isSideEffectingExpression(expr)
   );
 
   return mutableExpression ? getExpressionKind(mutableExpression) : null;
+}
+
+function isAllowedStatementRoot(
+  expr: Expression,
+  parsedQuery: ParsedQuery
+): boolean {
+  return parsedQuery.statementKind === "show" && expr === parsedQuery.statement;
 }
 
 function isSideEffectingExpression(expr: Expression): boolean {
@@ -751,7 +794,7 @@ export async function validateAndNormalizeReadOnlyQuery(
     yield* Result.await(initSqlParser());
     yield* validateStrictSyntax(context);
     const statements = yield* Result.await(parseStatements(context));
-    const parsedQuery = yield* extractParsedQuery(statements);
+    const parsedQuery = yield* extractParsedQuery(statements, context);
     yield* validateReadOnlyQuery(parsedQuery, context.dbType);
     return finalizeSql(context);
   });
