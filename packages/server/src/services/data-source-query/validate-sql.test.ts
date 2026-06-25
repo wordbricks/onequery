@@ -87,6 +87,22 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
     );
   });
 
+  it("validates Cloudflare R2 SQL queries with the Athena dialect", async () => {
+    await expectValidQuery(
+      "SELECT * FROM default.transactions LIMIT 10",
+      {
+        sql: "SELECT * FROM default.transactions LIMIT 10",
+      },
+      "cloudflare_r2_sql"
+    );
+
+    await expectValidationError(
+      "CREATE TABLE copied AS SELECT 1",
+      "Only SELECT queries are allowed. Got: create_table",
+      "cloudflare_r2_sql"
+    );
+  });
+
   it("validates Snowflake queries with the Snowflake dialect", async () => {
     await expectValidQuery(
       "SELECT id FROM events QUALIFY ROW_NUMBER() OVER (ORDER BY created_at DESC) <= 10",

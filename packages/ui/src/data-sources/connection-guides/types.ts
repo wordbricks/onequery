@@ -5,6 +5,7 @@ export type DataSourceConnectionGuideProvider =
   | "aws_athena_connector"
   | "bigquery"
   | "cloudflare_d1"
+  | "cloudflare_r2_sql"
   | "cloudflare_workers_observability"
   | "ga"
   | "google_search_console"

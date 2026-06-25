@@ -2,6 +2,7 @@ import { amplitudeGuideContent } from "./amplitude";
 import { awsAthenaConnectorGuideContent } from "./aws-athena-connector";
 import { bigqueryGuideContent } from "./bigquery";
 import { cloudflareD1GuideContent } from "./cloudflare-d1";
+import { cloudflareR2SqlGuideContent } from "./cloudflare-r2-sql";
 import { cloudflareWorkersObservabilityGuideContent } from "./cloudflare-workers-observability";
 import { gaGuideContent } from "./ga";
 import { githubGuideContent } from "./github";
@@ -39,6 +40,7 @@ export const GUIDE_CONTENT: Record<
   aws_athena_connector: awsAthenaConnectorGuideContent,
   bigquery: bigqueryGuideContent,
   cloudflare_d1: cloudflareD1GuideContent,
+  cloudflare_r2_sql: cloudflareR2SqlGuideContent,
   cloudflare_workers_observability: cloudflareWorkersObservabilityGuideContent,
   ga: gaGuideContent,
   google_search_console: googleSearchConsoleGuideContent,

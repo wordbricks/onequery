@@ -48,6 +48,7 @@ export {
   executeBigQueryQueryWithStats,
 } from "./providers/bigquery/driver";
 export { executeCloudflareD1Query } from "./providers/cloudflare-d1/driver";
+export { executeCloudflareR2SqlQuery } from "./providers/cloudflare-r2-sql/driver";
 export { executeLaminarQuery } from "./providers/laminar/driver";
 export { executeMotherDuckQuery } from "./providers/motherduck/driver";
 export { executeMySQLQuery } from "./providers/mysql/driver";

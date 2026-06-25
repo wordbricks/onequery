@@ -520,6 +520,18 @@ export type CloudflareD1Credentials = z.infer<
   typeof CloudflareD1CredentialsSchema
 >;
 
+export const CloudflareR2SqlCredentialsSchema = z.object({
+  accountId: trimmedString("Account ID is required"),
+  apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
+  apiToken: requiredOpaqueString("API token is required"),
+  bucketName: trimmedString("Bucket name is required"),
+  type: z.literal("cloudflare_r2_sql"),
+});
+
+export type CloudflareR2SqlCredentials = z.infer<
+  typeof CloudflareR2SqlCredentialsSchema
+>;
+
 export const CloudflareWorkersObservabilityCredentialsSchema = z.object({
   accountId: trimmedString("Account ID is required"),
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
@@ -603,6 +615,7 @@ export const CredentialsSchema = z.union([
   MicrosoftClarityCredentialsSchema,
   OnePasswordCredentialsSchema,
   CloudflareD1CredentialsSchema,
+  CloudflareR2SqlCredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   CloudflareWebAnalyticsCredentialsSchema,
   LinearCredentialsSchema,
@@ -615,6 +628,7 @@ export type CredentialProviderType = Credentials["type"];
 export const DATABASE_CREDENTIAL_PROVIDER = {
   BIGQUERY: "bigquery",
   CLOUDFLARE_D1: "cloudflare_d1",
+  CLOUDFLARE_R2_SQL: "cloudflare_r2_sql",
   CONNECTOR: "aws_athena_connector",
   LAMINAR: "laminar",
   MOTHERDUCK: "motherduck",
@@ -632,6 +646,7 @@ export const DATABASE_CREDENTIAL_PROVIDER_TYPES = [
   DATABASE_CREDENTIAL_PROVIDER.SNOWFLAKE,
   DATABASE_CREDENTIAL_PROVIDER.BIGQUERY,
   DATABASE_CREDENTIAL_PROVIDER.CLOUDFLARE_D1,
+  DATABASE_CREDENTIAL_PROVIDER.CLOUDFLARE_R2_SQL,
   DATABASE_CREDENTIAL_PROVIDER.LAMINAR,
   DATABASE_CREDENTIAL_PROVIDER.MOTHERDUCK,
   DATABASE_CREDENTIAL_PROVIDER.CONNECTOR,
@@ -650,6 +665,7 @@ export const credentialSchemaMap = {
   bigquery: BigQueryCredentialsSchema,
   cal: CalCredentialsSchema,
   cloudflare_d1: CloudflareD1CredentialsSchema,
+  cloudflare_r2_sql: CloudflareR2SqlCredentialsSchema,
   confluence: ConfluenceCredentialsSchema,
   discord: DiscordCredentialsSchema,
   e2b: E2BCredentialsSchema,

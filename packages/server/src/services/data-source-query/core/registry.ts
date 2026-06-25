@@ -1,6 +1,7 @@
 import { athenaConnectorQueryDriver } from "../providers/athena-connector/driver";
 import { bigQueryQueryDriver } from "../providers/bigquery/driver";
 import { cloudflareD1QueryDriver } from "../providers/cloudflare-d1/driver";
+import { cloudflareR2SqlQueryDriver } from "../providers/cloudflare-r2-sql/driver";
 import { laminarQueryDriver } from "../providers/laminar/driver";
 import { motherDuckQueryDriver } from "../providers/motherduck/driver";
 import { mysqlQueryDriver } from "../providers/mysql/driver";
@@ -12,6 +13,7 @@ export const queryDriverRegistry = {
   aws_athena_connector: athenaConnectorQueryDriver,
   bigquery: bigQueryQueryDriver,
   cloudflare_d1: cloudflareD1QueryDriver,
+  cloudflare_r2_sql: cloudflareR2SqlQueryDriver,
   laminar: laminarQueryDriver,
   motherduck: motherDuckQueryDriver,
   mysql: mysqlQueryDriver,

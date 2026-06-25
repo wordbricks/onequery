@@ -314,6 +314,7 @@ export const ProviderIcons = {
   bigquery: createSimpleProviderIcon(siGooglebigquery),
   cal: createSimpleProviderIcon(siCaldotcom),
   cloudflare_d1: CloudflareD1Icon,
+  cloudflare_r2_sql: createSimpleProviderIcon(siCloudflareworkers),
   cloudflare_web_analytics: createSimpleProviderIcon(siCloudflareworkers),
   cloudflare_workers_observability:
     createSimpleProviderIcon(siCloudflareworkers),

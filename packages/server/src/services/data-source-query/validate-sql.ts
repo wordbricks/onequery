@@ -63,6 +63,7 @@ const DIALECT_MAP = {
   aws_athena_connector: Dialect.Athena,
   bigquery: Dialect.BigQuery,
   cloudflare_d1: Dialect.SQLite,
+  cloudflare_r2_sql: Dialect.Athena,
   laminar: Dialect.ClickHouse,
   // MotherDuck executes DuckDB SQL through a PostgreSQL wire endpoint. DuckDB's
   // dialect intentionally follows PostgreSQL closely enough for our read-only
