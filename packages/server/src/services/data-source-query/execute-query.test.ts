@@ -6,19 +6,21 @@ import type {
 } from "snowflake-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { createQueryDeadline } from "./core/timeout";
 import {
   executeBigQueryQuery,
   executeCloudflareD1Query,
   executeCloudflareR2SqlQuery,
   executeDatabaseQuery,
+  executeLaminarQuery,
   executeMotherDuckQuery,
+  executePostgresQuery,
   executeSnowflakeQuery,
   executeValidatedDatabaseQuery,
-  executeLaminarQuery,
-  executePostgresQuery,
 } from "./execute-query";
 import type { DatabaseQueryResult } from "./execute-query";
 import type { PostgresClientConfig } from "./postgres-transport";
+import { cloudflareR2SqlQueryDriver } from "./providers/cloudflare-r2-sql/driver";
 
 const originalFetch = globalThis.fetch;
 const postgresCredentials = {
@@ -292,6 +294,48 @@ describe("data source query execution", () => {
     });
     expect(JSON.parse(init?.body as string)).toEqual({
       query: "SELECT 1",
+      warehouse: "acct_123_analytics-events",
+    });
+  });
+
+  it("tests Cloudflare R2 SQL connections with a catalog metadata command", async () => {
+    const fetchSpy = vi.fn(async (_url: string | URL, _init?: RequestInit) => ({
+      json: async () => ({
+        errors: [],
+        messages: [],
+        result: {
+          metrics: {
+            bytes_scanned: 0,
+            files_scanned: 0,
+            r2_requests_count: 1,
+          },
+          rows: [{ namespace: "default" }],
+          schema: [{ name: "namespace", type: "Utf8" }],
+        },
+        success: true,
+      }),
+      ok: true,
+      status: 200,
+      text: async () => "",
+    }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const result = await cloudflareR2SqlQueryDriver.testConnection({
+      context: {},
+      credentials: {
+        accountId: "acct_123",
+        apiToken: "cf-r2-sql-token",
+        bucketName: "analytics-events",
+        type: "cloudflare_r2_sql",
+      },
+      deadline: createQueryDeadline(1000),
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(JSON.parse(init?.body as string)).toEqual({
+      query: "SHOW DATABASES",
       warehouse: "acct_123_analytics-events",
     });
   });

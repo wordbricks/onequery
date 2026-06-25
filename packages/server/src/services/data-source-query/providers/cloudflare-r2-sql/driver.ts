@@ -29,7 +29,7 @@ const DEFAULT_CLOUDFLARE_R2_SQL_API_BASE_URL =
 const TRANSIENT_CLOUDFLARE_R2_SQL_STATUS_CODES = new Set([
   429, 500, 502, 503, 504,
 ]);
-const CONNECTION_TEST_QUERY = "SELECT 1 AS onequery_connection_test";
+const CONNECTION_TEST_QUERY = "SHOW DATABASES";
 
 export async function executeCloudflareR2SqlQuery(
   creds: CloudflareR2SqlCredentials,
