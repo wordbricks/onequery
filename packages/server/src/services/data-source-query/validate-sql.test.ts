@@ -114,9 +114,49 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
 
     await expectValidationError(
       "DELETE FROM events",
-      "Only SELECT, SHOW, DESCRIBE, or EXPLAIN queries are allowed. Got: delete",
+      "Only SELECT, SHOW, DESCRIBE, EXPLAIN, or PRAGMA queries are allowed. Got: delete",
       "cloudflare_d1"
     );
+  });
+
+  it("allows read-only Cloudflare D1 PRAGMA statements", async () => {
+    const pragmaQueries = [
+      "PRAGMA table_list",
+      'PRAGMA table_info("events")',
+      "PRAGMA table_xinfo(events)",
+      "PRAGMA index_list(events)",
+      "PRAGMA index_info(idx_events_created_at)",
+      "PRAGMA index_xinfo(idx_events_created_at)",
+      "PRAGMA foreign_key_list(events)",
+      "PRAGMA foreign_key_check",
+      "PRAGMA quick_check",
+    ];
+
+    for (const sql of pragmaQueries) {
+      await expectValidQuery(
+        sql,
+        {
+          sql,
+        },
+        "cloudflare_d1"
+      );
+    }
+  });
+
+  it("rejects D1 PRAGMA statements that are not read-only metadata", async () => {
+    for (const sql of [
+      "PRAGMA foreign_keys=off",
+      "PRAGMA foreign_keys",
+      "PRAGMA case_sensitive_like",
+      "PRAGMA optimize",
+      "PRAGMA table_info(randomblob(1))",
+    ]) {
+      await expectValidationError(
+        sql,
+        "Only read-only PRAGMA statements are allowed",
+        "cloudflare_d1"
+      );
+    }
   });
 
   it("validates Cloudflare R2 SQL queries with the Athena dialect", async () => {

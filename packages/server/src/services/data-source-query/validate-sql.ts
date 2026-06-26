@@ -16,6 +16,7 @@ const ERRORS = {
   cteSelectOnly: "CTEs must only contain SELECT statements",
   unsafeFunction: (name: string) =>
     `Side-effecting SQL functions are not allowed: ${name}`,
+  unsafePragma: "Only read-only PRAGMA statements are allowed",
   locking: "SELECT locking clauses are not allowed",
   selectInto: "SELECT INTO is not allowed",
 } as const;
@@ -232,11 +233,12 @@ type ValidationContext = {
   dialect: (typeof DIALECT_MAP)[DatabaseCredentialProviderType];
 };
 
-type MetadataStatementKind = "describe" | "explain" | "show";
+type MetadataStatementKind = "describe" | "explain" | "pragma" | "show";
 type ReadOnlyStatementKind = "query" | MetadataStatementKind;
 type ParsedQuery = {
   statement: Expression;
   statementKind: ReadOnlyStatementKind;
+  metadataStatementDefinition?: MetadataStatementDefinition;
 };
 
 type MetadataStatementDefinition = {
@@ -245,6 +247,7 @@ type MetadataStatementDefinition = {
   expressionKinds: readonly string[];
   firstKeywords: readonly string[];
   statementKind: MetadataStatementKind;
+  validateStatement?: (expr: Expression) => Violation | null;
 };
 
 type Expression = PolyglotSdk.ast.Expression;
@@ -273,6 +276,13 @@ type FunctionData = ExpressionRecord & {
 
 type MethodCallData = ExpressionRecord & {
   method?: unknown;
+};
+
+type PragmaData = ExpressionRecord & {
+  args?: unknown[];
+  name?: unknown;
+  use_assignment_syntax?: unknown;
+  value?: unknown;
 };
 
 type IdentifierLike = {
@@ -310,9 +320,36 @@ const DEFAULT_READ_ONLY_METADATA_STATEMENTS = [
     statementKind: "explain",
   },
 ] as const satisfies readonly MetadataStatementDefinition[];
-const READ_ONLY_METADATA_STATEMENT_OVERRIDES = {} as Partial<
+const CLOUDFLARE_D1_READ_ONLY_METADATA_STATEMENTS = [
+  ...DEFAULT_READ_ONLY_METADATA_STATEMENTS,
+  {
+    allowOpaqueCommand: false,
+    displayName: "PRAGMA",
+    expressionKinds: ["pragma"],
+    firstKeywords: ["pragma"],
+    statementKind: "pragma",
+    validateStatement: findReadOnlySqlitePragmaViolation,
+  },
+] as const satisfies readonly MetadataStatementDefinition[];
+const READ_ONLY_METADATA_STATEMENT_OVERRIDES: Partial<
   Record<DatabaseCredentialProviderType, readonly MetadataStatementDefinition[]>
->;
+> = {
+  cloudflare_d1: CLOUDFLARE_D1_READ_ONLY_METADATA_STATEMENTS,
+};
+
+const READ_ONLY_SQLITE_PRAGMA_NAMES = new Set([
+  "foreign_key_check",
+  "foreign_key_list",
+  "index_info",
+  "index_list",
+  "index_xinfo",
+  "quick_check",
+  "table_info",
+  "table_list",
+  "table_xinfo",
+]);
+
+const READ_ONLY_SQLITE_PRAGMA_ARG_KINDS = new Set(["column", "literal"]);
 
 function getSelectIntoError(dbType: DatabaseCredentialProviderType): Violation {
   return dbType === "mysql" ? OUTFILE_ERROR : ERRORS.selectInto;
@@ -470,6 +507,7 @@ function extractParsedQuery(
   const metadataStatement = findReadOnlyMetadataStatement(statement, context);
   if (metadataStatement) {
     return Result.ok({
+      metadataStatementDefinition: metadataStatement,
       statement,
       statementKind: metadataStatement.statementKind,
     });
@@ -486,6 +524,12 @@ function validateReadOnlyQuery(
   parsedQuery: ParsedQuery,
   context: ValidationContext
 ): ResultType<null, SqlValidationError> {
+  const metadataStatementViolation =
+    findMetadataStatementViolation(parsedQuery);
+  if (metadataStatementViolation) {
+    return invalid("non_select_query", metadataStatementViolation);
+  }
+
   const cteViolation = findCteViolation(parsedQuery.statement);
   if (cteViolation) {
     return invalid("cte_must_select", cteViolation);
@@ -671,6 +715,56 @@ function readFirstKeyword(context: ValidationContext): string | null {
 
   const keyword = normalizeTokenText(firstToken);
   return keyword.length > 0 ? keyword : null;
+}
+
+function findMetadataStatementViolation(
+  parsedQuery: ParsedQuery
+): Violation | null {
+  if (parsedQuery.statementKind === "query") {
+    return null;
+  }
+
+  return (
+    parsedQuery.metadataStatementDefinition?.validateStatement?.(
+      parsedQuery.statement
+    ) ?? null
+  );
+}
+
+function findReadOnlySqlitePragmaViolation(expr: Expression): Violation | null {
+  const pragma = getExpressionData<PragmaData>(expr, "pragma");
+  if (!pragma) {
+    return ERRORS.unsafePragma;
+  }
+
+  const name = normalizeIdentifierName(pragma.name);
+  if (!name || !READ_ONLY_SQLITE_PRAGMA_NAMES.has(name)) {
+    return ERRORS.unsafePragma;
+  }
+
+  if (
+    pragma.use_assignment_syntax === true ||
+    (pragma.value !== null && pragma.value !== undefined)
+  ) {
+    return ERRORS.unsafePragma;
+  }
+
+  const args = pragma.args ?? [];
+  if (
+    !Array.isArray(args) ||
+    args.some((arg) => !isReadOnlySqlitePragmaArg(arg))
+  ) {
+    return ERRORS.unsafePragma;
+  }
+
+  return null;
+}
+
+function isReadOnlySqlitePragmaArg(value: unknown): boolean {
+  return (
+    isExpression(value) &&
+    READ_ONLY_SQLITE_PRAGMA_ARG_KINDS.has(getExpressionKind(value))
+  );
 }
 
 function isCteQueryExpression(expr: Expression): boolean {
