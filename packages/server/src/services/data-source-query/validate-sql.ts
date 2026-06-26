@@ -232,9 +232,19 @@ type ValidationContext = {
   dialect: (typeof DIALECT_MAP)[DatabaseCredentialProviderType];
 };
 
+type MetadataStatementKind = "describe" | "explain" | "show";
+type ReadOnlyStatementKind = "query" | MetadataStatementKind;
 type ParsedQuery = {
   statement: Expression;
-  statementKind: "describe" | "query" | "show";
+  statementKind: ReadOnlyStatementKind;
+};
+
+type MetadataStatementDefinition = {
+  allowOpaqueCommand: boolean;
+  displayName: string;
+  expressionKinds: readonly string[];
+  firstKeywords: readonly string[];
+  statementKind: MetadataStatementKind;
 };
 
 type Expression = PolyglotSdk.ast.Expression;
@@ -276,6 +286,33 @@ type WithData = ExpressionRecord & {
 type CteData = ExpressionRecord & {
   this?: Expression;
 };
+
+const DEFAULT_READ_ONLY_METADATA_STATEMENTS = [
+  {
+    allowOpaqueCommand: true,
+    displayName: "SHOW",
+    expressionKinds: ["show"],
+    firstKeywords: ["show"],
+    statementKind: "show",
+  },
+  {
+    allowOpaqueCommand: true,
+    displayName: "DESCRIBE",
+    expressionKinds: ["describe"],
+    firstKeywords: ["describe", "desc"],
+    statementKind: "describe",
+  },
+  {
+    allowOpaqueCommand: false,
+    displayName: "EXPLAIN",
+    expressionKinds: ["describe"],
+    firstKeywords: ["explain"],
+    statementKind: "explain",
+  },
+] as const satisfies readonly MetadataStatementDefinition[];
+const READ_ONLY_METADATA_STATEMENT_OVERRIDES = {} as Partial<
+  Record<DatabaseCredentialProviderType, readonly MetadataStatementDefinition[]>
+>;
 
 function getSelectIntoError(dbType: DatabaseCredentialProviderType): Violation {
   return dbType === "mysql" ? OUTFILE_ERROR : ERRORS.selectInto;
@@ -430,12 +467,12 @@ function extractParsedQuery(
     return Result.ok({ statement, statementKind: "query" });
   }
 
-  if (isTopLevelShowExpression(statement, context)) {
-    return Result.ok({ statement, statementKind: "show" });
-  }
-
-  if (isTopLevelDescribeExpression(statement, context)) {
-    return Result.ok({ statement, statementKind: "describe" });
+  const metadataStatement = findReadOnlyMetadataStatement(statement, context);
+  if (metadataStatement) {
+    return Result.ok({
+      statement,
+      statementKind: metadataStatement.statementKind,
+    });
   }
 
   const kind = getDeepestExpressionKind(statement);
@@ -490,11 +527,29 @@ function buildNonReadOnlyQueryError(
   context: ValidationContext,
   kind: string
 ): string {
-  const allowed =
-    context.dbType === "cloudflare_r2_sql"
-      ? "SELECT, SHOW, or DESCRIBE"
-      : "SELECT or SHOW";
+  const allowed = formatAllowedStatementList(
+    getAllowedStatementDisplayNames(context)
+  );
   return `Only ${allowed} queries are allowed. Got: ${kind}`;
+}
+
+function getAllowedStatementDisplayNames(
+  context: ValidationContext
+): readonly string[] {
+  return [
+    "SELECT",
+    ...getAllowedMetadataStatementDefinitions(context).map(
+      (definition) => definition.displayName
+    ),
+  ];
+}
+
+function formatAllowedStatementList(names: readonly string[]): string {
+  if (names.length <= 2) {
+    return names.join(" or ");
+  }
+
+  return `${names.slice(0, -1).join(", ")}, or ${names.at(-1)}`;
 }
 
 function finalizeSql(context: ValidationContext): ValidationResult {
@@ -567,47 +622,55 @@ function isTopLevelQueryExpression(expr: Expression): boolean {
   return polyglotAst.isSelect(expr) || polyglotAst.isSetOperation(expr);
 }
 
-function isTopLevelShowExpression(
+function findReadOnlyMetadataStatement(
   expr: Expression,
   context: ValidationContext
-): boolean {
-  const kind = getExpressionKind(expr);
-  if (kind === "show") {
-    return true;
+): MetadataStatementDefinition | null {
+  const expressionKind = getExpressionKind(expr);
+  const firstKeyword = readFirstKeyword(context);
+
+  if (!firstKeyword) {
+    return null;
   }
 
-  // Polyglot maps ClickHouse SHOW statements to generic command nodes.
-  return kind === "command" && firstTokenIs(context, "show");
+  return (
+    getAllowedMetadataStatementDefinitions(context).find((definition) => {
+      if (!definition.firstKeywords.includes(firstKeyword)) {
+        return false;
+      }
+
+      if (definition.expressionKinds.includes(expressionKind)) {
+        return true;
+      }
+
+      // Polyglot maps some dialect-specific metadata statements, such as
+      // ClickHouse SHOW/DESCRIBE, to opaque command nodes.
+      return definition.allowOpaqueCommand && expressionKind === "command";
+    }) ?? null
+  );
 }
 
-function isTopLevelDescribeExpression(
-  expr: Expression,
+function getAllowedMetadataStatementDefinitions(
   context: ValidationContext
-): boolean {
-  if (context.dbType !== "cloudflare_r2_sql") {
-    return false;
-  }
-
-  if (getExpressionKind(expr) !== "describe") {
-    return false;
-  }
-
-  // Polyglot Athena currently parses EXPLAIN SELECT as a describe expression.
-  // Require a source DESCRIBE/DESC keyword before allowing it.
-  return firstTokenIs(context, "describe") || firstTokenIs(context, "desc");
+): readonly MetadataStatementDefinition[] {
+  return (
+    READ_ONLY_METADATA_STATEMENT_OVERRIDES[context.dbType] ??
+    DEFAULT_READ_ONLY_METADATA_STATEMENTS
+  );
 }
 
-function firstTokenIs(context: ValidationContext, keyword: string): boolean {
+function readFirstKeyword(context: ValidationContext): string | null {
   const tokenization = tokenize(context.trimmedSql, context.dialect);
   if (!tokenization.success || !Array.isArray(tokenization.tokens)) {
-    return false;
+    return null;
   }
 
   const firstToken = (tokenization.tokens as TokenInfo[]).find(
     (token) => normalizeTokenText(token).length > 0
   );
 
-  return normalizeTokenText(firstToken) === keyword;
+  const keyword = normalizeTokenText(firstToken);
+  return keyword.length > 0 ? keyword : null;
 }
 
 function isCteQueryExpression(expr: Expression): boolean {
