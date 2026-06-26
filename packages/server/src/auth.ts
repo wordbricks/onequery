@@ -47,6 +47,15 @@ const AUTH_SESSION_UPDATE_AGE_SECONDS =
 const AUTH_SESSION_EXPIRES_IN_SECONDS =
   AUTH_SESSION_EXPIRES_IN_DAYS * SECONDS_PER_DAY;
 const AUTH_SESSION_COOKIE_CACHE_MAX_AGE_SECONDS = 15 * SECONDS_PER_MINUTE;
+type OrganizationPluginOptions = NonNullable<
+  Parameters<typeof organization>[0]
+>;
+type OrganizationAccessControlOption = NonNullable<
+  OrganizationPluginOptions["ac"]
+>;
+
+const authOrganizationAccessControl =
+  organizationAccessControl as OrganizationAccessControlOption;
 
 // ============================================================================
 // Database-Backed Session Cache Configuration
@@ -150,7 +159,7 @@ export function createAuth(config: AuthConfig) {
         verificationUri: "/api/device",
       }),
       organization({
-        ac: organizationAccessControl,
+        ac: authOrganizationAccessControl,
         allowUserToCreateOrganization: true,
         // Comment: Org deletion is operator-assisted only because Better Auth's
         // default endpoint hard-deletes all org-owned rows transitively.
