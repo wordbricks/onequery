@@ -291,6 +291,11 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
       "Side-effecting SQL functions are not allowed: nextval"
     );
     await expectValidationError(
+      "SELECT pg_advisory_lock(1)",
+      "Side-effecting SQL functions are not allowed: pg_advisory_lock",
+      "motherduck"
+    );
+    await expectValidationError(
       "SELECT GET_LOCK('users', 1)",
       "Side-effecting SQL functions are not allowed: get_lock",
       "mysql"
