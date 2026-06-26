@@ -3,7 +3,18 @@ import type { Result as ResultType } from "better-result";
 
 const FORBIDDEN_KEYWORDS =
   /\b(INSERT|UPDATE|DELETE|MERGE|CREATE|DROP|ALTER|TRUNCATE|GRANT|REVOKE|CALL|UNLOAD|COPY|MSCK|VACUUM|ANALYZE|OPTIMIZE)\b/i;
-const READ_ONLY_FIRST_KEYWORDS = new Set(["SELECT", "WITH", "SHOW"]);
+const FORBIDDEN_EXPLAIN_KEYWORDS =
+  /\b(INSERT|UPDATE|DELETE|MERGE|CREATE|DROP|ALTER|TRUNCATE|GRANT|REVOKE|CALL|UNLOAD|COPY|MSCK|VACUUM|OPTIMIZE)\b/i;
+const READ_ONLY_KEYWORD_ERROR =
+  "Only SELECT, WITH, SHOW, DESCRIBE, or EXPLAIN queries are allowed";
+const READ_ONLY_FIRST_KEYWORDS = new Set([
+  "SELECT",
+  "WITH",
+  "SHOW",
+  "DESCRIBE",
+  "DESC",
+  "EXPLAIN",
+]);
 
 class SqlValidationError extends TaggedError("SqlValidationError")<{
   code: "INVALID_QUERY";
@@ -32,15 +43,24 @@ export function validateAthenaSql(
 
   const firstKeyword = readFirstKeyword(normalized);
   if (!READ_ONLY_FIRST_KEYWORDS.has(firstKeyword)) {
-    return invalid("Only SELECT, WITH, or SHOW queries are allowed");
+    return invalid(READ_ONLY_KEYWORD_ERROR);
   }
 
   if (firstKeyword === "WITH" && !/\bSELECT\b/i.test(normalized)) {
     return invalid("WITH queries must eventually select rows");
   }
 
-  if (firstKeyword !== "SHOW" && FORBIDDEN_KEYWORDS.test(normalized)) {
+  const forbiddenKeywords =
+    firstKeyword === "EXPLAIN"
+      ? FORBIDDEN_EXPLAIN_KEYWORDS
+      : FORBIDDEN_KEYWORDS;
+
+  if (firstKeyword !== "SHOW" && forbiddenKeywords.test(normalized)) {
     return invalid("Query contains non-read operations");
+  }
+
+  if (firstKeyword === "EXPLAIN" && !/\bSELECT\b/i.test(normalized)) {
+    return invalid("EXPLAIN queries must explain SELECT statements");
   }
 
   return Result.ok({
