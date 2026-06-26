@@ -114,7 +114,38 @@ describe("validateAndNormalizeReadOnlyQuery", () => {
 
     await expectValidationError(
       "CREATE TABLE copied AS SELECT 1",
-      "Only SELECT or SHOW queries are allowed. Got: create_table",
+      "Only SELECT, SHOW, or DESCRIBE queries are allowed. Got: create_table",
+      "cloudflare_r2_sql"
+    );
+  });
+
+  it("allows Cloudflare R2 SQL metadata commands", async () => {
+    const metadataQueries = [
+      "SHOW DATABASES",
+      "SHOW SCHEMAS",
+      "SHOW TABLES",
+      "SHOW TABLES IN default",
+      "SHOW COLUMNS FROM default.transactions",
+      "DESCRIBE default.transactions",
+      "DESCRIBE TABLE default.transactions",
+      "DESC default.transactions",
+    ];
+
+    for (const sql of metadataQueries) {
+      await expectValidQuery(
+        sql,
+        {
+          sql,
+        },
+        "cloudflare_r2_sql"
+      );
+    }
+  });
+
+  it("does not allow non-DESCRIBE statements that parse as R2 SQL describe expressions", async () => {
+    await expectValidationError(
+      "EXPLAIN SELECT 1",
+      "Only SELECT, SHOW, or DESCRIBE queries are allowed. Got: describe",
       "cloudflare_r2_sql"
     );
   });
