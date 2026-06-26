@@ -723,7 +723,7 @@ function isUnsafeFunctionName(
   functionName: string,
   dbType: DatabaseCredentialProviderType
 ): boolean {
-  if (dbType === "postgres") {
+  if (dbType === "postgres" || dbType === "motherduck") {
     return (
       POSTGRES_UNSAFE_FUNCTIONS.has(functionName) ||
       functionName.startsWith("dblink_") ||
