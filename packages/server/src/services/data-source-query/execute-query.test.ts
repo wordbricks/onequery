@@ -298,6 +298,49 @@ describe("data source query execution", () => {
     });
   });
 
+  it("executes Cloudflare R2 SQL metadata queries after validation", async () => {
+    const fetchSpy = vi.fn(async (_url: string | URL, _init?: RequestInit) => ({
+      json: async () => ({
+        errors: [],
+        messages: [],
+        result: {
+          metrics: {
+            bytes_scanned: 0,
+            files_scanned: 0,
+            r2_requests_count: 1,
+          },
+          rows: [{ name: "transactions" }],
+          schema: [{ name: "name", type: "Utf8" }],
+        },
+        success: true,
+      }),
+      ok: true,
+      status: 200,
+      text: async () => "",
+    }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+
+    const rows = unwrapQueryResult(
+      await executeDatabaseQuery({
+        credentials: {
+          accountId: "acct_123",
+          apiToken: "cf-r2-sql-token",
+          bucketName: "analytics-events",
+          type: "cloudflare_r2_sql",
+        },
+        sql: "SHOW TABLES",
+      })
+    );
+
+    expect(rows).toEqual([{ name: "transactions" }]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [, init] = fetchSpy.mock.calls[0] ?? [];
+    expect(JSON.parse(init?.body as string)).toEqual({
+      query: "SHOW TABLES",
+      warehouse: "acct_123_analytics-events",
+    });
+  });
+
   it("tests Cloudflare R2 SQL connections with a catalog metadata command", async () => {
     const fetchSpy = vi.fn(async (_url: string | URL, _init?: RequestInit) => ({
       json: async () => ({

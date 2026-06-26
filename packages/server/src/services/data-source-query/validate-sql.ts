@@ -14,8 +14,6 @@ import type { Result as ResultType } from "better-result";
 const OUTFILE_ERROR = "SELECT INTO OUTFILE/DUMPFILE is not allowed";
 const ERRORS = {
   cteSelectOnly: "CTEs must only contain SELECT statements",
-  nonReadOnlyQuery: (kind: string) =>
-    `Only SELECT or SHOW queries are allowed. Got: ${kind}`,
   unsafeFunction: (name: string) =>
     `Side-effecting SQL functions are not allowed: ${name}`,
   locking: "SELECT locking clauses are not allowed",
@@ -236,7 +234,7 @@ type ValidationContext = {
 
 type ParsedQuery = {
   statement: Expression;
-  statementKind: "query" | "show";
+  statementKind: "describe" | "query" | "show";
 };
 
 type Expression = PolyglotSdk.ast.Expression;
@@ -436,16 +434,20 @@ function extractParsedQuery(
     return Result.ok({ statement, statementKind: "show" });
   }
 
+  if (isTopLevelDescribeExpression(statement, context)) {
+    return Result.ok({ statement, statementKind: "describe" });
+  }
+
   const kind = getDeepestExpressionKind(statement);
   return invalid(
     "non_select_query",
-    ERRORS.nonReadOnlyQuery(kind ?? "unknown")
+    buildNonReadOnlyQueryError(context, kind ?? "unknown")
   );
 }
 
 function validateReadOnlyQuery(
   parsedQuery: ParsedQuery,
-  dbType: DatabaseCredentialProviderType
+  context: ValidationContext
 ): ResultType<null, SqlValidationError> {
   const cteViolation = findCteViolation(parsedQuery.statement);
   if (cteViolation) {
@@ -454,7 +456,7 @@ function validateReadOnlyQuery(
 
   const selectIntoViolation = findSelectIntoViolationInQuery(
     parsedQuery.statement,
-    dbType
+    context.dbType
   );
   if (selectIntoViolation) {
     return invalid("select_into_not_allowed", selectIntoViolation);
@@ -467,7 +469,7 @@ function validateReadOnlyQuery(
 
   const unsafeFunctionViolation = findUnsafeFunctionViolation(
     parsedQuery.statement,
-    dbType
+    context.dbType
   );
   if (unsafeFunctionViolation) {
     return invalid("unsafe_function", unsafeFunctionViolation);
@@ -475,10 +477,24 @@ function validateReadOnlyQuery(
 
   const mutableKind = findSideEffectingExpressionKind(parsedQuery);
   if (mutableKind) {
-    return invalid("non_select_query", ERRORS.nonReadOnlyQuery(mutableKind));
+    return invalid(
+      "non_select_query",
+      buildNonReadOnlyQueryError(context, mutableKind)
+    );
   }
 
   return Result.ok(null);
+}
+
+function buildNonReadOnlyQueryError(
+  context: ValidationContext,
+  kind: string
+): string {
+  const allowed =
+    context.dbType === "cloudflare_r2_sql"
+      ? "SELECT, SHOW, or DESCRIBE"
+      : "SELECT or SHOW";
+  return `Only ${allowed} queries are allowed. Got: ${kind}`;
 }
 
 function finalizeSql(context: ValidationContext): ValidationResult {
@@ -562,6 +578,23 @@ function isTopLevelShowExpression(
 
   // Polyglot maps ClickHouse SHOW statements to generic command nodes.
   return kind === "command" && firstTokenIs(context, "show");
+}
+
+function isTopLevelDescribeExpression(
+  expr: Expression,
+  context: ValidationContext
+): boolean {
+  if (context.dbType !== "cloudflare_r2_sql") {
+    return false;
+  }
+
+  if (getExpressionKind(expr) !== "describe") {
+    return false;
+  }
+
+  // Polyglot Athena currently parses EXPLAIN SELECT as a describe expression.
+  // Require a source DESCRIBE/DESC keyword before allowing it.
+  return firstTokenIs(context, "describe") || firstTokenIs(context, "desc");
 }
 
 function firstTokenIs(context: ValidationContext, keyword: string): boolean {
@@ -729,7 +762,9 @@ function isAllowedStatementRoot(
   expr: Expression,
   parsedQuery: ParsedQuery
 ): boolean {
-  return parsedQuery.statementKind === "show" && expr === parsedQuery.statement;
+  return (
+    parsedQuery.statementKind !== "query" && expr === parsedQuery.statement
+  );
 }
 
 function isSideEffectingExpression(expr: Expression): boolean {
@@ -795,7 +830,7 @@ export async function validateAndNormalizeReadOnlyQuery(
     yield* validateStrictSyntax(context);
     const statements = yield* Result.await(parseStatements(context));
     const parsedQuery = yield* extractParsedQuery(statements, context);
-    yield* validateReadOnlyQuery(parsedQuery, context.dbType);
+    yield* validateReadOnlyQuery(parsedQuery, context);
     return finalizeSql(context);
   });
 }
