@@ -53,7 +53,7 @@ describe("linear source api adapter", () => {
     ]);
   });
 
-  it("adds create_issue for read-write connections", async () => {
+  it("adds create_issue and create_comment for read-write connections", async () => {
     const descriptor = await linearSourceApiAdapter.describe({
       actor,
       source: createSource("read_write"),
@@ -64,6 +64,42 @@ describe("linear source api adapter", () => {
       "list_issues",
       "get_issue",
       "create_issue",
+      "create_comment",
     ]);
+  });
+
+  it("normalizes create_comment field patches into a Linear GraphQL mutation", async () => {
+    const source = createSource("read_write");
+    const descriptor = await linearSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    const prepared = await linearSourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        fieldPatch: {
+          body: "Investigation started.",
+          issueId: "issue_123",
+        },
+        headers: [],
+        operation: "create_comment",
+      },
+      source,
+    });
+
+    if (prepared.kind !== "structured_request") {
+      throw new Error(`expected structured request, got ${prepared.kind}`);
+    }
+
+    expect(prepared.request.query).toContain("commentCreate");
+    expect(prepared.request.variables).toEqual({
+      input: {
+        body: "Investigation started.",
+        issueId: "issue_123",
+      },
+    });
   });
 });

@@ -55,14 +55,24 @@ const CreateIssueInputSchema = z
   })
   .strict();
 
+const CreateCommentInputSchema = z
+  .object({
+    body: z.string().min(1),
+    issueId: z.string().min(1),
+    parentId: z.string().min(1).optional(),
+  })
+  .strict();
+
 type LinearOperationName =
   | "list_teams"
   | "list_issues"
   | "get_issue"
-  | "create_issue";
+  | "create_issue"
+  | "create_comment";
 
 type ListIssuesInput = z.infer<typeof ListIssuesInputSchema>;
 type CreateIssueInput = z.infer<typeof CreateIssueInputSchema>;
+type CreateCommentInput = z.infer<typeof CreateCommentInputSchema>;
 
 type LinearGraphQlResponse = {
   body: SourceApiResponseBody;
@@ -210,6 +220,15 @@ function buildLinearOperations(
       name: "create_issue",
       summary: "Create a Linear issue.",
     }),
+    createLinearInputOperation({
+      description:
+        "Create a Linear comment on an issue. Requires `issueId` and `body`; optional fields include `parentId` for replies.",
+      examples: examples.filter(
+        (example) => example.label === "Create comment"
+      ),
+      name: "create_comment",
+      summary: "Create a Linear issue comment.",
+    }),
   ];
 }
 
@@ -324,6 +343,11 @@ function buildLinearExamples(
       description: "Create a Linear issue in a team.",
       label: "Create issue",
     },
+    {
+      command: `onequery api --source ${sourceKey} --op create_comment -f 'issueId=<issue-id>' -f 'body=Investigation started'`,
+      description: "Create a comment on a Linear issue.",
+      label: "Create comment",
+    },
   ];
 }
 
@@ -379,9 +403,12 @@ function assertLinearOperationAllowed(input: {
   if (input.accessMode === "mention") {
     throw new SourceApiUnsupportedOperationError(input.operation);
   }
-  if (input.accessMode === "read" && input.operation === "create_issue") {
+  if (
+    input.accessMode === "read" &&
+    (input.operation === "create_issue" || input.operation === "create_comment")
+  ) {
     throw new SourceApiInvalidRequestError(
-      "Linear connection is read-only; create_issue requires read_write access"
+      `Linear connection is read-only; ${input.operation} requires read_write access`
     );
   }
 }
@@ -558,6 +585,30 @@ function buildLinearGraphQlRequest(input: {
         },
       };
     }
+    case "create_comment": {
+      const variables = parseCreateCommentInput(input.fieldPatch);
+      return {
+        query: `mutation VelenLinearCommentCreate($input: CommentCreateInput!) {
+  commentCreate(input: $input) {
+    success
+    comment {
+      id
+      body
+      createdAt
+      url
+      user {
+        id
+        name
+        email
+      }
+    }
+  }
+}`,
+        variables: {
+          input: variables,
+        },
+      };
+    }
   }
 }
 
@@ -596,6 +647,19 @@ function parseCreateIssueInput(fieldPatch: JsonObject | undefined): JsonObject {
   }
 
   return compactJsonObject(parsed.data satisfies CreateIssueInput);
+}
+
+function parseCreateCommentInput(
+  fieldPatch: JsonObject | undefined
+): JsonObject {
+  const parsed = CreateCommentInputSchema.safeParse(fieldPatch ?? {});
+  if (!parsed.success) {
+    throw new SourceApiInvalidRequestError(
+      "Invalid Linear create_comment fieldPatch input"
+    );
+  }
+
+  return compactJsonObject(parsed.data satisfies CreateCommentInput);
 }
 
 function compactJsonObject(input: Record<string, unknown>): JsonObject {
