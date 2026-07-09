@@ -14,6 +14,7 @@ import { googleAnalyticsSourceApiAdapter } from "./adapters/ga";
 import { githubSourceApiAdapter } from "./adapters/github";
 import { googleSearchConsoleSourceApiAdapter } from "./adapters/google-search-console";
 import { granolaSourceApiAdapter } from "./adapters/granola";
+import { hermesSourceApiAdapter } from "./adapters/hermes";
 import { jiraSourceApiAdapter } from "./adapters/jira";
 import { linearSourceApiAdapter } from "./adapters/linear";
 import { linkedInAdsSourceApiAdapter } from "./adapters/linkedin-ads";
@@ -86,6 +87,7 @@ export const sourceApiRegistry = createSourceApiRegistry([
   githubSourceApiAdapter,
   googleSearchConsoleSourceApiAdapter,
   granolaSourceApiAdapter,
+  hermesSourceApiAdapter,
   jiraSourceApiAdapter,
   linearSourceApiAdapter,
   linkedInAdsSourceApiAdapter,

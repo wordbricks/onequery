@@ -9,6 +9,7 @@ import {
   IconHelpCircle,
   IconKey,
   IconNotebook,
+  IconRobot,
   IconTerminal2,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
@@ -212,6 +213,16 @@ function GranolaIcon(props: ProviderIconProps) {
   );
 }
 
+function HermesIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon
+      {...props}
+      defaultLabel="Hermes Agent"
+      Icon={IconRobot}
+    />
+  );
+}
+
 function E2BIcon(props: ProviderIconProps) {
   return (
     <TablerProviderIcon {...props} defaultLabel="E2B" Icon={IconTerminal2} />
@@ -326,6 +337,7 @@ export const ProviderIcons = {
   google_docs: createSimpleProviderIcon(siGoogledocs),
   google_search_console: createSimpleProviderIcon(siGooglesearchconsole),
   granola: GranolaIcon,
+  hermes: HermesIcon,
   jira: createSimpleProviderIcon(siJira),
   laminar: LaminarIcon,
   linear: createSimpleProviderIcon(siLinear),

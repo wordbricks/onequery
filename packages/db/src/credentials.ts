@@ -469,6 +469,19 @@ export const E2BCredentialsSchema = z.object({
 
 export type E2BCredentials = z.infer<typeof E2BCredentialsSchema>;
 
+export const HermesCredentialsSchema = z.object({
+  apiBaseUrl: trimmedUrl(
+    "API base URL is required",
+    "API base URL must be a valid URL"
+  ).transform((value) => value.replace(/\/+$/, "")),
+  apiKey: requiredOpaqueString("API key is required"),
+  taskEndpoint: optionalTrimmedString("Task endpoint is required"),
+  type: z.literal("hermes"),
+  workspaceId: optionalTrimmedString("Workspace ID is required"),
+});
+
+export type HermesCredentials = z.infer<typeof HermesCredentialsSchema>;
+
 export const MicrosoftClarityCredentialsSchema = z.object({
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
   apiToken: requiredOpaqueString("API token is required"),
@@ -653,6 +666,7 @@ export const CredentialsSchema = z.union([
   JiraCredentialsSchema,
   VercelCredentialsSchema,
   E2BCredentialsSchema,
+  HermesCredentialsSchema,
   MicrosoftClarityCredentialsSchema,
   OnePasswordCredentialsSchema,
   CloudflareD1CredentialsSchema,
@@ -714,6 +728,7 @@ export const credentialSchemaMap = {
   github: GitHubCredentialsSchema,
   google_search_console: GoogleSearchConsoleCredentialsSchema,
   granola: GranolaCredentialsSchema,
+  hermes: HermesCredentialsSchema,
   jira: JiraCredentialsSchema,
   linkedin_ads: LinkedInAdsCredentialsSchema,
   cloudflare_workers_observability:

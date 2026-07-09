@@ -18,6 +18,7 @@ import {
   GoogleSearchConsoleCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
   GranolaCredentialsSchema,
+  HermesCredentialsSchema,
   JiraCredentialsSchema,
   CloudflareWorkersObservabilityCredentialsSchema,
   LinkedInAdsCredentialsSchema,
@@ -68,6 +69,7 @@ import type {
   GoogleSearchConsoleCredentials,
   GoogleAnalyticsCredentials,
   GranolaCredentials,
+  HermesCredentials,
   JiraCredentials,
   LaminarCredentials,
   LinkedInAdsCredentials,
@@ -1844,6 +1846,50 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("HermesCredentialsSchema", () => {
+    it("validates Hermes credentials", () => {
+      const credentials: HermesCredentials = {
+        apiBaseUrl: "https://hermes.example.com",
+        apiKey: "hermes_api_key",
+        taskEndpoint: "/api/tasks",
+        type: "hermes",
+        workspaceId: "workspace_123",
+      };
+
+      const result = HermesCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("trims apiBaseUrl and optional fields", () => {
+      const result = HermesCredentialsSchema.safeParse({
+        apiBaseUrl: "  https://hermes.example.com/  ",
+        apiKey: "hermes_api_key",
+        taskEndpoint: "  /tasks  ",
+        type: "hermes",
+        workspaceId: "  workspace_123  ",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.apiBaseUrl).toBe("https://hermes.example.com");
+        expect(result.data.taskEndpoint).toBe("/tasks");
+        expect(result.data.workspaceId).toBe("workspace_123");
+      }
+    });
+
+    it("rejects missing API key", () => {
+      const result = HermesCredentialsSchema.safeParse({
+        apiBaseUrl: "https://hermes.example.com",
+        type: "hermes",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("OnePasswordCredentialsSchema", () => {
     it("validates 1Password Connect credentials", () => {
       const credentials: OnePasswordCredentials = {
@@ -2107,6 +2153,10 @@ describe("credentials schemas", () => {
 
     it("should map e2b to E2BCredentialsSchema", () => {
       expect(credentialSchemaMap.e2b).toBe(E2BCredentialsSchema);
+    });
+
+    it("should map hermes to HermesCredentialsSchema", () => {
+      expect(credentialSchemaMap.hermes).toBe(HermesCredentialsSchema);
     });
 
     it("should map onepassword to OnePasswordCredentialsSchema", () => {
