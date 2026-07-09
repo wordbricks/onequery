@@ -1116,21 +1116,23 @@ export const SOURCE_PROVIDER_REGISTRY = {
     connectable: true,
     analysisSource: true,
     queryInterface: false,
-    sourceApiInterface: false,
+    sourceApiInterface: true,
     testable: false,
-    dashboardConnectable: false,
-    dashboardCredentialForm: "json",
+    dashboardConnectable: true,
+    dashboardCredentialForm: "linear",
     publicCategory: "Developer workflow",
     guide: {
       summary:
-        "Connect Linear with either an API key or a full OAuth token bundle.",
+        "Connect Linear with an API key and choose whether agents can only receive mentions, read issues, or read and create issues.",
       steps: [
-        "Choose either the API key shape (`apiKey`) or the OAuth shape (`accessToken` plus `linearOrganizationId`).",
-        "If you use OAuth, keep the refresh metadata so the server can keep the connection valid over time.",
+        "Create a Linear API key for the workspace you want OneQuery to access.",
+        "Choose `mention`, `read`, or `read_write` in `credentials.accessMode`.",
+        "Use `mention` when OneQuery should keep the connection metadata but must not expose Linear issue reads or writes through Source API.",
       ],
       exampleInput: {
         sourceKey: "linear_main",
         credentials: {
+          accessMode: "read",
           apiKey: "lin_api_key",
         },
       },

@@ -29,10 +29,10 @@ const providers = [
     label: "Linear",
     publicCategory: "Developer workflow",
     connectable: true,
-    dashboardConnectable: false,
-    dashboardCredentialForm: "json",
+    dashboardConnectable: true,
+    dashboardCredentialForm: "linear",
     testable: false,
-    interfaces: [],
+    interfaces: ["api"],
     credentialType: "linear",
     credentialExample: {},
     guideSummary: "Connect Linear.",
@@ -64,6 +64,7 @@ describe("data-source-provider-metadata", () => {
 
     expect(options.map((provider) => provider.value)).toEqual([
       "postgres",
+      "linear",
       "cloudflare_workers_observability",
     ]);
   });
@@ -79,7 +80,7 @@ describe("data-source-provider-metadata", () => {
     expect(isProviderType("cloudflare_workers_observability", providers)).toBe(
       true
     );
-    expect(isProviderType("linear", providers)).toBe(false);
+    expect(isProviderType("linear", providers)).toBe(true);
     expect(isTestableDataSourceProvider("postgres", providers)).toBe(true);
     expect(
       isTestableDataSourceProvider(

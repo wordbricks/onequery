@@ -556,12 +556,24 @@ export type CloudflareWebAnalyticsCredentials = z.infer<
   typeof CloudflareWebAnalyticsCredentialsSchema
 >;
 
+export const LINEAR_ACCESS_MODES = ["mention", "read", "read_write"] as const;
+
+export const LinearAccessModeSchema = z.enum(LINEAR_ACCESS_MODES);
+
+export type LinearAccessMode = z.infer<typeof LinearAccessModeSchema>;
+
 export const LinearApiKeyCredentialsSchema = z.object({
+  accessMode: LinearAccessModeSchema.optional(),
   apiKey: requiredOpaqueString("API key is required"),
   type: z.literal("linear"),
 });
 
+export type LinearApiKeyCredentials = z.infer<
+  typeof LinearApiKeyCredentialsSchema
+>;
+
 export const LinearOAuthCredentialsSchema = z.object({
+  accessMode: LinearAccessModeSchema.optional(),
   accessToken: requiredOpaqueString("Access token is required"),
   appUserId: optionalTrimmedString("App user ID is required"),
   expiresAt: optionalTrimmedString("Expiration timestamp is required"),
@@ -575,12 +587,41 @@ export const LinearOAuthCredentialsSchema = z.object({
   type: z.literal("linear"),
 });
 
+export type LinearOAuthCredentials = z.infer<
+  typeof LinearOAuthCredentialsSchema
+>;
+
 export const LinearCredentialsSchema = z.union([
   LinearApiKeyCredentialsSchema,
   LinearOAuthCredentialsSchema,
 ]);
 
 export type LinearCredentials = z.infer<typeof LinearCredentialsSchema>;
+
+export function getLinearAccessMode(
+  credentials: LinearCredentials
+): LinearAccessMode {
+  if (credentials.accessMode) {
+    return credentials.accessMode;
+  }
+
+  if ("scope" in credentials) {
+    const scopes = new Set(
+      (credentials.scope ?? "")
+        .split(/[\s,]+/)
+        .map((scope) => scope.trim())
+        .filter((scope) => scope.length > 0)
+    );
+    if (scopes.has("write")) {
+      return "read_write";
+    }
+    if (scopes.has("read")) {
+      return "read";
+    }
+  }
+
+  return "read_write";
+}
 
 export const CredentialsSchema = z.union([
   PostgresCredentialsSchema,

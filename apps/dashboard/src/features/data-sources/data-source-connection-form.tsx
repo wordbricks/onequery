@@ -20,6 +20,7 @@ import { isDatabaseProvider } from "@/features/data-sources/forms/database-provi
 import { GitHubDataSourceForm } from "@/features/data-sources/forms/github-data-source-form";
 import { JsonDataSourceForm } from "@/features/data-sources/forms/json-data-source-form";
 import { LaminarDataSourceForm } from "@/features/data-sources/forms/laminar-data-source-form";
+import { LinearDataSourceForm } from "@/features/data-sources/forms/linear-data-source-form";
 import { MixpanelDataSourceForm } from "@/features/data-sources/forms/mixpanel-data-source-form";
 import { MongoDBDataSourceForm } from "@/features/data-sources/forms/mongodb-data-source-form";
 import { PostHogDataSourceForm } from "@/features/data-sources/forms/posthog-data-source-form";
@@ -138,6 +139,8 @@ function renderConnectionForm(input: {
       return <PostHogDataSourceForm key={providerId} {...commonProps} />;
     case "github":
       return <GitHubDataSourceForm key={providerId} {...commonProps} />;
+    case "linear":
+      return <LinearDataSourceForm key={providerId} {...commonProps} />;
   }
 
   return (

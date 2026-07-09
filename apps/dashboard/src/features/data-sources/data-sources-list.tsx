@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@onequery/ui/components/dropdown-menu";
+import { getLinearAccessModeLabel } from "@onequery/ui/data-sources/linear-access-mode";
 import {
   IconAlertTriangle,
   IconDotsVertical,
@@ -207,6 +208,11 @@ function DataSourceCard({
           <Badge variant={getStatusVariant(dataSource.status)}>
             {dataSource.status}
           </Badge>
+          {dataSource.provider === "linear" ? (
+            <Badge variant="outline">
+              {getLinearAccessModeLabel(dataSource.linearAccessMode)}
+            </Badge>
+          ) : null}
         </div>
         {dataSource.lastUsedAt && (
           <p className="text-sm text-muted-foreground mt-2">
