@@ -1065,11 +1065,12 @@ export const SOURCE_PROVIDER_REGISTRY = {
       summary:
         "Connect a Hermes worker agent so OneQuery can dispatch task requests without exposing the Hermes API key to the caller.",
       steps: [
-        "Deploy or choose a Hermes API endpoint reachable from the OneQuery server.",
-        "Create a Hermes API key that can create tasks for the intended workspace.",
-        "If the dashboard backend can reach the Hermes workspace discovery API, load workspaces from `/api/workspaces` and choose the default workspace during connection.",
-        "Set `apiBaseUrl` to the Hermes API origin and include `workspaceId` when this source should default to one workspace.",
-        "Only set `taskEndpoint` when the Hermes server uses a task creation path other than `/api/tasks`.",
+        "Enable the Hermes Agent API server with `API_SERVER_ENABLED=true` and a strong `API_SERVER_KEY`.",
+        "Expose the local Hermes API server through a secure HTTPS tunnel or private network endpoint reachable from OneQuery.",
+        "Set `apiBaseUrl` to the Hermes API origin, for example a Cloudflare Tunnel URL.",
+        "Copy the Hermes `API_SERVER_KEY` into `apiKey`.",
+        "Optionally set `sessionId` or `sessionKey` to reuse Hermes run/session context.",
+        "Only set `taskEndpoint` when the Hermes server uses a run creation path other than `/v1/runs`.",
       ],
       exampleInput: {
         sourceKey: "hermes_main",
@@ -1077,7 +1078,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
           type: "hermes",
           apiBaseUrl: "https://hermes.example.com",
           apiKey: "hermes_api_key",
-          workspaceId: "workspace_123",
+          sessionId: "production-api",
         },
       },
     },

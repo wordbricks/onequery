@@ -33,27 +33,46 @@ import type {
 } from "../types";
 
 const HERMES_DESCRIPTOR_VERSION = "hermes.v1";
-const HERMES_DEFAULT_TASK_ENDPOINT = "/api/tasks";
+const HERMES_DEFAULT_RUN_ENDPOINT = "/v1/runs";
 const HERMES_ALLOWED_REQUEST_HEADERS = [
   "Content-Type",
   "Idempotency-Key",
   "X-Request-ID",
+  "X-Hermes-Session-Key",
 ] as const;
 const HERMES_ALLOWED_RESPONSE_HEADERS = [
   "content-type",
   "location",
   "retry-after",
   "x-request-id",
+  "x-hermes-session-key",
 ] as const;
 
+const hermesConversationMessageSchema = z.object({
+  content: z.string().trim().min(1),
+  role: z.string().trim().min(1),
+});
+const hermesInputSchema = z.union([
+  z.string().trim().min(1),
+  z.array(z.looseObject({})).min(1),
+]);
 const hermesTaskRequestSchema = z.looseObject({
+  conversationHistory: z.array(hermesConversationMessageSchema).optional(),
+  conversation_history: z.array(hermesConversationMessageSchema).optional(),
+  input: hermesInputSchema.optional(),
+  instructions: z.string().trim().min(1).optional(),
+  previousResponseId: z.string().trim().min(1).optional(),
+  previous_response_id: z.string().trim().min(1).optional(),
+  sessionId: z.string().trim().min(1).optional(),
+  sessionKey: z.string().trim().min(1).max(256).optional(),
+  session_id: z.string().trim().min(1).optional(),
+  task: z.string().trim().min(1).optional(),
   timeoutMs: z
     .number()
     .int()
     .min(1)
     .max(MAX_PROVIDER_REQUEST_TIMEOUT_MS)
     .optional(),
-  workspaceId: z.string().trim().min(1).optional(),
 });
 
 type HermesTaskRequest = z.infer<typeof hermesTaskRequestSchema>;
@@ -84,9 +103,10 @@ export const hermesSourceApiAdapter: SourceApiAdapter = {
           examples,
           name: "run_task",
           notes: [
-            "The request body is forwarded to Hermes as JSON.",
+            "The request body is converted to Hermes Agent's `POST /v1/runs` JSON shape.",
+            "Use `task` for a simple task string, or `input` for a native Hermes run input.",
+            "Use `sessionId` for Hermes `session_id`; use `sessionKey` for the `X-Hermes-Session-Key` header.",
             "Use `timeoutMs` for the local HTTP request timeout; it is not forwarded to Hermes.",
-            "If this source has a default `workspaceId`, it is added when the request does not include one.",
           ],
           summary: "Run a task through Hermes.",
         }),
@@ -136,11 +156,11 @@ export const hermesSourceApiAdapter: SourceApiAdapter = {
       operation: operation.name,
       paginationPolicy: operation.paginationPolicy,
       provider: source.provider,
-      request: withDefaultWorkspaceId({
+      request: withDefaultHermesRunContext({
+        credentials,
         request: normalizedRequest,
-        workspaceId: credentials.workspaceId,
       }) as JsonObject,
-      selectorTemplate: hermesTaskEndpoint(credentials),
+      selectorTemplate: hermesRunEndpoint(credentials),
       sourceId: source.id,
       sourceKey: source.sourceKey,
     };
@@ -153,9 +173,9 @@ export const hermesSourceApiAdapter: SourceApiAdapter = {
     }
 
     const credentials = requireHermesCredentials(source);
-    const request = withDefaultWorkspaceId({
+    const request = withDefaultHermesRunContext({
+      credentials,
       request: parseHermesTaskRequest(prepared.request),
-      workspaceId: credentials.workspaceId,
     });
     const response = await requestHermesTask({
       credentials,
@@ -187,10 +207,18 @@ export async function requestHermesTask(input: {
   headers?: Record<string, string>;
   request: HermesTaskRequest;
 }): Promise<HermesTransportResponse> {
-  const response = await createHermesHttpClient(input.credentials).send({
-    body: stripHermesLocalRequestFields(input.request),
-    endpoint: hermesTaskEndpoint(input.credentials),
+  const headers = buildHermesRunHeaders({
+    credentials: input.credentials,
     headers: input.headers,
+    request: input.request,
+  });
+  const response = await createHermesHttpClient(input.credentials).send({
+    body: buildHermesRunPayload({
+      credentials: input.credentials,
+      request: input.request,
+    }),
+    endpoint: hermesRunEndpoint(input.credentials),
+    headers,
     method: "POST",
     timeoutMs: input.request.timeoutMs,
   });
@@ -201,16 +229,9 @@ export async function requestHermesTask(input: {
 function buildHermesExamples(
   source: PreparedSourceConnection
 ): SourceApiExample[] {
-  const credentials = isHermesCredentials(source.credentials)
-    ? source.credentials
-    : null;
-  const workspaceField = credentials?.workspaceId
-    ? ""
-    : ',"workspaceId":"workspace_123"';
-
   return [
     {
-      command: `onequery api --source ${source.sourceKey} --op run_task --input '{"task":"Investigate why the production API is returning 500s"${workspaceField}}'`,
+      command: `onequery api --source ${source.sourceKey} --op run_task --input '{"task":"Investigate why the production API is returning 500s","sessionId":"production-api"}'`,
       description:
         "Dispatch a debugging task to the connected Hermes worker agent.",
       label: "Run debugging task",
@@ -277,33 +298,90 @@ function parseHermesTaskRequest(value: JsonObject): HermesTaskRequest {
 }
 
 function hasHermesTaskPayloadField(request: HermesTaskRequest): boolean {
-  return Object.keys(request).some(
-    (key) => key !== "timeoutMs" && key !== "workspaceId"
-  );
+  return Boolean(request.task || request.input);
 }
 
-function withDefaultWorkspaceId(input: {
+function withDefaultHermesRunContext(input: {
+  credentials: HermesCredentials;
   request: HermesTaskRequest;
-  workspaceId?: string;
 }): HermesTaskRequest {
-  if (!input.workspaceId || input.request.workspaceId) {
-    return input.request;
+  let request = input.request;
+  const defaultSessionId =
+    input.credentials.sessionId ?? input.credentials.workspaceId;
+
+  if (!request.sessionId && !request.session_id && defaultSessionId) {
+    request = {
+      ...request,
+      sessionId: defaultSessionId,
+    };
   }
 
-  return {
-    ...input.request,
-    workspaceId: input.workspaceId,
-  };
+  if (!request.sessionKey && input.credentials.sessionKey) {
+    request = {
+      ...request,
+      sessionKey: input.credentials.sessionKey,
+    };
+  }
+
+  return request;
 }
 
-function stripHermesLocalRequestFields(request: HermesTaskRequest): JsonObject {
-  const { timeoutMs: _timeoutMs, ...payload } = request;
+function buildHermesRunPayload(input: {
+  credentials: HermesCredentials;
+  request: HermesTaskRequest;
+}): JsonObject {
+  const request = withDefaultHermesRunContext(input);
+  const payload: Record<string, unknown> = {
+    input: request.input ?? request.task,
+  };
+  const sessionId = request.session_id ?? request.sessionId;
+  const previousResponseId =
+    request.previous_response_id ?? request.previousResponseId;
+  const conversationHistory =
+    request.conversation_history ?? request.conversationHistory;
+
+  if (request.instructions) {
+    payload.instructions = request.instructions;
+  }
+  if (sessionId) {
+    payload.session_id = sessionId;
+  }
+  if (previousResponseId) {
+    payload.previous_response_id = previousResponseId;
+  }
+  if (conversationHistory) {
+    payload.conversation_history = conversationHistory;
+  }
+
   return payload as JsonObject;
 }
 
-function hermesTaskEndpoint(credentials: HermesCredentials): string {
+function buildHermesRunHeaders(input: {
+  credentials: HermesCredentials;
+  headers?: Record<string, string>;
+  request: HermesTaskRequest;
+}): Record<string, string> | undefined {
+  const sessionKey = input.request.sessionKey ?? input.credentials.sessionKey;
+  if (!sessionKey) {
+    return input.headers;
+  }
+
+  const headers = { ...(input.headers ?? {}) };
+  if (!hasHeader(headers, "X-Hermes-Session-Key")) {
+    headers["X-Hermes-Session-Key"] = sessionKey;
+  }
+  return headers;
+}
+
+function hasHeader(headers: Record<string, string>, name: string): boolean {
+  return Object.keys(headers).some(
+    (candidate) => candidate.toLowerCase() === name.toLowerCase()
+  );
+}
+
+function hermesRunEndpoint(credentials: HermesCredentials): string {
   const endpoint =
-    credentials.taskEndpoint?.trim() ?? HERMES_DEFAULT_TASK_ENDPOINT;
+    credentials.taskEndpoint?.trim() ?? HERMES_DEFAULT_RUN_ENDPOINT;
   if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
     throw new HermesInvalidRequestError(
       "Hermes taskEndpoint must be a relative path"
