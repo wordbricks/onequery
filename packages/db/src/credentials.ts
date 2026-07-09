@@ -475,6 +475,8 @@ export const HermesCredentialsSchema = z.object({
     "API base URL must be a valid URL"
   ).transform((value) => value.replace(/\/+$/, "")),
   apiKey: requiredOpaqueString("API key is required"),
+  sessionId: optionalTrimmedString("Session ID is required"),
+  sessionKey: optionalTrimmedString("Session key is required"),
   taskEndpoint: optionalTrimmedString("Task endpoint is required"),
   type: z.literal("hermes"),
   workspaceId: optionalTrimmedString("Workspace ID is required"),

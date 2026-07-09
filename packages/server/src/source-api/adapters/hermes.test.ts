@@ -17,8 +17,8 @@ const source: PreparedSourceConnection = {
   credentials: {
     apiBaseUrl: "https://hermes.example.com",
     apiKey: "hermes_secret",
+    sessionId: "session_123",
     type: "hermes",
-    workspaceId: "workspace_123",
   },
   displayName: "Hermes",
   id: "source_1",
@@ -55,7 +55,7 @@ describe("hermesSourceApiAdapter", () => {
     expect(descriptor.examples[0]?.command).toContain("--op run_task");
   });
 
-  it("normalizes task payloads and applies the default workspace", async () => {
+  it("normalizes task payloads and applies the default session", async () => {
     const descriptor = await hermesSourceApiAdapter.describe({
       actor,
       source,
@@ -87,11 +87,11 @@ describe("hermesSourceApiAdapter", () => {
       operation: "run_task",
       request: {
         priority: "high",
+        sessionId: "session_123",
         task: "Investigate API errors",
         timeoutMs: 60_000,
-        workspaceId: "workspace_123",
       },
-      selectorTemplate: "/api/tasks",
+      selectorTemplate: "/v1/runs",
     });
   });
 
@@ -120,7 +120,7 @@ describe("hermesSourceApiAdapter", () => {
 
   it("executes Hermes tasks without forwarding local timeoutMs", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ taskId: "task_123", status: "queued" }), {
+      new Response(JSON.stringify({ run_id: "run_123", status: "started" }), {
         headers: {
           "content-type": "application/json",
           "x-request-id": "req_123",
@@ -149,7 +149,7 @@ describe("hermesSourceApiAdapter", () => {
           task: "Fix the failing endpoint",
           timeoutMs: 45_000,
         },
-        selectorTemplate: "/api/tasks",
+        selectorTemplate: "/v1/runs",
         sourceId: "source_1",
         sourceKey: "hermes-main",
       },
@@ -164,21 +164,69 @@ describe("hermesSourceApiAdapter", () => {
     expect(response.body).toEqual({
       kind: "json",
       value: {
-        status: "queued",
-        taskId: "task_123",
+        run_id: "run_123",
+        status: "started",
       },
     });
 
     const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? [];
-    expect(String(calledUrl)).toBe("https://hermes.example.com/api/tasks");
+    expect(String(calledUrl)).toBe("https://hermes.example.com/v1/runs");
     expect(calledInit?.headers).toMatchObject({
       Authorization: "Bearer hermes_secret",
       "Content-Type": "application/json",
       "Idempotency-Key": "idem_123",
     });
     expect(JSON.parse(String(calledInit?.body))).toEqual({
-      task: "Fix the failing endpoint",
-      workspaceId: "workspace_123",
+      input: "Fix the failing endpoint",
+      session_id: "session_123",
+    });
+  });
+
+  it("maps native Hermes run fields and session key headers", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ run_id: "run_456", status: "started" }), {
+        status: 202,
+      })
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await hermesSourceApiAdapter.execute({
+      actor,
+      prepared: {
+        body: { kind: "none" },
+        bodyKind: "json",
+        bodyPaths: ["input"],
+        descriptorVersion: "hermes.v1",
+        headerNames: [],
+        headers: [],
+        kind: "structured_request",
+        method: "POST",
+        operation: "run_task",
+        paginationPolicy: "none",
+        preparedBinding: "binding",
+        provider: "hermes",
+        request: {
+          input: "Inspect the checkout",
+          instructions: "Be concise.",
+          previousResponseId: "resp_123",
+          sessionKey: "agent:main",
+        },
+        selectorTemplate: "/v1/runs",
+        sourceId: "source_1",
+        sourceKey: "hermes-main",
+      },
+      source,
+    });
+
+    const [, calledInit] = fetchMock.mock.calls[0] ?? [];
+    expect(calledInit?.headers).toMatchObject({
+      "X-Hermes-Session-Key": "agent:main",
+    });
+    expect(JSON.parse(String(calledInit?.body))).toEqual({
+      input: "Inspect the checkout",
+      instructions: "Be concise.",
+      previous_response_id: "resp_123",
+      session_id: "session_123",
     });
   });
 
@@ -202,7 +250,7 @@ describe("hermesSourceApiAdapter", () => {
           request: {
             task: "Do work",
           },
-          selectorTemplate: "/api/tasks",
+          selectorTemplate: "/v1/runs",
           sourceId: "source_1",
           sourceKey: "hermes-main",
         },
@@ -213,7 +261,6 @@ describe("hermesSourceApiAdapter", () => {
             apiKey: "hermes_secret",
             taskEndpoint: "https://other.example.com/tasks",
             type: "hermes",
-            workspaceId: "workspace_123",
           },
         },
       })
