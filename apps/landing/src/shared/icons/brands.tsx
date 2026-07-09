@@ -144,6 +144,28 @@ function E2BIcon({ size, ...props }: IconSvgProps) {
   );
 }
 
+function HermesIcon({ size, ...props }: IconSvgProps) {
+  return (
+    <SvgIcon
+      {...props}
+      defaultLabel="Hermes Agent"
+      fill="none"
+      size={size}
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="M12 3v3" />
+      <path d="M8 6h8a4 4 0 0 1 4 4v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-5a4 4 0 0 1 4-4Z" />
+      <circle cx="9" cy="11.5" fill="currentColor" r="1" stroke="none" />
+      <circle cx="15" cy="11.5" fill="currentColor" r="1" stroke="none" />
+      <path d="M9 15h6" />
+    </SvgIcon>
+  );
+}
+
 function OnePasswordIcon({ size, ...props }: IconSvgProps) {
   return (
     <SvgIcon
@@ -293,6 +315,7 @@ const BRAND_ICONS = {
   googledrive: createSimpleBrandIcon(siGoogledrive),
   google_search_console: createSimpleBrandIcon(siGooglesearchconsole),
   granola: GranolaIcon,
+  hermes: HermesIcon,
   homebrew: createSimpleBrandIcon(siHomebrew),
   jira: createSimpleBrandIcon(siJira),
   laminar: LaminarIcon,
