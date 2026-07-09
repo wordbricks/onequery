@@ -6,11 +6,16 @@ import {
   dataSources,
   doesSourceProviderMatchCredentials,
   eq,
+  getLinearAccessMode,
   getSourceProviderDefinition,
   isSourceProviderId,
   ne,
 } from "@onequery/db/server";
-import type { Credentials, ProviderType } from "@onequery/db/server";
+import type {
+  Credentials,
+  LinearAccessMode,
+  ProviderType,
+} from "@onequery/db/server";
 import { Result, TaggedError } from "better-result";
 import type { Result as ResultType } from "better-result";
 import { Hono } from "hono";
@@ -88,6 +93,37 @@ function getLinearRevocationToken(
     return credentials.accessToken;
   }
   return credentials.apiKey;
+}
+
+function readLinearAccessModeMetadata(input: {
+  dataSource: {
+    credentialsEncrypted: string;
+    credentialsIv: string;
+    id: string;
+    provider: ProviderType;
+  };
+  masterKey: Uint8Array;
+}): LinearAccessMode | undefined {
+  if (input.dataSource.provider !== "linear") {
+    return undefined;
+  }
+
+  const credentials = decryptCredentialsObjectResult(
+    input.dataSource.credentialsEncrypted,
+    input.dataSource.credentialsIv,
+    input.masterKey,
+    credentialSchemaMap.linear
+  );
+
+  if (credentials.isErr()) {
+    console.warn("[data-sources] Failed to read Linear access mode", {
+      dataSourceId: input.dataSource.id,
+      error: credentials.error.message,
+    });
+    return undefined;
+  }
+
+  return getLinearAccessMode(credentials.value);
 }
 
 function parseProviderCredentials(input: {
@@ -207,11 +243,32 @@ export const dataSourcesCrudRoute = new Hono<{
           lastUsedAt: true,
           createdAt: true,
           updatedAt: true,
+          credentialsEncrypted: true,
+          credentialsIv: true,
         },
         where: eq(dataSources.organizationId, organizationId),
       });
 
-      return c.json({ dataSources: result });
+      const publicDataSources = result.map((item) => {
+        const { credentialsEncrypted, credentialsIv, ...publicDataSource } =
+          item;
+        const linearAccessMode = readLinearAccessModeMetadata({
+          dataSource: {
+            credentialsEncrypted,
+            credentialsIv,
+            id: item.id,
+            provider: item.provider,
+          },
+          masterKey: c.var.runtime.crypto.masterEncryptionKey,
+        });
+
+        return {
+          ...publicDataSource,
+          ...(linearAccessMode ? { linearAccessMode } : {}),
+        };
+      });
+
+      return c.json({ dataSources: publicDataSources });
     }
   )
 

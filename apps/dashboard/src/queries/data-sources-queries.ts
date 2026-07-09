@@ -1,4 +1,8 @@
-import type { DataSourceStatus, PublicSourceProvider } from "@onequery/db";
+import type {
+  DataSourceStatus,
+  LinearAccessMode,
+  PublicSourceProvider,
+} from "@onequery/db";
 import { queryOptions } from "@tanstack/react-query";
 import type { InferRequestType } from "hono/client";
 
@@ -15,6 +19,7 @@ export interface DataSource {
   name: string;
   status: DataSourceStatus;
   errorMessage: string | null;
+  linearAccessMode?: LinearAccessMode;
   lastUsedAt: string | null;
   createdAt: string;
   updatedAt: string;

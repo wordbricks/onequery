@@ -8,6 +8,7 @@
     "./lib/utils": "./src/lib/utils.ts",
     "./data-source-connection-guide-dialog": "./src/data-sources/data-source-connection-guide-dialog.tsx",
     "./data-source-connection-guides": "./src/data-sources/connection-guides/index.ts",
+    "./data-sources/linear-access-mode": "./src/data-sources/linear-access-mode.tsx",
     "./components/*": "./src/components/ui/*.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./icons/svg-icon": "./src/icons/svg-icon.tsx"
@@ -21,6 +22,7 @@
   "dependencies": {
     "@base-ui/react": "1.1.0",
     "@fontsource-variable/inter": "5.2.8",
+    "@onequery/db": "workspace:*",
     "@tabler/icons-react": "catalog:",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
