@@ -1,9 +1,4 @@
-import {
-  SimpleIconSvg,
-  SvgIcon,
-  resolveSvgIconAccessibility,
-} from "@onequery/ui/icons/svg-icon";
-import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
+import type { SourceProviderId } from "@onequery/db/source-providers";
 import {
   IconDatabase,
   IconHelpCircle,
@@ -38,6 +33,13 @@ import {
   siVercel,
   siYoutube,
 } from "simple-icons";
+
+import {
+  SimpleIconSvg,
+  SvgIcon,
+  resolveSvgIconAccessibility,
+} from "../icons/svg-icon";
+import type { IconSvgProps, SimpleIconData } from "../icons/svg-icon";
 
 type ProviderIconProps = IconSvgProps;
 type ProviderIconComponent = ComponentType<ProviderIconProps>;
@@ -358,7 +360,10 @@ export const ProviderIcons = {
   tiktok_marketing: createSimpleProviderIcon(siTiktok),
   vercel: createSimpleProviderIcon(siVercel),
   youtube_analytics: createSimpleProviderIcon(siYoutube),
-} as const satisfies Record<string, ProviderIconComponent>;
+} as const satisfies Record<
+  SourceProviderId | "google_docs",
+  ProviderIconComponent
+>;
 
 function hasProviderIcon(
   provider: string

@@ -21,6 +21,10 @@ import {
 } from "@onequery/ui/components/dropdown-menu";
 import { getLinearAccessModeLabel } from "@onequery/ui/data-sources/linear-access-mode";
 import {
+  GitHubIcon,
+  getProviderIcon,
+} from "@onequery/ui/data-sources/provider-icons";
+import {
   IconAlertTriangle,
   IconDotsVertical,
   IconPlus,
@@ -31,7 +35,6 @@ import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { GitHubIcon, getProviderIcon } from "@/components/provider-icons";
 import { AddDataSourceDialog } from "@/features/data-sources/add-data-source-dialog";
 import { showDataSourceErrorToast } from "@/features/data-sources/data-source-error-toast";
 import {

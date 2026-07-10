@@ -18,7 +18,7 @@ function renderProviderIcon(
   return renderToStaticMarkup(<Icon {...props} />);
 }
 
-describe("provider icon accessibility", () => {
+describe("shared provider icon accessibility", () => {
   it("has an integration icon for every public source provider", () => {
     for (const provider of listPublicSourceProviders()) {
       expect(ProviderIcons).toHaveProperty(provider.id);

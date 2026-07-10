@@ -1,10 +1,18 @@
+import {
+  SOURCE_PROVIDER_IDS,
+  SOURCE_PROVIDER_REGISTRY,
+} from "@onequery/db/source-providers";
 import { describe, expect, it } from "vitest";
 
 import {
   SourceApiAdapterNotRegisteredError,
   SourceApiRegistryConfigurationError,
 } from "./errors";
-import { createSourceApiRegistry, getSourceApiAdapter } from "./registry";
+import {
+  createSourceApiRegistry,
+  getSourceApiAdapter,
+  sourceApiRegistry,
+} from "./registry";
 import type { SourceApiAdapter } from "./types";
 
 function createAdapter(
@@ -80,5 +88,13 @@ describe("createSourceApiRegistry", () => {
         createAdapter("github"),
       ])
     ).toThrow(SourceApiRegistryConfigurationError);
+  });
+
+  it("registers an adapter for every provider that exposes Source API", () => {
+    for (const provider of SOURCE_PROVIDER_IDS) {
+      if (SOURCE_PROVIDER_REGISTRY[provider].sourceApiInterface) {
+        expect(sourceApiRegistry.get(provider), provider).not.toBeNull();
+      }
+    }
   });
 });

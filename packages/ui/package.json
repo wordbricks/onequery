@@ -9,6 +9,7 @@
     "./data-source-connection-guide-dialog": "./src/data-sources/data-source-connection-guide-dialog.tsx",
     "./data-source-connection-guides": "./src/data-sources/connection-guides/index.ts",
     "./data-sources/linear-access-mode": "./src/data-sources/linear-access-mode.tsx",
+    "./data-sources/provider-icons": "./src/data-sources/provider-icons.tsx",
     "./components/*": "./src/components/ui/*.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./icons/svg-icon": "./src/icons/svg-icon.tsx"
@@ -34,6 +35,7 @@
     "react-resizable-panels": "2",
     "recharts": "2.15.4",
     "shadcn": "3.7.0",
+    "simple-icons": "catalog:",
     "sonner": "catalog:",
     "tailwind-merge": "3.4.0",
     "tw-animate-css": "1.4.0",
