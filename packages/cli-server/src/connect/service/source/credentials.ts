@@ -1,9 +1,5 @@
 import type { JsonObject } from "@bufbuild/protobuf";
-import {
-  getSourceProviderDefinition,
-  isSourceProviderId,
-} from "@onequery/db/server";
-import type { Credentials } from "@onequery/db/server";
+import { safeParseSourceProviderCredentials } from "@onequery/db/server";
 import { Result } from "better-result";
 
 import { cliServiceErr } from "../result";
@@ -34,13 +30,6 @@ export function parseConnectSourceCredentials(
   provider: string,
   credentials: JsonObject | undefined
 ): CliServiceResult<ParsedConnectSourceCredentials> {
-  if (!isSourceProviderId(provider)) {
-    return cliServiceErr({
-      detail: "unsupported source provider",
-      key: "SOURCE_REQUEST_INVALID",
-    });
-  }
-
   if (!credentials) {
     return cliServiceErr({
       detail: "source connect request must include credentials",
@@ -48,46 +37,29 @@ export function parseConnectSourceCredentials(
     });
   }
 
-  const definition = getSourceProviderDefinition(provider);
-  if (!definition) {
+  const parsed = safeParseSourceProviderCredentials({
+    credentials,
+    provider,
+  });
+  if (parsed.success) {
+    return Result.ok(parsed.data);
+  }
+
+  if (parsed.error.code === "unsupported_provider") {
     return cliServiceErr({
       detail: "unsupported source provider",
       key: "SOURCE_REQUEST_INVALID",
     });
   }
 
-  const credentialsWithAuthDefaults =
-    (definition.credentialType === "bigquery" ||
-      definition.credentialType === "ga") &&
-    "serviceAccount" in credentials &&
-    !("authType" in credentials)
-      ? {
-          ...credentials,
-          authType: "service_account",
-        }
-      : credentials;
-  const credentialsForValidation =
-    provider === "supabase" &&
-    definition.credentialType === "postgres" &&
-    !("sslMode" in credentialsWithAuthDefaults)
-      ? {
-          ...credentialsWithAuthDefaults,
-          sslMode: "require",
-        }
-      : credentialsWithAuthDefaults;
-
-  const parsed = definition.credentialSchema.safeParse({
-    ...credentialsForValidation,
-    type: definition.credentialType,
-  });
-  if (!parsed.success) {
+  if (parsed.error.code === "invalid_credentials") {
     return createCliConnectSourceValidationError({
-      issues: parsed.error.issues,
+      issues: parsed.error.error.issues,
     });
   }
 
-  return Result.ok({
-    provider,
-    credentials: parsed.data as Credentials,
+  return cliServiceErr({
+    detail: `source provider '${parsed.error.provider}' does not match credential type '${parsed.error.credentialsType}'`,
+    key: "SOURCE_REQUEST_INVALID",
   });
 }

@@ -39,6 +39,7 @@ import {
   VercelCredentialsSchema,
   YouTubeAnalyticsCredentialsSchema,
 } from "./credentials";
+import type { Credentials } from "./credentials";
 
 type ProviderCredentialSchema = z.ZodType<{ type: string }>;
 
@@ -49,6 +50,11 @@ type SourceProviderGuide = {
     sourceKey: string;
     credentials: Record<string, unknown>;
   };
+};
+
+type SourceProviderGoogleOAuth = {
+  credentialDefaults: Record<string, unknown>;
+  scopes: readonly string[];
 };
 
 export type SourceProviderPublicCategory =
@@ -71,9 +77,21 @@ type SourceProviderDefinition = {
   testable: boolean;
   dashboardConnectable: boolean;
   dashboardCredentialForm: string;
+  googleOAuth?: SourceProviderGoogleOAuth;
   publicCategory: SourceProviderPublicCategory;
   guide: SourceProviderGuide;
 };
+
+export const GOOGLE_OAUTH_SCOPES = {
+  ANALYTICS_READONLY: "https://www.googleapis.com/auth/analytics.readonly",
+  BIGQUERY_DATA_READONLY:
+    "https://www.googleapis.com/auth/cloud-platform.read-only",
+  BIGQUERY_READONLY: "https://www.googleapis.com/auth/bigquery.readonly",
+  YOUTUBE_READONLY: "https://www.googleapis.com/auth/youtube.readonly",
+  YOUTUBE_ANALYTICS_READONLY:
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
+  WEBMASTERS_READONLY: "https://www.googleapis.com/auth/webmasters.readonly",
+} as const;
 
 export const SOURCE_PROVIDER_REGISTRY = {
   postgres: {
@@ -246,6 +264,10 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "google_service_account",
+    googleOAuth: {
+      credentialDefaults: { projectId: "" },
+      scopes: [GOOGLE_OAUTH_SCOPES.BIGQUERY_READONLY],
+    },
     publicCategory: "Warehouses",
     guide: {
       summary:
@@ -428,6 +450,10 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: true,
     dashboardConnectable: true,
     dashboardCredentialForm: "google_service_account",
+    googleOAuth: {
+      credentialDefaults: { propertyId: "" },
+      scopes: [GOOGLE_OAUTH_SCOPES.ANALYTICS_READONLY],
+    },
     publicCategory: "Product analytics",
     guide: {
       summary:
@@ -463,6 +489,13 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "google_oauth",
+    googleOAuth: {
+      credentialDefaults: {},
+      scopes: [
+        GOOGLE_OAUTH_SCOPES.YOUTUBE_READONLY,
+        GOOGLE_OAUTH_SCOPES.YOUTUBE_ANALYTICS_READONLY,
+      ],
+    },
     publicCategory: "Product analytics",
     guide: {
       summary:
@@ -562,9 +595,11 @@ export const SOURCE_PROVIDER_REGISTRY = {
       summary:
         "Connect PostHog with the PostHog app host URL, a personal API key, and project ID.",
       steps: [
-        "Open the PostHog project settings and copy the Project ID.",
-        "Use the PostHog app origin as `credentials.hostUrl`.",
-        "Create a personal API key with project read access and copy it into `credentials.personalApiKey`.",
+        "Open the PostHog project you want to connect, then go to `Settings -> Project -> General` and copy the `Project ID` from the `Project token & ID` section.",
+        "Use the PostHog app origin as `credentials.hostUrl`: `https://us.posthog.com` for US Cloud, `https://eu.posthog.com` for EU Cloud, or your self-hosted base URL. Do not use the SDK `api_host` value such as `https://us.i.posthog.com`.",
+        "Go to `Settings -> Account -> Personal API keys`, create a personal API key, and make sure `Organization & project access` includes the project you plan to connect.",
+        "Grant at least `Read` access to `Project` and `Query`, then copy the secret immediately into `credentials.personalApiKey`. PostHog may only show the full key once.",
+        "Use the canonical host URL without a trailing slash when possible; the server still normalizes extra trailing slashes.",
       ],
       exampleInput: {
         sourceKey: "posthog_main",
@@ -795,6 +830,10 @@ export const SOURCE_PROVIDER_REGISTRY = {
     testable: false,
     dashboardConnectable: true,
     dashboardCredentialForm: "google_oauth",
+    googleOAuth: {
+      credentialDefaults: {},
+      scopes: [GOOGLE_OAUTH_SCOPES.WEBMASTERS_READONLY],
+    },
     publicCategory: "Marketing",
     guide: {
       summary:
@@ -1264,6 +1303,40 @@ export function getSourceProviderDefinition(provider: string) {
   return SOURCE_PROVIDER_REGISTRY[provider];
 }
 
+export type GoogleOAuthSourceProviderConfig = {
+  credentialDefaults: Record<string, unknown>;
+  credentialType: string;
+  label: string;
+  provider: SourceProviderId;
+  scopes: string[];
+};
+
+export function getGoogleOAuthSourceProviderConfig(
+  provider: string
+): GoogleOAuthSourceProviderConfig | null {
+  if (!isSourceProviderId(provider)) {
+    return null;
+  }
+
+  const definition: SourceProviderDefinition =
+    SOURCE_PROVIDER_REGISTRY[provider];
+  if (!definition.googleOAuth) {
+    return null;
+  }
+
+  return {
+    credentialDefaults: { ...definition.googleOAuth.credentialDefaults },
+    credentialType: definition.credentialType,
+    label: definition.label,
+    provider,
+    scopes: [...definition.googleOAuth.scopes],
+  };
+}
+
+export const GOOGLE_OAUTH_SOURCE_PROVIDER_IDS = SOURCE_PROVIDER_IDS.filter(
+  (provider) => getGoogleOAuthSourceProviderConfig(provider) !== null
+);
+
 export function isTestableProviderType(
   provider: SourceProviderId
 ): provider is (typeof TESTABLE_PROVIDER_TYPES)[number] {
@@ -1278,6 +1351,132 @@ export function doesSourceProviderMatchCredentials(input: {
     SOURCE_PROVIDER_REGISTRY[input.provider].credentialType ===
     input.credentialsType
   );
+}
+
+export type SourceProviderCredentialsParseError =
+  | {
+      code: "unsupported_provider";
+      provider: string;
+    }
+  | {
+      code: "invalid_credentials";
+      error: z.ZodError;
+    }
+  | {
+      code: "provider_credentials_mismatch";
+      credentialsType: string;
+      provider: SourceProviderId;
+    };
+
+export type SourceProviderCredentialsParseResult =
+  | {
+      success: true;
+      data: {
+        credentials: Credentials;
+        provider: SourceProviderId;
+      };
+    }
+  | {
+      success: false;
+      error: SourceProviderCredentialsParseError;
+    };
+
+function isCredentialInputRecord(
+  value: unknown
+): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Parses provider credentials at the OneQuery boundary.
+ *
+ * The provider registry is authoritative for the credential discriminator and
+ * provider-specific defaults, so callers do not need to duplicate either.
+ */
+export function safeParseSourceProviderCredentials(input: {
+  provider: string;
+  credentials: unknown;
+}): SourceProviderCredentialsParseResult {
+  if (!isSourceProviderId(input.provider)) {
+    return {
+      success: false,
+      error: {
+        code: "unsupported_provider",
+        provider: input.provider,
+      },
+    };
+  }
+
+  const provider = input.provider;
+  const definition = SOURCE_PROVIDER_REGISTRY[provider];
+  let normalizedCredentials = input.credentials;
+
+  if (isCredentialInputRecord(input.credentials)) {
+    let credentialRecord: Record<string, unknown> = input.credentials;
+
+    if (
+      (definition.credentialType === "bigquery" ||
+        definition.credentialType === "ga") &&
+      "serviceAccount" in credentialRecord &&
+      !("authType" in credentialRecord)
+    ) {
+      credentialRecord = {
+        ...credentialRecord,
+        authType: "service_account",
+      };
+    }
+
+    if (
+      provider === "supabase" &&
+      definition.credentialType === "postgres" &&
+      !("sslMode" in credentialRecord)
+    ) {
+      credentialRecord = {
+        ...credentialRecord,
+        sslMode: "require",
+      };
+    }
+
+    normalizedCredentials = {
+      ...credentialRecord,
+      type: definition.credentialType,
+    };
+  }
+
+  const parsed = definition.credentialSchema.safeParse(normalizedCredentials);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: {
+        code: "invalid_credentials",
+        error: parsed.error,
+      },
+    };
+  }
+
+  if (
+    !doesSourceProviderMatchCredentials({
+      credentialsType: parsed.data.type,
+      provider,
+    })
+  ) {
+    return {
+      success: false,
+      error: {
+        code: "provider_credentials_mismatch",
+        credentialsType: parsed.data.type,
+        provider,
+      },
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      credentials: parsed.data as Credentials,
+      provider,
+    },
+  };
 }
 
 export type PublicSourceProvider = {

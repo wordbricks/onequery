@@ -110,7 +110,7 @@ Connect Supabase with the session pooler host, database, and login credentials o
 
 Steps:
 1. Open the Supabase Connect panel and retrieve the Session pooler host, database name, username, and password.
-2. Use the Supabase provider with the Postgres connection fields shown below. The CLI maps those fields onto the typed Supabase wire shape directly.
+2. Use the Supabase provider with the Postgres connection fields shown below.
 3. Prefer the Session pooler for OneQuery's persistent backend connection path. Keep SSL enabled and confirm the correct port before building the payload.
 
 Example input:

@@ -4,12 +4,10 @@ import {
   and,
   credentialSchemaMap,
   dataSources,
-  doesSourceProviderMatchCredentials,
   eq,
   getLinearAccessMode,
-  getSourceProviderDefinition,
-  isSourceProviderId,
   ne,
+  safeParseSourceProviderCredentials,
 } from "@onequery/db/server";
 import type {
   Credentials,
@@ -56,24 +54,6 @@ class LinearCredentialsDecryptError extends TaggedError(
   message: string;
   cause: unknown;
 }>() {}
-
-function injectProviderCredentialType(input: {
-  credentials: unknown;
-  credentialType: string;
-}): unknown {
-  if (
-    typeof input.credentials !== "object" ||
-    input.credentials === null ||
-    Array.isArray(input.credentials)
-  ) {
-    return input.credentials;
-  }
-
-  return {
-    ...input.credentials,
-    type: input.credentialType,
-  };
-}
 
 function isUnsupportedGoogleOAuthCredentials(input: {
   provider: ProviderType;
@@ -133,54 +113,36 @@ function parseProviderCredentials(input: {
   { provider: ProviderType; credentials: Credentials },
   { status: 400; body: { error: string; details?: string } }
 > {
-  if (!isSourceProviderId(input.provider)) {
+  const parsed = safeParseSourceProviderCredentials(input);
+  if (parsed.success) {
+    return Result.ok(parsed.data);
+  }
+
+  if (parsed.error.code === "unsupported_provider") {
     return Result.err({
       status: 400,
-      body: { error: `Unsupported data source provider '${input.provider}'` },
+      body: {
+        error: `Unsupported data source provider '${parsed.error.provider}'`,
+      },
     });
   }
 
-  const definition = getSourceProviderDefinition(input.provider);
-  if (!definition) {
-    return Result.err({
-      status: 400,
-      body: { error: `Unsupported data source provider '${input.provider}'` },
-    });
-  }
-  const parsed = definition.credentialSchema.safeParse(
-    injectProviderCredentialType({
-      credentials: input.credentials,
-      credentialType: definition.credentialType,
-    })
-  );
-  if (!parsed.success) {
+  if (parsed.error.code === "invalid_credentials") {
     return Result.err({
       status: 400,
       body: {
         error: "Invalid data source credentials",
-        details: parsed.error.issues[0]?.message,
+        details: parsed.error.error.issues[0]?.message,
       },
     });
   }
 
-  if (
-    !doesSourceProviderMatchCredentials({
-      credentialsType: parsed.data.type,
-      provider: input.provider,
-    })
-  ) {
-    return Result.err({
-      status: 400,
-      body: {
-        details: `Provider is '${input.provider}' but credentials type is '${parsed.data.type}'`,
-        error: "Provider does not match credentials type",
-      },
-    });
-  }
-
-  return Result.ok({
-    provider: input.provider,
-    credentials: parsed.data as Credentials,
+  return Result.err({
+    status: 400,
+    body: {
+      details: `Provider is '${parsed.error.provider}' but credentials type is '${parsed.error.credentialsType}'`,
+      error: "Provider does not match credentials type",
+    },
   });
 }
 

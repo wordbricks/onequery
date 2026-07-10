@@ -1,6 +1,6 @@
+import { getProviderIcon } from "@onequery/ui/data-sources/provider-icons";
 import type { ComponentType } from "react";
 
-import { getProviderIcon } from "@/components/provider-icons";
 import type { SourceProviderCatalogProvider } from "@/queries/data-sources-queries";
 
 type ProviderIcon = ComponentType<{
