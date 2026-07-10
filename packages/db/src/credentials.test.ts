@@ -1851,9 +1851,6 @@ describe("credentials schemas", () => {
       const credentials: HermesCredentials = {
         apiBaseUrl: "https://hermes.example.com",
         apiKey: "hermes_api_key",
-        sessionId: "production-api",
-        sessionKey: "agent:main",
-        taskEndpoint: "/v1/runs",
         type: "hermes",
       };
 
@@ -1864,24 +1861,35 @@ describe("credentials schemas", () => {
       }
     });
 
-    it("trims apiBaseUrl and optional fields", () => {
+    it("trims apiBaseUrl and removes its trailing slash", () => {
       const result = HermesCredentialsSchema.safeParse({
         apiBaseUrl: "  https://hermes.example.com/  ",
         apiKey: "hermes_api_key",
-        sessionId: "  production-api  ",
-        sessionKey: "  agent:main  ",
-        taskEndpoint: "  /v1/runs  ",
         type: "hermes",
-        workspaceId: "  workspace_123  ",
       });
 
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.apiBaseUrl).toBe("https://hermes.example.com");
-        expect(result.data.sessionId).toBe("production-api");
-        expect(result.data.sessionKey).toBe("agent:main");
-        expect(result.data.taskEndpoint).toBe("/v1/runs");
-        expect(result.data.workspaceId).toBe("workspace_123");
+      }
+    });
+
+    it("drops legacy custom task and workspace fields", () => {
+      const result = HermesCredentialsSchema.safeParse({
+        apiBaseUrl: "https://hermes.example.com",
+        apiKey: "hermes_api_key",
+        taskEndpoint: "/api/tasks",
+        type: "hermes",
+        workspaceId: "workspace_123",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({
+          apiBaseUrl: "https://hermes.example.com",
+          apiKey: "hermes_api_key",
+          type: "hermes",
+        });
       }
     });
 
