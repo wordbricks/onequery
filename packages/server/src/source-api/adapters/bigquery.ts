@@ -22,7 +22,7 @@ import type {
 } from "../types";
 
 const BIGQUERY_DESCRIPTOR_VERSION = "bigquery.v1";
-const BIGQUERY_DATASETS_LIST_OPERATION = "datasets.list";
+const BIGQUERY_DATASETS_LIST_OPERATION = "datasets_list";
 const BIGQUERY_ALLOWED_RESPONSE_HEADERS = ["content-type"] as const;
 
 const BigQueryDatasetsListRequestSchema = z
@@ -172,7 +172,7 @@ function createBigQueryDatasetsListOperation(
 function buildBigQueryExamples(sourceKey: string): SourceApiExample[] {
   return [
     {
-      command: `onequery api --source ${sourceKey} --op datasets.list --input '{"all":true,"maxResults":1000}'`,
+      command: `onequery api --source ${sourceKey} --op datasets_list --input '{"all":true,"maxResults":1000}'`,
       description:
         "List datasets in the BigQuery project saved on the connected source.",
       label: "List datasets",
