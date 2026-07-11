@@ -50,7 +50,7 @@ describe("bigquery source api adapter", () => {
             allowedMethods: ["GET"],
             defaultMethod: "GET",
           },
-          name: "datasets.list",
+          name: "datasets_list",
           selectorKind: "none",
         },
       ],
@@ -60,7 +60,7 @@ describe("bigquery source api adapter", () => {
       },
     });
     expect(descriptor.examples[0]?.command).toBe(
-      'onequery api --source bq-prod --op datasets.list --input \'{"all":true,"maxResults":1000}\''
+      'onequery api --source bq-prod --op datasets_list --input \'{"all":true,"maxResults":1000}\''
     );
   });
 
@@ -85,7 +85,7 @@ describe("bigquery source api adapter", () => {
           pageToken: "page-2",
         },
         headers: [],
-        operation: "datasets.list",
+        operation: "datasets_list",
       },
       source,
     });
@@ -93,7 +93,7 @@ describe("bigquery source api adapter", () => {
     expect(finalizePreparedSourceApi(plan)).toMatchObject({
       kind: "structured_request",
       method: "GET",
-      operation: "datasets.list",
+      operation: "datasets_list",
       provider: "bigquery",
       request: {
         all: true,
@@ -138,7 +138,7 @@ describe("bigquery source api adapter", () => {
         headers: [],
         kind: "structured_request",
         method: "GET",
-        operation: "datasets.list",
+        operation: "datasets_list",
         paginationPolicy: "none",
         preparedBinding: "binding",
         provider: "bigquery",
@@ -171,7 +171,7 @@ describe("bigquery source api adapter", () => {
       },
       contentType: "application/json",
       headers: [{ name: "content-type", value: "application/json" }],
-      operation: "datasets.list",
+      operation: "datasets_list",
       source: {
         displayName: "BigQuery Prod",
         provider: "bigquery",
