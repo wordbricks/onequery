@@ -24,7 +24,7 @@ import type {
 } from "../types";
 
 const LINEAR_API_BASE_URL = "https://api.linear.app";
-const LINEAR_DESCRIPTOR_VERSION = "linear.v1";
+const LINEAR_DESCRIPTOR_VERSION = "linear.v2";
 const LINEAR_PUBLIC_FILE_URL_TTL_SECONDS = 300;
 const LINEAR_ALLOWED_RESPONSE_HEADERS = [
   "content-type",
@@ -40,6 +40,12 @@ const ListIssuesInputSchema = z
     after: z.string().min(1).optional(),
     filter: LinearIssueFilterSchema.optional(),
     first: z.number().int().min(1).max(100).optional(),
+  })
+  .strict();
+
+const ListWorkflowStatesInputSchema = z
+  .object({
+    teamId: z.string().min(1),
   })
   .strict();
 
@@ -64,16 +70,27 @@ const CreateCommentInputSchema = z
   })
   .strict();
 
+const UpdateIssueStateInputSchema = z
+  .object({
+    issueId: z.string().min(1),
+    stateId: z.string().min(1),
+  })
+  .strict();
+
 type LinearOperationName =
   | "list_teams"
+  | "list_workflow_states"
   | "list_issues"
   | "get_issue"
   | "create_issue"
-  | "create_comment";
+  | "create_comment"
+  | "update_issue";
 
 type ListIssuesInput = z.infer<typeof ListIssuesInputSchema>;
+type ListWorkflowStatesInput = z.infer<typeof ListWorkflowStatesInputSchema>;
 type CreateIssueInput = z.infer<typeof CreateIssueInputSchema>;
 type CreateCommentInput = z.infer<typeof CreateCommentInputSchema>;
+type UpdateIssueStateInput = z.infer<typeof UpdateIssueStateInputSchema>;
 
 type LinearGraphQlResponse = {
   body: SourceApiResponseBody;
@@ -190,6 +207,14 @@ function buildLinearOperations(
       summary: "List Linear teams.",
     }),
     createLinearInputOperation({
+      description: "List workflow states for a Linear team. Requires `teamId`.",
+      examples: examples.filter(
+        (example) => example.label === "List workflow states"
+      ),
+      name: "list_workflow_states",
+      summary: "List workflow states for a Linear team.",
+    }),
+    createLinearInputOperation({
       description:
         "List Linear issues with optional Linear issue filter input. Use `first` to limit results and `filter` for Linear GraphQL issue filters.",
       examples: examples.filter((example) => example.label === "List issues"),
@@ -229,6 +254,15 @@ function buildLinearOperations(
       ),
       name: "create_comment",
       summary: "Create a Linear issue comment.",
+    }),
+    createLinearInputOperation({
+      description:
+        "Update a Linear issue's workflow state. Requires `issueId` and `stateId`.",
+      examples: examples.filter(
+        (example) => example.label === "Update issue state"
+      ),
+      name: "update_issue",
+      summary: "Update a Linear issue's workflow state.",
     }),
   ];
 }
@@ -322,6 +356,11 @@ function buildLinearExamples(
       label: "List teams",
     },
     {
+      command: `onequery api --source ${sourceKey} --op list_workflow_states -f 'teamId=<team-id>'`,
+      description: "List workflow states available for a Linear team.",
+      label: "List workflow states",
+    },
+    {
       command: `onequery api --source ${sourceKey} --op list_issues -f 'first=20'`,
       description: "List recently updated Linear issues.",
       label: "List issues",
@@ -349,6 +388,11 @@ function buildLinearExamples(
       description: "Create a comment on a Linear issue.",
       label: "Create comment",
     },
+    {
+      command: `onequery api --source ${sourceKey} --op update_issue -f 'issueId=<issue-id>' -f 'stateId=<state-id>'`,
+      description: "Change a Linear issue's workflow state.",
+      label: "Update issue state",
+    },
   ];
 }
 
@@ -362,11 +406,12 @@ function buildLinearNotes(accessMode: LinearAccessMode): string[] {
   const notes = [
     "Linear Source API uses fixed GraphQL operations instead of accepting raw GraphQL from the caller.",
     "Use list_teams first when you need a teamId for issue creation.",
+    "Use list_workflow_states with an issue's teamId before changing the issue state.",
   ];
 
   if (accessMode === "read") {
     notes.push(
-      "This Linear connection is read-only; create_issue is disabled."
+      "This Linear connection is read-only; create_issue, create_comment, and update_issue are disabled."
     );
   }
 
@@ -406,7 +451,9 @@ function assertLinearOperationAllowed(input: {
   }
   if (
     input.accessMode === "read" &&
-    (input.operation === "create_issue" || input.operation === "create_comment")
+    (input.operation === "create_issue" ||
+      input.operation === "create_comment" ||
+      input.operation === "update_issue")
   ) {
     throw new SourceApiInvalidRequestError(
       `Linear connection is read-only; ${input.operation} requires read_write access`
@@ -481,6 +528,30 @@ function buildLinearGraphQlRequest(input: {
 }`,
         variables: {},
       };
+    case "list_workflow_states": {
+      const variables = parseListWorkflowStatesInput(input.fieldPatch);
+      return {
+        query: `query VelenLinearWorkflowStates($id: String!) {
+  team(id: $id) {
+    id
+    key
+    name
+    states(first: 100) {
+      nodes {
+        id
+        name
+        type
+        color
+        position
+      }
+    }
+  }
+}`,
+        variables: {
+          id: variables.teamId,
+        },
+      };
+    }
     case "list_issues": {
       const variables = parseListIssuesInput(input.fieldPatch);
       return {
@@ -610,6 +681,34 @@ function buildLinearGraphQlRequest(input: {
         },
       };
     }
+    case "update_issue": {
+      const variables = parseUpdateIssueInput(input.fieldPatch);
+      return {
+        query: `mutation VelenLinearIssueUpdate($id: String!, $input: IssueUpdateInput!) {
+  issueUpdate(id: $id, input: $input) {
+    success
+    issue {
+      id
+      identifier
+      title
+      url
+      updatedAt
+      state {
+        id
+        name
+        type
+      }
+    }
+  }
+}`,
+        variables: {
+          id: variables.issueId,
+          input: {
+            stateId: variables.stateId,
+          },
+        },
+      };
+    }
   }
 }
 
@@ -639,6 +738,19 @@ function parseListIssuesInput(fieldPatch: JsonObject | undefined): JsonObject {
   } satisfies ListIssuesInput);
 }
 
+function parseListWorkflowStatesInput(
+  fieldPatch: JsonObject | undefined
+): ListWorkflowStatesInput {
+  const parsed = ListWorkflowStatesInputSchema.safeParse(fieldPatch ?? {});
+  if (!parsed.success) {
+    throw new SourceApiInvalidRequestError(
+      "Invalid Linear list_workflow_states fieldPatch input"
+    );
+  }
+
+  return parsed.data;
+}
+
 function parseCreateIssueInput(fieldPatch: JsonObject | undefined): JsonObject {
   const parsed = CreateIssueInputSchema.safeParse(fieldPatch ?? {});
   if (!parsed.success) {
@@ -661,6 +773,19 @@ function parseCreateCommentInput(
   }
 
   return compactJsonObject(parsed.data satisfies CreateCommentInput);
+}
+
+function parseUpdateIssueInput(
+  fieldPatch: JsonObject | undefined
+): UpdateIssueStateInput {
+  const parsed = UpdateIssueStateInputSchema.safeParse(fieldPatch ?? {});
+  if (!parsed.success) {
+    throw new SourceApiInvalidRequestError(
+      "Invalid Linear update_issue fieldPatch input"
+    );
+  }
+
+  return parsed.data;
 }
 
 function compactJsonObject(input: Record<string, unknown>): JsonObject {

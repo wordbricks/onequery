@@ -54,12 +54,13 @@ describe("linear source api adapter", () => {
 
     expect(descriptor.operations.map((operation) => operation.name)).toEqual([
       "list_teams",
+      "list_workflow_states",
       "list_issues",
       "get_issue",
     ]);
   });
 
-  it("adds create_issue and create_comment for read-write connections", async () => {
+  it("adds issue write operations for read-write connections", async () => {
     const descriptor = await linearSourceApiAdapter.describe({
       actor,
       source: createSource("read_write"),
@@ -67,11 +68,63 @@ describe("linear source api adapter", () => {
 
     expect(descriptor.operations.map((operation) => operation.name)).toEqual([
       "list_teams",
+      "list_workflow_states",
       "list_issues",
       "get_issue",
       "create_issue",
       "create_comment",
+      "update_issue",
     ]);
+  });
+
+  it("normalizes list_workflow_states field patches into a team states query", async () => {
+    const source = createSource("read");
+    const descriptor = await linearSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    const prepared = await linearSourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        fieldPatch: { teamId: "team_123" },
+        headers: [],
+        operation: "list_workflow_states",
+      },
+      source,
+    });
+
+    if (prepared.kind !== "structured_request") {
+      throw new Error(`expected structured request, got ${prepared.kind}`);
+    }
+
+    expect(prepared.request.query).toContain("VelenLinearWorkflowStates");
+    expect(prepared.request.query).toContain("states(first: 100)");
+    expect(prepared.request.variables).toEqual({ id: "team_123" });
+  });
+
+  it("rejects list_workflow_states without a team id", async () => {
+    const source = createSource("read");
+    const descriptor = await linearSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    await expect(
+      linearSourceApiAdapter.normalize({
+        actor,
+        descriptor,
+        request: {
+          body: { kind: "none" },
+          fieldPatch: {},
+          headers: [],
+          operation: "list_workflow_states",
+        },
+        source,
+      })
+    ).rejects.toThrow("Invalid Linear list_workflow_states fieldPatch input");
   });
 
   it("normalizes create_comment field patches into a Linear GraphQL mutation", async () => {
@@ -107,6 +160,61 @@ describe("linear source api adapter", () => {
         issueId: "issue_123",
       },
     });
+  });
+
+  it("normalizes update_issue field patches into a Linear state update mutation", async () => {
+    const source = createSource("read_write");
+    const descriptor = await linearSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    const prepared = await linearSourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        fieldPatch: {
+          issueId: "issue_123",
+          stateId: "state_456",
+        },
+        headers: [],
+        operation: "update_issue",
+      },
+      source,
+    });
+
+    if (prepared.kind !== "structured_request") {
+      throw new Error(`expected structured request, got ${prepared.kind}`);
+    }
+
+    expect(prepared.request.query).toContain("issueUpdate");
+    expect(prepared.request.variables).toEqual({
+      id: "issue_123",
+      input: { stateId: "state_456" },
+    });
+  });
+
+  it("rejects update_issue without a state id", async () => {
+    const source = createSource("read_write");
+    const descriptor = await linearSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    await expect(
+      linearSourceApiAdapter.normalize({
+        actor,
+        descriptor,
+        request: {
+          body: { kind: "none" },
+          fieldPatch: { issueId: "issue_123" },
+          headers: [],
+          operation: "update_issue",
+        },
+        source,
+      })
+    ).rejects.toThrow("Invalid Linear update_issue fieldPatch input");
   });
 
   it("requests temporary signed URLs for private Linear files", async () => {
