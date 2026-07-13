@@ -25,6 +25,7 @@ import type {
 
 const LINEAR_API_BASE_URL = "https://api.linear.app";
 const LINEAR_DESCRIPTOR_VERSION = "linear.v1";
+const LINEAR_PUBLIC_FILE_URL_TTL_SECONDS = 300;
 const LINEAR_ALLOWED_RESPONSE_HEADERS = [
   "content-type",
   "x-ratelimit-requests-limit",
@@ -703,8 +704,9 @@ function readVariables(request: JsonObject): JsonObject {
   return {};
 }
 
-async function requestLinearGraphQl(input: {
+export async function requestLinearGraphQl(input: {
   credentials: LinearCredentials;
+  fetchImpl?: typeof fetch;
   request: JsonObject;
 }): Promise<LinearGraphQlResponse> {
   const client = new ProviderHttpClient({
@@ -716,7 +718,9 @@ async function requestLinearGraphQl(input: {
     defaultHeaders: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      "public-file-urls-expire-in": String(LINEAR_PUBLIC_FILE_URL_TTL_SECONDS),
     },
+    ...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
     providerName: "Linear",
   });
   const response = await client.send({
