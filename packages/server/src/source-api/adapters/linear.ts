@@ -24,14 +24,11 @@ import type {
 } from "../types";
 
 const LINEAR_API_BASE_URL = "https://api.linear.app";
-const LINEAR_DESCRIPTOR_VERSION = "linear.v2";
+const LINEAR_DESCRIPTOR_VERSION = "linear.v3";
 const LINEAR_PUBLIC_FILE_URL_TTL_SECONDS = 300;
-const LINEAR_IMAGE_UPLOAD_REQUEST_HEADERS = [
+const LINEAR_FILE_UPLOAD_REQUEST_HEADERS = [
   "content-type",
-  "x-onequery-alt-text",
-  "x-onequery-comment-body",
   "x-onequery-file-name",
-  "x-onequery-parent-id",
 ] as const;
 const LINEAR_ALLOWED_RESPONSE_HEADERS = [
   "content-type",
@@ -84,11 +81,9 @@ const UpdateIssueStateInputSchema = z
   })
   .strict();
 
-const LinearImageCommentRequestSchema = z
+const LinearFileUploadRequestSchema = z
   .object({
-    altText: z.string().min(1).optional(),
-    commentBody: z.string().min(1).optional(),
-    contentType: z.string().regex(/^image\/[a-z0-9.+-]+$/i),
+    contentType: z.string().regex(/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i),
     fileName: z
       .string()
       .min(1)
@@ -99,8 +94,6 @@ const LinearImageCommentRequestSchema = z
           !value.includes("\\") &&
           !value.includes(String.fromCharCode(0))
       ),
-    issueId: z.string().min(1),
-    parentId: z.string().min(1).optional(),
   })
   .strict();
 
@@ -125,7 +118,7 @@ type LinearOperationName =
   | "get_issue"
   | "create_issue"
   | "create_comment"
-  | "create_comment_with_image"
+  | "upload_file"
   | "update_issue";
 
 type ListIssuesInput = z.infer<typeof ListIssuesInputSchema>;
@@ -186,13 +179,12 @@ export function createLinearSourceApiAdapter(
         selector: request.selector,
       });
       const normalizedRequest =
-        operationName === "create_comment_with_image"
-          ? normalizeLinearImageCommentRequest({
+        operationName === "upload_file"
+          ? normalizeLinearFileUploadRequest({
               body: request.body,
               fieldPatch: request.fieldPatch,
               headers: request.headers,
               methodOverride: request.methodOverride,
-              selector,
             })
           : normalizeLinearGraphQlRequest({
               body: request.body,
@@ -226,8 +218,8 @@ export function createLinearSourceApiAdapter(
       }
 
       const credentials = requireLinearCredentials(source);
-      if (prepared.operation === "create_comment_with_image") {
-        return executeLinearImageComment({
+      if (prepared.operation === "upload_file") {
+        return executeLinearFileUpload({
           credentials,
           fetchImpl: options.fetchImpl,
           prepared,
@@ -331,20 +323,18 @@ function buildLinearOperations(
       name: "update_issue",
       summary: "Update a Linear issue's workflow state.",
     }),
-    createLinearImageUploadOperation({
-      examples: examples.filter(
-        (example) => example.label === "Create comment with image"
-      ),
+    createLinearFileUploadOperation({
+      examples: examples.filter((example) => example.label === "Upload file"),
     }),
   ];
 }
 
-function createLinearImageUploadOperation(input: {
+function createLinearFileUploadOperation(input: {
   examples: readonly SourceApiExample[];
 }): SourceApiOperation {
   return {
     description:
-      "Upload a local image through Linear's fileUpload API and create a comment that embeds the resulting private asset. Requires an issue id selector, --input image path, Content-Type, and X-OneQuery-File-Name headers.",
+      "Upload a local file through Linear's fileUpload API and return its private assetUrl. Requires --input, Content-Type, and X-OneQuery-File-Name. Pass the returned assetUrl in Markdown to create_comment or create_issue.",
     examples: input.examples,
     fieldPolicy: {
       acceptsInput: true,
@@ -356,7 +346,7 @@ function createLinearImageUploadOperation(input: {
       supportsNestedPaths: false,
     },
     headerPolicy: canonicalizeSourceApiHeaderPolicy({
-      allowedRequestHeaders: LINEAR_IMAGE_UPLOAD_REQUEST_HEADERS,
+      allowedRequestHeaders: LINEAR_FILE_UPLOAD_REQUEST_HEADERS,
       allowedResponseHeaders: LINEAR_ALLOWED_RESPONSE_HEADERS,
     }),
     kind: "structured_request",
@@ -364,15 +354,14 @@ function createLinearImageUploadOperation(input: {
       allowedMethods: ["POST"],
       defaultMethod: "POST",
     },
-    name: "create_comment_with_image",
+    name: "upload_file",
     notes: [
       "The file is uploaded server-side with Linear's fileUpload mutation and pre-signed PUT flow.",
-      "X-OneQuery-Comment-Body, X-OneQuery-Alt-Text, and X-OneQuery-Parent-Id are optional.",
+      "The response contains an assetUrl that can be embedded in create_comment or create_issue Markdown.",
     ],
     paginationPolicy: "none",
-    selectorKind: "identifier",
-    selectorLabel: "ISSUE_ID_OR_IDENTIFIER",
-    summary: "Upload a local image and attach it to a Linear comment.",
+    selectorKind: "none",
+    summary: "Upload a local file to Linear and return its asset URL.",
   };
 }
 
@@ -503,10 +492,10 @@ function buildLinearExamples(
       label: "Update issue state",
     },
     {
-      command: `onequery api --source ${sourceKey} --op create_comment_with_image <issue-id> --input ./screenshot.png -H 'Content-Type:image/png' -H 'X-OneQuery-File-Name:screenshot.png'`,
+      command: `onequery api --source ${sourceKey} --op upload_file --input ./screenshot.png -H 'Content-Type:image/png' -H 'X-OneQuery-File-Name:screenshot.png'`,
       description:
-        "Upload a local image to Linear and embed it in a new issue comment.",
-      label: "Create comment with image",
+        "Upload a local file to Linear and return its private asset URL.",
+      label: "Upload file",
     },
   ];
 }
@@ -522,11 +511,12 @@ function buildLinearNotes(accessMode: LinearAccessMode): string[] {
     "Linear Source API uses fixed GraphQL operations instead of accepting raw GraphQL from the caller.",
     "Use list_teams first when you need a teamId for issue creation.",
     "Use list_workflow_states with an issue's teamId before changing the issue state.",
+    "Use upload_file first, then embed its assetUrl in create_comment or create_issue Markdown.",
   ];
 
   if (accessMode === "read") {
     notes.push(
-      "This Linear connection is read-only; create_issue, create_comment, create_comment_with_image, and update_issue are disabled."
+      "This Linear connection is read-only; create_issue, create_comment, upload_file, and update_issue are disabled."
     );
   }
 
@@ -568,7 +558,7 @@ function assertLinearOperationAllowed(input: {
     input.accessMode === "read" &&
     (input.operation === "create_issue" ||
       input.operation === "create_comment" ||
-      input.operation === "create_comment_with_image" ||
+      input.operation === "upload_file" ||
       input.operation === "update_issue")
   ) {
     throw new SourceApiInvalidRequestError(
@@ -578,7 +568,7 @@ function assertLinearOperationAllowed(input: {
 }
 
 function normalizeLinearGraphQlRequest(input: {
-  operation: Exclude<LinearOperationName, "create_comment_with_image">;
+  operation: Exclude<LinearOperationName, "upload_file">;
   selector?: string;
   fieldPatch?: JsonObject;
   methodOverride?: string;
@@ -596,8 +586,7 @@ function normalizeLinearGraphQlRequest(input: {
   };
 }
 
-function normalizeLinearImageCommentRequest(input: {
-  selector?: string;
+function normalizeLinearFileUploadRequest(input: {
   fieldPatch?: JsonObject;
   methodOverride?: string;
   headers: readonly { name: string; value: string }[];
@@ -605,17 +594,17 @@ function normalizeLinearImageCommentRequest(input: {
 }): { body: SourceApiRequestBody; request: JsonObject } {
   if (input.methodOverride?.trim()) {
     throw new SourceApiInvalidRequestError(
-      'Linear operation "create_comment_with_image" does not support method overrides'
+      'Linear operation "upload_file" does not support method overrides'
     );
   }
   if (input.fieldPatch && Object.keys(input.fieldPatch).length > 0) {
     throw new SourceApiInvalidRequestError(
-      'Linear operation "create_comment_with_image" accepts --input, not fieldPatch input'
+      'Linear operation "upload_file" accepts --input, not fieldPatch input'
     );
   }
   if (input.body.kind !== "binary" && input.body.kind !== "text") {
     throw new SourceApiInvalidRequestError(
-      'Linear operation "create_comment_with_image" requires a local image through --input'
+      'Linear operation "upload_file" requires a local file through --input'
     );
   }
   if (
@@ -623,39 +612,33 @@ function normalizeLinearImageCommentRequest(input: {
     (input.body.kind === "text" && input.body.value.length === 0)
   ) {
     throw new SourceApiInvalidRequestError(
-      'Linear operation "create_comment_with_image" requires a non-empty image'
+      'Linear operation "upload_file" requires a non-empty file'
     );
   }
 
-  const headers = readLinearImageRequestHeaders(input.headers);
-  const parsed = LinearImageCommentRequestSchema.safeParse({
-    altText: normalizeOptionalHeader(headers.get("x-onequery-alt-text")),
-    commentBody: normalizeOptionalHeader(
-      headers.get("x-onequery-comment-body")
-    ),
+  const headers = readLinearFileUploadRequestHeaders(input.headers);
+  const parsed = LinearFileUploadRequestSchema.safeParse({
     contentType: normalizeRequiredHeader({
       headers,
       name: "content-type",
-      operation: "create_comment_with_image",
+      operation: "upload_file",
     }).toLowerCase(),
     fileName: normalizeRequiredHeader({
       headers,
       name: "x-onequery-file-name",
-      operation: "create_comment_with_image",
+      operation: "upload_file",
     }),
-    issueId: input.selector,
-    parentId: normalizeOptionalHeader(headers.get("x-onequery-parent-id")),
   });
   if (!parsed.success) {
     if (
       typeof parsed.error.flatten().fieldErrors.contentType?.[0] === "string"
     ) {
       throw new SourceApiInvalidRequestError(
-        'Linear operation "create_comment_with_image" requires an image content type such as image/png'
+        'Linear operation "upload_file" requires a valid content type such as image/png'
       );
     }
     throw new SourceApiInvalidRequestError(
-      "Invalid Linear create_comment_with_image request metadata"
+      "Invalid Linear upload_file request metadata"
     );
   }
 
@@ -665,22 +648,22 @@ function normalizeLinearImageCommentRequest(input: {
   };
 }
 
-function readLinearImageRequestHeaders(
+function readLinearFileUploadRequestHeaders(
   input: readonly { name: string; value: string }[]
 ): Map<string, string> {
-  const allowedNames = new Set<string>(LINEAR_IMAGE_UPLOAD_REQUEST_HEADERS);
+  const allowedNames = new Set<string>(LINEAR_FILE_UPLOAD_REQUEST_HEADERS);
   const headers = new Map<string, string>();
 
   for (const header of input) {
     const name = header.name.trim().toLowerCase();
     if (!allowedNames.has(name)) {
       throw new SourceApiInvalidRequestError(
-        `Linear operation "create_comment_with_image" does not accept request header "${header.name}"`
+        `Linear operation "upload_file" does not accept request header "${header.name}"`
       );
     }
     if (headers.has(name)) {
       throw new SourceApiInvalidRequestError(
-        `Linear operation "create_comment_with_image" received duplicate request header "${header.name}"`
+        `Linear operation "upload_file" received duplicate request header "${header.name}"`
       );
     }
     headers.set(name, header.value);
@@ -739,10 +722,7 @@ function normalizeLinearSelector(input: {
 }): string | undefined {
   const selector = input.selector?.trim();
 
-  if (
-    input.operation !== "get_issue" &&
-    input.operation !== "create_comment_with_image"
-  ) {
+  if (input.operation !== "get_issue") {
     if (selector) {
       throw new SourceApiInvalidRequestError(
         `Linear operation "${input.operation}" does not accept a selector`
@@ -751,15 +731,9 @@ function normalizeLinearSelector(input: {
     return undefined;
   }
 
-  if (!selector && input.operation === "get_issue") {
-    throw new SourceApiInvalidRequestError(
-      'Linear operation "get_issue" requires an issue id or identifier selector'
-    );
-  }
-
   if (!selector) {
     throw new SourceApiInvalidRequestError(
-      'Linear operation "create_comment_with_image" requires an issue id or identifier selector'
+      'Linear operation "get_issue" requires an issue id or identifier selector'
     );
   }
 
@@ -967,9 +941,9 @@ function buildLinearGraphQlRequest(input: {
         },
       };
     }
-    case "create_comment_with_image":
+    case "upload_file":
       throw new SourceApiInvalidRequestError(
-        'Linear operation "create_comment_with_image" requires binary request input'
+        'Linear operation "upload_file" requires request body input'
       );
   }
 }
@@ -1056,22 +1030,22 @@ function compactJsonObject(input: Record<string, unknown>): JsonObject {
   ) as JsonObject;
 }
 
-async function executeLinearImageComment(input: {
+async function executeLinearFileUpload(input: {
   credentials: LinearCredentials;
   fetchImpl?: typeof fetch;
   prepared: PreparedStructuredSourceApi;
   source: PreparedSourceConnection;
 }): Promise<SourceApiExecutionResult> {
-  const request = LinearImageCommentRequestSchema.safeParse(
+  const request = LinearFileUploadRequestSchema.safeParse(
     input.prepared.request
   );
   if (!request.success) {
     throw new SourceApiInvalidRequestError(
-      "Invalid prepared Linear create_comment_with_image request"
+      "Invalid prepared Linear upload_file request"
     );
   }
 
-  const fileBytes = readLinearImageBody(input.prepared.body);
+  const fileBytes = readLinearFileUploadBody(input.prepared.body);
   const uploadPayload = await requestLinearGraphQl({
     credentials: input.credentials,
     fetchImpl: input.fetchImpl,
@@ -1117,35 +1091,30 @@ async function executeLinearImageComment(input: {
     throw new Error(`Linear file upload failed (${uploadResponse.status})`);
   }
 
-  const imageMarkdown = `![${escapeLinearMarkdownAltText(
-    request.data.altText ?? request.data.fileName
-  )}](${assetUrl})`;
-  const commentBody = request.data.commentBody
-    ? `${request.data.commentBody}\n\n${imageMarkdown}`
-    : imageMarkdown;
-  const commentRequest = buildLinearGraphQlRequest({
-    fieldPatch: compactJsonObject({
-      body: commentBody,
-      issueId: request.data.issueId,
-      parentId: request.data.parentId,
-    }),
-    operation: "create_comment",
-  });
-  const commentResponse = await requestLinearGraphQl({
-    credentials: input.credentials,
-    fetchImpl: input.fetchImpl,
-    request: commentRequest,
-  });
-
   return buildLinearExecutionResult({
     operation: input.prepared.operation,
-    response: commentResponse,
+    response: {
+      body: {
+        kind: "json",
+        value: {
+          data: {
+            fileUpload: {
+              assetUrl,
+              success: true,
+            },
+          },
+        },
+      },
+      contentType: "application/json",
+      headers: [],
+      status: 200,
+    },
     selector: input.prepared.selector,
     source: input.source,
   });
 }
 
-function readLinearImageBody(
+function readLinearFileUploadBody(
   body: SourceApiRequestBody
 ): Uint8Array<ArrayBuffer> {
   if (body.kind === "binary") {
@@ -1155,7 +1124,7 @@ function readLinearImageBody(
     return new TextEncoder().encode(body.value);
   }
   throw new SourceApiInvalidRequestError(
-    "Prepared Linear image upload is missing file bytes"
+    "Prepared Linear file upload is missing file bytes"
   );
 }
 
@@ -1198,10 +1167,6 @@ async function uploadLinearFile(input: {
   } catch (error: unknown) {
     throw new Error("Linear file upload request failed", { cause: error });
   }
-}
-
-function escapeLinearMarkdownAltText(value: string): string {
-  return value.replaceAll("\\", "\\\\").replaceAll("]", "\\]");
 }
 
 function applyLinearContinuation(input: {

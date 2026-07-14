@@ -64,7 +64,7 @@ describe("linear source api adapter", () => {
     ]);
   });
 
-  it("adds issue, comment, and image upload writes for read-write connections", async () => {
+  it("adds composable file upload and issue writes for read-write connections", async () => {
     const descriptor = await linearSourceApiAdapter.describe({
       actor,
       source: createSource("read_write"),
@@ -78,11 +78,11 @@ describe("linear source api adapter", () => {
       "create_issue",
       "create_comment",
       "update_issue",
-      "create_comment_with_image",
+      "upload_file",
     ]);
 
     const uploadOperation = descriptor.operations.find(
-      (operation) => operation.name === "create_comment_with_image"
+      (operation) => operation.name === "upload_file"
     );
     expect(uploadOperation).toMatchObject({
       fieldPolicy: {
@@ -91,14 +91,11 @@ describe("linear source api adapter", () => {
         allowsTypedFields: false,
         inputMode: "request_body",
       },
-      selectorKind: "identifier",
+      selectorKind: "none",
     });
     expect(uploadOperation?.headerPolicy.allowedRequestHeaders).toEqual([
       "content-type",
-      "x-onequery-alt-text",
-      "x-onequery-comment-body",
       "x-onequery-file-name",
-      "x-onequery-parent-id",
     ]);
   });
 
@@ -242,48 +239,38 @@ describe("linear source api adapter", () => {
     ).rejects.toThrow("Invalid Linear update_issue fieldPatch input");
   });
 
-  it("normalizes a local image body without embedding bytes in structured metadata", async () => {
+  it("normalizes a local file body without embedding bytes in structured metadata", async () => {
     const source = createSource("read_write");
     const descriptor = await linearSourceApiAdapter.describe({ actor, source });
-    const image = new Uint8Array([137, 80, 78, 71]);
+    const file = new Uint8Array([37, 80, 68, 70]);
 
     const prepared = await linearSourceApiAdapter.normalize({
       actor,
       descriptor,
       request: {
-        body: { kind: "binary", value: image },
+        body: { kind: "binary", value: file },
         headers: [
-          { name: "Content-Type", value: "image/png" },
-          { name: "X-OneQuery-File-Name", value: "error.png" },
-          { name: "X-OneQuery-Alt-Text", value: "Login error" },
-          {
-            name: "X-OneQuery-Comment-Body",
-            value: "Captured from production.",
-          },
+          { name: "Content-Type", value: "application/pdf" },
+          { name: "X-OneQuery-File-Name", value: "report.pdf" },
         ],
-        operation: "create_comment_with_image",
-        selector: "issue_123",
+        operation: "upload_file",
       },
       source,
     });
 
     expect(prepared).toMatchObject({
-      body: { kind: "binary", value: image },
+      body: { kind: "binary", value: file },
       headers: [],
       kind: "structured_request",
-      operation: "create_comment_with_image",
+      operation: "upload_file",
       request: {
-        altText: "Login error",
-        commentBody: "Captured from production.",
-        contentType: "image/png",
-        fileName: "error.png",
-        issueId: "issue_123",
+        contentType: "application/pdf",
+        fileName: "report.pdf",
       },
-      selector: "issue_123",
     });
   });
 
-  it("uploads a local image through Linear fileUpload before creating the comment", async () => {
+  it("uploads a local file through Linear fileUpload and returns its asset URL", async () => {
     const source = createSource("read_write");
     const descriptor = await linearSourceApiAdapter.describe({ actor, source });
     const image = new Uint8Array([137, 80, 78, 71]);
@@ -306,20 +293,7 @@ describe("linear source api adapter", () => {
           },
         })
       )
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
-      .mockResolvedValueOnce(
-        Response.json({
-          data: {
-            commentCreate: {
-              comment: {
-                body: "Captured from production.\n\n![Login error](https://uploads.linear.app/asset/error.png)",
-                id: "comment_123",
-              },
-              success: true,
-            },
-          },
-        })
-      );
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
     const adapter = createLinearSourceApiAdapter({ fetchImpl: fetchMock });
 
     const prepared = await adapter.normalize({
@@ -330,14 +304,8 @@ describe("linear source api adapter", () => {
         headers: [
           { name: "content-type", value: "image/png" },
           { name: "x-onequery-file-name", value: "error.png" },
-          { name: "x-onequery-alt-text", value: "Login error" },
-          {
-            name: "x-onequery-comment-body",
-            value: "Captured from production.",
-          },
         ],
-        operation: "create_comment_with_image",
-        selector: "issue_123",
+        operation: "upload_file",
       },
       source,
     });
@@ -353,7 +321,7 @@ describe("linear source api adapter", () => {
       source,
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
 
     const [fileUploadUrl, fileUploadInit] = fetchMock.mock.calls[0] ?? [];
     expect(String(fileUploadUrl)).toBe("https://api.linear.app/graphql");
@@ -377,25 +345,12 @@ describe("linear source api adapter", () => {
     expect(uploadHeaders.get("cache-control")).toBe("public, max-age=31536000");
     expect(uploadHeaders.get("x-amz-acl")).toBe("private");
 
-    const [, commentInit] = fetchMock.mock.calls[2] ?? [];
-    expect(JSON.parse(String(commentInit?.body))).toMatchObject({
-      query: expect.stringContaining("commentCreate"),
-      variables: {
-        input: {
-          body: "Captured from production.\n\n![Login error](https://uploads.linear.app/asset/error.png)",
-          issueId: "issue_123",
-        },
-      },
-    });
     expect(result.body).toEqual({
       kind: "json",
       value: {
         data: {
-          commentCreate: {
-            comment: {
-              body: "Captured from production.\n\n![Login error](https://uploads.linear.app/asset/error.png)",
-              id: "comment_123",
-            },
+          fileUpload: {
+            assetUrl: "https://uploads.linear.app/asset/error.png",
             success: true,
           },
         },
@@ -403,7 +358,7 @@ describe("linear source api adapter", () => {
     });
   });
 
-  it("does not create a comment when the pre-signed image upload fails", async () => {
+  it("does not return an asset URL when the pre-signed upload fails", async () => {
     const source = createSource("read_write");
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -433,8 +388,7 @@ describe("linear source api adapter", () => {
           { name: "content-type", value: "image/png" },
           { name: "x-onequery-file-name", value: "error.png" },
         ],
-        operation: "create_comment_with_image",
-        selector: "issue_123",
+        operation: "upload_file",
       },
       source,
     });
@@ -455,7 +409,7 @@ describe("linear source api adapter", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects non-image uploads before making a Linear request", async () => {
+  it("rejects malformed content types before making a Linear request", async () => {
     const source = createSource("read_write");
     const descriptor = await linearSourceApiAdapter.describe({ actor, source });
 
@@ -466,15 +420,14 @@ describe("linear source api adapter", () => {
         request: {
           body: { kind: "binary", value: new Uint8Array([1, 2, 3]) },
           headers: [
-            { name: "content-type", value: "application/pdf" },
+            { name: "content-type", value: "not-a-mime-type" },
             { name: "x-onequery-file-name", value: "report.pdf" },
           ],
-          operation: "create_comment_with_image",
-          selector: "issue_123",
+          operation: "upload_file",
         },
         source,
       })
-    ).rejects.toThrow("requires an image content type");
+    ).rejects.toThrow("requires a valid content type");
   });
 
   it("requests temporary signed URLs for private Linear files", async () => {
