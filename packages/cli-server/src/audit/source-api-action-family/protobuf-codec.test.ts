@@ -701,13 +701,15 @@ describe("source api action protobuf codec", () => {
       type: "load_source",
     };
     const canonicalBytes = encodeSourceApiActionEffectPayload(effect);
-    const bytesWithUnknownField = Buffer.concat([
-      canonicalBytes,
+    const bytesWithUnknownField = Buffer.from([
+      ...canonicalBytes,
       // Unknown top-level varint field 99. Domain conversion ignores it.
-      Buffer.from([0x98, 0x06, 0x7b]),
+      0x98,
+      0x06,
+      0x7b,
     ]);
 
-    expect(bytesWithUnknownField.equals(canonicalBytes)).toBe(false);
+    expect([...bytesWithUnknownField]).not.toEqual([...canonicalBytes]);
     expect(
       expectOk(
         decodeSourceApiActionEffectPayload(

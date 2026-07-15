@@ -138,8 +138,8 @@ function readSignedTokenParts(token: string): {
 }
 
 function hasMatchingSignature(signature: string, expectedSignature: string) {
-  const receivedBytes = Buffer.from(signature, "utf8");
-  const expectedBytes = Buffer.from(expectedSignature, "utf8");
+  const receivedBytes = new TextEncoder().encode(signature);
+  const expectedBytes = new TextEncoder().encode(expectedSignature);
   if (receivedBytes.length !== expectedBytes.length) {
     return false;
   }

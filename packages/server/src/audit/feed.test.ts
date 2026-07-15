@@ -60,9 +60,9 @@ describe("audit feed projection", { timeout: 60_000 }, () => {
       id: commandId,
       occurredAt: new Date("2026-04-26T00:00:00.000Z"),
       organizationId: "org_audit_feed_corrupt_payload",
-      payloadBytes: Buffer.concat([
-        Buffer.from([0xff]),
-        Buffer.from(rawCommandBody),
+      payloadBytes: Buffer.from([
+        0xff,
+        ...new TextEncoder().encode(rawCommandBody),
       ]),
       payloadType: "start_execute",
       requestId: "request_audit_feed_corrupt_payload",

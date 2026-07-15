@@ -8,6 +8,7 @@ import type {
   AuditActionDetail,
   AuditFamily,
 } from "@onequery/audit-contracts/audit";
+import { base64ToBytes } from "@onequery/codecs/base64";
 import {
   and,
   asc,
@@ -46,22 +47,24 @@ type CommandDecision =
       rejectDetail: string | null;
     };
 
-function serializeBytes(bytes: Buffer | Uint8Array) {
-  const buffer = Buffer.from(bytes);
+const utf8Decoder = new TextDecoder();
+
+function serializeBytes(bytes: ArrayLike<number>) {
+  const normalizedBytes = Uint8Array.from(bytes);
 
   return {
-    base64: buffer.toString("base64"),
-    byteLength: buffer.byteLength,
+    base64: base64ToBytes.encode(normalizedBytes),
+    byteLength: normalizedBytes.byteLength,
   };
 }
 
 function decodeJsonPayload<Schema extends DescMessage>(
   schema: Schema,
-  bytes: Buffer | Uint8Array
+  bytes: ArrayLike<number>
 ): JsonValue {
   const decoded = decodeValidatedAuditFeedPayload(
     schema,
-    Buffer.from(bytes)
+    bytes
   ) as MessageShape<Schema>;
   return toJson(schema, decoded);
 }
@@ -111,7 +114,7 @@ function decodeJsonCheckpointPayload(input: {
   payloadBytes: Buffer | Uint8Array;
 }): unknown {
   try {
-    return JSON.parse(Buffer.from(input.payloadBytes).toString("utf8"));
+    return JSON.parse(utf8Decoder.decode(Uint8Array.from(input.payloadBytes)));
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`${input.label} has invalid JSON payload: ${message}`, {

@@ -51,7 +51,7 @@ export function decodeWorkflowPayload<Schema extends DescMessage>(
 ): ResultType<MessageShape<Schema>, WorkflowStorageCorruptRowError> {
   let decoded: MessageShape<Schema>;
   try {
-    decoded = fromBinary(schema, bytes);
+    decoded = fromBinary(schema, Uint8Array.from(bytes));
   } catch (cause: unknown) {
     return Result.err(corruptPayloadError({ ...context, cause }));
   }
