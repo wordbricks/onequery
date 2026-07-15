@@ -103,16 +103,27 @@ export function resolvePgliteRuntimeOptions(
   const fsBundlePath = resolve(assetDir, PGLITE_DATA_FILENAME);
 
   const options = {
-    fsBundle: new Blob([readFileSync(fsBundlePath)]),
-    initdbWasmModule: new WebAssembly.Module(readFileSync(initdbWasmPath)),
+    fsBundle: new Blob([readArrayBufferBackedFile(fsBundlePath)]),
+    initdbWasmModule: new WebAssembly.Module(
+      readArrayBufferBackedFile(initdbWasmPath)
+    ),
     // Comment: the packaged server runtime loads PGlite's wasm assets from the
     // staged runtime directory instead of relying on module-relative URLs.
-    pgliteWasmModule: new WebAssembly.Module(readFileSync(pgliteWasmPath)),
+    pgliteWasmModule: new WebAssembly.Module(
+      readArrayBufferBackedFile(pgliteWasmPath)
+    ),
   } satisfies PGliteRuntimeOptions;
 
   cachedAssetDir = assetDir;
   cachedOptions = options;
   return options;
+}
+
+function readArrayBufferBackedFile(path: string): Uint8Array<ArrayBuffer> {
+  const fileBytes = readFileSync(path);
+  const bytes = new Uint8Array(fileBytes.byteLength);
+  bytes.set(fileBytes);
+  return bytes;
 }
 
 export function resolvePgliteAssetDir(

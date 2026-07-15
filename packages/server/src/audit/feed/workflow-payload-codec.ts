@@ -19,9 +19,9 @@ const auditFeedPayloadValidator = createValidator();
 
 export function decodeValidatedAuditFeedPayload<Schema extends DescMessage>(
   schema: Schema,
-  bytes: Buffer
+  bytes: ArrayLike<number>
 ): MessageShape<Schema> {
-  const decoded = fromBinary(schema, bytes);
+  const decoded = fromBinary(schema, Uint8Array.from(bytes));
   const validation = auditFeedPayloadValidator.validate(schema, decoded);
   if (validation.kind !== "valid") {
     throw validation.error;
