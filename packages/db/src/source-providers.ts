@@ -743,11 +743,12 @@ export const SOURCE_PROVIDER_REGISTRY = {
     publicCategory: "Productivity",
     guide: {
       summary:
-        "Connect Slack so agents can read channel and thread history the installed app can access.",
+        "Connect Slack so agents can read channel and thread history and send messages where the installed app has access.",
       steps: [
         "Authorize or install the Slack app for the target workspace.",
-        "Invite the app to any private channels the source should analyze.",
-        "Use channel IDs or channel names when querying Slack history.",
+        "Grant chat:write if agents should send messages.",
+        "Invite the app to any private channels the source should analyze or message.",
+        "Use channel IDs or channel names when reading Slack history or sending messages.",
       ],
       exampleInput: {
         sourceKey: "slack_workspace",
@@ -757,7 +758,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
           botUserId: "U1234567890",
           teamId: "T1234567890",
           teamName: "Acme",
-          botScopes: ["channels:read", "channels:history"],
+          botScopes: ["channels:read", "channels:history", "chat:write"],
         },
       },
     },
