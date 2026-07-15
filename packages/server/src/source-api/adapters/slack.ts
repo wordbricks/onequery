@@ -25,15 +25,17 @@ import type {
   SourceApiRequestBody,
 } from "../types";
 
-const SLACK_DESCRIPTOR_VERSION = "slack.v1";
+const SLACK_DESCRIPTOR_VERSION = "slack.v2";
 const SLACK_API_BASE_URL = "https://slack.com/api";
 const SLACK_ALLOWED_RESPONSE_HEADERS = ["content-type"] as const;
+const SLACK_CHAT_WRITE_SCOPE = "chat:write";
 const CHANNEL_ID_PATTERN = /^[CDG][A-Z0-9]+$/;
 
 const slackOperationSchema = z.enum([
   "list_channels",
   "fetch_channel_history",
   "fetch_thread_replies",
+  "send_message",
 ]);
 
 type SlackOperation = z.infer<typeof slackOperationSchema>;
@@ -60,7 +62,16 @@ const slackThreadRepliesRequestSchema = slackBaseRequestSchema.extend({
   ts: z.string().trim().min(1).optional(),
 });
 
+const slackSendMessageRequestSchema = z
+  .object({
+    blocks: z.array(z.record(z.string(), z.unknown())).max(50).optional(),
+    text: z.string().min(1).max(40_000),
+    thread_ts: z.string().trim().min(1).optional(),
+  })
+  .strict();
+
 type SlackRequest = z.infer<typeof slackBaseRequestSchema> &
+  Partial<z.infer<typeof slackSendMessageRequestSchema>> &
   Record<string, unknown>;
 
 class SlackInvalidRequestError extends SourceApiInvalidRequestError {}
@@ -75,16 +86,24 @@ type SlackApiResponse = {
 export const slackSourceApiAdapter: SourceApiAdapter = {
   provider: "slack",
   async describe({ source }) {
-    const examples = buildSlackExamples(source.sourceKey);
+    const credentials = requireSlackCredentials(source);
+    const canSendMessages = canSlackSendMessages(credentials);
+    const examples = buildSlackExamples(source.sourceKey, canSendMessages);
+    const notes = [
+      "Slack returns only channels and messages the installed app can access.",
+      "Invite the Slack app to private channels before querying them or sending messages.",
+      "Use Slack timestamps as strings for oldest, latest, and thread ts values.",
+    ];
+    if (!canSendMessages) {
+      notes.push(
+        "This Slack connection cannot send messages because it does not have the chat:write bot scope."
+      );
+    }
 
     return {
       descriptorVersion: SLACK_DESCRIPTOR_VERSION,
       examples,
-      notes: [
-        "Slack returns only channels and messages the installed app can access.",
-        "Invite the Slack app to private channels before querying them.",
-        "Use Slack timestamps as strings for oldest, latest, and thread ts values.",
-      ],
+      notes,
       operations: [
         createStructuredRequestOperation({
           allowedResponseHeaders: SLACK_ALLOWED_RESPONSE_HEADERS,
@@ -135,6 +154,29 @@ export const slackSourceApiAdapter: SourceApiAdapter = {
           selectorLabel: "CHANNEL",
           summary: "Fetch Slack thread replies.",
         }),
+        ...(canSendMessages
+          ? [
+              createStructuredRequestOperation({
+                allowedResponseHeaders: SLACK_ALLOWED_RESPONSE_HEADERS,
+                description:
+                  "Send a Slack message to one channel. Selector may be a channel ID or #channel-name. Required field: text. Optional fields: blocks and thread_ts.",
+                examples: examples.filter(
+                  (example) => example.label === "Send message"
+                ),
+                fieldPolicy: {
+                  supportsArrayPaths: true,
+                  supportsNestedPaths: true,
+                },
+                name: "send_message",
+                notes: [
+                  "This operation writes to Slack and requires the chat:write bot scope.",
+                ],
+                selectorKind: "path",
+                selectorLabel: "CHANNEL",
+                summary: "Send a Slack message.",
+              }),
+            ]
+          : []),
       ],
       source: {
         displayName: source.displayName,
@@ -148,6 +190,10 @@ export const slackSourceApiAdapter: SourceApiAdapter = {
       descriptor,
       operationName: request.operation,
     });
+    const credentials = requireSlackCredentials(source);
+    if (operation.name === "send_message") {
+      assertSlackCanSendMessages(credentials);
+    }
 
     if (request.methodOverride?.trim()) {
       throw new SlackInvalidRequestError(
@@ -227,22 +273,38 @@ export const slackSourceApiAdapter: SourceApiAdapter = {
   },
 };
 
-function buildSlackExamples(sourceKey: string): SourceApiExample[] {
-  return [
+function buildSlackExamples(
+  sourceKey: string,
+  canSendMessages: boolean
+): SourceApiExample[] {
+  const readExamples: SourceApiExample[] = [
     {
-      command: `source_api_execute connectionName="${sourceKey}" operationName="list_channels" fieldPatch=[{name:"limit",jsonValue:"100"}]`,
+      command: `onequery api --source ${sourceKey} --op list_channels --input '{"limit":100}'`,
       description: "List channels visible to the installed Slack app.",
       label: "List channels",
     },
     {
-      command: `source_api_execute connectionName="${sourceKey}" operationName="fetch_channel_history" selector="#general" fieldPatch=[{name:"limit",jsonValue:"50"}]`,
+      command: `onequery api --source ${sourceKey} --op fetch_channel_history "#general" --input '{"limit":50}'`,
       description: "Fetch recent messages from a channel.",
       label: "Fetch channel history",
     },
     {
-      command: `source_api_execute connectionName="${sourceKey}" operationName="fetch_thread_replies" selector="#general" fieldPatch=[{name:"ts",jsonValue:"\\"1730000000.000000\\""}]`,
+      command: `onequery api --source ${sourceKey} --op fetch_thread_replies "#general" --input '{"ts":"1730000000.000000"}'`,
       description: "Fetch replies from a Slack thread.",
       label: "Fetch thread replies",
+    },
+  ];
+
+  if (!canSendMessages) {
+    return readExamples;
+  }
+
+  return [
+    ...readExamples,
+    {
+      command: `onequery api --source ${sourceKey} --op send_message "#general" --input '{"text":"Deployment finished."}'`,
+      description: "Send a message to a channel.",
+      label: "Send message",
     },
   ];
 }
@@ -279,7 +341,9 @@ function parseSlackRequest(input: {
         ? slackThreadRepliesRequestSchema
         : input.operation === "fetch_channel_history"
           ? slackChannelHistoryRequestSchema
-          : null;
+          : input.operation === "send_message"
+            ? slackSendMessageRequestSchema
+            : null;
 
   if (!schema) {
     throw new SourceApiUnsupportedOperationError(input.operation);
@@ -337,6 +401,18 @@ function requireSlackCredentials(
     );
   }
   return source.credentials;
+}
+
+function canSlackSendMessages(credentials: SlackCredentials): boolean {
+  return credentials.botScopes.includes(SLACK_CHAT_WRITE_SCOPE);
+}
+
+function assertSlackCanSendMessages(credentials: SlackCredentials): void {
+  if (!canSlackSendMessages(credentials)) {
+    throw new SlackInvalidRequestError(
+      `Slack send_message requires the ${SLACK_CHAT_WRITE_SCOPE} bot scope`
+    );
+  }
 }
 
 async function executeSlackOperation(input: {
@@ -400,6 +476,23 @@ async function executeSlackOperation(input: {
           limit: input.request.limit ?? 50,
           oldest: input.request.oldest,
           ts,
+        },
+      });
+    }
+    case "send_message": {
+      assertSlackCanSendMessages(input.credentials);
+      const channel = await resolveSlackChannel({
+        credentials: input.credentials,
+        selector: input.selector,
+      });
+      return callSlackApi({
+        credentials: input.credentials,
+        method: "chat.postMessage",
+        params: {
+          blocks: input.request.blocks,
+          channel,
+          text: input.request.text,
+          thread_ts: input.request.thread_ts,
         },
       });
     }
