@@ -2,7 +2,11 @@ import type { LinearCredentials } from "@onequery/db/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { PreparedSourceConnection, SourceApiActorContext } from "../types";
-import { linearSourceApiAdapter, requestLinearGraphQl } from "./linear";
+import {
+  createLinearSourceApiAdapter,
+  linearSourceApiAdapter,
+  requestLinearGraphQl,
+} from "./linear";
 
 const actor: SourceApiActorContext = {
   capabilities: ["source_api.describe"],
@@ -60,7 +64,7 @@ describe("linear source api adapter", () => {
     ]);
   });
 
-  it("adds issue write operations for read-write connections", async () => {
+  it("adds composable file upload and issue writes for read-write connections", async () => {
     const descriptor = await linearSourceApiAdapter.describe({
       actor,
       source: createSource("read_write"),
@@ -74,6 +78,24 @@ describe("linear source api adapter", () => {
       "create_issue",
       "create_comment",
       "update_issue",
+      "upload_file",
+    ]);
+
+    const uploadOperation = descriptor.operations.find(
+      (operation) => operation.name === "upload_file"
+    );
+    expect(uploadOperation).toMatchObject({
+      fieldPolicy: {
+        acceptsInput: true,
+        allowsRawFields: false,
+        allowsTypedFields: false,
+        inputMode: "request_body",
+      },
+      selectorKind: "none",
+    });
+    expect(uploadOperation?.headerPolicy.allowedRequestHeaders).toEqual([
+      "content-type",
+      "x-onequery-file-name",
     ]);
   });
 
@@ -215,6 +237,197 @@ describe("linear source api adapter", () => {
         source,
       })
     ).rejects.toThrow("Invalid Linear update_issue fieldPatch input");
+  });
+
+  it("normalizes a local file body without embedding bytes in structured metadata", async () => {
+    const source = createSource("read_write");
+    const descriptor = await linearSourceApiAdapter.describe({ actor, source });
+    const file = new Uint8Array([37, 80, 68, 70]);
+
+    const prepared = await linearSourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "binary", value: file },
+        headers: [
+          { name: "Content-Type", value: "application/pdf" },
+          { name: "X-OneQuery-File-Name", value: "report.pdf" },
+        ],
+        operation: "upload_file",
+      },
+      source,
+    });
+
+    expect(prepared).toMatchObject({
+      body: { kind: "binary", value: file },
+      headers: [],
+      kind: "structured_request",
+      operation: "upload_file",
+      request: {
+        contentType: "application/pdf",
+        fileName: "report.pdf",
+      },
+    });
+  });
+
+  it("uploads a local file through Linear fileUpload and returns its asset URL", async () => {
+    const source = createSource("read_write");
+    const descriptor = await linearSourceApiAdapter.describe({ actor, source });
+    const image = new Uint8Array([137, 80, 78, 71]);
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            fileUpload: {
+              success: true,
+              uploadFile: {
+                assetUrl: "https://uploads.linear.app/asset/error.png",
+                headers: [
+                  { key: "x-amz-acl", value: "private" },
+                  { key: "content-type", value: "image/png" },
+                ],
+                uploadUrl: "https://linear-uploads.example.com/presigned",
+              },
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    const adapter = createLinearSourceApiAdapter({ fetchImpl: fetchMock });
+
+    const prepared = await adapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "binary", value: image },
+        headers: [
+          { name: "content-type", value: "image/png" },
+          { name: "x-onequery-file-name", value: "error.png" },
+        ],
+        operation: "upload_file",
+      },
+      source,
+    });
+    const result = await adapter.execute({
+      actor,
+      prepared: {
+        ...prepared,
+        bodyKind: prepared.body.kind,
+        bodyPaths: [],
+        headerNames: [],
+        preparedBinding: "binding",
+      },
+      source,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const [fileUploadUrl, fileUploadInit] = fetchMock.mock.calls[0] ?? [];
+    expect(String(fileUploadUrl)).toBe("https://api.linear.app/graphql");
+    expect(JSON.parse(String(fileUploadInit?.body))).toMatchObject({
+      query: expect.stringContaining("fileUpload"),
+      variables: {
+        contentType: "image/png",
+        filename: "error.png",
+        size: 4,
+      },
+    });
+
+    const [uploadUrl, uploadInit] = fetchMock.mock.calls[1] ?? [];
+    expect(String(uploadUrl)).toBe(
+      "https://linear-uploads.example.com/presigned"
+    );
+    expect(uploadInit?.method).toBe("PUT");
+    expect(uploadInit?.body).toEqual(image);
+    const uploadHeaders = new Headers(uploadInit?.headers);
+    expect(uploadHeaders.get("content-type")).toBe("image/png");
+    expect(uploadHeaders.get("cache-control")).toBe("public, max-age=31536000");
+    expect(uploadHeaders.get("x-amz-acl")).toBe("private");
+
+    expect(result.body).toEqual({
+      kind: "json",
+      value: {
+        data: {
+          fileUpload: {
+            assetUrl: "https://uploads.linear.app/asset/error.png",
+            success: true,
+          },
+        },
+      },
+    });
+  });
+
+  it("does not return an asset URL when the pre-signed upload fails", async () => {
+    const source = createSource("read_write");
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            fileUpload: {
+              success: true,
+              uploadFile: {
+                assetUrl: "https://uploads.linear.app/asset/error.png",
+                headers: [],
+                uploadUrl: "https://linear-uploads.example.com/presigned",
+              },
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(new Response("Forbidden", { status: 403 }));
+    const adapter = createLinearSourceApiAdapter({ fetchImpl: fetchMock });
+    const descriptor = await adapter.describe({ actor, source });
+    const prepared = await adapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "binary", value: new Uint8Array([137, 80, 78, 71]) },
+        headers: [
+          { name: "content-type", value: "image/png" },
+          { name: "x-onequery-file-name", value: "error.png" },
+        ],
+        operation: "upload_file",
+      },
+      source,
+    });
+
+    await expect(
+      adapter.execute({
+        actor,
+        prepared: {
+          ...prepared,
+          bodyKind: prepared.body.kind,
+          bodyPaths: [],
+          headerNames: [],
+          preparedBinding: "binding",
+        },
+        source,
+      })
+    ).rejects.toThrow("Linear file upload failed (403)");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects malformed content types before making a Linear request", async () => {
+    const source = createSource("read_write");
+    const descriptor = await linearSourceApiAdapter.describe({ actor, source });
+
+    await expect(
+      linearSourceApiAdapter.normalize({
+        actor,
+        descriptor,
+        request: {
+          body: { kind: "binary", value: new Uint8Array([1, 2, 3]) },
+          headers: [
+            { name: "content-type", value: "not-a-mime-type" },
+            { name: "x-onequery-file-name", value: "report.pdf" },
+          ],
+          operation: "upload_file",
+        },
+        source,
+      })
+    ).rejects.toThrow("requires a valid content type");
   });
 
   it("requests temporary signed URLs for private Linear files", async () => {

@@ -24,8 +24,12 @@ import type {
 } from "../types";
 
 const LINEAR_API_BASE_URL = "https://api.linear.app";
-const LINEAR_DESCRIPTOR_VERSION = "linear.v2";
+const LINEAR_DESCRIPTOR_VERSION = "linear.v3";
 const LINEAR_PUBLIC_FILE_URL_TTL_SECONDS = 300;
+const LINEAR_FILE_UPLOAD_REQUEST_HEADERS = [
+  "content-type",
+  "x-onequery-file-name",
+] as const;
 const LINEAR_ALLOWED_RESPONSE_HEADERS = [
   "content-type",
   "x-ratelimit-requests-limit",
@@ -77,6 +81,36 @@ const UpdateIssueStateInputSchema = z
   })
   .strict();
 
+const LinearFileUploadRequestSchema = z
+  .object({
+    contentType: z.string().regex(/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i),
+    fileName: z
+      .string()
+      .min(1)
+      .max(255)
+      .refine(
+        (value) =>
+          !value.includes("/") &&
+          !value.includes("\\") &&
+          !value.includes(String.fromCharCode(0))
+      ),
+  })
+  .strict();
+
+const LinearFileUploadPayloadSchema = z.object({
+  data: z.object({
+    fileUpload: z.object({
+      success: z.literal(true),
+      uploadFile: z.object({
+        assetUrl: z.string().url(),
+        headers: z.array(
+          z.object({ key: z.string().min(1), value: z.string() }).strict()
+        ),
+        uploadUrl: z.string().url(),
+      }),
+    }),
+  }),
+});
 type LinearOperationName =
   | "list_teams"
   | "list_workflow_states"
@@ -84,6 +118,7 @@ type LinearOperationName =
   | "get_issue"
   | "create_issue"
   | "create_comment"
+  | "upload_file"
   | "update_issue";
 
 type ListIssuesInput = z.infer<typeof ListIssuesInputSchema>;
@@ -99,96 +134,120 @@ type LinearGraphQlResponse = {
   status: number;
 };
 
-export const linearSourceApiAdapter: SourceApiAdapter = {
-  provider: "linear",
-  async describe({ source }) {
-    const credentials = requireLinearCredentials(source);
-    const accessMode = getLinearAccessMode(credentials);
-    const examples = buildLinearExamples(source.sourceKey, accessMode);
-
-    return {
-      defaultPathOperation:
-        accessMode === "mention" ? undefined : "list_issues",
-      descriptorVersion: LINEAR_DESCRIPTOR_VERSION,
-      examples,
-      notes: buildLinearNotes(accessMode),
-      operations: buildLinearOperations(accessMode, examples),
-      source: {
-        displayName: source.displayName,
-        provider: source.provider,
-        sourceKey: source.sourceKey,
-      },
-    };
-  },
-  async normalize({ descriptor, request, source }) {
-    const operation = requireLinearOperation({
-      descriptor,
-      operationName: request.operation,
-    });
-    const credentials = requireLinearCredentials(source);
-    const operationName = operation.name as LinearOperationName;
-
-    assertLinearOperationAllowed({
-      accessMode: getLinearAccessMode(credentials),
-      operation: operationName,
-    });
-    assertNoLinearRequestExtras({
-      body: request.body,
-      headers: request.headers,
-      methodOverride: request.methodOverride,
-      operation: operationName,
-    });
-
-    const selector = normalizeLinearSelector({
-      operation: operationName,
-      selector: request.selector,
-    });
-    const requestObject = buildLinearGraphQlRequest({
-      fieldPatch: request.fieldPatch,
-      operation: operationName,
-      selector,
-    });
-
-    return {
-      body: { kind: "none" },
-      descriptorVersion: descriptor.descriptorVersion,
-      headers: [],
-      kind: "structured_request",
-      method: "POST",
-      operation: operation.name,
-      paginationPolicy: operation.paginationPolicy,
-      provider: source.provider,
-      request: requestObject,
-      selector,
-      sourceId: source.id,
-      sourceKey: source.sourceKey,
-    };
-  },
-  async execute({ continuation, prepared, source }) {
-    if (prepared.kind !== "structured_request") {
-      throw new Error(
-        `Linear source API operation "${prepared.operation}" requires a structured plan`
-      );
-    }
-
-    const credentials = requireLinearCredentials(source);
-    const requestObject = applyLinearContinuation({
-      continuation,
-      prepared,
-    });
-    const response = await requestLinearGraphQl({
-      credentials,
-      request: requestObject,
-    });
-
-    return buildLinearExecutionResult({
-      operation: prepared.operation,
-      response,
-      selector: prepared.selector,
-      source,
-    });
-  },
+type LinearSourceApiAdapterOptions = {
+  fetchImpl?: typeof fetch;
 };
+
+export function createLinearSourceApiAdapter(
+  options: LinearSourceApiAdapterOptions = {}
+): SourceApiAdapter {
+  return {
+    provider: "linear",
+    async describe({ source }) {
+      const credentials = requireLinearCredentials(source);
+      const accessMode = getLinearAccessMode(credentials);
+      const examples = buildLinearExamples(source.sourceKey, accessMode);
+
+      return {
+        defaultPathOperation:
+          accessMode === "mention" ? undefined : "list_issues",
+        descriptorVersion: LINEAR_DESCRIPTOR_VERSION,
+        examples,
+        notes: buildLinearNotes(accessMode),
+        operations: buildLinearOperations(accessMode, examples),
+        source: {
+          displayName: source.displayName,
+          provider: source.provider,
+          sourceKey: source.sourceKey,
+        },
+      };
+    },
+    async normalize({ descriptor, request, source }) {
+      const operation = requireLinearOperation({
+        descriptor,
+        operationName: request.operation,
+      });
+      const credentials = requireLinearCredentials(source);
+      const operationName = operation.name as LinearOperationName;
+
+      assertLinearOperationAllowed({
+        accessMode: getLinearAccessMode(credentials),
+        operation: operationName,
+      });
+      const selector = normalizeLinearSelector({
+        operation: operationName,
+        selector: request.selector,
+      });
+      const normalizedRequest =
+        operationName === "upload_file"
+          ? normalizeLinearFileUploadRequest({
+              body: request.body,
+              fieldPatch: request.fieldPatch,
+              headers: request.headers,
+              methodOverride: request.methodOverride,
+            })
+          : normalizeLinearGraphQlRequest({
+              body: request.body,
+              fieldPatch: request.fieldPatch,
+              headers: request.headers,
+              methodOverride: request.methodOverride,
+              operation: operationName,
+              selector,
+            });
+
+      return {
+        body: normalizedRequest.body,
+        descriptorVersion: descriptor.descriptorVersion,
+        headers: [],
+        kind: "structured_request",
+        method: "POST",
+        operation: operation.name,
+        paginationPolicy: operation.paginationPolicy,
+        provider: source.provider,
+        request: normalizedRequest.request,
+        selector,
+        sourceId: source.id,
+        sourceKey: source.sourceKey,
+      };
+    },
+    async execute({ continuation, prepared, source }) {
+      if (prepared.kind !== "structured_request") {
+        throw new Error(
+          `Linear source API operation "${prepared.operation}" requires a structured plan`
+        );
+      }
+
+      const credentials = requireLinearCredentials(source);
+      if (prepared.operation === "upload_file") {
+        return executeLinearFileUpload({
+          credentials,
+          fetchImpl: options.fetchImpl,
+          prepared,
+          source,
+        });
+      }
+
+      const requestObject = applyLinearContinuation({
+        continuation,
+        prepared,
+      });
+      const response = await requestLinearGraphQl({
+        credentials,
+        fetchImpl: options.fetchImpl,
+        request: requestObject,
+      });
+
+      return buildLinearExecutionResult({
+        operation: prepared.operation,
+        response,
+        selector: prepared.selector,
+        source,
+      });
+    },
+  };
+}
+
+export const linearSourceApiAdapter = createLinearSourceApiAdapter();
 
 function buildLinearOperations(
   accessMode: LinearAccessMode,
@@ -264,7 +323,46 @@ function buildLinearOperations(
       name: "update_issue",
       summary: "Update a Linear issue's workflow state.",
     }),
+    createLinearFileUploadOperation({
+      examples: examples.filter((example) => example.label === "Upload file"),
+    }),
   ];
+}
+
+function createLinearFileUploadOperation(input: {
+  examples: readonly SourceApiExample[];
+}): SourceApiOperation {
+  return {
+    description:
+      "Upload a local file through Linear's fileUpload API and return its private assetUrl. Requires --input, Content-Type, and X-OneQuery-File-Name. Pass the returned assetUrl in Markdown to create_comment or create_issue.",
+    examples: input.examples,
+    fieldPolicy: {
+      acceptsInput: true,
+      allowsRawFields: false,
+      allowsTypedFields: false,
+      inputMode: "request_body",
+      mergePatches: false,
+      supportsArrayPaths: false,
+      supportsNestedPaths: false,
+    },
+    headerPolicy: canonicalizeSourceApiHeaderPolicy({
+      allowedRequestHeaders: LINEAR_FILE_UPLOAD_REQUEST_HEADERS,
+      allowedResponseHeaders: LINEAR_ALLOWED_RESPONSE_HEADERS,
+    }),
+    kind: "structured_request",
+    methodPolicy: {
+      allowedMethods: ["POST"],
+      defaultMethod: "POST",
+    },
+    name: "upload_file",
+    notes: [
+      "The file is uploaded server-side with Linear's fileUpload mutation and pre-signed PUT flow.",
+      "The response contains an assetUrl that can be embedded in create_comment or create_issue Markdown.",
+    ],
+    paginationPolicy: "none",
+    selectorKind: "none",
+    summary: "Upload a local file to Linear and return its asset URL.",
+  };
 }
 
 function createLinearReadOperation(input: {
@@ -393,6 +491,12 @@ function buildLinearExamples(
       description: "Change a Linear issue's workflow state.",
       label: "Update issue state",
     },
+    {
+      command: `onequery api --source ${sourceKey} --op upload_file --input ./screenshot.png -H 'Content-Type:image/png' -H 'X-OneQuery-File-Name:screenshot.png'`,
+      description:
+        "Upload a local file to Linear and return its private asset URL.",
+      label: "Upload file",
+    },
   ];
 }
 
@@ -407,11 +511,12 @@ function buildLinearNotes(accessMode: LinearAccessMode): string[] {
     "Linear Source API uses fixed GraphQL operations instead of accepting raw GraphQL from the caller.",
     "Use list_teams first when you need a teamId for issue creation.",
     "Use list_workflow_states with an issue's teamId before changing the issue state.",
+    "Use upload_file first, then embed its assetUrl in create_comment or create_issue Markdown.",
   ];
 
   if (accessMode === "read") {
     notes.push(
-      "This Linear connection is read-only; create_issue, create_comment, and update_issue are disabled."
+      "This Linear connection is read-only; create_issue, create_comment, upload_file, and update_issue are disabled."
     );
   }
 
@@ -453,12 +558,139 @@ function assertLinearOperationAllowed(input: {
     input.accessMode === "read" &&
     (input.operation === "create_issue" ||
       input.operation === "create_comment" ||
+      input.operation === "upload_file" ||
       input.operation === "update_issue")
   ) {
     throw new SourceApiInvalidRequestError(
       `Linear connection is read-only; ${input.operation} requires read_write access`
     );
   }
+}
+
+function normalizeLinearGraphQlRequest(input: {
+  operation: Exclude<LinearOperationName, "upload_file">;
+  selector?: string;
+  fieldPatch?: JsonObject;
+  methodOverride?: string;
+  headers: readonly { name: string; value: string }[];
+  body: SourceApiRequestBody;
+}): { body: SourceApiRequestBody; request: JsonObject } {
+  assertNoLinearRequestExtras(input);
+  return {
+    body: { kind: "none" },
+    request: buildLinearGraphQlRequest({
+      fieldPatch: input.fieldPatch,
+      operation: input.operation,
+      selector: input.selector,
+    }),
+  };
+}
+
+function normalizeLinearFileUploadRequest(input: {
+  fieldPatch?: JsonObject;
+  methodOverride?: string;
+  headers: readonly { name: string; value: string }[];
+  body: SourceApiRequestBody;
+}): { body: SourceApiRequestBody; request: JsonObject } {
+  if (input.methodOverride?.trim()) {
+    throw new SourceApiInvalidRequestError(
+      'Linear operation "upload_file" does not support method overrides'
+    );
+  }
+  if (input.fieldPatch && Object.keys(input.fieldPatch).length > 0) {
+    throw new SourceApiInvalidRequestError(
+      'Linear operation "upload_file" accepts --input, not fieldPatch input'
+    );
+  }
+  if (input.body.kind !== "binary" && input.body.kind !== "text") {
+    throw new SourceApiInvalidRequestError(
+      'Linear operation "upload_file" requires a local file through --input'
+    );
+  }
+  if (
+    (input.body.kind === "binary" && input.body.value.byteLength === 0) ||
+    (input.body.kind === "text" && input.body.value.length === 0)
+  ) {
+    throw new SourceApiInvalidRequestError(
+      'Linear operation "upload_file" requires a non-empty file'
+    );
+  }
+
+  const headers = readLinearFileUploadRequestHeaders(input.headers);
+  const parsed = LinearFileUploadRequestSchema.safeParse({
+    contentType: normalizeRequiredHeader({
+      headers,
+      name: "content-type",
+      operation: "upload_file",
+    }).toLowerCase(),
+    fileName: normalizeRequiredHeader({
+      headers,
+      name: "x-onequery-file-name",
+      operation: "upload_file",
+    }),
+  });
+  if (!parsed.success) {
+    if (
+      typeof parsed.error.flatten().fieldErrors.contentType?.[0] === "string"
+    ) {
+      throw new SourceApiInvalidRequestError(
+        'Linear operation "upload_file" requires a valid content type such as image/png'
+      );
+    }
+    throw new SourceApiInvalidRequestError(
+      "Invalid Linear upload_file request metadata"
+    );
+  }
+
+  return {
+    body: input.body,
+    request: compactJsonObject(parsed.data),
+  };
+}
+
+function readLinearFileUploadRequestHeaders(
+  input: readonly { name: string; value: string }[]
+): Map<string, string> {
+  const allowedNames = new Set<string>(LINEAR_FILE_UPLOAD_REQUEST_HEADERS);
+  const headers = new Map<string, string>();
+
+  for (const header of input) {
+    const name = header.name.trim().toLowerCase();
+    if (!allowedNames.has(name)) {
+      throw new SourceApiInvalidRequestError(
+        `Linear operation "upload_file" does not accept request header "${header.name}"`
+      );
+    }
+    if (headers.has(name)) {
+      throw new SourceApiInvalidRequestError(
+        `Linear operation "upload_file" received duplicate request header "${header.name}"`
+      );
+    }
+    headers.set(name, header.value);
+  }
+
+  return headers;
+}
+
+function normalizeRequiredHeader(input: {
+  headers: ReadonlyMap<string, string>;
+  name: string;
+  operation: string;
+}): string {
+  const value = normalizeOptionalHeader(input.headers.get(input.name));
+  if (value) {
+    return value;
+  }
+  throw new SourceApiInvalidRequestError(
+    `Linear operation "${input.operation}" requires request header "${input.name}"`
+  );
+}
+
+function normalizeOptionalHeader(
+  value: string | undefined
+): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
 }
 
 function assertNoLinearRequestExtras(input: {
@@ -709,6 +941,10 @@ function buildLinearGraphQlRequest(input: {
         },
       };
     }
+    case "upload_file":
+      throw new SourceApiInvalidRequestError(
+        'Linear operation "upload_file" requires request body input'
+      );
   }
 }
 
@@ -792,6 +1028,145 @@ function compactJsonObject(input: Record<string, unknown>): JsonObject {
   return Object.fromEntries(
     Object.entries(input).filter(([, value]) => value !== undefined)
   ) as JsonObject;
+}
+
+async function executeLinearFileUpload(input: {
+  credentials: LinearCredentials;
+  fetchImpl?: typeof fetch;
+  prepared: PreparedStructuredSourceApi;
+  source: PreparedSourceConnection;
+}): Promise<SourceApiExecutionResult> {
+  const request = LinearFileUploadRequestSchema.safeParse(
+    input.prepared.request
+  );
+  if (!request.success) {
+    throw new SourceApiInvalidRequestError(
+      "Invalid prepared Linear upload_file request"
+    );
+  }
+
+  const fileBytes = readLinearFileUploadBody(input.prepared.body);
+  const uploadPayload = await requestLinearGraphQl({
+    credentials: input.credentials,
+    fetchImpl: input.fetchImpl,
+    request: {
+      query: `mutation VelenLinearFileUpload($contentType: String!, $filename: String!, $size: Int!) {
+  fileUpload(contentType: $contentType, filename: $filename, size: $size) {
+    success
+    uploadFile {
+      uploadUrl
+      assetUrl
+      headers {
+        key
+        value
+      }
+    }
+  }
+}`,
+      variables: {
+        contentType: request.data.contentType,
+        filename: request.data.fileName,
+        size: fileBytes.byteLength,
+      },
+    },
+  });
+  const uploadFile = parseLinearFileUploadPayload(uploadPayload.body);
+  const uploadUrl = requireLinearHttpsUrl(uploadFile.uploadUrl, "upload URL");
+  const assetUrl = requireLinearHttpsUrl(uploadFile.assetUrl, "asset URL");
+
+  const uploadHeaders = new Headers();
+  uploadHeaders.set("Content-Type", request.data.contentType);
+  uploadHeaders.set("Cache-Control", "public, max-age=31536000");
+  for (const header of uploadFile.headers) {
+    uploadHeaders.set(header.key, header.value);
+  }
+
+  const uploadResponse = await uploadLinearFile({
+    body: fileBytes,
+    fetchImpl: input.fetchImpl,
+    headers: uploadHeaders,
+    uploadUrl,
+  });
+  if (!uploadResponse.ok) {
+    throw new Error(`Linear file upload failed (${uploadResponse.status})`);
+  }
+
+  return buildLinearExecutionResult({
+    operation: input.prepared.operation,
+    response: {
+      body: {
+        kind: "json",
+        value: {
+          data: {
+            fileUpload: {
+              assetUrl,
+              success: true,
+            },
+          },
+        },
+      },
+      contentType: "application/json",
+      headers: [],
+      status: 200,
+    },
+    selector: input.prepared.selector,
+    source: input.source,
+  });
+}
+
+function readLinearFileUploadBody(
+  body: SourceApiRequestBody
+): Uint8Array<ArrayBuffer> {
+  if (body.kind === "binary") {
+    return new Uint8Array(body.value);
+  }
+  if (body.kind === "text") {
+    return new TextEncoder().encode(body.value);
+  }
+  throw new SourceApiInvalidRequestError(
+    "Prepared Linear file upload is missing file bytes"
+  );
+}
+
+function parseLinearFileUploadPayload(body: SourceApiResponseBody) {
+  if (body.kind !== "json") {
+    throw new Error("Linear fileUpload returned a non-JSON response");
+  }
+  const parsed = LinearFileUploadPayloadSchema.safeParse(body.value);
+  if (!parsed.success) {
+    throw new Error("Linear fileUpload did not return an upload destination");
+  }
+  return parsed.data.data.fileUpload.uploadFile;
+}
+
+function requireLinearHttpsUrl(value: string, label: string): string {
+  const url = new URL(value);
+  if (
+    url.protocol !== "https:" ||
+    url.username.length > 0 ||
+    url.password.length > 0
+  ) {
+    throw new Error(`Linear fileUpload returned an invalid ${label}`);
+  }
+  return url.toString();
+}
+
+async function uploadLinearFile(input: {
+  body: Uint8Array<ArrayBuffer>;
+  fetchImpl?: typeof fetch;
+  headers: Headers;
+  uploadUrl: string;
+}): Promise<Response> {
+  try {
+    const fetchImpl = input.fetchImpl ?? globalThis.fetch;
+    return await fetchImpl(input.uploadUrl, {
+      body: input.body,
+      headers: input.headers,
+      method: "PUT",
+    });
+  } catch (error: unknown) {
+    throw new Error("Linear file upload request failed", { cause: error });
+  }
 }
 
 function applyLinearContinuation(input: {
