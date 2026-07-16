@@ -1,4 +1,5 @@
 import { CodexIcon } from "@onequery/ui/icons/codex-icon";
+import { HermesAgentIcon } from "@onequery/ui/icons/hermes-agent-icon";
 import { SimpleIconSvg, SvgIcon } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
 import type { ComponentType } from "react";
@@ -146,25 +147,7 @@ function E2BIcon({ size, ...props }: IconSvgProps) {
 }
 
 function HermesIcon({ size, ...props }: IconSvgProps) {
-  return (
-    <SvgIcon
-      {...props}
-      defaultLabel="Hermes Agent"
-      fill="none"
-      size={size}
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-    >
-      <path d="M12 3v3" />
-      <path d="M8 6h8a4 4 0 0 1 4 4v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-5a4 4 0 0 1 4-4Z" />
-      <circle cx="9" cy="11.5" fill="currentColor" r="1" stroke="none" />
-      <circle cx="15" cy="11.5" fill="currentColor" r="1" stroke="none" />
-      <path d="M9 15h6" />
-    </SvgIcon>
-  );
+  return <HermesAgentIcon {...props} defaultLabel="Hermes Agent" size={size} />;
 }
 
 function CodexAppServerApiIcon(props: IconSvgProps) {
