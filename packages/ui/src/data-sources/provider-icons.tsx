@@ -225,6 +225,16 @@ function HermesIcon(props: ProviderIconProps) {
   );
 }
 
+function CodexAppServerApiIcon(props: ProviderIconProps) {
+  return (
+    <TablerProviderIcon
+      {...props}
+      defaultLabel="Codex App Server API"
+      Icon={IconRobot}
+    />
+  );
+}
+
 function E2BIcon(props: ProviderIconProps) {
   return (
     <TablerProviderIcon {...props} defaultLabel="E2B" Icon={IconTerminal2} />
@@ -326,6 +336,7 @@ export const ProviderIcons = {
   aws_athena_connector: AwsAthenaConnectorIcon,
   bigquery: createSimpleProviderIcon(siGooglebigquery),
   cal: createSimpleProviderIcon(siCaldotcom),
+  codex_app_server_api: CodexAppServerApiIcon,
   cloudflare_d1: CloudflareD1Icon,
   cloudflare_r2_sql: createSimpleProviderIcon(siCloudflareworkers),
   cloudflare_web_analytics: createSimpleProviderIcon(siCloudflareworkers),
