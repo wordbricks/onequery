@@ -4,6 +4,7 @@ import { SimpleIconSvg, SvgIcon } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
 import type { ComponentType } from "react";
 import {
+  si1password,
   siAirtable,
   siBun,
   siCaldotcom,
@@ -154,33 +155,6 @@ function CodexAppServerApiIcon(props: IconSvgProps) {
   return <CodexIcon {...props} defaultLabel="Codex App Server API" />;
 }
 
-function OnePasswordIcon({ size, ...props }: IconSvgProps) {
-  return (
-    <SvgIcon
-      {...props}
-      defaultLabel="1Password"
-      fill="none"
-      size={size}
-      viewBox="0 0 24 24"
-    >
-      <path
-        d="M7.5 14.5a4.5 4.5 0 1 1 3.77-2.05L22 12.45v3h-3v3h-3v-3h-4.73A4.48 4.48 0 0 1 7.5 14.5Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <path
-        d="M7.5 10.5h.01"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="3"
-      />
-    </SvgIcon>
-  );
-}
-
 function MicrosoftClarityIcon({ size, ...props }: IconSvgProps) {
   return (
     <SvgIcon
@@ -317,7 +291,7 @@ const BRAND_ICONS = {
   mysql: createSimpleBrandIcon(siMysql),
   notion: createSimpleBrandIcon(siNotion),
   npm: createSimpleBrandIcon(siNpm),
-  onepassword: OnePasswordIcon,
+  onepassword: createSimpleBrandIcon(si1password),
   postgresql: createSimpleBrandIcon(siPostgresql),
   postgres: createSimpleBrandIcon(siPostgresql),
   posthog: createSimpleBrandIcon(siPosthog),
