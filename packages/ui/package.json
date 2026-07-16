@@ -11,6 +11,7 @@
     "./data-sources/linear-access-mode": "./src/data-sources/linear-access-mode.tsx",
     "./data-sources/provider-icons": "./src/data-sources/provider-icons.tsx",
     "./components/*": "./src/components/ui/*.tsx",
+    "./icons/codex-icon": "./src/icons/codex-icon.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./icons/svg-icon": "./src/icons/svg-icon.tsx"
   },

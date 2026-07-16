@@ -34,6 +34,7 @@ import {
   siYoutube,
 } from "simple-icons";
 
+import { CodexIcon } from "../icons/codex-icon";
 import {
   SimpleIconSvg,
   SvgIcon,
@@ -226,13 +227,7 @@ function HermesIcon(props: ProviderIconProps) {
 }
 
 function CodexAppServerApiIcon(props: ProviderIconProps) {
-  return (
-    <TablerProviderIcon
-      {...props}
-      defaultLabel="Codex App Server API"
-      Icon={IconRobot}
-    />
-  );
+  return <CodexIcon {...props} defaultLabel="Codex App Server API" />;
 }
 
 function E2BIcon(props: ProviderIconProps) {

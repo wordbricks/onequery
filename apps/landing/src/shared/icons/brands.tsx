@@ -1,3 +1,4 @@
+import { CodexIcon } from "@onequery/ui/icons/codex-icon";
 import { SimpleIconSvg, SvgIcon } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
 import type { ComponentType } from "react";
@@ -166,6 +167,10 @@ function HermesIcon({ size, ...props }: IconSvgProps) {
   );
 }
 
+function CodexAppServerApiIcon(props: IconSvgProps) {
+  return <CodexIcon {...props} defaultLabel="Codex App Server API" />;
+}
+
 function OnePasswordIcon({ size, ...props }: IconSvgProps) {
   return (
     <SvgIcon
@@ -302,7 +307,7 @@ const BRAND_ICONS = {
   bigquery: createSimpleBrandIcon(siGooglebigquery),
   bun: createSimpleBrandIcon(siBun),
   cal: createSimpleBrandIcon(siCaldotcom),
-  codex_app_server_api: HermesIcon,
+  codex_app_server_api: CodexAppServerApiIcon,
   cloudflare_d1: CloudflareD1Icon,
   cloudflare_r2_sql: createSimpleBrandIcon(siCloudflareworkers),
   cloudflare_web_analytics: createSimpleBrandIcon(siCloudflareworkers),
