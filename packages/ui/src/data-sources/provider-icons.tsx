@@ -4,7 +4,6 @@ import {
   IconHelpCircle,
   IconKey,
   IconNotebook,
-  IconRobot,
   IconTerminal2,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
@@ -35,6 +34,7 @@ import {
 } from "simple-icons";
 
 import { CodexIcon } from "../icons/codex-icon";
+import { HermesAgentIcon } from "../icons/hermes-agent-icon";
 import {
   SimpleIconSvg,
   SvgIcon,
@@ -217,13 +217,7 @@ function GranolaIcon(props: ProviderIconProps) {
 }
 
 function HermesIcon(props: ProviderIconProps) {
-  return (
-    <TablerProviderIcon
-      {...props}
-      defaultLabel="Hermes Agent"
-      Icon={IconRobot}
-    />
-  );
+  return <HermesAgentIcon {...props} defaultLabel="Hermes Agent" />;
 }
 
 function CodexAppServerApiIcon(props: ProviderIconProps) {
