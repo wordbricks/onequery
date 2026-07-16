@@ -6,6 +6,7 @@ import {
   AirtableCredentialsSchema,
   BigQueryCredentialsSchema,
   CalCredentialsSchema,
+  CodexAppServerApiCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareR2SqlCredentialsSchema,
   CloudflareWebAnalyticsCredentialsSchema,
@@ -288,6 +289,37 @@ export const SOURCE_PROVIDER_REGISTRY = {
             privateKey:
               "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
           },
+        },
+      },
+    },
+  },
+  codex_app_server_api: {
+    label: "Codex App Server API",
+    credentialSchema: CodexAppServerApiCredentialsSchema,
+    credentialType: "codex_app_server_api",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
+    guide: {
+      summary:
+        "Connect the OpenAI-compatible Codex App Server API without exposing its API key to the caller.",
+      steps: [
+        "Run the local codex-app-server-api origin and expose it through a secure HTTPS tunnel or private network endpoint reachable from OneQuery.",
+        "Set `apiBaseUrl` to the API origin, for example `https://codex-app-server-api.example.com`.",
+        "Create or copy a codex-app-server-api key and store it in `apiKey`.",
+        "Call native paths such as `/v1/models`, `/v1/responses`, and `/v1/chat/completions` through the Source API.",
+      ],
+      exampleInput: {
+        sourceKey: "codex_app_server",
+        credentials: {
+          type: "codex_app_server_api",
+          apiBaseUrl: "https://codex-app-server-api.example.com",
+          apiKey: "sk-codex-app-server-key",
         },
       },
     },

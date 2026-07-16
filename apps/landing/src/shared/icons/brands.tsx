@@ -302,6 +302,7 @@ const BRAND_ICONS = {
   bigquery: createSimpleBrandIcon(siGooglebigquery),
   bun: createSimpleBrandIcon(siBun),
   cal: createSimpleBrandIcon(siCaldotcom),
+  codex_app_server_api: HermesIcon,
   cloudflare_d1: CloudflareD1Icon,
   cloudflare_r2_sql: createSimpleBrandIcon(siCloudflareworkers),
   cloudflare_web_analytics: createSimpleBrandIcon(siCloudflareworkers),

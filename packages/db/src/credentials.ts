@@ -469,6 +469,19 @@ export const E2BCredentialsSchema = z.object({
 
 export type E2BCredentials = z.infer<typeof E2BCredentialsSchema>;
 
+export const CodexAppServerApiCredentialsSchema = z.object({
+  apiBaseUrl: trimmedUrl(
+    "API base URL is required",
+    "API base URL must be a valid URL"
+  ).transform((value) => value.replace(/\/+$/, "")),
+  apiKey: requiredOpaqueString("API key is required"),
+  type: z.literal("codex_app_server_api"),
+});
+
+export type CodexAppServerApiCredentials = z.infer<
+  typeof CodexAppServerApiCredentialsSchema
+>;
+
 export const HermesCredentialsSchema = z.object({
   apiBaseUrl: trimmedUrl(
     "API base URL is required",
@@ -664,6 +677,7 @@ export const CredentialsSchema = z.union([
   JiraCredentialsSchema,
   VercelCredentialsSchema,
   E2BCredentialsSchema,
+  CodexAppServerApiCredentialsSchema,
   HermesCredentialsSchema,
   MicrosoftClarityCredentialsSchema,
   OnePasswordCredentialsSchema,
@@ -717,6 +731,7 @@ export const credentialSchemaMap = {
   aws_athena_connector: ConnectorCredentialsSchema,
   bigquery: BigQueryCredentialsSchema,
   cal: CalCredentialsSchema,
+  codex_app_server_api: CodexAppServerApiCredentialsSchema,
   cloudflare_d1: CloudflareD1CredentialsSchema,
   cloudflare_r2_sql: CloudflareR2SqlCredentialsSchema,
   confluence: ConfluenceCredentialsSchema,

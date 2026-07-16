@@ -6,6 +6,7 @@ import {
   AirtableCredentialsSchema,
   BigQueryCredentialsSchema,
   CalCredentialsSchema,
+  CodexAppServerApiCredentialsSchema,
   CloudflareD1CredentialsSchema,
   CloudflareR2SqlCredentialsSchema,
   CloudflareWebAnalyticsCredentialsSchema,
@@ -57,6 +58,7 @@ import type {
   AirtableCredentials,
   BigQueryCredentials,
   CalCredentials,
+  CodexAppServerApiCredentials,
   CloudflareD1Credentials,
   CloudflareR2SqlCredentials,
   CloudflareWebAnalyticsCredentials,
@@ -1846,6 +1848,46 @@ describe("credentials schemas", () => {
     });
   });
 
+  describe("CodexAppServerApiCredentialsSchema", () => {
+    it("validates Codex App Server API credentials", () => {
+      const credentials: CodexAppServerApiCredentials = {
+        apiBaseUrl: "https://codex-app-server-api.example.com",
+        apiKey: "sk-codex-app-server-key",
+        type: "codex_app_server_api",
+      };
+
+      const result = CodexAppServerApiCredentialsSchema.safeParse(credentials);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual(credentials);
+      }
+    });
+
+    it("trims apiBaseUrl and removes its trailing slash", () => {
+      const result = CodexAppServerApiCredentialsSchema.safeParse({
+        apiBaseUrl: "  https://codex-app-server-api.example.com/  ",
+        apiKey: "sk-codex-app-server-key",
+        type: "codex_app_server_api",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.apiBaseUrl).toBe(
+          "https://codex-app-server-api.example.com"
+        );
+      }
+    });
+
+    it("rejects missing API key", () => {
+      const result = CodexAppServerApiCredentialsSchema.safeParse({
+        apiBaseUrl: "https://codex-app-server-api.example.com",
+        type: "codex_app_server_api",
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("HermesCredentialsSchema", () => {
     it("validates Hermes credentials", () => {
       const credentials: HermesCredentials = {
@@ -2166,6 +2208,12 @@ describe("credentials schemas", () => {
 
     it("should map e2b to E2BCredentialsSchema", () => {
       expect(credentialSchemaMap.e2b).toBe(E2BCredentialsSchema);
+    });
+
+    it("should map codex_app_server_api to CodexAppServerApiCredentialsSchema", () => {
+      expect(credentialSchemaMap.codex_app_server_api).toBe(
+        CodexAppServerApiCredentialsSchema
+      );
     });
 
     it("should map hermes to HermesCredentialsSchema", () => {

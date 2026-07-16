@@ -7,6 +7,7 @@ import { bigQuerySourceApiAdapter } from "./adapters/bigquery";
 import { calSourceApiAdapter } from "./adapters/cal";
 import { cloudflareWebAnalyticsSourceApiAdapter } from "./adapters/cloudflare-web-analytics";
 import { cloudflareWorkersObservabilitySourceApiAdapter } from "./adapters/cloudflare-workers-observability";
+import { codexAppServerApiSourceApiAdapter } from "./adapters/codex-app-server-api";
 import { confluenceSourceApiAdapter } from "./adapters/confluence";
 import { discordSourceApiAdapter } from "./adapters/discord";
 import { e2bSourceApiAdapter } from "./adapters/e2b";
@@ -78,6 +79,7 @@ export const sourceApiRegistry = createSourceApiRegistry([
   airtableSourceApiAdapter,
   bigQuerySourceApiAdapter,
   calSourceApiAdapter,
+  codexAppServerApiSourceApiAdapter,
   cloudflareWebAnalyticsSourceApiAdapter,
   cloudflareWorkersObservabilitySourceApiAdapter,
   confluenceSourceApiAdapter,
