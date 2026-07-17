@@ -32,7 +32,7 @@ import { applyDataSourceNameConflictError } from "./data-source-errors";
 const LinearDataSourceFormSchema = z.object({
   accessMode: LinearAccessModeSchema,
   apiKey: z.string().min(1, "API key is required"),
-  graphqlAllowList: z.array(LinearGraphqlAllowListItemSchema).default([]),
+  graphqlAllowList: z.array(LinearGraphqlAllowListItemSchema),
   name: z.string().min(1, "Name is required"),
 });
 
