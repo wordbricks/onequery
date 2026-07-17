@@ -2,12 +2,12 @@ import type { SourceProviderId } from "@onequery/db/source-providers";
 import {
   IconDatabase,
   IconHelpCircle,
-  IconKey,
   IconNotebook,
   IconTerminal2,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import {
+  si1password,
   siAirtable,
   siCaldotcom,
   siCloudflareworkers,
@@ -230,12 +230,6 @@ function E2BIcon(props: ProviderIconProps) {
   );
 }
 
-function OnePasswordIcon(props: ProviderIconProps) {
-  return (
-    <TablerProviderIcon {...props} defaultLabel="1Password" Icon={IconKey} />
-  );
-}
-
 function MicrosoftClarityIcon({ size = 24, ...props }: ProviderIconProps) {
   return (
     <SvgIcon
@@ -349,7 +343,7 @@ export const ProviderIcons = {
   motherduck: MotherDuckIcon,
   mongodb: createSimpleProviderIcon(siMongodb),
   mysql: createSimpleProviderIcon(siMysql),
-  onepassword: OnePasswordIcon,
+  onepassword: createSimpleProviderIcon(si1password),
   postgres: createSimpleProviderIcon(siPostgresql),
   supabase: createSimpleProviderIcon(siSupabase),
   posthog: createSimpleProviderIcon(siPosthog),
