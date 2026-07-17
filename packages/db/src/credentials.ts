@@ -586,9 +586,42 @@ export const LinearAccessModeSchema = z.enum(LINEAR_ACCESS_MODES);
 
 export type LinearAccessMode = z.infer<typeof LinearAccessModeSchema>;
 
+export const LINEAR_GRAPHQL_ALLOW_LIST = [
+  "viewer",
+  "organization",
+  "teams",
+  "team",
+  "issues",
+  "issue",
+  "users",
+  "user",
+  "projects",
+  "project",
+  "labels",
+  "commentCreate",
+  "commentUpdate",
+  "issueCreate",
+  "issueUpdate",
+  "fileUpload",
+] as const;
+
+export const LinearGraphqlAllowListItemSchema = z.enum(
+  LINEAR_GRAPHQL_ALLOW_LIST
+);
+
+export type LinearGraphqlAllowListItem = z.infer<
+  typeof LinearGraphqlAllowListItemSchema
+>;
+
+export const LinearGraphqlAllowListSchema = z
+  .array(LinearGraphqlAllowListItemSchema)
+  .max(LINEAR_GRAPHQL_ALLOW_LIST.length)
+  .transform((items) => [...new Set(items)]);
+
 export const LinearApiKeyCredentialsSchema = z.object({
   accessMode: LinearAccessModeSchema.optional(),
   apiKey: requiredOpaqueString("API key is required"),
+  graphqlAllowList: LinearGraphqlAllowListSchema.optional(),
   type: z.literal("linear"),
 });
 
@@ -601,6 +634,7 @@ export const LinearOAuthCredentialsSchema = z.object({
   accessToken: requiredOpaqueString("Access token is required"),
   appUserId: optionalTrimmedString("App user ID is required"),
   expiresAt: optionalTrimmedString("Expiration timestamp is required"),
+  graphqlAllowList: LinearGraphqlAllowListSchema.optional(),
   linearOrganizationId: trimmedString("Linear organization ID is required"),
   linearOrganizationName: optionalTrimmedString(
     "Linear organization name is required"

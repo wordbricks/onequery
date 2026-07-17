@@ -1232,6 +1232,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
       steps: [
         "Create a Linear API key for the workspace you want OneQuery to access.",
         "Choose `mention`, `read`, or `read_write` in `credentials.accessMode`.",
+        "Optionally set `credentials.graphqlAllowList` to enable raw `graphql_request` for selected Linear GraphQL root fields.",
         "Use `mention` when OneQuery should keep the connection metadata but must not expose Linear issue reads or writes through Source API.",
       ],
       exampleInput: {
@@ -1239,6 +1240,7 @@ export const SOURCE_PROVIDER_REGISTRY = {
         credentials: {
           accessMode: "read",
           apiKey: "lin_api_key",
+          graphqlAllowList: ["issue", "issues"],
         },
       },
     },

@@ -1,4 +1,7 @@
-import type { LinearCredentials } from "@onequery/db/server";
+import type {
+  LinearCredentials,
+  LinearGraphqlAllowListItem,
+} from "@onequery/db/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { PreparedSourceConnection, SourceApiActorContext } from "../types";
@@ -17,10 +20,11 @@ const actor: SourceApiActorContext = {
 };
 
 function createSource(
-  accessMode: LinearCredentials["accessMode"]
+  accessMode: LinearCredentials["accessMode"],
+  graphqlAllowList: LinearGraphqlAllowListItem[] = []
 ): PreparedSourceConnection {
   return {
-    credentials: createLinearCredentials(accessMode),
+    credentials: createLinearCredentials(accessMode, graphqlAllowList),
     displayName: "Linear Workspace",
     id: "source_1",
     provider: "linear",
@@ -29,11 +33,13 @@ function createSource(
 }
 
 function createLinearCredentials(
-  accessMode: LinearCredentials["accessMode"]
+  accessMode: LinearCredentials["accessMode"],
+  graphqlAllowList: LinearGraphqlAllowListItem[] = []
 ): LinearCredentials {
   return {
     accessMode,
     accessToken: "lin_oauth_token",
+    graphqlAllowList,
     linearOrganizationId: "linear-org",
     type: "linear",
   };
@@ -97,6 +103,23 @@ describe("linear source api adapter", () => {
       "content-type",
       "x-onequery-file-name",
     ]);
+  });
+
+  it("exposes graphql_request only when GraphQL root fields are allow-listed", async () => {
+    const descriptor = await linearSourceApiAdapter.describe({
+      actor,
+      source: createSource("read_write", ["commentUpdate", "issue"]),
+    });
+
+    expect(descriptor.operations.map((operation) => operation.name)).toContain(
+      "graphql_request"
+    );
+    const graphqlOperation = descriptor.operations.find(
+      (operation) => operation.name === "graphql_request"
+    );
+    expect(graphqlOperation?.notes).toContain(
+      "Allowed Linear GraphQL root fields: commentUpdate, issue"
+    );
   });
 
   it("normalizes list_workflow_states field patches into a team states query", async () => {
@@ -215,6 +238,127 @@ describe("linear source api adapter", () => {
       id: "issue_123",
       input: { stateId: "state_456" },
     });
+  });
+
+  it("normalizes allow-listed native Linear GraphQL requests", async () => {
+    const source = createSource("read_write", ["commentUpdate"]);
+    const descriptor = await linearSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    const prepared = await linearSourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        fieldPatch: {
+          query:
+            "mutation RenameComment($id: String!, $input: CommentUpdateInput!) { commentUpdate(id: $id, input: $input) { success comment { id body } } }",
+          variables: {
+            id: "comment_123",
+            input: { body: "Updated body" },
+          },
+        },
+        headers: [],
+        operation: "graphql_request",
+      },
+      source,
+    });
+
+    if (prepared.kind !== "structured_request") {
+      throw new Error(`expected structured request, got ${prepared.kind}`);
+    }
+
+    expect(prepared.request.query).toContain("commentUpdate");
+    expect(prepared.request.variables).toEqual({
+      id: "comment_123",
+      input: { body: "Updated body" },
+    });
+  });
+
+  it("does not treat GraphQL directives as root fields", async () => {
+    const source = createSource("read", ["issue"]);
+    const descriptor = await linearSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    const prepared = await linearSourceApiAdapter.normalize({
+      actor,
+      descriptor,
+      request: {
+        body: { kind: "none" },
+        fieldPatch: {
+          query:
+            "query ReadIssue($id: String!, $show: Boolean!) { issue(id: $id) @include(if: $show) { id title } }",
+          variables: { id: "ENG-123", show: true },
+        },
+        headers: [],
+        operation: "graphql_request",
+      },
+      source,
+    });
+
+    if (prepared.kind !== "structured_request") {
+      throw new Error(`expected structured request, got ${prepared.kind}`);
+    }
+
+    expect(prepared.request.query).toContain("@include");
+  });
+
+  it("rejects native Linear GraphQL root fields outside the allow list", async () => {
+    const source = createSource("read_write", ["issue"]);
+    const descriptor = await linearSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    await expect(
+      linearSourceApiAdapter.normalize({
+        actor,
+        descriptor,
+        request: {
+          body: { kind: "none" },
+          fieldPatch: {
+            query:
+              "mutation RenameComment($id: String!, $input: CommentUpdateInput!) { commentUpdate(id: $id, input: $input) { success } }",
+          },
+          headers: [],
+          operation: "graphql_request",
+        },
+        source,
+      })
+    ).rejects.toThrow(
+      'Linear GraphQL root field "commentUpdate" is not in this connection'
+    );
+  });
+
+  it("rejects native Linear GraphQL mutations on read-only connections", async () => {
+    const source = createSource("read", ["commentUpdate"]);
+    const descriptor = await linearSourceApiAdapter.describe({
+      actor,
+      source,
+    });
+
+    await expect(
+      linearSourceApiAdapter.normalize({
+        actor,
+        descriptor,
+        request: {
+          body: { kind: "none" },
+          fieldPatch: {
+            query:
+              "mutation RenameComment($id: String!, $input: CommentUpdateInput!) { commentUpdate(id: $id, input: $input) { success } }",
+          },
+          headers: [],
+          operation: "graphql_request",
+        },
+        source,
+      })
+    ).rejects.toThrow(
+      'Linear operation "graphql_request" requires read_write access for mutations'
+    );
   });
 
   it("rejects update_issue without a state id", async () => {
