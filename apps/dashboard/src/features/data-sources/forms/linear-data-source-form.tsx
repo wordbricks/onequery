@@ -1,10 +1,20 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LinearAccessModeSchema } from "@onequery/db/credentials";
+import {
+  LinearAccessModeSchema,
+  LinearGraphqlAllowListItemSchema,
+} from "@onequery/db/credentials";
 import type { LinearApiKeyCredentials } from "@onequery/db/credentials";
 import { Input } from "@onequery/ui/components/input";
 import { Label } from "@onequery/ui/components/label";
-import { LinearAccessModeSelector } from "@onequery/ui/data-sources/linear-access-mode";
-import type { LinearAccessMode } from "@onequery/ui/data-sources/linear-access-mode";
+import {
+  filterLinearGraphqlAllowListForAccessMode,
+  LinearAccessModeSelector,
+  LinearGraphqlAllowListSelector,
+} from "@onequery/ui/data-sources/linear-access-mode";
+import type {
+  LinearAccessMode,
+  LinearGraphqlAllowListItem,
+} from "@onequery/ui/data-sources/linear-access-mode";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -22,6 +32,7 @@ import { applyDataSourceNameConflictError } from "./data-source-errors";
 const LinearDataSourceFormSchema = z.object({
   accessMode: LinearAccessModeSchema,
   apiKey: z.string().min(1, "API key is required"),
+  graphqlAllowList: z.array(LinearGraphqlAllowListItemSchema).default([]),
   name: z.string().min(1, "Name is required"),
 });
 
@@ -40,11 +51,15 @@ export function LinearDataSourceForm({
     defaultValues: {
       accessMode: "mention",
       apiKey: "",
+      graphqlAllowList: [],
       name: "Linear",
     },
     resolver: zodResolver(LinearDataSourceFormSchema),
   });
   const accessMode = form.watch("accessMode");
+  const graphqlAllowList = form.watch(
+    "graphqlAllowList"
+  ) as LinearGraphqlAllowListItem[];
 
   const mutation = useOptimisticAdd<
     { dataSource: { id: string } },
@@ -67,6 +82,7 @@ export function LinearDataSourceForm({
         type: "linear",
         apiKey: data.apiKey,
         accessMode: data.accessMode,
+        graphqlAllowList: data.graphqlAllowList,
       } satisfies LinearApiKeyCredentials;
 
       return createDataSource({
@@ -88,6 +104,25 @@ export function LinearDataSourceForm({
 
   function handleAccessModeChange(value: LinearAccessMode) {
     form.setValue("accessMode", value, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    if (value !== "read_write") {
+      form.setValue(
+        "graphqlAllowList",
+        filterLinearGraphqlAllowListForAccessMode(value, graphqlAllowList),
+        {
+          shouldDirty: true,
+          shouldTouch: true,
+          shouldValidate: true,
+        }
+      );
+    }
+  }
+
+  function handleGraphqlAllowListChange(value: LinearGraphqlAllowListItem[]) {
+    form.setValue("graphqlAllowList", value, {
       shouldDirty: true,
       shouldTouch: true,
       shouldValidate: true,
@@ -134,6 +169,18 @@ export function LinearDataSourceForm({
         />
         <FormFieldError message={form.formState.errors.accessMode?.message} />
       </div>
+
+      {accessMode !== "mention" ? (
+        <div className="space-y-2">
+          <Label>GraphQL allow list</Label>
+          <LinearGraphqlAllowListSelector
+            accessMode={accessMode}
+            disabled={mutation.isPending}
+            value={graphqlAllowList}
+            onChange={handleGraphqlAllowListChange}
+          />
+        </div>
+      ) : null}
 
       <FormSubmitButton
         idleLabel="Connect Linear"

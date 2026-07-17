@@ -1,6 +1,10 @@
 import type { JsonObject, JsonValue } from "@bufbuild/protobuf";
 import { getLinearAccessMode, isLinearCredentials } from "@onequery/db/server";
-import type { LinearAccessMode, LinearCredentials } from "@onequery/db/server";
+import type {
+  LinearAccessMode,
+  LinearCredentials,
+  LinearGraphqlAllowListItem,
+} from "@onequery/db/server";
 import { z } from "zod";
 
 import { ProviderHttpClient } from "../../services/provider-http-client";
@@ -81,6 +85,14 @@ const UpdateIssueStateInputSchema = z
   })
   .strict();
 
+const LinearGraphqlRequestInputSchema = z
+  .object({
+    operationName: z.string().min(1).optional(),
+    query: z.string().min(1).max(50_000),
+    variables: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict();
+
 const LinearFileUploadRequestSchema = z
   .object({
     contentType: z.string().regex(/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i),
@@ -119,13 +131,22 @@ type LinearOperationName =
   | "create_issue"
   | "create_comment"
   | "upload_file"
-  | "update_issue";
+  | "update_issue"
+  | "graphql_request";
 
 type ListIssuesInput = z.infer<typeof ListIssuesInputSchema>;
 type ListWorkflowStatesInput = z.infer<typeof ListWorkflowStatesInputSchema>;
 type CreateIssueInput = z.infer<typeof CreateIssueInputSchema>;
 type CreateCommentInput = z.infer<typeof CreateCommentInputSchema>;
 type UpdateIssueStateInput = z.infer<typeof UpdateIssueStateInputSchema>;
+type LinearGraphqlRequestInput = z.infer<typeof LinearGraphqlRequestInputSchema>;
+
+type LinearGraphqlOperationType = "query" | "mutation" | "subscription";
+
+type LinearGraphqlOperationUse = {
+  operationType: LinearGraphqlOperationType;
+  rootFields: string[];
+};
 
 type LinearGraphQlResponse = {
   body: SourceApiResponseBody;
@@ -147,14 +168,19 @@ export function createLinearSourceApiAdapter(
       const credentials = requireLinearCredentials(source);
       const accessMode = getLinearAccessMode(credentials);
       const examples = buildLinearExamples(source.sourceKey, accessMode);
+      const graphqlAllowList = getLinearGraphqlAllowList(credentials);
 
       return {
         defaultPathOperation:
           accessMode === "mention" ? undefined : "list_issues",
         descriptorVersion: LINEAR_DESCRIPTOR_VERSION,
         examples,
-        notes: buildLinearNotes(accessMode),
-        operations: buildLinearOperations(accessMode, examples),
+        notes: buildLinearNotes(accessMode, graphqlAllowList),
+        operations: buildLinearOperations(
+          accessMode,
+          examples,
+          graphqlAllowList
+        ),
         source: {
           displayName: source.displayName,
           provider: source.provider,
@@ -169,9 +195,10 @@ export function createLinearSourceApiAdapter(
       });
       const credentials = requireLinearCredentials(source);
       const operationName = operation.name as LinearOperationName;
+      const accessMode = getLinearAccessMode(credentials);
 
       assertLinearOperationAllowed({
-        accessMode: getLinearAccessMode(credentials),
+        accessMode,
         operation: operationName,
       });
       const selector = normalizeLinearSelector({
@@ -187,8 +214,10 @@ export function createLinearSourceApiAdapter(
               methodOverride: request.methodOverride,
             })
           : normalizeLinearGraphQlRequest({
+              accessMode,
               body: request.body,
               fieldPatch: request.fieldPatch,
+              graphqlAllowList: getLinearGraphqlAllowList(credentials),
               headers: request.headers,
               methodOverride: request.methodOverride,
               operation: operationName,
@@ -251,7 +280,8 @@ export const linearSourceApiAdapter = createLinearSourceApiAdapter();
 
 function buildLinearOperations(
   accessMode: LinearAccessMode,
-  examples: readonly SourceApiExample[]
+  examples: readonly SourceApiExample[],
+  graphqlAllowList: readonly LinearGraphqlAllowListItem[]
 ): SourceApiOperation[] {
   if (accessMode === "mention") {
     return [];
@@ -293,10 +323,20 @@ function buildLinearOperations(
   ];
 
   if (accessMode !== "read_write") {
-    return readOperations;
+    return graphqlAllowList.length > 0
+      ? [
+          ...readOperations,
+          createLinearGraphqlRequestOperation({
+            examples: examples.filter(
+              (example) => example.label === "GraphQL request"
+            ),
+            graphqlAllowList,
+          }),
+        ]
+      : readOperations;
   }
 
-  return [
+  const writeOperations = [
     ...readOperations,
     createLinearInputOperation({
       description:
@@ -327,6 +367,18 @@ function buildLinearOperations(
       examples: examples.filter((example) => example.label === "Upload file"),
     }),
   ];
+
+  return graphqlAllowList.length > 0
+    ? [
+        ...writeOperations,
+        createLinearGraphqlRequestOperation({
+          examples: examples.filter(
+            (example) => example.label === "GraphQL request"
+          ),
+          graphqlAllowList,
+        }),
+      ]
+    : writeOperations;
 }
 
 function createLinearFileUploadOperation(input: {
@@ -362,6 +414,43 @@ function createLinearFileUploadOperation(input: {
     paginationPolicy: "none",
     selectorKind: "none",
     summary: "Upload a local file to Linear and return its asset URL.",
+  };
+}
+
+function createLinearGraphqlRequestOperation(input: {
+  examples: readonly SourceApiExample[];
+  graphqlAllowList: readonly LinearGraphqlAllowListItem[];
+}): SourceApiOperation {
+  return {
+    description:
+      "Execute a Linear GraphQL request whose top-level fields are present in this connection's GraphQL allow list.",
+    examples: input.examples,
+    fieldPolicy: {
+      acceptsInput: true,
+      allowsRawFields: true,
+      allowsTypedFields: true,
+      inputMode: "request_object",
+      mergePatches: false,
+      supportsArrayPaths: true,
+      supportsNestedPaths: true,
+    },
+    headerPolicy: canonicalizeSourceApiHeaderPolicy({
+      allowedRequestHeaders: [],
+      allowedResponseHeaders: LINEAR_ALLOWED_RESPONSE_HEADERS,
+    }),
+    kind: "structured_request",
+    methodPolicy: {
+      allowedMethods: ["POST"],
+      defaultMethod: "POST",
+    },
+    name: "graphql_request",
+    notes: [
+      `Allowed Linear GraphQL root fields: ${input.graphqlAllowList.join(", ")}`,
+      "Use a JSON object with query, optional variables, and optional operationName.",
+    ],
+    paginationPolicy: "none",
+    selectorKind: "none",
+    summary: "Execute an allow-listed Linear GraphQL request.",
   };
 }
 
@@ -468,6 +557,11 @@ function buildLinearExamples(
       description: "Fetch one Linear issue by identifier.",
       label: "Get issue",
     },
+    {
+      command: `onequery api --source ${sourceKey} --op graphql_request -f 'query=query { viewer { id name } }'`,
+      description: "Execute an allow-listed Linear GraphQL query.",
+      label: "GraphQL request",
+    },
   ];
 
   if (accessMode !== "read_write") {
@@ -497,10 +591,18 @@ function buildLinearExamples(
         "Upload a local file to Linear and return its private asset URL.",
       label: "Upload file",
     },
+    {
+      command: `onequery api --source ${sourceKey} --op graphql_request -f 'query=mutation($id: String!, $input: CommentUpdateInput!) { commentUpdate(id: $id, input: $input) { success comment { id body } } }' -F 'variables.id=<comment-id>' -F 'variables.input.body=Updated body'`,
+      description: "Execute an allow-listed Linear GraphQL mutation.",
+      label: "GraphQL request",
+    },
   ];
 }
 
-function buildLinearNotes(accessMode: LinearAccessMode): string[] {
+function buildLinearNotes(
+  accessMode: LinearAccessMode,
+  graphqlAllowList: readonly LinearGraphqlAllowListItem[]
+): string[] {
   if (accessMode === "mention") {
     return [
       "This Linear connection is configured for @mentions only. Linear Source API operations are disabled.",
@@ -508,11 +610,17 @@ function buildLinearNotes(accessMode: LinearAccessMode): string[] {
   }
 
   const notes = [
-    "Linear Source API uses fixed GraphQL operations instead of accepting raw GraphQL from the caller.",
+    "Linear Source API exposes fixed operations by default and can also expose allow-listed raw GraphQL through graphql_request.",
     "Use list_teams first when you need a teamId for issue creation.",
     "Use list_workflow_states with an issue's teamId before changing the issue state.",
     "Use upload_file first, then embed its assetUrl in create_comment or create_issue Markdown.",
   ];
+
+  if (graphqlAllowList.length > 0) {
+    notes.push(
+      `graphql_request is enabled for these Linear GraphQL root fields: ${graphqlAllowList.join(", ")}.`
+    );
+  }
 
   if (accessMode === "read") {
     notes.push(
@@ -547,6 +655,12 @@ function requireLinearCredentials(
   throw new Error("Linear source credentials are invalid");
 }
 
+function getLinearGraphqlAllowList(
+  credentials: LinearCredentials
+): readonly LinearGraphqlAllowListItem[] {
+  return credentials.graphqlAllowList ?? [];
+}
+
 function assertLinearOperationAllowed(input: {
   accessMode: LinearAccessMode;
   operation: LinearOperationName;
@@ -568,13 +682,27 @@ function assertLinearOperationAllowed(input: {
 }
 
 function normalizeLinearGraphQlRequest(input: {
+  accessMode: LinearAccessMode;
   operation: Exclude<LinearOperationName, "upload_file">;
   selector?: string;
   fieldPatch?: JsonObject;
+  graphqlAllowList: readonly LinearGraphqlAllowListItem[];
   methodOverride?: string;
   headers: readonly { name: string; value: string }[];
   body: SourceApiRequestBody;
 }): { body: SourceApiRequestBody; request: JsonObject } {
+  if (input.operation === "graphql_request") {
+    return normalizeLinearNativeGraphqlRequest({
+      accessMode: input.accessMode,
+      body: input.body,
+      fieldPatch: input.fieldPatch,
+      graphqlAllowList: input.graphqlAllowList,
+      headers: input.headers,
+      methodOverride: input.methodOverride,
+      operation: "graphql_request",
+    });
+  }
+
   assertNoLinearRequestExtras(input);
   return {
     body: { kind: "none" },
@@ -584,6 +712,75 @@ function normalizeLinearGraphQlRequest(input: {
       selector: input.selector,
     }),
   };
+}
+
+function normalizeLinearNativeGraphqlRequest(input: {
+  accessMode: LinearAccessMode;
+  operation: "graphql_request";
+  fieldPatch?: JsonObject;
+  graphqlAllowList: readonly LinearGraphqlAllowListItem[];
+  methodOverride?: string;
+  headers: readonly { name: string; value: string }[];
+  body: SourceApiRequestBody;
+}): { body: SourceApiRequestBody; request: JsonObject } {
+  if (input.methodOverride?.trim()) {
+    throw new SourceApiInvalidRequestError(
+      'Linear operation "graphql_request" does not support method overrides'
+    );
+  }
+  if (input.headers.length > 0) {
+    throw new SourceApiInvalidRequestError(
+      'Linear operation "graphql_request" does not accept request headers'
+    );
+  }
+  if (input.graphqlAllowList.length === 0) {
+    throw new SourceApiInvalidRequestError(
+      'Linear operation "graphql_request" requires a non-empty GraphQL allow list'
+    );
+  }
+
+  const requestInput = parseLinearGraphqlRequestInput({
+    body: input.body,
+    fieldPatch: input.fieldPatch,
+  });
+  validateLinearGraphqlRequest({
+    accessMode: input.accessMode,
+    allowList: input.graphqlAllowList,
+    query: requestInput.query,
+  });
+
+  return {
+    body: { kind: "none" },
+    request: compactJsonObject({
+      query: requestInput.query,
+      ...(requestInput.operationName
+        ? { operationName: requestInput.operationName }
+        : {}),
+      variables: requestInput.variables ?? {},
+    }),
+  };
+}
+
+function parseLinearGraphqlRequestInput(input: {
+  fieldPatch?: JsonObject;
+  body: SourceApiRequestBody;
+}): LinearGraphqlRequestInput {
+  if (input.body.kind !== "none" && input.fieldPatch) {
+    throw new SourceApiInvalidRequestError(
+      'Linear operation "graphql_request" accepts either fieldPatch input or a JSON request body, not both'
+    );
+  }
+
+  const rawInput =
+    input.body.kind === "json" ? input.body.value : (input.fieldPatch ?? {});
+  const parsed = LinearGraphqlRequestInputSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    throw new SourceApiInvalidRequestError(
+      "Invalid Linear graphql_request input"
+    );
+  }
+
+  return parsed.data;
 }
 
 function normalizeLinearFileUploadRequest(input: {
@@ -740,8 +937,266 @@ function normalizeLinearSelector(input: {
   return selector;
 }
 
+function validateLinearGraphqlRequest(input: {
+  accessMode: LinearAccessMode;
+  allowList: readonly LinearGraphqlAllowListItem[];
+  query: string;
+}) {
+  const operations = readLinearGraphqlOperationUses(input.query);
+  const allowed = new Set<string>(input.allowList);
+
+  for (const operation of operations) {
+    if (operation.operationType === "subscription") {
+      throw new SourceApiInvalidRequestError(
+        'Linear operation "graphql_request" does not support subscriptions'
+      );
+    }
+    if (input.accessMode === "read" && operation.operationType === "mutation") {
+      throw new SourceApiInvalidRequestError(
+        'Linear operation "graphql_request" requires read_write access for mutations'
+      );
+    }
+
+    for (const field of operation.rootFields) {
+      if (!allowed.has(field)) {
+        throw new SourceApiInvalidRequestError(
+          `Linear GraphQL root field "${field}" is not in this connection's allow list`
+        );
+      }
+    }
+  }
+}
+
+function readLinearGraphqlOperationUses(
+  query: string
+): LinearGraphqlOperationUse[] {
+  const tokens = tokenizeGraphqlDocument(query);
+  const operations: LinearGraphqlOperationUse[] = [];
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token === "fragment") {
+      const fragmentSelection = findNextSelectionSet(tokens, index + 1);
+      if (fragmentSelection) {
+        index = fragmentSelection.endIndex;
+      }
+      continue;
+    }
+
+    if (token === "{") {
+      const selection = readLinearGraphqlSelection(tokens, index);
+      operations.push({
+        operationType: "query",
+        rootFields: selection.rootFields,
+      });
+      index = selection.endIndex;
+      continue;
+    }
+
+    if (isLinearGraphqlOperationType(token)) {
+      const selection = findNextSelectionSet(tokens, index + 1);
+      if (!selection) {
+        throw new SourceApiInvalidRequestError(
+          "Invalid Linear GraphQL document: operation is missing a selection set"
+        );
+      }
+      operations.push({
+        operationType: token,
+        rootFields: selection.rootFields,
+      });
+      index = selection.endIndex;
+    }
+  }
+
+  if (operations.length === 0) {
+    throw new SourceApiInvalidRequestError(
+      "Invalid Linear GraphQL document: no operation found"
+    );
+  }
+
+  return operations;
+}
+
+function tokenizeGraphqlDocument(query: string): string[] {
+  const tokens: string[] = [];
+  let index = 0;
+
+  while (index < query.length) {
+    const char = query[index];
+    if (!char) {
+      break;
+    }
+    if (/\s|,/u.test(char)) {
+      index += 1;
+      continue;
+    }
+    if (char === "#") {
+      index += 1;
+      while (index < query.length && query[index] !== "\n") {
+        index += 1;
+      }
+      continue;
+    }
+    if (char === '"') {
+      index = skipGraphqlString(query, index);
+      continue;
+    }
+    if (char === "." && query.slice(index, index + 3) === "...") {
+      tokens.push("...");
+      index += 3;
+      continue;
+    }
+    if (/[_A-Za-z]/u.test(char)) {
+      const start = index;
+      index += 1;
+      while (index < query.length && /[_0-9A-Za-z]/u.test(query[index] ?? "")) {
+        index += 1;
+      }
+      tokens.push(query.slice(start, index));
+      continue;
+    }
+    if ("{}()[]:@$!=".includes(char)) {
+      tokens.push(char);
+    }
+    index += 1;
+  }
+
+  return tokens;
+}
+
+function skipGraphqlString(query: string, start: number): number {
+  if (query.slice(start, start + 3) === '"""') {
+    const end = query.indexOf('"""', start + 3);
+    return end === -1 ? query.length : end + 3;
+  }
+
+  let index = start + 1;
+  while (index < query.length) {
+    const char = query[index];
+    if (char === "\\") {
+      index += 2;
+      continue;
+    }
+    if (char === '"') {
+      return index + 1;
+    }
+    index += 1;
+  }
+
+  return query.length;
+}
+
+function findNextSelectionSet(
+  tokens: readonly string[],
+  startIndex: number
+): { rootFields: string[]; endIndex: number } | null {
+  let parenDepth = 0;
+  let bracketDepth = 0;
+
+  for (let index = startIndex; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token === "(") {
+      parenDepth += 1;
+      continue;
+    }
+    if (token === ")") {
+      parenDepth = Math.max(0, parenDepth - 1);
+      continue;
+    }
+    if (token === "[") {
+      bracketDepth += 1;
+      continue;
+    }
+    if (token === "]") {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+      continue;
+    }
+    if (token === "{" && parenDepth === 0 && bracketDepth === 0) {
+      return readLinearGraphqlSelection(tokens, index);
+    }
+  }
+
+  return null;
+}
+
+function readLinearGraphqlSelection(
+  tokens: readonly string[],
+  startIndex: number
+): { rootFields: string[]; endIndex: number } {
+  const rootFields = new Set<string>();
+  let selectionDepth = 1;
+  let parenDepth = 0;
+  let bracketDepth = 0;
+
+  for (let index = startIndex + 1; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token === "(") {
+      parenDepth += 1;
+      continue;
+    }
+    if (token === ")") {
+      parenDepth = Math.max(0, parenDepth - 1);
+      continue;
+    }
+    if (token === "[") {
+      bracketDepth += 1;
+      continue;
+    }
+    if (token === "]") {
+      bracketDepth = Math.max(0, bracketDepth - 1);
+      continue;
+    }
+    if (token === "{" && parenDepth === 0 && bracketDepth === 0) {
+      selectionDepth += 1;
+      continue;
+    }
+    if (token === "}" && parenDepth === 0 && bracketDepth === 0) {
+      selectionDepth -= 1;
+      if (selectionDepth === 0) {
+        return { endIndex: index, rootFields: [...rootFields] };
+      }
+      continue;
+    }
+    if (selectionDepth !== 1 || parenDepth !== 0 || bracketDepth !== 0) {
+      continue;
+    }
+    if (token === "...") {
+      throw new SourceApiInvalidRequestError(
+        "Linear graphql_request does not support top-level fragment spreads"
+      );
+    }
+    if (token === "@") {
+      index += 1;
+      continue;
+    }
+    if (!isGraphqlName(token) || token === "on") {
+      continue;
+    }
+
+    const next = tokens[index + 1];
+    const aliasedField = next === ":" ? tokens[index + 2] : undefined;
+    rootFields.add(
+      aliasedField && isGraphqlName(aliasedField) ? aliasedField : token
+    );
+  }
+
+  throw new SourceApiInvalidRequestError(
+    "Invalid Linear GraphQL document: unterminated selection set"
+  );
+}
+
+function isLinearGraphqlOperationType(
+  token: string | undefined
+): token is LinearGraphqlOperationType {
+  return token === "query" || token === "mutation" || token === "subscription";
+}
+
+function isGraphqlName(token: string | undefined): token is string {
+  return typeof token === "string" && /^[_A-Za-z][_0-9A-Za-z]*$/u.test(token);
+}
+
 function buildLinearGraphQlRequest(input: {
-  operation: LinearOperationName;
+  operation: Exclude<LinearOperationName, "upload_file" | "graphql_request">;
   selector?: string;
   fieldPatch?: JsonObject;
 }): JsonObject {
@@ -941,10 +1396,6 @@ function buildLinearGraphQlRequest(input: {
         },
       };
     }
-    case "upload_file":
-      throw new SourceApiInvalidRequestError(
-        'Linear operation "upload_file" requires request body input'
-      );
   }
 }
 
