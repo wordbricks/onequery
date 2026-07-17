@@ -139,7 +139,9 @@ type ListWorkflowStatesInput = z.infer<typeof ListWorkflowStatesInputSchema>;
 type CreateIssueInput = z.infer<typeof CreateIssueInputSchema>;
 type CreateCommentInput = z.infer<typeof CreateCommentInputSchema>;
 type UpdateIssueStateInput = z.infer<typeof UpdateIssueStateInputSchema>;
-type LinearGraphqlRequestInput = z.infer<typeof LinearGraphqlRequestInputSchema>;
+type LinearGraphqlRequestInput = z.infer<
+  typeof LinearGraphqlRequestInputSchema
+>;
 
 type LinearGraphqlOperationType = "query" | "mutation" | "subscription";
 
