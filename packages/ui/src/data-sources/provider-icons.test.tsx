@@ -57,6 +57,18 @@ describe("shared provider icon accessibility", () => {
     expect(accessibleMarkup).toContain("<title>Cloudflare D1 provider</title>");
   });
 
+  it("renders Google Search Console with the current multicolor brand mark", () => {
+    const markup = renderProviderIcon("google_search_console", {
+      title: "Google Search Console provider",
+    });
+
+    expect(markup).toContain('viewBox="0 0 999.9841309 1000"');
+    expect(markup).toContain('fill="#4285F4"');
+    expect(markup).toContain('fill="#34A853"');
+    expect(markup).toContain('fill="#EA4335"');
+    expect(markup).toContain("<title>Google Search Console provider</title>");
+  });
+
   it("renders AWS Athena Connector as a monochrome icon", () => {
     const markup = renderProviderIcon("aws_athena_connector");
 
