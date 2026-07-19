@@ -1,4 +1,5 @@
 import { CodexIcon } from "@onequery/ui/icons/codex-icon";
+import { GoogleSearchConsoleIcon } from "@onequery/ui/icons/google-search-console-icon";
 import { HermesAgentIcon } from "@onequery/ui/icons/hermes-agent-icon";
 import { SimpleIconSvg, SvgIcon } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
@@ -16,7 +17,6 @@ import {
   siGoogleanalytics,
   siGooglebigquery,
   siGoogledrive,
-  siGooglesearchconsole,
   siHomebrew,
   siJira,
   siLinear,
@@ -276,7 +276,7 @@ const BRAND_ICONS = {
   ga: createSimpleBrandIcon(siGoogleanalytics),
   github: createSimpleBrandIcon(siGithub),
   googledrive: createSimpleBrandIcon(siGoogledrive),
-  google_search_console: createSimpleBrandIcon(siGooglesearchconsole),
+  google_search_console: GoogleSearchConsoleIcon,
   granola: GranolaIcon,
   hermes: HermesIcon,
   homebrew: createSimpleBrandIcon(siHomebrew),

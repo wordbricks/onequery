@@ -17,7 +17,6 @@ import {
   siGoogleanalytics,
   siGooglebigquery,
   siGoogledocs,
-  siGooglesearchconsole,
   siJira,
   siLinear,
   siMixpanel,
@@ -34,6 +33,7 @@ import {
 } from "simple-icons";
 
 import { CodexIcon } from "../icons/codex-icon";
+import { GoogleSearchConsoleIcon } from "../icons/google-search-console-icon";
 import { HermesAgentIcon } from "../icons/hermes-agent-icon";
 import {
   SimpleIconSvg,
@@ -331,7 +331,7 @@ export const ProviderIcons = {
   ga: createSimpleProviderIcon(siGoogleanalytics),
   github: GitHubIcon,
   google_docs: createSimpleProviderIcon(siGoogledocs),
-  google_search_console: createSimpleProviderIcon(siGooglesearchconsole),
+  google_search_console: GoogleSearchConsoleIcon,
   granola: GranolaIcon,
   hermes: HermesIcon,
   jira: createSimpleProviderIcon(siJira),
