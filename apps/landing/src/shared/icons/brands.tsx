@@ -1,6 +1,8 @@
 import { CodexIcon } from "@onequery/ui/icons/codex-icon";
 import { GoogleSearchConsoleIcon } from "@onequery/ui/icons/google-search-console-icon";
+import { GranolaIcon } from "@onequery/ui/icons/granola-icon";
 import { HermesAgentIcon } from "@onequery/ui/icons/hermes-agent-icon";
+import { SendGridIcon } from "@onequery/ui/icons/sendgrid-icon";
 import { SimpleIconSvg, SvgIcon } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
 import type { ComponentType } from "react";
@@ -106,20 +108,6 @@ function MotherDuckIcon({ size, ...props }: IconSvgProps) {
   );
 }
 
-function GranolaIcon({ size, ...props }: IconSvgProps) {
-  return (
-    <SvgIcon
-      {...props}
-      defaultLabel="Granola"
-      fill="currentColor"
-      size={size}
-      viewBox="0 0 24 24"
-    >
-      <path d="M6.75 3A2.75 2.75 0 0 0 4 5.75v12.5A2.75 2.75 0 0 0 6.75 21h10.5A2.75 2.75 0 0 0 20 18.25V5.75A2.75 2.75 0 0 0 17.25 3H6.75ZM6 5.75c0-.41.34-.75.75-.75H8v14H6.75a.75.75 0 0 1-.75-.75V5.75ZM10 19V5h7.25c.41 0 .75.34.75.75v12.5c0 .41-.34.75-.75.75H10Zm2-10a1 1 0 0 1 1-1h2.75a1 1 0 1 1 0 2H13a1 1 0 0 1-1-1Zm0 4a1 1 0 0 1 1-1h2.75a1 1 0 1 1 0 2H13a1 1 0 0 1-1-1Z" />
-    </SvgIcon>
-  );
-}
-
 function E2BIcon({ size, ...props }: IconSvgProps) {
   return (
     <SvgIcon
@@ -193,21 +181,6 @@ function LinkedInAdsIcon({ size, ...props }: IconSvgProps) {
       viewBox="0 0 24 24"
     >
       <path d="M5.75 3A2.75 2.75 0 0 0 3 5.75v12.5A2.75 2.75 0 0 0 5.75 21h12.5A2.75 2.75 0 0 0 21 18.25V5.75A2.75 2.75 0 0 0 18.25 3H5.75Zm2.09 6.28a1.48 1.48 0 1 1 0-2.96 1.48 1.48 0 0 1 0 2.96ZM6.54 18v-7.45h2.6V18h-2.6Zm4.06 0v-7.45h2.48v1.02h.04c.35-.65 1.2-1.2 2.45-1.2 2.62 0 3.1 1.73 3.1 3.97V18h-2.59v-3.25c0-.78-.01-1.78-1.08-1.78-1.09 0-1.26.85-1.26 1.72V18H10.6Z" />
-    </SvgIcon>
-  );
-}
-
-function SendGridIcon({ size, ...props }: IconSvgProps) {
-  return (
-    <SvgIcon
-      {...props}
-      defaultLabel="SendGrid"
-      fill="currentColor"
-      size={size}
-      viewBox="0 0 24 24"
-    >
-      <path d="M4.75 4A2.75 2.75 0 0 0 2 6.75v10.5A2.75 2.75 0 0 0 4.75 20h14.5A2.75 2.75 0 0 0 22 17.25V6.75A2.75 2.75 0 0 0 19.25 4H4.75Zm.36 2h13.78L12 11.17 5.11 6ZM4 7.6l5.35 4.02L4 16.15V7.6Zm2.08 10.4 4.9-4.16.42.32a1 1 0 0 0 1.2 0l.42-.32 4.9 4.16H6.08ZM20 16.15l-5.35-4.53L20 7.6v8.55Z" />
-      <path d="M17.5 10.25a1 1 0 0 1 1 1v.5h.5a1 1 0 1 1 0 2h-.5v.5a1 1 0 1 1-2 0v-.5H16a1 1 0 1 1 0-2h.5v-.5a1 1 0 0 1 1-1Z" />
     </SvgIcon>
   );
 }

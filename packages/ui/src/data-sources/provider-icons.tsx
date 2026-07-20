@@ -2,7 +2,6 @@ import type { SourceProviderId } from "@onequery/db/source-providers";
 import {
   IconDatabase,
   IconHelpCircle,
-  IconNotebook,
   IconTerminal2,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
@@ -34,7 +33,9 @@ import {
 
 import { CodexIcon } from "../icons/codex-icon";
 import { GoogleSearchConsoleIcon } from "../icons/google-search-console-icon";
+import { GranolaIcon } from "../icons/granola-icon";
 import { HermesAgentIcon } from "../icons/hermes-agent-icon";
+import { SendGridIcon } from "../icons/sendgrid-icon";
 import {
   SimpleIconSvg,
   SvgIcon,
@@ -210,12 +211,6 @@ function TablerProviderIcon({
   );
 }
 
-function GranolaIcon(props: ProviderIconProps) {
-  return (
-    <TablerProviderIcon {...props} defaultLabel="Granola" Icon={IconNotebook} />
-  );
-}
-
 function HermesIcon(props: ProviderIconProps) {
   return <HermesAgentIcon {...props} defaultLabel="Hermes Agent" />;
 }
@@ -268,21 +263,6 @@ function LinkedInAdsIcon({ size = 24, ...props }: ProviderIconProps) {
       viewBox="0 0 24 24"
     >
       <path d="M5.75 3A2.75 2.75 0 0 0 3 5.75v12.5A2.75 2.75 0 0 0 5.75 21h12.5A2.75 2.75 0 0 0 21 18.25V5.75A2.75 2.75 0 0 0 18.25 3H5.75Zm2.09 6.28a1.48 1.48 0 1 1 0-2.96 1.48 1.48 0 0 1 0 2.96ZM6.54 18v-7.45h2.6V18h-2.6Zm4.06 0v-7.45h2.48v1.02h.04c.35-.65 1.2-1.2 2.45-1.2 2.62 0 3.1 1.73 3.1 3.97V18h-2.59v-3.25c0-.78-.01-1.78-1.08-1.78-1.09 0-1.26.85-1.26 1.72V18H10.6Z" />
-    </SvgIcon>
-  );
-}
-
-function SendGridIcon({ size = 24, ...props }: ProviderIconProps) {
-  return (
-    <SvgIcon
-      {...props}
-      defaultLabel="SendGrid"
-      fill="currentColor"
-      size={size}
-      viewBox="0 0 24 24"
-    >
-      <path d="M4.75 4A2.75 2.75 0 0 0 2 6.75v10.5A2.75 2.75 0 0 0 4.75 20h14.5A2.75 2.75 0 0 0 22 17.25V6.75A2.75 2.75 0 0 0 19.25 4H4.75Zm.36 2h13.78L12 11.17 5.11 6ZM4 7.6l5.35 4.02L4 16.15V7.6Zm2.08 10.4 4.9-4.16.42.32a1 1 0 0 0 1.2 0l.42-.32 4.9 4.16H6.08ZM20 16.15l-5.35-4.53L20 7.6v8.55Z" />
-      <path d="M17.5 10.25a1 1 0 0 1 1 1v.5h.5a1 1 0 1 1 0 2h-.5v.5a1 1 0 1 1-2 0v-.5H16a1 1 0 1 1 0-2h.5v-.5a1 1 0 0 1 1-1Z" />
     </SvgIcon>
   );
 }
