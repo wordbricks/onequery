@@ -69,6 +69,29 @@ describe("shared provider icon accessibility", () => {
     expect(markup).toContain("<title>Google Search Console provider</title>");
   });
 
+  it("renders SendGrid with the current multicolor brand mark", () => {
+    const markup = renderProviderIcon("sendgrid", {
+      title: "SendGrid provider",
+    });
+
+    expect(markup).toContain('viewBox="0 0 512 512"');
+    expect(markup).toContain('fill="#9DD6E3"');
+    expect(markup).toContain('fill="#00A9D1"');
+    expect(markup).toContain('fill="#3F72AB"');
+    expect(markup).toContain("<title>SendGrid provider</title>");
+  });
+
+  it("renders Granola with the current app icon colors", () => {
+    const markup = renderProviderIcon("granola", {
+      title: "Granola provider",
+    });
+
+    expect(markup).toContain('viewBox="0 0 550 550"');
+    expect(markup).toContain('fill="#B2C248"');
+    expect(markup).toContain('stroke="#1E1E1E"');
+    expect(markup).toContain("<title>Granola provider</title>");
+  });
+
   it("renders AWS Athena Connector as a monochrome icon", () => {
     const markup = renderProviderIcon("aws_athena_connector");
 

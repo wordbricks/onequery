@@ -13,7 +13,9 @@
     "./components/*": "./src/components/ui/*.tsx",
     "./icons/codex-icon": "./src/icons/codex-icon.tsx",
     "./icons/google-search-console-icon": "./src/icons/google-search-console-icon.tsx",
+    "./icons/granola-icon": "./src/icons/granola-icon.tsx",
     "./icons/hermes-agent-icon": "./src/icons/hermes-agent-icon.tsx",
+    "./icons/sendgrid-icon": "./src/icons/sendgrid-icon.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./icons/svg-icon": "./src/icons/svg-icon.tsx"
   },
