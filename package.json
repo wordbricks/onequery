@@ -22,6 +22,7 @@
       "@hono/node-server": "2.0.1",
       "@hono/structured-logger": "0.1.0",
       "@hono/zod-validator": "0.7.6",
+      "@modelcontextprotocol/sdk": "1.27.1",
       "@nanostores/react": "1.1.0",
       "@tabler/icons-react": "3.36.1",
       "@tanstack/react-query": "5.90.20",

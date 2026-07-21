@@ -52,6 +52,7 @@
     "@bufbuild/protovalidate": "catalog:",
     "@hono/structured-logger": "catalog:",
     "@hono/zod-validator": "catalog:",
+    "@modelcontextprotocol/sdk": "catalog:",
     "@noble/ciphers": "2.1.1",
     "@onequery/audit-contracts": "workspace:*",
     "@onequery/base": "workspace:*",

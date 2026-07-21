@@ -3,6 +3,7 @@ import {
   IconDatabase,
   IconHelpCircle,
   IconTerminal2,
+  IconVideo,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import {
@@ -225,6 +226,10 @@ function E2BIcon(props: ProviderIconProps) {
   );
 }
 
+function JamIcon(props: ProviderIconProps) {
+  return <TablerProviderIcon {...props} defaultLabel="Jam" Icon={IconVideo} />;
+}
+
 function MicrosoftClarityIcon({ size = 24, ...props }: ProviderIconProps) {
   return (
     <SvgIcon
@@ -314,6 +319,7 @@ export const ProviderIcons = {
   google_search_console: GoogleSearchConsoleIcon,
   granola: GranolaIcon,
   hermes: HermesIcon,
+  jam: JamIcon,
   jira: createSimpleProviderIcon(siJira),
   laminar: LaminarIcon,
   linear: createSimpleProviderIcon(siLinear),
