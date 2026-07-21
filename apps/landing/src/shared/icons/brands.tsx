@@ -139,6 +139,26 @@ function HermesIcon({ size, ...props }: IconSvgProps) {
   return <HermesAgentIcon {...props} defaultLabel="Hermes Agent" size={size} />;
 }
 
+function JamIcon({ size, ...props }: IconSvgProps) {
+  return (
+    <SvgIcon
+      {...props}
+      defaultLabel="Jam"
+      fill="none"
+      size={size}
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M15 10.5 19.553 8A1 1 0 0 1 21 8.894v6.212A1 1 0 0 1 19.553 16L15 13.5v2A2.5 2.5 0 0 1 12.5 18h-7A2.5 2.5 0 0 1 3 15.5v-7A2.5 2.5 0 0 1 5.5 6h7A2.5 2.5 0 0 1 15 8.5v2Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </SvgIcon>
+  );
+}
+
 function CodexAppServerApiIcon(props: IconSvgProps) {
   return <CodexIcon {...props} defaultLabel="Codex App Server API" />;
 }
@@ -253,6 +273,7 @@ const BRAND_ICONS = {
   granola: GranolaIcon,
   hermes: HermesIcon,
   homebrew: createSimpleBrandIcon(siHomebrew),
+  jam: JamIcon,
   jira: createSimpleBrandIcon(siJira),
   laminar: LaminarIcon,
   linear: createSimpleBrandIcon(siLinear),
