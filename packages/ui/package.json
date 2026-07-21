@@ -15,6 +15,7 @@
     "./icons/google-search-console-icon": "./src/icons/google-search-console-icon.tsx",
     "./icons/granola-icon": "./src/icons/granola-icon.tsx",
     "./icons/hermes-agent-icon": "./src/icons/hermes-agent-icon.tsx",
+    "./icons/jam-icon": "./src/icons/jam-icon.tsx",
     "./icons/sendgrid-icon": "./src/icons/sendgrid-icon.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./icons/svg-icon": "./src/icons/svg-icon.tsx"

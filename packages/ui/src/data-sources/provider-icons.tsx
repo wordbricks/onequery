@@ -3,7 +3,6 @@ import {
   IconDatabase,
   IconHelpCircle,
   IconTerminal2,
-  IconVideo,
 } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import {
@@ -36,6 +35,7 @@ import { CodexIcon } from "../icons/codex-icon";
 import { GoogleSearchConsoleIcon } from "../icons/google-search-console-icon";
 import { GranolaIcon } from "../icons/granola-icon";
 import { HermesAgentIcon } from "../icons/hermes-agent-icon";
+import { JamIcon } from "../icons/jam-icon";
 import { SendGridIcon } from "../icons/sendgrid-icon";
 import {
   SimpleIconSvg,
@@ -224,10 +224,6 @@ function E2BIcon(props: ProviderIconProps) {
   return (
     <TablerProviderIcon {...props} defaultLabel="E2B" Icon={IconTerminal2} />
   );
-}
-
-function JamIcon(props: ProviderIconProps) {
-  return <TablerProviderIcon {...props} defaultLabel="Jam" Icon={IconVideo} />;
 }
 
 function MicrosoftClarityIcon({ size = 24, ...props }: ProviderIconProps) {
