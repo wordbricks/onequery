@@ -116,6 +116,18 @@ describe("shared provider icon accessibility", () => {
     expect(markup).toContain("<title>E2B provider</title>");
   });
 
+  it("renders Microsoft Clarity with the official app icon", () => {
+    const markup = renderProviderIcon("microsoft_clarity", {
+      title: "Microsoft Clarity provider",
+    });
+
+    expect(markup).toContain('viewBox="0 0 256 256"');
+    expect(markup).toContain(
+      'href="https://clarity.microsoft.com/blog/wp-content/uploads/2025/02/siteIcon.png"'
+    );
+    expect(markup).toContain("<title>Microsoft Clarity provider</title>");
+  });
+
   it("renders AWS Athena Connector as a monochrome icon", () => {
     const markup = renderProviderIcon("aws_athena_connector");
 
