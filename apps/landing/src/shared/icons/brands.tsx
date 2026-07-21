@@ -2,6 +2,7 @@ import { CodexIcon } from "@onequery/ui/icons/codex-icon";
 import { GoogleSearchConsoleIcon } from "@onequery/ui/icons/google-search-console-icon";
 import { GranolaIcon } from "@onequery/ui/icons/granola-icon";
 import { HermesAgentIcon } from "@onequery/ui/icons/hermes-agent-icon";
+import { JamIcon } from "@onequery/ui/icons/jam-icon";
 import { SendGridIcon } from "@onequery/ui/icons/sendgrid-icon";
 import { SimpleIconSvg, SvgIcon } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
@@ -137,26 +138,6 @@ function E2BIcon({ size, ...props }: IconSvgProps) {
 
 function HermesIcon({ size, ...props }: IconSvgProps) {
   return <HermesAgentIcon {...props} defaultLabel="Hermes Agent" size={size} />;
-}
-
-function JamIcon({ size, ...props }: IconSvgProps) {
-  return (
-    <SvgIcon
-      {...props}
-      defaultLabel="Jam"
-      fill="none"
-      size={size}
-      viewBox="0 0 24 24"
-    >
-      <path
-        d="M15 10.5 19.553 8A1 1 0 0 1 21 8.894v6.212A1 1 0 0 1 19.553 16L15 13.5v2A2.5 2.5 0 0 1 12.5 18h-7A2.5 2.5 0 0 1 3 15.5v-7A2.5 2.5 0 0 1 5.5 6h7A2.5 2.5 0 0 1 15 8.5v2Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </SvgIcon>
-  );
 }
 
 function CodexAppServerApiIcon(props: IconSvgProps) {

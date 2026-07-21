@@ -92,6 +92,18 @@ describe("shared provider icon accessibility", () => {
     expect(markup).toContain("<title>Granola provider</title>");
   });
 
+  it("renders Jam with the official hosted logo", () => {
+    const markup = renderProviderIcon("jam", {
+      title: "Jam provider",
+    });
+
+    expect(markup).toContain('viewBox="0 0 384 384"');
+    expect(markup).toContain(
+      'href="https://storage.googleapis.com/jam-assets/jam-logo.webp"'
+    );
+    expect(markup).toContain("<title>Jam provider</title>");
+  });
+
   it("renders AWS Athena Connector as a monochrome icon", () => {
     const markup = renderProviderIcon("aws_athena_connector");
 
