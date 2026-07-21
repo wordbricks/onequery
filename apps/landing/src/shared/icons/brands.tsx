@@ -4,6 +4,7 @@ import { GoogleSearchConsoleIcon } from "@onequery/ui/icons/google-search-consol
 import { GranolaIcon } from "@onequery/ui/icons/granola-icon";
 import { HermesAgentIcon } from "@onequery/ui/icons/hermes-agent-icon";
 import { JamIcon } from "@onequery/ui/icons/jam-icon";
+import { MicrosoftClarityIcon } from "@onequery/ui/icons/microsoft-clarity-icon";
 import { SendGridIcon } from "@onequery/ui/icons/sendgrid-icon";
 import { SimpleIconSvg, SvgIcon } from "@onequery/ui/icons/svg-icon";
 import type { IconSvgProps, SimpleIconData } from "@onequery/ui/icons/svg-icon";
@@ -116,20 +117,6 @@ function HermesIcon({ size, ...props }: IconSvgProps) {
 
 function CodexAppServerApiIcon(props: IconSvgProps) {
   return <CodexIcon {...props} defaultLabel="Codex App Server API" />;
-}
-
-function MicrosoftClarityIcon({ size, ...props }: IconSvgProps) {
-  return (
-    <SvgIcon
-      {...props}
-      defaultLabel="Microsoft Clarity"
-      fill="currentColor"
-      size={size}
-      viewBox="0 0 24 24"
-    >
-      <path d="M4.5 4A2.5 2.5 0 0 0 2 6.5v11A2.5 2.5 0 0 0 4.5 20h15a2.5 2.5 0 0 0 2.5-2.5v-11A2.5 2.5 0 0 0 19.5 4h-15Zm0 2h15a.5.5 0 0 1 .5.5v11a.5.5 0 0 1-.5.5h-15a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5Zm3.25 3A1.25 1.25 0 0 0 6.5 10.25v4.5a1.25 1.25 0 1 0 2.5 0v-4.5A1.25 1.25 0 0 0 7.75 9Zm4.25-1a1.25 1.25 0 0 0-1.25 1.25v5.5a1.25 1.25 0 1 0 2.5 0v-5.5A1.25 1.25 0 0 0 12 8Zm4.25 3a1.25 1.25 0 0 0-1.25 1.25v2.5a1.25 1.25 0 1 0 2.5 0v-2.5A1.25 1.25 0 0 0 16.25 11Z" />
-    </SvgIcon>
-  );
 }
 
 function AmazonAdsIcon({ size, ...props }: IconSvgProps) {
