@@ -1,4 +1,5 @@
 import { CodexIcon } from "@onequery/ui/icons/codex-icon";
+import { E2BIcon } from "@onequery/ui/icons/e2b-icon";
 import { GoogleSearchConsoleIcon } from "@onequery/ui/icons/google-search-console-icon";
 import { GranolaIcon } from "@onequery/ui/icons/granola-icon";
 import { HermesAgentIcon } from "@onequery/ui/icons/hermes-agent-icon";
@@ -105,33 +106,6 @@ function MotherDuckIcon({ size, ...props }: IconSvgProps) {
       viewBox="0 0 24 24"
     >
       <path d="M12 3C7.03 3 3 4.57 3 6.5v11C3 19.43 7.03 21 12 21s9-1.57 9-3.5v-11C21 4.57 16.97 3 12 3Zm0 2c4.42 0 7 1.24 7 1.5S16.42 8 12 8 5 6.76 5 6.5 7.58 5 12 5Zm7 5.07c-1.62 1.08-4.22 1.68-7 1.68s-5.38-.6-7-1.68V8.93c1.62.69 4.01 1.07 7 1.07s5.38-.38 7-1.07v1.14Zm0 3.5c-1.62 1.08-4.22 1.68-7 1.68s-5.38-.6-7-1.68v-1.14c1.62.69 4.01 1.07 7 1.07s5.38-.38 7-1.07v1.14Zm-7 5.68c-4.42 0-7-1.24-7-1.75v-1.57c1.62 1.08 4.22 1.68 7 1.68s5.38-.6 7-1.68v1.57c0 .51-2.58 1.75-7 1.75Z" />
-    </SvgIcon>
-  );
-}
-
-function E2BIcon({ size, ...props }: IconSvgProps) {
-  return (
-    <SvgIcon
-      {...props}
-      defaultLabel="E2B"
-      fill="none"
-      size={size}
-      viewBox="0 0 24 24"
-    >
-      <path
-        d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <path
-        d="m8 9 3 3-3 3M13 15h3"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
     </SvgIcon>
   );
 }

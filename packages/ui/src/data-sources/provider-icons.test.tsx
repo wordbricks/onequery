@@ -104,6 +104,18 @@ describe("shared provider icon accessibility", () => {
     expect(markup).toContain("<title>Jam provider</title>");
   });
 
+  it("renders E2B with the official hosted logo", () => {
+    const markup = renderProviderIcon("e2b", {
+      title: "E2B provider",
+    });
+
+    expect(markup).toContain('viewBox="0 0 1117 500"');
+    expect(markup).toContain(
+      'href="https://raw.githubusercontent.com/e2b-dev/E2B/main/readme-assets/logo-black.png"'
+    );
+    expect(markup).toContain("<title>E2B provider</title>");
+  });
+
   it("renders AWS Athena Connector as a monochrome icon", () => {
     const markup = renderProviderIcon("aws_athena_connector");
 
