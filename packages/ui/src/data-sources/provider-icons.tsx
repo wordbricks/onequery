@@ -1,9 +1,5 @@
 import type { SourceProviderId } from "@onequery/db/source-providers";
-import {
-  IconDatabase,
-  IconHelpCircle,
-  IconTerminal2,
-} from "@tabler/icons-react";
+import { IconHelpCircle } from "@tabler/icons-react";
 import type { ComponentType } from "react";
 import {
   si1password,
@@ -32,6 +28,7 @@ import {
 } from "simple-icons";
 
 import { CodexIcon } from "../icons/codex-icon";
+import { E2BIcon } from "../icons/e2b-icon";
 import { GoogleSearchConsoleIcon } from "../icons/google-search-console-icon";
 import { GranolaIcon } from "../icons/granola-icon";
 import { HermesAgentIcon } from "../icons/hermes-agent-icon";
@@ -177,53 +174,12 @@ function MotherDuckIcon({ size = 24, ...props }: ProviderIconProps) {
   );
 }
 
-function TablerProviderIcon({
-  "aria-hidden": ariaHidden,
-  "aria-label": ariaLabel,
-  defaultLabel,
-  Icon,
-  role,
-  size = 24,
-  title,
-  ...props
-}: ProviderIconProps & {
-  defaultLabel: string;
-  Icon: typeof IconDatabase;
-}) {
-  const accessibility = resolveSvgIconAccessibility({
-    ariaHidden,
-    ariaLabel,
-    ariaLabelledBy: props["aria-labelledby"],
-    defaultLabel,
-    role,
-    title,
-  });
-
-  return (
-    <Icon
-      {...props}
-      aria-hidden={accessibility.hidden ? true : undefined}
-      aria-label={accessibility.label}
-      aria-labelledby={accessibility.labelledBy}
-      role={accessibility.role}
-      size={size}
-      stroke={2}
-    />
-  );
-}
-
 function HermesIcon(props: ProviderIconProps) {
   return <HermesAgentIcon {...props} defaultLabel="Hermes Agent" />;
 }
 
 function CodexAppServerApiIcon(props: ProviderIconProps) {
   return <CodexIcon {...props} defaultLabel="Codex App Server API" />;
-}
-
-function E2BIcon(props: ProviderIconProps) {
-  return (
-    <TablerProviderIcon {...props} defaultLabel="E2B" Icon={IconTerminal2} />
-  );
 }
 
 function MicrosoftClarityIcon({ size = 24, ...props }: ProviderIconProps) {
