@@ -20,6 +20,7 @@ import {
   GoogleAnalyticsCredentialsSchema,
   GranolaCredentialsSchema,
   HermesCredentialsSchema,
+  JamCredentialsSchema,
   JiraCredentialsSchema,
   LaminarCredentialsSchema,
   LinkedInAdsCredentialsSchema,
@@ -911,6 +912,34 @@ export const SOURCE_PROVIDER_REGISTRY = {
           siteUrl: "https://example.atlassian.net",
           email: "reader@example.com",
           apiToken: "atlassian_api_token",
+        },
+      },
+    },
+  },
+  jam: {
+    label: "Jam",
+    credentialSchema: JamCredentialsSchema,
+    credentialType: "jam",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: true,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "jam",
+    publicCategory: "Developer workflow",
+    guide: {
+      summary:
+        "Connect a Jam workspace through Jam MCP with a read-only personal access token.",
+      steps: [
+        "Open Jam workspace Settings, choose MCP, and create a personal access token for this connection.",
+        "Grant only the `mcp:read` scope so OneQuery can inspect Jams without moving them or adding comments.",
+        "Copy the token immediately and store it in `credentials.accessToken`; Jam does not show the token again after creation.",
+      ],
+      exampleInput: {
+        sourceKey: "jam_workspace",
+        credentials: {
+          accessToken: "jam_pat_...",
         },
       },
     },

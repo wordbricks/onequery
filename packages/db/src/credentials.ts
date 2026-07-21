@@ -396,6 +396,13 @@ export const ConfluenceCredentialsSchema = z.object({
 
 export type ConfluenceCredentials = z.infer<typeof ConfluenceCredentialsSchema>;
 
+export const JamCredentialsSchema = z.object({
+  accessToken: requiredOpaqueString("Personal access token is required"),
+  type: z.literal("jam"),
+});
+
+export type JamCredentials = z.infer<typeof JamCredentialsSchema>;
+
 export const AmazonAdsCredentialsSchema = z.object({
   accessToken: requiredOpaqueString("Access token is required"),
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
@@ -704,6 +711,7 @@ export const CredentialsSchema = z.union([
   GranolaCredentialsSchema,
   GoogleSearchConsoleCredentialsSchema,
   ConfluenceCredentialsSchema,
+  JamCredentialsSchema,
   AmazonAdsCredentialsSchema,
   LinkedInAdsCredentialsSchema,
   TikTokMarketingCredentialsSchema,
@@ -776,6 +784,7 @@ export const credentialSchemaMap = {
   google_search_console: GoogleSearchConsoleCredentialsSchema,
   granola: GranolaCredentialsSchema,
   hermes: HermesCredentialsSchema,
+  jam: JamCredentialsSchema,
   jira: JiraCredentialsSchema,
   linkedin_ads: LinkedInAdsCredentialsSchema,
   cloudflare_workers_observability:
