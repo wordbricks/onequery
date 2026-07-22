@@ -13,6 +13,7 @@ export const CLI_ACTIONS = [
   "source.connect",
   "source.list",
   "source.read",
+  "source.write",
   "source_api.describe",
   "source_api.execute",
   "query.execute",
@@ -29,6 +30,7 @@ const CLI_ACTION_PERMISSIONS = {
   "source.connect": organizationPermissionChecks.cliSourceConnect,
   "source.list": organizationPermissionChecks.cliSourceList,
   "source.read": organizationPermissionChecks.cliSourceRead,
+  "source.write": organizationPermissionChecks.cliSourceWrite,
   "source_api.describe": organizationPermissionChecks.cliSourceApiDescribe,
   "source_api.execute": organizationPermissionChecks.cliSourceApiExecute,
 } as const;

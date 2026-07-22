@@ -146,6 +146,42 @@ message TestSourceResponse {
   }
 }
 
+message UpdateSourceRequest {
+  string org_slug = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  CliSourceSelector source = 2 [(buf.validate.field).required = true];
+  google.protobuf.Struct credentials = 3 [(buf.validate.field).ignore = IGNORE_ALWAYS];
+}
+
+message UpdateSourceResponse {
+  CliSource source = 1 [(buf.validate.field).required = true];
+  oneof outcome {
+    option (buf.validate.oneof).required = true;
+
+    TestSourceSupportedOutcome supported = 2;
+    TestSourceUnsupportedOutcome unsupported = 3;
+  }
+}
+
+message DeleteSourceRequest {
+  string org_slug = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+  ];
+  CliSourceSelector source = 2 [(buf.validate.field).required = true];
+}
+
+message DeleteSourceResponse {
+  CliSource source = 1 [(buf.validate.field).required = true];
+  bool deleted = 2;
+}
+
 message TestSourceSupportedOutcome {
   oneof result {
     option (buf.validate.oneof).required = true;

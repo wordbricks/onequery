@@ -17,10 +17,12 @@ export type {
 } from "./query";
 export {
   handleConnectSource,
+  handleDeleteSource,
   handleGetSource,
   handleGetSourceConnectGuide,
   handleListSources,
   handleTestSource,
+  handleUpdateSource,
 } from "./source";
 export {
   handleDescribeSourceApi,

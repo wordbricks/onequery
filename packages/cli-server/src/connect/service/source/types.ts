@@ -10,6 +10,8 @@ import {
   GetSourceConnectGuideResponseSchema,
   GetSourceResponseSchema,
   TestSourceResponseSchema,
+  UpdateSourceResponseSchema,
+  DeleteSourceResponseSchema,
 } from "@onequery/proto-cli/cli/v1/source_pb";
 
 export type GetSourceConnectGuideResponseInit = MessageInitShape<
@@ -24,6 +26,12 @@ export type GetSourceResponseInit = MessageInitShape<
 >;
 export type TestSourceResponseInit = MessageInitShape<
   typeof TestSourceResponseSchema
+>;
+export type UpdateSourceResponseInit = MessageInitShape<
+  typeof UpdateSourceResponseSchema
+>;
+export type DeleteSourceResponseInit = MessageInitShape<
+  typeof DeleteSourceResponseSchema
 >;
 
 export type ParsedConnectSourceCredentials = {

@@ -112,6 +112,22 @@ pub type OwnedTestSourceRequestView = ::buffa::view::OwnedView<
 pub type OwnedTestSourceResponseView = ::buffa::view::OwnedView<
     crate::proto::onequery::cli::v1::__buffa::view::TestSourceResponseView<'static>,
 >;
+///Shorthand for `OwnedView<UpdateSourceRequestView<'static>>`.
+pub type OwnedUpdateSourceRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::UpdateSourceRequestView<'static>,
+>;
+///Shorthand for `OwnedView<UpdateSourceResponseView<'static>>`.
+pub type OwnedUpdateSourceResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::UpdateSourceResponseView<'static>,
+>;
+///Shorthand for `OwnedView<DeleteSourceRequestView<'static>>`.
+pub type OwnedDeleteSourceRequestView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::DeleteSourceRequestView<'static>,
+>;
+///Shorthand for `OwnedView<DeleteSourceResponseView<'static>>`.
+pub type OwnedDeleteSourceResponseView = ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::DeleteSourceResponseView<'static>,
+>;
 ///Shorthand for `OwnedView<DescribeSourceApiRequestView<'static>>`.
 pub type OwnedDescribeSourceApiRequestView = ::buffa::view::OwnedView<
     crate::proto::onequery::cli::v1::__buffa::view::DescribeSourceApiRequestView<'static>,
@@ -426,6 +442,46 @@ for crate::proto::onequery::cli::v1::__buffa::view::TestSourceResponseView<'_> {
 impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::TestSourceResponse>
 for ::buffa::view::OwnedView<
     crate::proto::onequery::cli::v1::__buffa::view::TestSourceResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::UpdateSourceResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::UpdateSourceResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::UpdateSourceResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::UpdateSourceResponseView<'static>,
+> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(&**self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::DeleteSourceResponse>
+for crate::proto::onequery::cli::v1::__buffa::view::DeleteSourceResponseView<'_> {
+    fn encode(
+        &self,
+        codec: ::connectrpc::CodecFormat,
+    ) -> ::std::result::Result<::buffa::bytes::Bytes, ::connectrpc::ConnectError> {
+        ::connectrpc::__codegen::encode_view_body(self, codec)
+    }
+}
+impl ::connectrpc::Encodable<crate::proto::onequery::cli::v1::DeleteSourceResponse>
+for ::buffa::view::OwnedView<
+    crate::proto::onequery::cli::v1::__buffa::view::DeleteSourceResponseView<'static>,
 > {
     fn encode(
         &self,
@@ -1745,6 +1801,24 @@ pub const CLI_SOURCE_SERVICE_TEST_SOURCE_SPEC: ::connectrpc::Spec = ::connectrpc
         ::connectrpc::StreamType::Unary,
     )
     .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `UpdateSource` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_SERVICE_UPDATE_SOURCE_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceService/UpdateSource",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
+/// Static [`Spec`](::connectrpc::Spec) for the server-side `DeleteSource` RPC.
+///
+/// The dispatcher surfaces this on
+/// [`RequestContext::spec`](::connectrpc::RequestContext::spec).
+pub const CLI_SOURCE_SERVICE_DELETE_SOURCE_SPEC: ::connectrpc::Spec = ::connectrpc::Spec::server(
+        "/onequery.cli.v1.CliSourceService/DeleteSource",
+        ::connectrpc::StreamType::Unary,
+    )
+    .with_idempotency_level(::connectrpc::IdempotencyLevel::Unknown);
 /// Server trait for CliSourceService.
 ///
 /// # Implementing handlers
@@ -1863,6 +1937,34 @@ pub trait CliSourceService: Send + Sync + 'static {
         Output = ::connectrpc::ServiceResult<
             impl ::connectrpc::Encodable<
                 crate::proto::onequery::cli::v1::TestSourceResponse,
+            > + Send + use<'a, Self>,
+        >,
+    > + Send;
+    /// Handle the UpdateSource RPC.
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn update_source<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedUpdateSourceRequestView,
+    ) -> impl ::std::future::Future<
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
+                crate::proto::onequery::cli::v1::UpdateSourceResponse,
+            > + Send + use<'a, Self>,
+        >,
+    > + Send;
+    /// Handle the DeleteSource RPC.
+    ///
+    /// `'a` lets the response body borrow from `&self` (e.g. server-resident state).
+    fn delete_source<'a>(
+        &'a self,
+        ctx: ::connectrpc::RequestContext,
+        request: OwnedDeleteSourceRequestView,
+    ) -> impl ::std::future::Future<
+        Output = ::connectrpc::ServiceResult<
+            impl ::connectrpc::Encodable<
+                crate::proto::onequery::cli::v1::DeleteSourceResponse,
             > + Send + use<'a, Self>,
         >,
     > + Send;
@@ -2003,6 +2105,42 @@ impl<S: CliSourceService> CliSourceServiceExt for S {
                 },
             )
             .with_spec(CLI_SOURCE_SERVICE_TEST_SOURCE_SPEC)
+            .route_view(
+                CLI_SOURCE_SERVICE_SERVICE_NAME,
+                "UpdateSource",
+                {
+                    let svc = ::std::sync::Arc::clone(&self);
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
+                        let svc = ::std::sync::Arc::clone(&svc);
+                        async move {
+                            svc.update_source(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::UpdateSourceResponse,
+                                >(format)
+                        }
+                    })
+                },
+            )
+            .with_spec(CLI_SOURCE_SERVICE_UPDATE_SOURCE_SPEC)
+            .route_view(
+                CLI_SOURCE_SERVICE_SERVICE_NAME,
+                "DeleteSource",
+                {
+                    let svc = ::std::sync::Arc::clone(&self);
+                    ::connectrpc::view_handler_fn(move |ctx, req, format| {
+                        let svc = ::std::sync::Arc::clone(&svc);
+                        async move {
+                            svc.delete_source(ctx, req)
+                                .await?
+                                .encode::<
+                                    crate::proto::onequery::cli::v1::DeleteSourceResponse,
+                                >(format)
+                        }
+                    })
+                },
+            )
+            .with_spec(CLI_SOURCE_SERVICE_DELETE_SOURCE_SPEC)
     }
 }
 /// Monomorphic dispatcher for `CliSourceService`.
@@ -2082,6 +2220,18 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
                 Some(
                     ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
                         .with_spec(CLI_SOURCE_SERVICE_TEST_SOURCE_SPEC),
+                )
+            }
+            "UpdateSource" => {
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_SOURCE_SERVICE_UPDATE_SOURCE_SPEC),
+                )
+            }
+            "DeleteSource" => {
+                Some(
+                    ::connectrpc::dispatcher::codegen::MethodDescriptor::unary(false)
+                        .with_spec(CLI_SOURCE_SERVICE_DELETE_SOURCE_SPEC),
                 )
             }
             _ => None,
@@ -2174,6 +2324,32 @@ impl<T: CliSourceService> ::connectrpc::Dispatcher for CliSourceServiceServer<T>
                         .await?
                         .encode::<
                             crate::proto::onequery::cli::v1::TestSourceResponse,
+                        >(format)
+                })
+            }
+            "UpdateSource" => {
+                let svc = ::std::sync::Arc::clone(&self.inner);
+                Box::pin(async move {
+                    let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
+                        crate::proto::onequery::cli::v1::__buffa::view::UpdateSourceRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.update_source(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::UpdateSourceResponse,
+                        >(format)
+                })
+            }
+            "DeleteSource" => {
+                let svc = ::std::sync::Arc::clone(&self.inner);
+                Box::pin(async move {
+                    let req = ::connectrpc::dispatcher::codegen::decode_request_view::<
+                        crate::proto::onequery::cli::v1::__buffa::view::DeleteSourceRequestView,
+                    >(request.encoded()?, format)?;
+                    svc.delete_source(ctx, req)
+                        .await?
+                        .encode::<
+                            crate::proto::onequery::cli::v1::DeleteSourceResponse,
                         >(format)
                 })
             }
@@ -2562,6 +2738,96 @@ where
                 &self.config,
                 CLI_SOURCE_SERVICE_SERVICE_NAME,
                 "TestSource",
+                request,
+                options,
+            )
+            .await
+    }
+    /// Call the UpdateSource RPC. Sends a request to /onequery.cli.v1.CliSourceService/UpdateSource.
+    pub async fn update_source(
+        &self,
+        request: crate::proto::onequery::cli::v1::UpdateSourceRequest,
+    ) -> Result<
+        ::connectrpc::client::UnaryResponse<
+            ::buffa::view::OwnedView<
+                crate::proto::onequery::cli::v1::__buffa::view::UpdateSourceResponseView<
+                    'static,
+                >,
+            >,
+        >,
+        ::connectrpc::ConnectError,
+    > {
+        self.update_source_with_options(
+                request,
+                ::connectrpc::client::CallOptions::default(),
+            )
+            .await
+    }
+    /// Call the UpdateSource RPC with explicit per-call options. Options override [`ClientConfig`](::connectrpc::client::ClientConfig) defaults.
+    pub async fn update_source_with_options(
+        &self,
+        request: crate::proto::onequery::cli::v1::UpdateSourceRequest,
+        options: ::connectrpc::client::CallOptions,
+    ) -> Result<
+        ::connectrpc::client::UnaryResponse<
+            ::buffa::view::OwnedView<
+                crate::proto::onequery::cli::v1::__buffa::view::UpdateSourceResponseView<
+                    'static,
+                >,
+            >,
+        >,
+        ::connectrpc::ConnectError,
+    > {
+        ::connectrpc::client::call_unary(
+                &self.transport,
+                &self.config,
+                CLI_SOURCE_SERVICE_SERVICE_NAME,
+                "UpdateSource",
+                request,
+                options,
+            )
+            .await
+    }
+    /// Call the DeleteSource RPC. Sends a request to /onequery.cli.v1.CliSourceService/DeleteSource.
+    pub async fn delete_source(
+        &self,
+        request: crate::proto::onequery::cli::v1::DeleteSourceRequest,
+    ) -> Result<
+        ::connectrpc::client::UnaryResponse<
+            ::buffa::view::OwnedView<
+                crate::proto::onequery::cli::v1::__buffa::view::DeleteSourceResponseView<
+                    'static,
+                >,
+            >,
+        >,
+        ::connectrpc::ConnectError,
+    > {
+        self.delete_source_with_options(
+                request,
+                ::connectrpc::client::CallOptions::default(),
+            )
+            .await
+    }
+    /// Call the DeleteSource RPC with explicit per-call options. Options override [`ClientConfig`](::connectrpc::client::ClientConfig) defaults.
+    pub async fn delete_source_with_options(
+        &self,
+        request: crate::proto::onequery::cli::v1::DeleteSourceRequest,
+        options: ::connectrpc::client::CallOptions,
+    ) -> Result<
+        ::connectrpc::client::UnaryResponse<
+            ::buffa::view::OwnedView<
+                crate::proto::onequery::cli::v1::__buffa::view::DeleteSourceResponseView<
+                    'static,
+                >,
+            >,
+        >,
+        ::connectrpc::ConnectError,
+    > {
+        ::connectrpc::client::call_unary(
+                &self.transport,
+                &self.config,
+                CLI_SOURCE_SERVICE_SERVICE_NAME,
+                "DeleteSource",
                 request,
                 options,
             )

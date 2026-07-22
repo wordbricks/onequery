@@ -966,6 +966,41 @@ fn parse_invocation_accepts_source_test_reference() {
 }
 
 #[test]
+fn parse_invocation_accepts_source_update_input() {
+    let invocation = parse_invocation(&[
+        "onequery",
+        "source",
+        "update",
+        "sentry://errors",
+        "--input",
+        "patch.json",
+    ]);
+
+    assert!(matches!(
+        invocation.command,
+        Command::Source(super::SourceSubcommand::Update(super::SourceUpdateArgs {
+            source,
+            input,
+        })) if source == test_source_reference("sentry://errors")
+            && input == *"patch.json"
+    ));
+}
+
+#[test]
+fn parse_invocation_accepts_confirmed_source_delete() {
+    let invocation =
+        parse_invocation(&["onequery", "source", "delete", "sentry://errors", "--yes"]);
+
+    assert!(matches!(
+        invocation.command,
+        Command::Source(super::SourceSubcommand::Delete(super::SourceDeleteArgs {
+            source,
+            yes: true,
+        })) if source == test_source_reference("sentry://errors")
+    ));
+}
+
+#[test]
 fn parse_invocation_accepts_query_result_window_args() {
     let invocation = parse_invocation(&[
         "onequery",

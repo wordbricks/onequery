@@ -20,11 +20,13 @@ import {
 import { handleExecuteQuery, handleValidateQuery } from "./service/query";
 import {
   handleConnectSource,
+  handleDeleteSource,
   handleGetSource,
   handleGetSourceConnectGuide,
   handleListSourceProviders,
   handleListSources,
   handleTestSource,
+  handleUpdateSource,
 } from "./service/source";
 import {
   handleDescribeSourceApi,
@@ -56,6 +58,8 @@ const cliSourceConnectImplementation: ServiceImpl<typeof CliSourceService> = {
   testSource: handleTestSource,
   getSourceConnectGuide: handleGetSourceConnectGuide,
   connectSource: handleConnectSource,
+  updateSource: handleUpdateSource,
+  deleteSource: handleDeleteSource,
 };
 
 const cliSourceApiConnectImplementation: ServiceImpl<

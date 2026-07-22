@@ -55,6 +55,60 @@ pub mod test_source_response {
         }
     }
 }
+pub mod update_source_response {
+    #[allow(unused_imports)]
+    use super::*;
+    #[derive(Clone, PartialEq, Debug)]
+    pub enum Outcome {
+        Supported(
+            ::buffa::alloc::boxed::Box<super::super::super::TestSourceSupportedOutcome>,
+        ),
+        Unsupported(
+            ::buffa::alloc::boxed::Box<super::super::super::TestSourceUnsupportedOutcome>,
+        ),
+    }
+    impl ::buffa::Oneof for Outcome {}
+    impl From<super::super::super::TestSourceSupportedOutcome> for Outcome {
+        fn from(v: super::super::super::TestSourceSupportedOutcome) -> Self {
+            Self::Supported(::buffa::alloc::boxed::Box::new(v))
+        }
+    }
+    impl From<super::super::super::TestSourceSupportedOutcome>
+    for ::core::option::Option<Outcome> {
+        fn from(v: super::super::super::TestSourceSupportedOutcome) -> Self {
+            Self::Some(Outcome::from(v))
+        }
+    }
+    impl From<super::super::super::TestSourceUnsupportedOutcome> for Outcome {
+        fn from(v: super::super::super::TestSourceUnsupportedOutcome) -> Self {
+            Self::Unsupported(::buffa::alloc::boxed::Box::new(v))
+        }
+    }
+    impl From<super::super::super::TestSourceUnsupportedOutcome>
+    for ::core::option::Option<Outcome> {
+        fn from(v: super::super::super::TestSourceUnsupportedOutcome) -> Self {
+            Self::Some(Outcome::from(v))
+        }
+    }
+    impl serde::Serialize for Outcome {
+        fn serialize<S: serde::Serializer>(
+            &self,
+            s: S,
+        ) -> ::core::result::Result<S::Ok, S::Error> {
+            use serde::ser::SerializeMap;
+            let mut map = s.serialize_map(Some(1))?;
+            match self {
+                Self::Supported(v) => {
+                    map.serialize_entry("supported", v)?;
+                }
+                Self::Unsupported(v) => {
+                    map.serialize_entry("unsupported", v)?;
+                }
+            }
+            map.end()
+        }
+    }
+}
 pub mod test_source_supported_outcome {
     #[allow(unused_imports)]
     use super::*;

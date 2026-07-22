@@ -208,6 +208,7 @@ fn org_capability_from_generated(
         }
         Some(types::OrgCapability::ORG_CAPABILITY_SOURCE_LIST) => Ok("source.list".to_owned()),
         Some(types::OrgCapability::ORG_CAPABILITY_SOURCE_READ) => Ok("source.read".to_owned()),
+        Some(types::OrgCapability::ORG_CAPABILITY_SOURCE_WRITE) => Ok("source.write".to_owned()),
         Some(types::OrgCapability::ORG_CAPABILITY_QUERY_EXECUTE) => Ok("query.execute".to_owned()),
         Some(types::OrgCapability::ORG_CAPABILITY_SOURCE_API_DESCRIBE) => {
             Ok("source_api.describe".to_owned())
@@ -270,6 +271,7 @@ mod tests {
                     types::OrgCapability::ORG_CAPABILITY_SOURCE_API_DESCRIBE.into(),
                     types::OrgCapability::ORG_CAPABILITY_SOURCE_API_EXECUTE.into(),
                     types::OrgCapability::ORG_CAPABILITY_ORG_READ.into(),
+                    types::OrgCapability::ORG_CAPABILITY_SOURCE_WRITE.into(),
                 ],
                 ..Default::default()
             },
@@ -288,6 +290,7 @@ mod tests {
                     "source_api.describe".to_owned(),
                     "source_api.execute".to_owned(),
                     "org.read".to_owned(),
+                    "source.write".to_owned(),
                 ]),
             }
         );

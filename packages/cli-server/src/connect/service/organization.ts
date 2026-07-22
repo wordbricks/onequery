@@ -32,6 +32,8 @@ function toCliOrgCapability(
       return OrgCapability.SOURCE_LIST;
     case "source.read":
       return OrgCapability.SOURCE_READ;
+    case "source.write":
+      return OrgCapability.SOURCE_WRITE;
     case "source_api.describe":
       return OrgCapability.SOURCE_API_DESCRIBE;
     case "source_api.execute":

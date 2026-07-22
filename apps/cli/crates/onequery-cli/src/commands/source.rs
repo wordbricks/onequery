@@ -139,6 +139,14 @@ pub(super) async fn execute<B, T>(
         return super::source_connect::execute(args, context, runtime).await;
     }
 
+    if let SourceSubcommand::Update(args) = command {
+        return super::source_mutation::execute_update(args, context, runtime).await;
+    }
+
+    if let SourceSubcommand::Delete(args) = command {
+        return super::source_mutation::execute_delete(args, context, runtime).await;
+    }
+
     let mode = match command {
         SourceSubcommand::List { read } => SourceMode::List { read: read.clone() },
         SourceSubcommand::Show { source_key, read } => SourceMode::Show {
@@ -150,6 +158,8 @@ pub(super) async fn execute<B, T>(
         },
         SourceSubcommand::Providers => unreachable!("source providers is delegated"),
         SourceSubcommand::Connect(_) => unreachable!("source connect is delegated"),
+        SourceSubcommand::Update(_) => unreachable!("source update is delegated"),
+        SourceSubcommand::Delete(_) => unreachable!("source delete is delegated"),
     };
 
     let final_state = run_reducer_workflow(

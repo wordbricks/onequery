@@ -32,6 +32,7 @@ import {
   getCliSourceInterfaceTypes,
   sortCliSourceRecords,
 } from "../../../source/model";
+import { deleteCliSource, updateCliSource } from "../../../source/mutations";
 import { parseCliSourceSelector } from "../../../source/reference";
 import { requireCliConnectRequestContext } from "../../context";
 import {
@@ -48,13 +49,16 @@ import {
   buildCliSource,
   buildGetSourceResponse,
   buildTestSourceResponse,
+  buildUpdateSourceResponse,
   toCliContentFormat,
   toCliSourceInterface,
 } from "./response";
 import type {
   ConnectSourceResponseInit,
+  DeleteSourceResponseInit,
   GetSourceConnectGuideResponseInit,
   TestSourceResponseInit,
+  UpdateSourceResponseInit,
 } from "./types";
 
 const handleListSourcesImpl: CliResultServiceMethod<"listSources"> = async (
@@ -415,6 +419,137 @@ const handleConnectSourceImpl: CliResultServiceMethod<"connectSource"> = async (
     } satisfies ConnectSourceResponseInit);
   });
 
+const handleUpdateSourceImpl: CliResultServiceMethod<"updateSource"> = async (
+  request,
+  context
+) =>
+  Result.gen(async function* handleUpdateSourceFlow() {
+    const sourceSelector = parseCliSourceSelector(request.source);
+    if (!sourceSelector) {
+      return yield* cliServiceErr({
+        detail: "source must include provider and sourceKey",
+        key: "SOURCE_REQUEST_INVALID",
+      });
+    }
+
+    const access = yield* Result.await(
+      resolveAuthorizedSourceRequestState(
+        "source.write",
+        request.orgSlug,
+        context
+      )
+    );
+    const provider = yield* fromCliSourceProvider(
+      sourceSelector.sourceProvider
+    );
+    const result = await updateCliSource({
+      credentialsPatch: request.credentials,
+      db: access.c.var.storage.db,
+      masterEncryptionKey: access.c.var.runtime.crypto.masterEncryptionKey,
+      organizationId: access.authorizedOrg.org.id,
+      sourceKey: sourceSelector.sourceKey,
+      sourceProvider: provider,
+    });
+
+    switch (result.kind) {
+      case "not_found":
+        return Result.err(
+          createCliSourceNotFoundFailure(
+            access.authorizedOrg.org.slug,
+            sourceSelector.sourceKey
+          )
+        );
+      case "invalid_credentials":
+        return yield* cliServiceErr({
+          detail: result.detail,
+          key: "SOURCE_REQUEST_INVALID",
+        });
+      case "connection_test_failed":
+        return yield* cliServiceErr({
+          detail: result.detail,
+          errors: [
+            {
+              code: "connection_test_failed",
+              field: "credentials",
+              message: result.message,
+            },
+          ],
+          key: "SOURCE_REQUEST_INVALID",
+        });
+      case "updated":
+        logCliEvent({
+          details: buildCliRequestLogDetails(access.c, {
+            orgSlug: access.authorizedOrg.org.slug,
+            provider: result.source.provider,
+            roles: access.authorizedOrg.membershipRoles,
+            sourceKey: result.source.sourceKey,
+          }),
+          event: "source.update.completed",
+          level: "info",
+        });
+        return Result.ok(
+          buildUpdateSourceResponse({
+            outcome: result.test,
+            source: result.source,
+          }) satisfies UpdateSourceResponseInit
+        );
+    }
+  });
+
+const handleDeleteSourceImpl: CliResultServiceMethod<"deleteSource"> = async (
+  request,
+  context
+) =>
+  Result.gen(async function* handleDeleteSourceFlow() {
+    const sourceSelector = parseCliSourceSelector(request.source);
+    if (!sourceSelector) {
+      return yield* cliServiceErr({
+        detail: "source must include provider and sourceKey",
+        key: "SOURCE_REQUEST_INVALID",
+      });
+    }
+
+    const access = yield* Result.await(
+      resolveAuthorizedSourceRequestState(
+        "source.write",
+        request.orgSlug,
+        context
+      )
+    );
+    const provider = yield* fromCliSourceProvider(
+      sourceSelector.sourceProvider
+    );
+    const result = await deleteCliSource({
+      db: access.c.var.storage.db,
+      organizationId: access.authorizedOrg.org.id,
+      sourceKey: sourceSelector.sourceKey,
+      sourceProvider: provider,
+    });
+    if (result.kind === "not_found") {
+      return Result.err(
+        createCliSourceNotFoundFailure(
+          access.authorizedOrg.org.slug,
+          sourceSelector.sourceKey
+        )
+      );
+    }
+
+    logCliEvent({
+      details: buildCliRequestLogDetails(access.c, {
+        orgSlug: access.authorizedOrg.org.slug,
+        provider: result.source.provider,
+        roles: access.authorizedOrg.membershipRoles,
+        sourceKey: result.source.sourceKey,
+      }),
+      event: "source.delete.completed",
+      level: "info",
+    });
+    return Result.ok({
+      deleted: true,
+      source: buildCliSource(result.source),
+    } satisfies DeleteSourceResponseInit);
+  });
+
 export const handleListSources = liftCliServiceMethod(handleListSourcesImpl);
 
 export const handleListSourceProviders = liftCliServiceMethod(
@@ -432,6 +567,10 @@ export const handleGetSourceConnectGuide = liftCliServiceMethod(
 export const handleConnectSource = liftCliServiceMethod(
   handleConnectSourceImpl
 );
+
+export const handleUpdateSource = liftCliServiceMethod(handleUpdateSourceImpl);
+
+export const handleDeleteSource = liftCliServiceMethod(handleDeleteSourceImpl);
 
 async function resolveAuthorizedSourceRequestState(
   action: CliAction,

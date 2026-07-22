@@ -24,8 +24,15 @@ npx @onequery/cli --help
 onequery auth login
 onequery org use <org>
 onequery source list
+onequery source update sentry://<key> --input credentials-patch.json
+onequery source delete sentry://<key> --yes
 onequery query exec --source postgres://<key> --sql "SELECT * FROM users LIMIT 10"
 ```
+
+Source updates accept a partial credential document such as
+`{"credentials":{"organizationSlug":"wordbricks"}}`. OneQuery retains omitted
+secrets, validates and tests the merged credentials, and persists them only when
+the connection test succeeds. Source deletion requires `--yes`.
 
 ## Profiles
 
