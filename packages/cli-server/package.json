@@ -8,7 +8,8 @@
     "./connect/context": "./src/connect/context.ts",
     "./connect/service": "./src/connect/service/index.ts",
     "./query/effects": "./src/query/effects.ts",
-    "./source/effects": "./src/source/effects.ts"
+    "./source/effects": "./src/source/effects.ts",
+    "./source/mutations": "./src/source/mutations.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",

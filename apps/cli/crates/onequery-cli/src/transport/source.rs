@@ -406,7 +406,7 @@ pub(crate) async fn test_source(
     })
 }
 
-fn decode_required_source_summary(
+pub(crate) fn decode_required_source_summary(
     summary: Option<types::CliSource>,
     stage: ErrorStage,
     message: &str,

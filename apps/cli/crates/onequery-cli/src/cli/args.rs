@@ -179,6 +179,30 @@ pub(crate) enum SourceSubcommand {
     },
     /// Show instructions or create a new source connection.
     Connect(SourceConnectArgs),
+    /// Update one source's credentials from a JSON patch.
+    Update(SourceUpdateArgs),
+    /// Permanently delete one source.
+    Delete(SourceDeleteArgs),
+}
+
+#[derive(Debug, Clone, Args, Eq, PartialEq)]
+pub(crate) struct SourceUpdateArgs {
+    /// Read {"credentials": {...}} from this file or stdin (`-`).
+    #[arg(long, value_hint = ValueHint::FilePath, value_name = "PATH|-")]
+    pub input: PathBuf,
+    /// Update this source.
+    #[arg(value_name = "SOURCE", value_parser = parse_source_reference)]
+    pub source: SourceReference,
+}
+
+#[derive(Debug, Clone, Args, Eq, PartialEq)]
+pub(crate) struct SourceDeleteArgs {
+    /// Delete this source.
+    #[arg(value_name = "SOURCE", value_parser = parse_source_reference)]
+    pub source: SourceReference,
+    /// Confirm permanent deletion.
+    #[arg(long)]
+    pub yes: bool,
 }
 
 #[derive(Debug, Clone, Args, Eq, PartialEq)]

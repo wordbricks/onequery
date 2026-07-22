@@ -116,6 +116,14 @@ pub use self::__buffa::view::TestSourceRequestView;
 #[doc(inline)]
 pub use self::__buffa::view::TestSourceResponseView;
 #[doc(inline)]
+pub use self::__buffa::view::UpdateSourceRequestView;
+#[doc(inline)]
+pub use self::__buffa::view::UpdateSourceResponseView;
+#[doc(inline)]
+pub use self::__buffa::view::DeleteSourceRequestView;
+#[doc(inline)]
+pub use self::__buffa::view::DeleteSourceResponseView;
+#[doc(inline)]
 pub use self::__buffa::view::TestSourceSupportedOutcomeView;
 #[doc(inline)]
 pub use self::__buffa::view::TestSourcePassedOutcomeView;

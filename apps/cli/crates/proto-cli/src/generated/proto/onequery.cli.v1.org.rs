@@ -13,6 +13,7 @@ pub enum OrgCapability {
     ORG_CAPABILITY_QUERY_EXECUTE = 6i32,
     ORG_CAPABILITY_SOURCE_API_DESCRIBE = 7i32,
     ORG_CAPABILITY_SOURCE_API_EXECUTE = 8i32,
+    ORG_CAPABILITY_SOURCE_WRITE = 9i32,
 }
 impl ::core::default::Default for OrgCapability {
     fn default() -> Self {
@@ -119,6 +120,7 @@ impl ::buffa::Enumeration for OrgCapability {
                 ::core::option::Option::Some(Self::ORG_CAPABILITY_SOURCE_API_DESCRIBE)
             }
             8i32 => ::core::option::Option::Some(Self::ORG_CAPABILITY_SOURCE_API_EXECUTE),
+            9i32 => ::core::option::Option::Some(Self::ORG_CAPABILITY_SOURCE_WRITE),
             _ => ::core::option::Option::None,
         }
     }
@@ -140,6 +142,7 @@ impl ::buffa::Enumeration for OrgCapability {
             Self::ORG_CAPABILITY_SOURCE_API_EXECUTE => {
                 "ORG_CAPABILITY_SOURCE_API_EXECUTE"
             }
+            Self::ORG_CAPABILITY_SOURCE_WRITE => "ORG_CAPABILITY_SOURCE_WRITE",
         }
     }
     fn from_proto_name(name: &str) -> ::core::option::Option<Self> {
@@ -171,6 +174,9 @@ impl ::buffa::Enumeration for OrgCapability {
             "ORG_CAPABILITY_SOURCE_API_EXECUTE" => {
                 ::core::option::Option::Some(Self::ORG_CAPABILITY_SOURCE_API_EXECUTE)
             }
+            "ORG_CAPABILITY_SOURCE_WRITE" => {
+                ::core::option::Option::Some(Self::ORG_CAPABILITY_SOURCE_WRITE)
+            }
             _ => ::core::option::Option::None,
         }
     }
@@ -185,6 +191,7 @@ impl ::buffa::Enumeration for OrgCapability {
             Self::ORG_CAPABILITY_QUERY_EXECUTE,
             Self::ORG_CAPABILITY_SOURCE_API_DESCRIBE,
             Self::ORG_CAPABILITY_SOURCE_API_EXECUTE,
+            Self::ORG_CAPABILITY_SOURCE_WRITE,
         ]
     }
 }

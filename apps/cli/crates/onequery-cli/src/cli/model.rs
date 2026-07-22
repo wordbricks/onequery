@@ -275,6 +275,8 @@ impl Command {
             Self::Source(SourceSubcommand::Show { .. }) => "source show",
             Self::Source(SourceSubcommand::Test { .. }) => "source test",
             Self::Source(SourceSubcommand::Connect(_)) => "source connect",
+            Self::Source(SourceSubcommand::Update(_)) => "source update",
+            Self::Source(SourceSubcommand::Delete(_)) => "source delete",
             Self::Query(QuerySubcommand::Execute(_)) => "query exec",
             Self::Query(QuerySubcommand::Validate(_)) => "query validate",
             Self::Restore(_) => "restore",

@@ -13,6 +13,7 @@ import type {
   CliSourceInit,
   GetSourceResponseInit,
   TestSourceResponseInit,
+  UpdateSourceResponseInit,
 } from "./types";
 
 export function toCliContentFormat(value: "markdown") {
@@ -128,4 +129,26 @@ export function buildTestSourceResponse(input: {
     },
   };
   return response;
+}
+
+export function buildUpdateSourceResponse(input: {
+  source: BuildCliSourceInput;
+  outcome:
+    | {
+        kind: "supported";
+        success: true;
+        message: string;
+        latencyMs: number;
+      }
+    | {
+        kind: "unsupported";
+        reason: "oauth" | "not_implemented";
+        message: string;
+      };
+}): UpdateSourceResponseInit {
+  const tested = buildTestSourceResponse(input);
+  return {
+    source: tested.source,
+    outcome: tested.outcome,
+  };
 }

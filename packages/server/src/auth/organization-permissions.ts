@@ -16,7 +16,7 @@ export const organizationPermissionStatements = {
   ...defaultStatements,
   cliOrg: ["list", "read"],
   cliQuery: ["execute"],
-  cliSource: ["connect", "list", "read"],
+  cliSource: ["connect", "list", "read", "write"],
   cliSourceApi: ["describe", "execute"],
 } as const;
 
@@ -92,6 +92,9 @@ export const organizationPermissionChecks = {
   cliSourceRead: {
     cliSource: ["read"],
   },
+  cliSourceWrite: {
+    cliSource: ["write"],
+  },
   cliSourceApiDescribe: {
     cliSourceApi: ["describe"],
   },
@@ -119,6 +122,7 @@ export const organizationPermissionChecks = {
   | "cliSourceList"
   | "cliSourceConnect"
   | "cliSourceRead"
+  | "cliSourceWrite"
   | "cliSourceApiDescribe"
   | "cliSourceApiExecute",
   OrganizationPermissionCheck

@@ -22,6 +22,27 @@ pub mod test_source_response {
         ),
     }
 }
+pub mod update_source_response {
+    #[allow(unused_imports)]
+    use super::*;
+    #[derive(Clone, Debug)]
+    pub enum Outcome<'a> {
+        Supported(
+            ::buffa::alloc::boxed::Box<
+                super::super::super::super::__buffa::view::TestSourceSupportedOutcomeView<
+                    'a,
+                >,
+            >,
+        ),
+        Unsupported(
+            ::buffa::alloc::boxed::Box<
+                super::super::super::super::__buffa::view::TestSourceUnsupportedOutcomeView<
+                    'a,
+                >,
+            >,
+        ),
+    }
+}
 pub mod test_source_supported_outcome {
     #[allow(unused_imports)]
     use super::*;

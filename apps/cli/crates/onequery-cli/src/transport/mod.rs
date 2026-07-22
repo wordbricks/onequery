@@ -11,4 +11,5 @@ pub(crate) mod source;
 pub(crate) mod source_api;
 pub(crate) mod source_connect;
 pub(crate) mod source_connect_provider;
+pub(crate) mod source_mutation;
 pub(crate) mod well_known;

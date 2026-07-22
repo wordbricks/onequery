@@ -119,6 +119,8 @@ const CLI_VALIDATION_PROBLEM_KEYS_BY_METHOD_NAME = new Map<
   [CliSourceService.method.connectSource.name, "SOURCE_REQUEST_INVALID"],
   [CliSourceService.method.getSource.name, "SOURCE_REQUEST_INVALID"],
   [CliSourceService.method.testSource.name, "SOURCE_REQUEST_INVALID"],
+  [CliSourceService.method.updateSource.name, "SOURCE_REQUEST_INVALID"],
+  [CliSourceService.method.deleteSource.name, "SOURCE_REQUEST_INVALID"],
   [
     CliSourceApiService.method.describeSourceApi.name,
     "SOURCE_API_REQUEST_INVALID",
