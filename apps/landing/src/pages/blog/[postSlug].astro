@@ -10,7 +10,7 @@ import {
 } from "@/features/blog/collection";
 import {
   getBlogShareImage,
-  getPreferredBlogShareImage,
+  getBlogShareImageSource,
 } from "@/features/blog/images";
 import { ONEQUERY } from "@/shared/seo/constants";
 import {
@@ -36,7 +36,7 @@ const { Content, headings, remarkPluginFrontmatter } = await render(entry);
 const post = toBlogPost(entry, { headings, remarkPluginFrontmatter });
 const postSummaries = await getBlogPostSummaries();
 const shareImage = await getBlogShareImage(
-  getPreferredBlogShareImage(post),
+  getBlogShareImageSource(post),
   Astro.site
 );
 const canonicalUrl = createCanonicalUrl(`/blog/${post.slug}`, Astro.site);
@@ -77,6 +77,7 @@ const articleMetaTags = [
   imageWidth={shareImage.width}
   keywords={getBlogPostKeywords(post)}
   metaTags={articleMetaTags}
+  ogTitle={post.title}
   ogType="article"
   structuredData={structuredData}
   title={title}
