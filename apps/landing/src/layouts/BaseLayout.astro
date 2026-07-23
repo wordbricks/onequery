@@ -60,6 +60,7 @@ const {
   robots = "index, follow, max-image-preview:large",
   structuredData = DEFAULT_STRUCTURED_DATA,
   title = DEFAULT_TITLE,
+  ogTitle = title,
   twitterTitle = title,
 } = Astro.props;
 ---
@@ -87,6 +88,7 @@ const {
       openGraph={{
         locale: "en_US",
         siteName: ONEQUERY.NAME,
+        title: ogTitle,
         type: ogType,
       }}
       robots={robots}

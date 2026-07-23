@@ -5,29 +5,7 @@ import { ONEQUERY } from "@/shared/seo/constants";
 import type { SeoImage } from "@/shared/seo/constants";
 import { toAbsoluteSiteUrl } from "@/shared/seo/schema";
 
-import type { BlogPost, BlogPostSummary } from "./types";
-
-const BLOG_SHARE_IMAGE = {
-  MAX_RATIO: 2.2,
-  MIN_RATIO: 1.45,
-  MIN_WIDTH: 1200,
-} as const;
-
-function isPreferredShareImage(image: ImageMetadata) {
-  const ratio = image.width / image.height;
-
-  return (
-    image.width >= BLOG_SHARE_IMAGE.MIN_WIDTH &&
-    ratio >= BLOG_SHARE_IMAGE.MIN_RATIO &&
-    ratio <= BLOG_SHARE_IMAGE.MAX_RATIO
-  );
-}
-
-export function getPreferredBlogShareImage(post: Pick<BlogPost, "coverImage">) {
-  return isPreferredShareImage(post.coverImage.src)
-    ? post.coverImage.src
-    : undefined;
-}
+import type { BlogPostSummary } from "./types";
 
 export async function getBlogShareImage(
   image: ImageMetadata | undefined,
@@ -65,3 +43,5 @@ export async function getBlogShareImagesBySlug(
     )
   );
 }
+
+export { getBlogShareImageSource } from "./share-image";

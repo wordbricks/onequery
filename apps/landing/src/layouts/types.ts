@@ -10,6 +10,7 @@ export interface PageMetadata {
   imageWidth?: number;
   keywords?: string | null;
   metaTags?: MetaTag[];
+  ogTitle?: string;
   ogType?: "article" | "website";
   robots?: string;
   structuredData?: StructuredData | StructuredData[] | null;
