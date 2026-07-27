@@ -11,6 +11,7 @@ import { codexAppServerApiSourceApiAdapter } from "./adapters/codex-app-server-a
 import { confluenceSourceApiAdapter } from "./adapters/confluence";
 import { discordSourceApiAdapter } from "./adapters/discord";
 import { e2bSourceApiAdapter } from "./adapters/e2b";
+import { figmaSourceApiAdapter } from "./adapters/figma";
 import { googleAnalyticsSourceApiAdapter } from "./adapters/ga";
 import { githubSourceApiAdapter } from "./adapters/github";
 import { googleSearchConsoleSourceApiAdapter } from "./adapters/google-search-console";
@@ -86,6 +87,7 @@ export const sourceApiRegistry = createSourceApiRegistry([
   confluenceSourceApiAdapter,
   discordSourceApiAdapter,
   e2bSourceApiAdapter,
+  figmaSourceApiAdapter,
   googleAnalyticsSourceApiAdapter,
   githubSourceApiAdapter,
   googleSearchConsoleSourceApiAdapter,

@@ -69,6 +69,20 @@ describe("shared provider icon accessibility", () => {
     expect(markup).toContain("<title>Google Search Console provider</title>");
   });
 
+  it("renders Figma with the official full-color brand mark", () => {
+    const markup = renderProviderIcon("figma", {
+      title: "Figma provider",
+    });
+
+    expect(markup).toContain('viewBox="0 0 1024 1280"');
+    expect(markup).toContain('fill="#24CB71"');
+    expect(markup).toContain('fill="#FF7237"');
+    expect(markup).toContain('fill="#00B6FF"');
+    expect(markup).toContain('fill="#FF3737"');
+    expect(markup).toContain('fill="#874FFF"');
+    expect(markup).toContain("<title>Figma provider</title>");
+  });
+
   it("renders SendGrid with the current multicolor brand mark", () => {
     const markup = renderProviderIcon("sendgrid", {
       title: "SendGrid provider",

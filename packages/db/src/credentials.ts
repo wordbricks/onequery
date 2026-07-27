@@ -265,6 +265,15 @@ export const GitHubCredentialsSchema = z.object({
 
 export type GitHubCredentials = z.infer<typeof GitHubCredentialsSchema>;
 
+export const FigmaCredentialsSchema = z.object({
+  personalAccessToken: requiredOpaqueString(
+    "Personal access token is required"
+  ),
+  type: z.literal("figma"),
+});
+
+export type FigmaCredentials = z.infer<typeof FigmaCredentialsSchema>;
+
 export const AirtableCredentialsSchema = z.object({
   apiBaseUrl: optionalTrimmedUrl("API base URL must be a valid URL"),
   baseId: optionalTrimmedString("Base ID is required"),
@@ -704,6 +713,7 @@ export const CredentialsSchema = z.union([
   PostHogCredentialsSchema,
   SentryCredentialsSchema,
   GitHubCredentialsSchema,
+  FigmaCredentialsSchema,
   AirtableCredentialsSchema,
   DiscordCredentialsSchema,
   SlackCredentialsSchema,
@@ -779,6 +789,7 @@ export const credentialSchemaMap = {
   confluence: ConfluenceCredentialsSchema,
   discord: DiscordCredentialsSchema,
   e2b: E2BCredentialsSchema,
+  figma: FigmaCredentialsSchema,
   ga: GoogleAnalyticsCredentialsSchema,
   github: GitHubCredentialsSchema,
   google_search_console: GoogleSearchConsoleCredentialsSchema,

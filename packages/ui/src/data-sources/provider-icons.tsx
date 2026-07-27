@@ -29,6 +29,7 @@ import {
 
 import { CodexIcon } from "../icons/codex-icon";
 import { E2BIcon } from "../icons/e2b-icon";
+import { FigmaIcon } from "../icons/figma-icon";
 import { GoogleSearchConsoleIcon } from "../icons/google-search-console-icon";
 import { GranolaIcon } from "../icons/granola-icon";
 import { HermesAgentIcon } from "../icons/hermes-agent-icon";
@@ -252,6 +253,7 @@ export const ProviderIcons = {
   confluence: createSimpleProviderIcon(siConfluence),
   discord: createSimpleProviderIcon(siDiscord),
   e2b: E2BIcon,
+  figma: FigmaIcon,
   ga: createSimpleProviderIcon(siGoogleanalytics),
   github: GitHubIcon,
   google_docs: createSimpleProviderIcon(siGoogledocs),

@@ -1,0 +1,37 @@
+import { SvgIcon } from "./svg-icon";
+import type { IconSvgProps } from "./svg-icon";
+
+// Source: Figma's official full-color brand asset.
+// https://www.figma.com/using-the-figma-brand/
+export function FigmaIcon({
+  defaultLabel = "Figma",
+  size = 24,
+  ...props
+}: IconSvgProps & { defaultLabel?: string }) {
+  return (
+    <SvgIcon
+      {...props}
+      defaultLabel={defaultLabel}
+      size={size}
+      viewBox="0 0 1024 1280"
+    >
+      <path
+        d="M312 840C312 784.772 356.772 740 412 740H512V840C512 895.228 467.228 940 412 940C356.772 940 312 895.228 312 840Z"
+        fill="#24CB71"
+      />
+      <path
+        d="M512 340V540H612C667.228 540 712 495.228 712 440C712 384.772 667.228 340 612 340H512Z"
+        fill="#FF7237"
+      />
+      <circle cx="611.167" cy="640" fill="#00B6FF" r="100" />
+      <path
+        d="M312 440C312 495.228 356.772 540 412 540H512V340H412C356.772 340 312 384.772 312 440Z"
+        fill="#FF3737"
+      />
+      <path
+        d="M312 640C312 695.228 356.772 740 412 740H512V540H412C356.772 540 312 584.772 312 640Z"
+        fill="#874FFF"
+      />
+    </SvgIcon>
+  );
+}
