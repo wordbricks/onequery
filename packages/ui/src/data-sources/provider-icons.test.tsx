@@ -69,12 +69,12 @@ describe("shared provider icon accessibility", () => {
     expect(markup).toContain("<title>Google Search Console provider</title>");
   });
 
-  it("renders Figma with the official full-color brand mark", () => {
+  it("renders Figma with the official full-color mark cropped to its artwork bounds", () => {
     const markup = renderProviderIcon("figma", {
       title: "Figma provider",
     });
 
-    expect(markup).toContain('viewBox="0 0 1024 1280"');
+    expect(markup).toContain('viewBox="312 340 400 600"');
     expect(markup).toContain('fill="#24CB71"');
     expect(markup).toContain('fill="#FF7237"');
     expect(markup).toContain('fill="#00B6FF"');

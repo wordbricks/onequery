@@ -13,7 +13,7 @@ export function FigmaIcon({
       {...props}
       defaultLabel={defaultLabel}
       size={size}
-      viewBox="0 0 1024 1280"
+      viewBox="312 340 400 600"
     >
       <path
         d="M312 840C312 784.772 356.772 740 412 740H512V840C512 895.228 467.228 940 412 940C356.772 940 312 895.228 312 840Z"
