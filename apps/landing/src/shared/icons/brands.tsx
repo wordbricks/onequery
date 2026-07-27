@@ -1,5 +1,6 @@
 import { CodexIcon } from "@onequery/ui/icons/codex-icon";
 import { E2BIcon } from "@onequery/ui/icons/e2b-icon";
+import { FigmaIcon } from "@onequery/ui/icons/figma-icon";
 import { GoogleSearchConsoleIcon } from "@onequery/ui/icons/google-search-console-icon";
 import { GranolaIcon } from "@onequery/ui/icons/granola-icon";
 import { HermesAgentIcon } from "@onequery/ui/icons/hermes-agent-icon";
@@ -208,6 +209,7 @@ const BRAND_ICONS = {
   curl: createSimpleBrandIcon(siCurl),
   discord: createSimpleBrandIcon(siDiscord),
   e2b: E2BIcon,
+  figma: FigmaIcon,
   ga: createSimpleBrandIcon(siGoogleanalytics),
   github: createSimpleBrandIcon(siGithub),
   googledrive: createSimpleBrandIcon(siGoogledrive),

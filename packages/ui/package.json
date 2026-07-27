@@ -13,6 +13,7 @@
     "./components/*": "./src/components/ui/*.tsx",
     "./icons/codex-icon": "./src/icons/codex-icon.tsx",
     "./icons/e2b-icon": "./src/icons/e2b-icon.tsx",
+    "./icons/figma-icon": "./src/icons/figma-icon.tsx",
     "./icons/google-search-console-icon": "./src/icons/google-search-console-icon.tsx",
     "./icons/granola-icon": "./src/icons/granola-icon.tsx",
     "./icons/hermes-agent-icon": "./src/icons/hermes-agent-icon.tsx",

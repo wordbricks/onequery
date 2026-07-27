@@ -15,6 +15,7 @@ import {
   ConnectorCredentialsSchema,
   DiscordCredentialsSchema,
   E2BCredentialsSchema,
+  FigmaCredentialsSchema,
   GitHubCredentialsSchema,
   GoogleSearchConsoleCredentialsSchema,
   GoogleAnalyticsCredentialsSchema,
@@ -699,6 +700,35 @@ export const SOURCE_PROVIDER_REGISTRY = {
         credentials: {
           accessToken: "github_pat_or_installation_token",
           repositories: ["octocat/Hello-World"],
+        },
+      },
+    },
+  },
+  figma: {
+    label: "Figma",
+    credentialSchema: FigmaCredentialsSchema,
+    credentialType: "figma",
+    connectable: true,
+    analysisSource: true,
+    queryInterface: false,
+    sourceApiInterface: true,
+    testable: false,
+    dashboardConnectable: true,
+    dashboardCredentialForm: "json",
+    publicCategory: "Developer workflow",
+    guide: {
+      summary:
+        "Connect Figma with a personal access token for read-only REST API and grouped design-context access.",
+      steps: [
+        "Create a Figma personal access token with the `file_content:read` scope.",
+        "Add `file_variables:read` when grouped design-context requests should include local variable definitions.",
+        "Copy the token into `credentials.personalAccessToken`.",
+        "Use `fetch_api` for read-only REST paths or `prepare_design_context` to bundle nodes, renders, image fills, and optional variables for selected frames.",
+      ],
+      exampleInput: {
+        sourceKey: "figma_product",
+        credentials: {
+          personalAccessToken: "figd_personal_access_token",
         },
       },
     },
