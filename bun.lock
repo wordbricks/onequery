@@ -391,7 +391,7 @@
         "@onequery/config": "workspace:*",
         "@onequery/db": "workspace:*",
         "@onequery/proto-workflow": "workspace:*",
-        "@polyglot-sql/sdk": "0.3.11",
+        "@polyglot-sql/sdk": "0.6.2",
         "better-auth": "catalog:",
         "better-result": "catalog:",
         "hono": "catalog:",
@@ -1584,7 +1584,7 @@
 
     "@playwright/test": ["@playwright/test@1.57.0", "", { "dependencies": { "playwright": "1.57.0" }, "bin": { "playwright": "cli.js" } }, "sha512-6TyEnHgd6SArQO8UO2OMTxshln3QMWBtPGrOCgs3wVEmQmwyuNtB10IZMfmYDE0riwNR1cu4q+pPcxMVtaG3TA=="],
 
-    "@polyglot-sql/sdk": ["@polyglot-sql/sdk@0.3.11", "", {}, "sha512-ASKA7ikbv+/7RUdK5Sq65m94kIjufZC3O/KlZZM7zb4rMBtMm9ecFpN7RhU+3M/r9Ba8I7bsAR9+9Bfc+KttuQ=="],
+    "@polyglot-sql/sdk": ["@polyglot-sql/sdk@0.6.2", "", {}, "sha512-2xpdEMlREkw5B2XX4+tE7GaneI3i/Pc/2+T6RkZfMJUo3NVuuwvTfVIfy/7seI0xC3vcAJht58oQjG8g945oqw=="],
 
     "@poppinss/colors": ["@poppinss/colors@4.1.6", "", { "dependencies": { "kleur": "^4.1.5" } }, "sha512-H9xkIdFswbS8n1d6vmRd8+c10t2Qe+rZITbbDHHkQixH5+2x1FDGmi/0K+WgWiqQFKPSlIYB7jlH6Kpfn6Fleg=="],
 

@@ -46,7 +46,7 @@
       },
       "files": {
         "wasm": {
-          "filename": "polyglot_sql_wasm_bg.wasm"
+          "filename": "polyglot_sql.wasm"
         }
       },
       "packagedPath": "server"

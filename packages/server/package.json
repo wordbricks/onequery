@@ -60,7 +60,7 @@
     "@onequery/config": "workspace:*",
     "@onequery/db": "workspace:*",
     "@onequery/proto-workflow": "workspace:*",
-    "@polyglot-sql/sdk": "0.3.11",
+    "@polyglot-sql/sdk": "0.6.2",
     "better-auth": "catalog:",
     "better-result": "catalog:",
     "hono": "catalog:",
