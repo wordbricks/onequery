@@ -31,7 +31,7 @@ const selfHostRuntimeDir = resolve(
 const workspaceDevBundleAdjacentPolyglotWasmPath = join(
   selfHostRuntimeDir,
   "dist",
-  "polyglot_sql_wasm_bg.wasm"
+  "polyglot_sql.wasm"
 );
 const stagedRoots = new Set<string>();
 

@@ -38,10 +38,10 @@ describe("build-npm-package runtime asset resolution", () => {
 
     expect(sourcePaths).toEqual([
       {
-        filename: "polyglot_sql_wasm_bg.wasm",
+        filename: "polyglot_sql.wasm",
         sourcePath: path.join(
           path.dirname(serverRequire.resolve("@polyglot-sql/sdk")),
-          "polyglot_sql_wasm_bg.wasm"
+          "polyglot_sql.wasm"
         ),
       },
     ]);
